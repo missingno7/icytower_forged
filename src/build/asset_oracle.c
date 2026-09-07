@@ -326,6 +326,64 @@ static void serialize_info(void *raw, digest_t *d)
     digest_feed(d, raw, GRABBERINFO_SIZE);
 }
 
+/* Verbose companion dump (this file's own "AAAPAL"/"FLD_LOGO" investigation
+ * above): mirrors carrier/src/dump_assets.c's own dump_verbose(), same
+ * format, so the two "<path>.verbose.txt"-shaped outputs diff line-for-line
+ * -- raw bytes settle the question a hash alone cannot ("differs" vs
+ * "differs HOW"). */
+static void hex_dump_line(FILE *f, const unsigned char *p, size_t n)
+{
+    size_t i;
+    static const char *hexd = "0123456789abcdef";
+    for (i = 0; i < n; i++) {
+        putc(hexd[(p[i] >> 4) & 0xF], f);
+        putc(hexd[p[i] & 0xF], f);
+    }
+    putc('\n', f);
+}
+
+static void dump_verbose(const char *path)
+{
+    FILE *vf;
+    PALETTE *data_pal, *loading_pal;
+    BITMAP *fld_logo;
+
+    vf = fopen(path, "w");
+    if (!vf) {
+        fprintf(stderr, "asset_oracle: could not open '%s' for write\n", path);
+        return;
+    }
+
+    data_pal = asset_palette(ASSET_DATA_AAAPAL);
+    fprintf(vf, "DATA_AAAPAL bytes=%d\n", (int)sizeof(PALETTE));
+    fprintf(vf, "DATA_AAAPAL raw ");
+    hex_dump_line(vf, (const unsigned char *)data_pal, sizeof(PALETTE));
+
+    loading_pal = asset_palette(ASSET_LOADING_AAAPAL);
+    fprintf(vf, "LOADING_AAAPAL bytes=%d\n", (int)sizeof(PALETTE));
+    fprintf(vf, "LOADING_AAAPAL raw ");
+    hex_dump_line(vf, (const unsigned char *)loading_pal, sizeof(PALETTE));
+
+    fld_logo = asset_bitmap(ASSET_LOADING_FLD_LOGO);
+    if (fld_logo) {
+        int bpp = fld_logo->vtable->color_depth;
+        int w = fld_logo->w, h = fld_logo->h;
+        int bypp = bitmap_bytes_per_pixel(bpp);
+        fprintf(vf, "FLD_LOGO bpp=%d w=%d h=%d bypp=%d\n", bpp, w, h, bypp);
+        fprintf(vf, "FLD_LOGO row0 ");
+        hex_dump_line(vf, (const unsigned char *)fld_logo->line[0], (size_t)w * bypp);
+        if (h > 1) {
+            fprintf(vf, "FLD_LOGO row1 ");
+            hex_dump_line(vf, (const unsigned char *)fld_logo->line[1], (size_t)w * bypp);
+        }
+    } else {
+        fprintf(vf, "FLD_LOGO NULL\n");
+    }
+
+    fclose(vf);
+    fprintf(stderr, "asset_oracle: wrote verbose asset dump to '%s'\n", path);
+}
+
 int main(void)
 {
     int i, gfx_ok;
@@ -384,6 +442,41 @@ int main(void)
         return 1;
     }
 
+    /* THE FIX (src/icytower/ASSETS.md "closing the last two asset-oracle
+     * residuals"): reproduce init_game()'s own select_palette(data[0].dat)
+     * call (VA 0x40f928, artifacts/disasm.txt), which every run of this
+     * oracle before this pass omitted entirely. select_palette() is
+     * CONFIRMED read-only w.r.t. its argument (both by the upstream source,
+     * third_party/allegro-4.4.3.1/src/gfx.c, and by direct disassembly of
+     * the real compiled function at that VA -- every access off the
+     * argument register is a load, never a store) -- it does NOT explain
+     * the "data" family's own AAAPAL hash mismatch (that object's raw bytes
+     * are unchanged either way, MEASURED: this oracle's own AAAPAL hash for
+     * the "data" family is identical before and after this fix, and equals
+     * the ground-truth on-disk bytes in assets_extracted/palettes/
+     * data_aaapal.pal -- so the carrier's own copy, not this oracle's, is
+     * the one that differs from disk; a live-carrier-memory question, out
+     * of this file's scope). What select_palette() DOES do, unconditionally
+     * and importantly for FLD_LOGO: copy p into the global _current_palette
+     * AND rebuild palette_color[] (gfx.c: at color depth != 8, "palette_color
+     * [c] = makecol(_rgb_scale_6[p[c].r], ...)"), the exact lookup table
+     * datafile.c's read_bitmap() depends on when it blit-converts an 8bpp
+     * source bitmap (FLD_LOGO, this project's only 8bpp-on-disk BITMAP) up
+     * to the current screen depth. Nothing in load_datafile() itself, in
+     * EITHER Allegro version, ever calls select_palette on its own (grepped:
+     * zero hits in datafile.c) -- so without this explicit call, ALL of
+     * this oracle's runs so far converted FLD_LOGO against palette_color[]'s
+     * un-set, all-zero default (BSS-initialized _palette_color32[], never
+     * populated), not against "loading" family's own AAAPAL as the earlier,
+     * disassembly-only guess in this file's header comment supposed. Placed
+     * here, right after "data" family's own load (this oracle's very first
+     * asset access, id 0 = ASSET_DATA_AAAPAL, per assets_table.inc's
+     * manifest-order enum) and before the loop below ever reaches "loading"
+     * family (id 132+) -- matching the real game's own order: data.dat
+     * loads, THEN select_palette(data[0].dat), THEN sfx15.dat/loading/char
+     * families, none of which the real game's init_game() ever revisits. */
+    select_palette(*asset_palette(ASSET_DATA_AAAPAL));
+
     for (i = 0; i < ASSET_COUNT; i++) {
         const struct asset_table_row *row = &asset_table[i];
         digest_t d;
@@ -408,6 +501,8 @@ int main(void)
         printf("%d %s %s\n", i, row->object_name ? row->object_name : "?", hex);
         fflush(stdout);
     }
+
+    dump_verbose("asset_oracle_verbose.txt");
 
     allegro_exit();
     return 0;

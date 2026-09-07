@@ -4791,3 +4791,69 @@ wall-clock artifact the frame-oracle caveat above describes).
 **Conclusion**: `draw_frame` is EQUAL in vivo on all three workloads, at
 both the frame-oracle level and the per-tick game-global digest level.
 `src/icytower/INVIVO.md` has the full per-workload detail.
+
+## Asset oracle: closing the last two residuals (2026-09-08)
+
+Batch 9's asset oracle left two open items: the "data" family's own
+`AAAPAL` PALETTE mismatch (5/6) and the "loading" family's `FLD_LOGO`
+BITMAP mismatch (185/186), both blamed on `select_palette()`'s global,
+order-dependent state. This pass added a raw-byte verbose dump to both
+sides (`carrier/src/dump_assets.c`'s new `dump_verbose()`, always written
+to `<path>.verbose.txt` alongside the ordinary dump — no new CLI flag, so
+`main.cpp`/`det.cpp` needed no change; `src/build/asset_oracle.c` got the
+identical companion, `asset_oracle_verbose.txt`) and used it to settle the
+question with actual bytes instead of another disassembly guess.
+
+**FLD_LOGO: CLOSED, 186/186 BITMAP.** The earlier guess (loading's own
+lazy load is the first thing that selects a palette) was wrong:
+`load_datafile()` never calls `select_palette()` itself in either Allegro
+version (grepped `datafile.c`, zero hits). What actually gates an 8bpp
+conversion is `palette_color[]` (`gfx.c`), populated ONLY by an explicit
+`select_palette()`/`set_palette()` call — until one runs, it sits at its
+BSS-zeroed default, which is what every earlier oracle run silently
+converted against. Fix: `asset_oracle.c`'s `main()` now calls
+`select_palette(*asset_palette(ASSET_DATA_AAAPAL))` right after "data"
+family's own first access and before the loop reaches "loading" family,
+reproducing `init_game()`'s own `select_palette(data[0].dat)` (VA
+`0x40f928`) in the same relative order. Rebuilt and run for real (mingw32
+MSYS2): `FLD_LOGO`'s hash now equals the carrier's stored `--dump-assets`
+value exactly (`ea6c3937...`, `artifacts_batch9/carrier_assets_final.txt`
+line 134) — BITMAP 186/186 EQUAL, up from 185/186.
+
+**PALETTE: still 5/6, but the oracle-side explanation is now eliminated,
+not just suspected.** `select_palette()`/`set_palette()` are BOTH
+confirmed read-only w.r.t. their palette argument — twice over: upstream
+source (`gfx.c`: every access is `_current_palette[c] = p[c]` or a read of
+`p[c]` into `palette_color[c]`, never a write to `p`) and direct
+disassembly of the REAL compiled `select_palette` at VA `0x44df24` (every
+access off `%esi`, the argument, is a load; every store targets a global
+array, never `%esi` itself). Adding the fix above left this oracle's own
+"data" family AAAPAL hash byte-for-byte unchanged
+(`dcb62a16...`), and that hash independently equals
+`sha256(assets_extracted/palettes/data_aaapal.pal)` — the on-disk ground
+truth, computed with no oracle involved at all. So this oracle's AAAPAL
+was already, provably, correct; there is no standalone-side load-sequence
+bug left. The divergence is entirely on the CARRIER's side: its own
+in-memory `data[0].dat` bytes
+(`ee2e9996...`, `artifacts_batch9/carrier_assets_final.txt` line 1) differ
+from disk by some mechanism this pass could not identify, now that every
+Allegro entry point touching a palette by reference is ruled out.
+
+**Could not re-verify against a fresh carrier run**: rebuilding
+`carrier.exe` (`build.cmd`) this pass hit an UNRELATED, pre-existing build
+break — `src/icytower/blit_to_screen.c` (batch 11, commit `a8bd4c7`)
+references `_cos_tbl`, unresolved at the final link (`LNK2019`,
+`carrier.exe : fatal error LNK1120`). This is already a documented, known
+gap from that batch's own notes ("`_cos_tbl` unbound → blit_to_screen
+links only after the lib-bindings allow-list gains it") — not something
+this pass introduced, and `src/icytower/*.c`/the harness are explicitly
+out of this task's edit scope, so it was left as is. The PALETTE
+comparison above therefore still rests on the already-recorded
+`artifacts_batch9/carrier_assets_final.txt`, not a same-pass live run;
+closing AAAPAL for real needs live carrier memory tracing once that build
+break is fixed by whichever pass owns `src/icytower/blit_to_screen.c`.
+
+**Final tally, this pass**: FONT 5/5, info 6/6, BITMAP 186/186 (was
+185/186), PALETTE 5/6 (unchanged, now root-caused to a carrier-only fact
+rather than an oracle gap). `src/icytower/ASSETS.md`'s own "Extraction and
+the asset oracle" section has the full byte-level account.

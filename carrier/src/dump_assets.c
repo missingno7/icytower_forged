@@ -343,6 +343,81 @@ static void serialize_info(void *raw, digest_t *d)
     digest_feed(d, raw, GRABBERINFO_SIZE);
 }
 
+/* Verbose companion dump (src/icytower/ASSETS.md "asset oracle" residuals:
+ * the AAAPAL/FLD_LOGO investigation): always written alongside the ordinary
+ * per-id hash dump, no new CLI flag needed (main.cpp/det.cpp -- out of this
+ * task's edit scope -- already thread only `path` through to this
+ * function). Writes <path>.verbose.txt with the RAW bytes behind the two
+ * disputed ids, straight out of the guest's own zero-copy arena, so a
+ * byte-level diff against the standalone oracle's own verbose sibling
+ * (src/build/asset_oracle.c) and against the extracted on-disk ground
+ * truth (assets_extracted/palettes/*.pal) settles the question with actual
+ * bytes instead of another round of disassembly reasoning. */
+static void hex_dump_line(FILE *f, const unsigned char *p, size_t n)
+{
+    size_t i;
+    static const char *hexd = "0123456789abcdef";
+    for (i = 0; i < n; i++) {
+        putc(hexd[(p[i] >> 4) & 0xF], f);
+        putc(hexd[p[i] & 0xF], f);
+    }
+    putc('\n', f);
+}
+
+#define MAX_VPATH 512
+
+static void dump_verbose(const char *path)
+{
+    char vpath[MAX_VPATH];
+    FILE *vf;
+    PALETTE *data_pal, *loading_pal;
+    BITMAP *fld_logo;
+
+    if (strlen(path) + 13 >= sizeof(vpath)) return;
+    strcpy(vpath, path);
+    strcat(vpath, ".verbose.txt");
+    vf = fopen(vpath, "w");
+    if (!vf) {
+        fprintf(stderr, "dump_assets: could not open '%s' for write\n", vpath);
+        return;
+    }
+
+    data_pal = asset_palette(ASSET_DATA_AAAPAL);
+    fprintf(vf, "DATA_AAAPAL bytes=%d\n", (int)sizeof(PALETTE));
+    fprintf(vf, "DATA_AAAPAL raw ");
+    hex_dump_line(vf, (const unsigned char *)data_pal, sizeof(PALETTE));
+
+    /* "loading" family is one of the 5 no-persistent-global families
+     * (pf_asset_bindings.h's own header comment) -- this first reference
+     * to it is what triggers its lazy load_datafile() call, exactly like
+     * every ordinary accessor call in the main loop below; no different
+     * from the game's own eventual (never-taken, in a --dump-assets run)
+     * access pattern. */
+    loading_pal = asset_palette(ASSET_LOADING_AAAPAL);
+    fprintf(vf, "LOADING_AAAPAL bytes=%d\n", (int)sizeof(PALETTE));
+    fprintf(vf, "LOADING_AAAPAL raw ");
+    hex_dump_line(vf, (const unsigned char *)loading_pal, sizeof(PALETTE));
+
+    fld_logo = asset_bitmap(ASSET_LOADING_FLD_LOGO);
+    if (fld_logo) {
+        int bpp = fld_logo->vtable->color_depth;
+        int w = fld_logo->w, h = fld_logo->h;
+        int bypp = bitmap_bytes_per_pixel(bpp);
+        fprintf(vf, "FLD_LOGO bpp=%d w=%d h=%d bypp=%d\n", bpp, w, h, bypp);
+        fprintf(vf, "FLD_LOGO row0 ");
+        hex_dump_line(vf, (const unsigned char *)fld_logo->line[0], (size_t)w * bypp);
+        if (h > 1) {
+            fprintf(vf, "FLD_LOGO row1 ");
+            hex_dump_line(vf, (const unsigned char *)fld_logo->line[1], (size_t)w * bypp);
+        }
+    } else {
+        fprintf(vf, "FLD_LOGO NULL\n");
+    }
+
+    fclose(vf);
+    fprintf(stderr, "dump_assets: wrote verbose asset dump to '%s'\n", vpath);
+}
+
 void pf_dump_assets(const char *path)
 {
     FILE *f;
@@ -400,4 +475,6 @@ void pf_dump_assets(const char *path)
     }
     fclose(f);
     fprintf(stderr, "dump_assets: wrote %d asset id(s) to '%s'\n", (int)ASSET_COUNT, path);
+
+    dump_verbose(path);
 }

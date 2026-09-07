@@ -549,10 +549,17 @@ the strongest evidence in this document: not "the code looks right" but
   ```
   FONT:    5 / 5   EQUAL (unchanged)
   info:    6 / 6   EQUAL (unchanged; 7th is sfx15.dat's own GrabberInfo, SKIP)
-  PALETTE: 5 / 6   EQUAL (unchanged — see below, not a colour-conversion issue)
+  PALETTE: 5 / 6   EQUAL (unchanged this run — see below, not a colour-conversion
+                   issue; CLOSED to "carrier-only, not oracle-side" two sections down)
   BITMAP:  185 / 186 EQUAL (was 0 / 186) — only "loading" family's FLD_LOGO
                      (this project's one 8bpp-on-disk BITMAP) still differs
+                     (CLOSED to 186/186 two sections down, same pass, select_palette fix)
   ```
+
+  **FINAL RESULT after this pass's `select_palette()` fix (still 2026-09-08):
+  FONT 5/5, info 6/6, BITMAP 186/186, PALETTE 5/6** — see the two entries
+  below for the closure evidence (FLD_LOGO) and the narrowed-but-still-open
+  residual (the "data" family's own AAAPAL).
 
   **PALETTE's "data" family AAAPAL mismatch is NOT a colour-conversion
   issue** — switching this oracle from 16bpp/`COLORCONV_NONE` to
@@ -581,29 +588,102 @@ the strongest evidence in this document: not "the code looks right" but
   live memory inspection of a running carrier process, out of scope for a
   standalone-only file.
 
-  **FLD_LOGO (the one remaining BITMAP mismatch), diagnosed with a
-  temporary debug print (added, used, and reverted this pass — not part of
-  the committed file): this oracle DOES convert it** — `bpp=32, w=401,
-  h=210`, real (non-garbage) RGB bytes in its first row, proving Allegro's
-  own `load_datafile()` successfully resolved "loading" family's OWN AAAPAL
-  for the conversion in THIS process. The likely reason it still differs
-  from the carrier's hash: `select_palette()` sets GLOBAL, mutable,
-  process-wide state — "the currently selected palette" used for an 8bpp
-  object's load-time colour conversion is whichever palette some EARLIER
-  `select_palette()` call left active, not necessarily the one belonging to
-  the file being loaded right now. In a fresh run of this oracle,
-  "loading" family's own lazy load is the first thing that ever selects a
-  palette, so FLD_LOGO converts against loading's own AAAPAL. In a real
-  carrier run, `init_game()` has already called `select_palette(data[0].dat)`
-  (VA `0x40f928`) long before the carrier's own `pf_asset_bindings.h` ever
-  lazily loads "loading" family (on-demand, at/after the first
-  `--dump-assets` safepoint) — if Allegro's `load_datafile()` does not
-  itself re-select a fresh palette per new file (unconfirmed either way
-  without live tracing), FLD_LOGO would convert against `data`'s palette
-  instead of its own, producing different pixel values. This traces back to
-  the SAME kind of global, order-dependent `select_palette()` state as the
-  PALETTE finding above — consistent with it, though not independent proof
-  of it, and the same live-carrier-tracing gap closes both.
+  **PALETTE: STILL 5/6, now with the oracle-side explanation eliminated
+  rather than merely suspected (2026-09-08, this pass).** The obvious
+  candidate fix for FLD_LOGO — this oracle omitting `init_game()`'s own
+  `select_palette(data[0].dat)` call — does NOT explain AAAPAL too, and
+  this was checked, not assumed: `select_palette()`/`set_palette()`
+  (`third_party/allegro-4.4.3.1/src/gfx.c`) are BOTH confirmed read-only
+  w.r.t. their palette argument, independently, twice over — once by
+  reading the upstream source (every access is `_current_palette[c] =
+  p[c]` or a `palette_color[c] = makecol(...)` read of `p[c]`, never a
+  write to `p`), and once by disassembling the REAL compiled function at
+  VA `0x44df24` directly (every access off the argument register `%esi` is
+  a `mov` INTO a global array, never the reverse). Adding the same
+  `select_palette()` call this file now makes for FLD_LOGO left this
+  oracle's own "data" family `AAAPAL` hash byte-for-byte UNCHANGED
+  (MEASURED, both before and after), and that unchanged hash
+  (`dcb62a16df70c6a77e1e3581dd40b460da66987c5396800345fea8695ca8cbc5`)
+  independently equals `sha256(assets_extracted/palettes/data_aaapal.pal)`
+  computed directly from the extracted on-disk bytes with no oracle
+  involved at all — i.e. this oracle's "data" AAAPAL was already, provably,
+  the objectively correct answer; there is no oracle-side load-sequence
+  bug left to fix. The divergence is therefore entirely on the CARRIER's
+  side: `data[0].dat`'s in-memory bytes inside a running carrier process
+  really do differ from the on-disk ground truth
+  (`ee2e9996c71393d0440dc1c932f7674ba9be2fb2e5b69f8505fe53ee64632002` !=
+  `dcb62a16...`, `artifacts_batch9/carrier_assets_final.txt` line 1), by
+  some mechanism this pass could not identify — every Allegro entry point
+  that ever touches a palette object by reference is now ruled out, so the
+  remaining candidates are either a genuine, undiscovered original-game
+  write path this pass's disassembly search didn't cover, or an
+  arena/memory fact specific to the carrier's own zero-copy binding
+  (`carrier/gen/pf_asset_bindings.h`, generated, out of this task's edit
+  scope) — either way, settling it needs live carrier memory tracing this
+  pass could not perform: a re-run of `--dump-assets` against a freshly
+  built carrier (to rule out the stored `artifacts_batch9` dump being
+  stale) hit an UNRELATED, pre-existing build break —
+  `src/icytower/blit_to_screen.c` (batch 11, commit `a8bd4c7`, already
+  itself documented as an open gap: "`_cos_tbl` unbound → blit_to_screen
+  links only after the lib-bindings allow-list gains it") — LNK2019 on
+  `__cos_tbl` at the final carrier link, unrelated to assets entirely and
+  explicitly out of this task's edit scope (`src/icytower/*.c` and the
+  harness). The comparison above therefore still rests on the
+  already-recorded `artifacts_batch9/carrier_assets_final.txt`, not a
+  fresh run; PALETTE stays 5/6, now narrowed to "provably a carrier-only
+  fact, not a standalone/Python reconstruction gap" rather than merely
+  suspected to be one.
+
+  **FLD_LOGO: CLOSED, 2026-09-08 (this pass) — 186/186 BITMAP.** The
+  earlier guess above ("loading's own lazy load is the first thing that
+  ever selects a palette, so FLD_LOGO converts against loading's own
+  AAAPAL") was WRONG, caught by actually reading
+  `third_party/allegro-4.4.3.1/src/datafile.c` end to end rather than
+  reasoning from the load order alone: `load_datafile()` never calls
+  `select_palette()` itself anywhere (grepped, zero hits) — nothing in
+  EITHER world auto-selects a datafile's own palette just because it was
+  read first (the `AAAPAL`-sorts-first grabber trick only guarantees
+  *read* order, not that anyone *acts* on it). What actually gates an
+  8bpp→32bpp conversion is `palette_color[]`
+  (`third_party/allegro-4.4.3.1/src/gfx.c`), a lookup table built ONLY by
+  an explicit `select_palette()`/`set_palette()` call
+  (`palette_color[c] = makecol(_rgb_scale_6[p[c].r], ...)`) — until one of
+  those runs, the table sits at its BSS-zeroed default (all-black), which
+  is what every earlier run of this oracle silently converted every lazy
+  family's 8bpp object against, `FLD_LOGO` included. Verified by direct
+  disassembly of the real compiled `select_palette` (VA `0x44df24`,
+  matches upstream byte-for-byte: every access off the argument register
+  is a load, never a store — confirms the read-only claim independent of
+  source-reading) that this is exactly what `init_game()`'s own
+  `select_palette(data[0].dat)` (VA `0x40f928`) sets up, once, well before
+  the carrier ever lazily loads "loading" family.
+
+  **The fix**: `src/build/asset_oracle.c`'s `main()` now issues that same
+  call itself — `select_palette(*asset_palette(ASSET_DATA_AAAPAL))` —
+  right after "data" family's own first (and, per asset_table.inc's
+  manifest-order enum, necessarily earliest) access and before the loop
+  reaches "loading" family, mirroring `init_game()`'s real order exactly
+  (data.dat loads, THEN `select_palette(data[0].dat)`, THEN
+  sfx15.dat/loading/char families — none of which the real game ever
+  revisits). Rebuilt and run for real (mingw32 MSYS2, this same build
+  host): `FLD_LOGO`'s hash now equals the carrier's own stored
+  `--dump-assets` value EXACTLY
+  (`ea6c393764a4089b32c89325aeadea8d33c3112e430f76dae8cef5ce12f41e43`,
+  `artifacts_batch9/carrier_assets_final.txt` line 134) — **BITMAP: 186/186
+  EQUAL**, up from 185/186. `LOADING_AAAPAL` (the palette this fix does
+  NOT touch — `select_palette()` copies `data`'s bytes into the global
+  `_current_palette`/`palette_color[]`, never into `loading`'s own object)
+  also still matches the carrier exactly, confirming the fix is precisely
+  targeted and introduces no new drift.
+
+  **Raw-byte verification, not hash-only**: both `carrier/src/dump_assets.c`
+  and this file gained a `dump_verbose()` companion (always written
+  alongside the ordinary dump, no new CLI flag — `<path>.verbose.txt` for
+  the carrier, `asset_oracle_verbose.txt` for this oracle) that prints
+  `DATA_AAAPAL`/`LOADING_AAAPAL`'s full 1024 raw bytes and `FLD_LOGO`'s
+  header plus first two rows, all in hex, straight from the same zero-copy
+  accessors the hash path already uses — so this closure rests on an actual
+  byte-level diff, not a hash match alone.
 
   A second, real, and independently confirmed environment fact: the
   persistent `sfx` global stays **NULL** in a `--det`/headless carrier run
