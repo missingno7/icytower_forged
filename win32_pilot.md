@@ -494,6 +494,82 @@ Rules:
   replay, comparing game-state digests and the relevant render/audio/event
   digests. The clean game source does not change between the two.
 
+## 7c. Assessment: three coastlines to a standalone project (2026-09-07)
+
+Question asked: can PortForge evolve from "replace functions inside the
+original binary" into a migration that separates code, libraries and assets
+until the original executable leaves the runtime dependency graph? With the
+evidence of `notes/library_boundary.md`, `notes/library_compat_verdict.md`
+and `notes/asset_census.md`: **yes, for Icy Tower, and the three coastlines
+are already the same mechanism**: an identity-keyed binding whose form
+changes while the clean source does not.
+
+| coastline | identity | forms | status (KNOWN) |
+|---|---|---|---|
+| CODE | original function address | ORIGINAL → LIFTED → NATIVE(`src/`) | 1 function in vivo, 2 in `src/`, lifter covers 65/253; recovery target is 217 functions / 116 KB |
+| LIBRARIES | upstream API name | EMBEDDED → EXTERNAL/UPSTREAM | boundary census: 100 calls, 26 globals, 24 callbacks, 1 internal edge, 0 ABI differences vs Allegro 4.4.3.1; bindings header generated; no Windows DLL exists → source build (toolchain now installed) |
+| ASSETS | asset id (manifest) | EMBEDDED → EXTRACTED/NAMED FILE | 257 datafile objects, 34 compiled-in tables, 2 PE resources, 0 media blobs in the image; references are 100 % positional indices (42 constant sites, 7 computed) |
+
+What the asset census changed in the picture:
+
+- Nothing important is embedded in the executable. The assets already
+  live in external Allegro datafiles (three password-protected: two with a
+  key garbled in `.data`, one with a plain string). The ASSET coastline is
+  therefore mostly a **naming** problem: `data[N].dat` numeric indices
+  become asset ids resolved through a generated manifest; the carrier form
+  resolves to the same object in the same datafile (zero copy), the
+  standalone form to a file.
+- Extraction is lossless for every shipped object (OGG verbatim, bitmaps
+  round-trip bit-exact, palettes raw, fonts as raw payload + manifest), but
+  the licence forbids repackaging or redistributing the art. So the
+  standalone port reads the user's own datafiles through a ~200-line
+  packfile/datafile reader (already written and validated in
+  `tools_recon/assets_datafile.py`), and extraction is a local, user-run
+  cache. `load_asset(ID)` stays the single seam in both worlds.
+- No integrity check covers the datafiles; substitution trips nothing.
+  The couplings that need hand-written mapping are the 7 computed-index
+  sites and the character datafile slot names.
+
+Migration stages, in the order the evidence supports:
+
+```text
+S0  now: src/ + ORIGINAL functions + embedded Allegro + original datafiles   (carrier)
+S1  code: promote game functions until no ORIGINAL form is executed on the
+    replay corpus (measured by the entry-stub counters; is_solid-style
+    functions never reached by a corpus need a workload first)
+S2  assets: generated asset manifest + load_asset bindings replace data[N]
+    indices in src/ (carrier form = same bytes, same place)
+S3  libraries: build Allegro 4.4.3.1 + logg + loadpng from source with the
+    i686 GCC toolchain, link src/ against it standalone, with the two
+    adapters (_win_hcursor shim, the 7 game-written logg_load_memory
+    functions recovered as game code); MSYS2 libogg/libvorbis DLLs;
+    shipped libpng3/zlib1 unchanged
+S4  verify: same replay through carrier (S0 oracle) and standalone (S3);
+    per-tick digest of game-owned state, the frame digest above the
+    backend, the input/RNG events; first divergence expected at timer
+    semantics, then DirectInput scancodes, then blitter colour conversion
+S5  original executable no longer loaded by anything but the oracle
+```
+
+Generic PortForge infrastructure (target-independent, to move to
+`port_forge/src/platform/win32` once stable): PE mapper and import
+trampolines; the binding table with forms per identity kind; DWARF-driven
+generators for interop, bindings, library bindings, clean headers; the
+purity gate; the tick sensor, per-invocation sensors, digests and verdict
+scripts; the lifter and the offline unicorn oracle with the x87 control
+word rule; the record/replay input policy; the manifest schemas for
+functions, library symbols and assets.
+
+Icy-Tower-specific: symbol addresses and the policy tables; the Allegro
+datafile reader and password handling; the asset id names and the 7
+computed-index mappings; the `.itr` format; the config/profile/hiscore
+formats; the two library adapters.
+
+Doors kept open (ROADMAP.md): one build with runtime-selectable
+enhancements and a faithful baseline; verdict domains rather than one
+all-or-nothing digest; distribution modes decided later (evidence favours
+source-port-only plus drop-in, because of the art licence).
+
 ## 8. Milestones and status
 
 | # | milestone | status |
