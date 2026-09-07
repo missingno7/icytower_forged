@@ -118,6 +118,32 @@ RESERVED_CRT_WINDOWS_IDENTS = {
     'unsigned', 'void', 'volatile', 'while',
 }
 
+# Hand-curated, NOT a blanket scan of every struct member name in scope:
+# a global name unsafe to bind through a plain #define because it is ALSO
+# used, somewhere in the ORIGINAL game source, as a struct member name that
+# src/ code actually writes as a member access (`something.NAME`) --
+# `#define jump_sound (*(...)0x4dd2b0)` would also rewrite the token
+# `jump_sound` inside `custom.jump_sound` (Tcustom's own, unrelated member),
+# which the C preprocessor cannot distinguish from a bare identifier.
+# Deliberately NOT derived from scanning every struct in it_types.h for a
+# member with this name: game_types.h has ~450 members across ~50 structs,
+# and this project's naming style reuses short, common words often (data,
+# stars, ctrl, count, ...) -- names that are members of SOME struct but
+# never appear as a member ACCESS anywhere src/ code would write are not
+# actually unsafe, and a blanket skip would silently break a name (`data`,
+# `stars`) that carrier/gen/pf_asset_bindings.h or a promoted src/ file
+# already binds and uses correctly as a bare identifier (found and reverted
+# during play_jump_sound.c's promotion, PROMOTIONS.md batch 7 "Mechanism A/B"
+# section -- an earlier version of this fix scanned every struct and turned
+# out to be far too broad). Add a name here only after confirming BOTH (a)
+# it collides with a real member name AND (b) some src/*.c file actually
+# writes `<expr>.<name>` or `<expr>-><name>` for that member.
+MEMBER_ACCESS_COLLISIONS = {
+    'jump_sound',   # Tcustom.jump_sound[3] (VA 0x4fa738+1212), collides with
+                     # the unrelated top-level global `jump_sound` @0x4dd2b0;
+                     # play_jump_sound.c writes `custom.jump_sound[i]`.
+}
+
 
 HEX_ADDR_IN_BODY_RE = re.compile(r'0x[0-9a-fA-F]+')
 
@@ -200,6 +226,7 @@ def main():
         return 1
 
     reserved_collisions = []  # (kind, name)
+    member_collisions = []    # (kind, name) -- see MEMBER_ACCESS_COLLISIONS above
     excluded_globals = []
     excluded_functions = []
     emitted_globals = []
@@ -251,6 +278,13 @@ def main():
             lines.append('/* SKIPPED: "%s" collides with a reserved CRT/Windows identifier; '
                           'see BINDINGS_NOTES.md */' % name)
             continue
+        if name in MEMBER_ACCESS_COLLISIONS:
+            member_collisions.append(('global', name))
+            lines.append('/* SKIPPED: "%s" collides with a struct/union member name elsewhere '
+                          'in scope -- a plain #define would also rewrite that member access '
+                          '(e.g. `x.%s`); see MEMBER_ACCESS_COLLISIONS in gen_bindings.py '
+                          'and PROMOTIONS.md batch 7 */' % (name, name))
+            continue
         if name in exclude:
             excluded_globals.append(name)
             lines.append('/* excluded by --exclude: %s */' % name)
@@ -277,6 +311,12 @@ def main():
             reserved_collisions.append(('function', name))
             lines.append('/* SKIPPED: "%s" collides with a reserved CRT/Windows identifier; '
                           'see BINDINGS_NOTES.md */' % name)
+            continue
+        if name in MEMBER_ACCESS_COLLISIONS:
+            member_collisions.append(('function', name))
+            lines.append('/* SKIPPED: "%s" collides with a struct/union member name elsewhere '
+                          'in scope; see MEMBER_ACCESS_COLLISIONS in gen_bindings.py and '
+                          'PROMOTIONS.md batch 7 */' % name)
             continue
         if name in exclude:
             excluded_functions.append(name)
@@ -328,6 +368,7 @@ def main():
         'functions_emitted': len(emitted_functions),
         'functions_excluded': excluded_functions,
         'reserved_collisions': reserved_collisions,
+        'member_name_collisions': member_collisions,
         'out': args.out,
         'types_out': args.types_out,
         'mem_macro': mem_macro,

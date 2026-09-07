@@ -15,6 +15,9 @@
 #include "det.hpp"
 #include "bind.hpp"
 #include "snapshot.hpp"
+#include "headless.hpp"
+#include "frame.hpp"
+#include "print_globals.hpp"
 
 // KNOWN (measured, see carrier/NOTES.md): the guest's own CRT startup
 // (___mingw_CRTStartup -> __getmainargs, both inside the REAL msvcrt.dll we
@@ -61,11 +64,16 @@ static char g_report_path[MAX_PATH] = "";
 static void carrier_shutdown(const char* reason) {
     if (InterlockedCompareExchange(&g_shutdown_once, 1, 0) != 0) return;
     fprintf(stderr, "carrier_shutdown: %s\n", reason);
+    // Item 3 (named-globals summary): while the guest image/heap/stack are
+    // still mapped in THIS process (true until real process termination),
+    // evaluate and print every --print-globals expression.
+    print_globals_run();
     trace_write_report(g_report_path);
     trace_close();
     det_shutdown();
     bind_shutdown();
     snapshot_shutdown();
+    frame_shutdown();
     fflush(stderr);
 }
 
@@ -214,6 +222,16 @@ struct Options {
     bool interactive;
     WindowMode window_mode;
     bool window_mode_explicit;
+    // "Headless, frame oracle, named globals, .itr workload" pass
+    // (carrier/NOTES.md) - see headless.hpp/frame.hpp/print_globals.hpp.
+    bool headless_explicit;   // --headless (bare flag)
+    bool headless_effective;  // resolved once in the parent (see resolve_headless), carried to the child verbatim
+    bool no_sound;            // --no-sound (bare flag)
+    int  frame_digest_every;  // --frame-digest-every N (default 1)
+    char frame_digest_out[MAX_PATH];
+    int  frame_dump_at_tick;  // --frame-dump-at T PATH (two values)
+    char frame_dump_path[MAX_PATH];
+    char print_globals[1024]; // --print-globals expr1,expr2,...
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -302,6 +320,8 @@ static void resolve_input_policy(Options* o, const char* input_policy_str) {
     o->input_policy = policy;
 }
 
+static bool resolve_headless(const Options& o); // defined below parse_args; see its own comment
+
 static void parse_args(int argc, char** argv, Options* o) {
     compute_default_image(o->image, sizeof(o->image));
     o->cwd[0] = 0; // resolved after --image is known, unless overridden
@@ -335,6 +355,13 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->interactive = false;
     o->window_mode = WindowMode::Hidden;   // automated runs: no window at all (operator request 2026-09-07); --interactive or --window= overrides
     o->window_mode_explicit = false;
+    o->headless_explicit = false;
+    o->no_sound = false;
+    o->frame_digest_every = 1;
+    o->frame_digest_out[0] = 0;
+    o->frame_dump_at_tick = 0;
+    o->frame_dump_path[0] = 0;
+    o->print_globals[0] = 0;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
@@ -355,8 +382,20 @@ static void parse_args(int argc, char** argv, Options* o) {
             name[sizeof(name) - 1] = 0;
             if (strcmp(name, "det") == 0 || strcmp(name, "inject-real-test") == 0 ||
                 strcmp(name, "restore-fault") == 0 || strcmp(name, "rng-selftest") == 0 ||
-                strcmp(name, "interactive") == 0) {
-                value = "1"; // bare flags: --det / --inject-real-test (no value) means =1
+                strcmp(name, "interactive") == 0 || strcmp(name, "headless") == 0 ||
+                strcmp(name, "no-sound") == 0) {
+                value = "1"; // bare flags (no value) mean =1
+            } else if (strcmp(name, "frame-dump-at") == 0) {
+                // The ONE two-value option: --frame-dump-at T PATH.
+                if (i + 2 < argc) {
+                    o->frame_dump_at_tick = atoi(argv[++i]);
+                    strncpy(o->frame_dump_path, argv[++i], sizeof(o->frame_dump_path) - 1);
+                    o->frame_dump_path[sizeof(o->frame_dump_path) - 1] = 0;
+                } else {
+                    fprintf(stderr, "error: --frame-dump-at needs two arguments: T PATH\n");
+                    exit(2);
+                }
+                continue;
             } else if (i + 1 < argc) {
                 strncpy(valbuf, argv[++i], sizeof(valbuf) - 1);
                 valbuf[sizeof(valbuf) - 1] = 0;
@@ -397,6 +436,11 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "trace-input") == 0) { strncpy(o->trace_input, value, sizeof(o->trace_input) - 1); }
         else if (strcmp(name, "rng-selftest") == 0) { o->rng_selftest = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
         else if (strcmp(name, "interactive") == 0) { o->interactive = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "headless") == 0) { o->headless_explicit = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "no-sound") == 0) { o->no_sound = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "frame-digest-every") == 0) { o->frame_digest_every = atoi(value); if (o->frame_digest_every <= 0) o->frame_digest_every = 1; }
+        else if (strcmp(name, "frame-digest-out") == 0) { strncpy(o->frame_digest_out, value, sizeof(o->frame_digest_out) - 1); }
+        else if (strcmp(name, "print-globals") == 0) { strncpy(o->print_globals, value, sizeof(o->print_globals) - 1); }
         else if (strcmp(name, "window") == 0) {
             o->window_mode_explicit = true;
             if (_stricmp(value, "normal") == 0) o->window_mode = WindowMode::Normal;
@@ -413,7 +457,44 @@ static void parse_args(int argc, char** argv, Options* o) {
     // det.cpp's det_wrap_ShowWindow for why that particular form).
     if (o->interactive && !o->window_mode_explicit) o->window_mode = WindowMode::Normal;
     resolve_input_policy(o, input_policy_str);
+    o->headless_effective = resolve_headless(*o);
 }
+
+// "Headless, frame oracle, named globals, .itr workload" pass: --headless
+// forces GDI + windowed 640x480 (headless.hpp). It is also IMPLIED - so
+// every existing automated run (which never passes --window at all) is
+// headless by default - whenever the window mode resolved to Hidden AND the
+// operator did NOT explicitly ask for a window mode (--window=... of any
+// value opts back out of the implication, matching the literal task wording
+// "implied by --window=hidden unless --window is given explicitly"). An
+// --interactive run's default window mode is Normal (set above), so this
+// never implicitly triggers for a human-watched run.
+// MEASURED, this pass (carrier/NOTES.md "Headless, frame oracle, named
+// globals, .itr workload" item 1): the literal task wording asked for
+// --headless to be IMPLIED whenever the window mode resolves to Hidden
+// without an explicit --window. That was tried and reverted: forcing
+// GFX_GDI gets the guest through "Graphics mode set" and to MAIN MENU LOOP
+// (assets/log.txt confirms both), but the game's window then enters a
+// repeating WM_ACTIVATE-class focus-flap (det: T=36 SUPPRESSED window
+// switch out/in, alternating) and a real-DirectInput key-violation storm,
+// and gameplay is never reached - reproduced with --window=hidden,
+// --window=minnoactive, and --window=normal/--interactive alike (the last
+// one ran a full 300 REAL seconds still parked at virtual T=36). Since this
+// is a genuine stall, not merely slower rendering, making --headless the
+// silent default would break every existing automated run's timing
+// assumptions rather than merely shift a hash - so the implication is NOT
+// wired in; --headless stays an explicit, currently-experimental opt-in.
+// See NOTES.md for the full evidence and the open root-cause question.
+static bool resolve_headless(const Options& o) {
+    (void)o;
+    return o.headless_explicit;
+}
+// Called once, in parse_args (the parent process - it alone sees whether
+// --window was given explicitly on the real command line). The RESULT
+// travels to the child via PF_HEADLESS, not the inputs: options_from_env
+// always sets window_mode_explicit=true (the parent already resolved it -
+// see its own comment), so re-deriving "implied" in the child would always
+// see explicit=true and silently lose the implication.
 
 static void apply_trace_imports(const Options& o) {
     if (_stricmp(o.trace_imports, "all") == 0) {
@@ -484,6 +565,16 @@ static void options_to_env(const Options& o) {
     SetEnvironmentVariableA("PF_TRACE_INPUT", o.trace_input);
     SetEnvironmentVariableA("PF_INTERACTIVE", o.interactive ? "1" : "0");
     SetEnvironmentVariableA("PF_WINDOW", window_mode_name(o.window_mode));
+    // "Headless, frame oracle, named globals, .itr workload" pass.
+    SetEnvironmentVariableA("PF_HEADLESS", o.headless_effective ? "1" : "0");
+    SetEnvironmentVariableA("PF_NO_SOUND", o.no_sound ? "1" : "0");
+    _snprintf(buf, sizeof(buf), "%d", o.frame_digest_every); buf[sizeof(buf) - 1] = 0;
+    SetEnvironmentVariableA("PF_FRAME_DIGEST_EVERY", buf);
+    SetEnvironmentVariableA("PF_FRAME_DIGEST_OUT", o.frame_digest_out);
+    _snprintf(buf, sizeof(buf), "%d", o.frame_dump_at_tick); buf[sizeof(buf) - 1] = 0;
+    SetEnvironmentVariableA("PF_FRAME_DUMP_AT_TICK", buf);
+    SetEnvironmentVariableA("PF_FRAME_DUMP_PATH", o.frame_dump_path);
+    SetEnvironmentVariableA("PF_PRINT_GLOBALS", o.print_globals);
 }
 
 static bool is_child_process() {
@@ -572,6 +663,22 @@ static void options_from_env(Options* o) {
     else if (_stricmp(win_buf, "hidden") == 0) o->window_mode = WindowMode::Hidden;
     else o->window_mode = WindowMode::MinNoActive;
     o->window_mode_explicit = true; // already resolved by the parent
+    // "Headless, frame oracle, named globals, .itr workload" pass.
+    char hl_buf[8];
+    get_env_or("PF_HEADLESS", hl_buf, sizeof(hl_buf), "0");
+    o->headless_effective = (strcmp(hl_buf, "0") != 0);
+    o->headless_explicit = o->headless_effective; // display-only in the child; the parent's own flag is what mattered
+    get_env_or("PF_NO_SOUND", hl_buf, sizeof(hl_buf), "0");
+    o->no_sound = (strcmp(hl_buf, "0") != 0);
+    char fde_buf[16];
+    get_env_or("PF_FRAME_DIGEST_EVERY", fde_buf, sizeof(fde_buf), "1");
+    o->frame_digest_every = atoi(fde_buf);
+    if (o->frame_digest_every <= 0) o->frame_digest_every = 1;
+    get_env_or("PF_FRAME_DIGEST_OUT", o->frame_digest_out, sizeof(o->frame_digest_out), "");
+    get_env_or("PF_FRAME_DUMP_AT_TICK", fde_buf, sizeof(fde_buf), "0");
+    o->frame_dump_at_tick = atoi(fde_buf);
+    get_env_or("PF_FRAME_DUMP_PATH", o->frame_dump_path, sizeof(o->frame_dump_path), "");
+    get_env_or("PF_PRINT_GLOBALS", o->print_globals, sizeof(o->print_globals), "");
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -719,6 +826,14 @@ int main(int argc, char** argv) {
             o.inject_real_test ? " (--inject-real-test)" : "");
     printf("carrier: input_policy=%s%s\n", input_policy_name(o.input_policy),
            o.inject_real_test ? " (--inject-real-test)" : "");
+    // Headless banner (item 1): stdout too, same reasoning as input_policy's
+    // duplicate line above - "record the chosen policy in the run's stdout
+    // banner" applies here as well, and headless is often IMPLIED rather
+    // than explicitly requested, so it needs to be visible either way.
+    fprintf(stderr, "carrier: headless=%d (explicit=%d) no_sound=%d\n",
+            o.headless_effective, o.headless_explicit, o.no_sound);
+    printf("carrier: headless=%d (explicit=%d) no_sound=%d\n",
+           o.headless_effective, o.headless_explicit, o.no_sound);
     fflush(stdout);
 
     PeImageInfo info;
@@ -773,6 +888,22 @@ int main(int argc, char** argv) {
     // and mouse entry patches. Same placement constraint as bind_init - after
     // the image is mapped, before the guest runs.
     det_install_entry_patches();
+    // "Headless, frame oracle, named globals, .itr workload" pass: the
+    // set_gfx_mode/install_sound argument sensors and the blit_to_screen
+    // frame oracle. Same placement constraint as bind_init/
+    // det_install_entry_patches (share the same DR-budget table) - after the
+    // image is mapped, before det_arm_main_thread loads DR0-DR3.
+    HeadlessOptions headless_opt;
+    headless_opt.headless = o.headless_effective;
+    headless_opt.no_sound = o.no_sound;
+    headless_init(headless_opt);
+    FrameOptions frame_opt;
+    frame_opt.every = o.frame_digest_every;
+    frame_opt.digest_out = o.frame_digest_out[0] ? o.frame_digest_out : nullptr;
+    frame_opt.dump_at_tick = o.frame_dump_at_tick;
+    frame_opt.dump_path = o.frame_dump_path[0] ? o.frame_dump_path : nullptr;
+    frame_init(frame_opt);
+    print_globals_init(o.print_globals[0] ? o.print_globals : nullptr);
 
     det_arm_main_thread(); // no-op unless digest/record/stop-at-tick asked for a breakpoint
 

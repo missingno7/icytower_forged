@@ -883,10 +883,20 @@ def collect_globals(dies, cu_off, canonical, cache, out):
             a = d['attrs']
             addr = parse_op_addr(a.get('DW_AT_location'))
             name = parse_name(a.get('DW_AT_name'))
+            named_via_table = False
+            if not name and addr is not None and addr in NAMES_TABLE:
+                # DWARF-nameless static, hand-named in src/icytower/names.json
+                # (win32_pilot.md task brief mechanism A) -- only reached when
+                # DWARF truly has no DW_AT_name for this DW_TAG_variable DIE;
+                # see load_names_table()'s docstring for the "is it really
+                # nameless" check this table expects before an entry is added.
+                name = NAMES_TABLE[addr]
+                named_via_table = True
             if addr is not None and name:
                 t = resolve_type(parse_ref(a.get('DW_AT_type')), dies, canonical, cache) if 'DW_AT_type' in a else {'kind': 'void'}
                 out.append({'name': name, 'va': addr, 'external': 'DW_AT_external' in a,
-                             'type': t, 'cu': cu_name, 'local_static_of': func_name})
+                             'type': t, 'cu': cu_name, 'local_static_of': func_name,
+                             'named_via_table': named_via_table})
         if d['tag'] == 'DW_TAG_subprogram':
             fname = parse_name(d['attrs'].get('DW_AT_name')) or func_name
             for c in d['children']:
@@ -923,6 +933,40 @@ def resolve_collisions(items, get_name, get_cu):
 # --------------------------------------------------------------------------
 # Calling convention detection from COFF symbol decoration
 # --------------------------------------------------------------------------
+
+def load_names_table(path):
+    """Load src/icytower/names.json's hand-curated address -> name table
+    (win32_pilot.md task brief 'mechanism A', PROMOTIONS.md batch 7):
+    { "globals": { "0xADDR": {"name": ..., "type": ..., ...}, ... } }.
+    Returns {int_va: name}. Missing file / malformed JSON / missing
+    "globals" key -> empty table (non-fatal: this is an additive,
+    optional refinement over DWARF, never a hard dependency of the
+    generator -- see collect_globals()'s use of NAMES_TABLE below)."""
+    table = {}
+    if not path or not os.path.exists(path):
+        return table
+    try:
+        doc = json.load(open(path, encoding='utf-8'))
+        for addr_str, entry in doc.get('globals', {}).items():
+            try:
+                va = int(addr_str, 16)
+            except ValueError:
+                continue
+            name = entry.get('name') if isinstance(entry, dict) else None
+            if name:
+                table[va] = name
+    except Exception as e:
+        sys.stderr.write('gen_interop.py: WARNING - could not load names table '
+                          '%s (%s); continuing with an empty one\n' % (path, e))
+    return table
+
+
+# Populated by main() from --names (default: src/icytower/names.json if it
+# exists); {} otherwise. See load_names_table()'s docstring and
+# collect_globals() below for how a DWARF-nameless static gets a name from
+# this table instead of being silently dropped.
+NAMES_TABLE = {}
+
 
 def load_coff_va_map(functions_json_path):
     va_map = {}
@@ -975,16 +1019,35 @@ def main():
     ap.add_argument('--functions', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--scope', choices=['game', 'all'], default='game')
+    ap.add_argument('--names', default=None,
+                     help='src/icytower/names.json (win32_pilot.md task brief '
+                          "mechanism A): hand-curated address -> name table for "
+                          'DWARF-nameless statics, consulted by collect_globals() '
+                          'when a DW_TAG_variable has an address but no '
+                          'DW_AT_name. Default: <repo>/src/icytower/names.json '
+                          'if it exists, else none (empty table, current '
+                          'generator output unchanged -- see load_names_table()).')
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
     print('parsing DWARF...', file=sys.stderr)
     dies = parse_dwarf(args.dwarf)
     print('DIEs: %d' % len(dies), file=sys.stderr)
-    global ANON_TYPEDEF_NAMES
+    global ANON_TYPEDEF_NAMES, NAMES_TABLE
     ANON_TYPEDEF_NAMES = compute_anon_typedef_names(dies)
     canonical, conflicts = compute_canonical(dies, ANON_TYPEDEF_NAMES)
     cache = {}
+
+    names_path = args.names
+    if names_path is None:
+        default_names = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'icytower', 'names.json'))
+        if os.path.exists(default_names):
+            names_path = default_names
+    NAMES_TABLE = load_names_table(names_path)
+    if NAMES_TABLE:
+        print('names table: %d hand-curated name(s) loaded from %s' %
+              (len(NAMES_TABLE), names_path), file=sys.stderr)
 
     scope_cus = in_scope_cus(dies, args.scope)
     print('in-scope CUs: %d' % len(scope_cus), file=sys.stderr)

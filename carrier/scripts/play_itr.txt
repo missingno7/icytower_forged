@@ -1,0 +1,71 @@
+# play_itr.txt - drive the game's OWN replay browser to play the first
+# .itr in profiles/MissingNO/replays/ through the carrier, per
+# carrier/NOTES.md "Headless, frame oracle, named globals, .itr workload"
+# item 4.
+#
+# STATUS (this pass): navigation is SOLVED and reproducible - the events
+# below reliably reach "load replay selected" / "opening
+# profiles/MissingNO/replays/" in assets/log.txt every run. Triggering the
+# actual "confirm and play the highlighted entry" action is NOT yet solved;
+# see carrier/NOTES.md for the full writeup and the jump-table evidence.
+# Left checked in (rather than deleted) because the navigation half is real,
+# measured progress over the previous pass's "not attempted, sequence
+# unknown" - a future pass can pick up exactly at "why does the readkey()
+# dispatch at 0x41d9dd not fire".
+#
+# Menu key sequence, found by disassembly (artifacts/disasm.txt) and
+# notes/asset_census.md, not trial-and-error:
+#   - main_menu (0x4bd380, asset_census.md): "Play Game / Instructions /
+#     Profile / High Scores / Load Replay / Options / Exit". Item 0 ("Play
+#     Game") is the default selection (same as scripts/newgame.txt).
+#     MEASURED: 4x KEY_DOWN only reaches item 3 ("High Scores") - one tap is
+#     evidently absorbed somewhere (assets/log.txt showed " high scores
+#     selected" with only 4 taps); 5x KEY_DOWN reaches item 4 ("Load Replay")
+#     reliably, confirmed repeatedly by "load replay selected" in the log.
+#   - __mangled_main's own dispatch (artifacts/disasm.txt VA 0x4163f4-0x416403)
+#     calls replay_selector(ctrl=0x5000c8) DIRECTLY when "Load Replay" is
+#     confirmed - not a separate file-browser menu screen. --print-globals
+#     num_itr_files (VA 0x4dd744, it_globals.h) read back 3 on this profile,
+#     confirming the file list is populated, not empty.
+#   - replay_selector (0x41d258) does NOT use the poll_control()/is_any()
+#     path for confirmation, despite appearances - that path (0x41d3d1-
+#     0x41d423) decrements a counter while a control key is held and is some
+#     OTHER, still-unidentified mechanism (an idle/attract-mode timeout is
+#     the working hypothesis, not confirmed). The REAL confirm path is
+#     Allegro's buffered keypress queue: keypressed()/readkey() (0x41d416/
+#     0x41d664/0x41d671), dispatched through a scancode-indexed jump table
+#     at VA 0x4d7b18. Both KEY_ENTER(67) and KEY_SPACE(75) dispatch to
+#     0x41d9dd, which is the "confirm the highlighted entry" handler (checks
+#     a per-entry "is this a directory" byte at 0x50093c+cursor*24, then
+#     calls play_menu_select()/sets the loop's own "done" flag at -0x444).
+#     Our direct-injection _handle_key_press(keycode=0, scancode) SHOULD
+#     populate this same buffer (real Allegro's _handle_key_press is the
+#     canonical entry point regardless of caller) but was NOT observed to
+#     trigger 0x41d9dd in this pass's runs (virtual T advanced into the tens
+#     of thousands with zero safepoints, i.e. play() via run_demo() was
+#     never reached) - NOT root-caused further within this pass's budget.
+#     Candidates for a follow-up: (a) keycode=0 not being what readkey()'s
+#     packing expects even though the jump table only inspects the scancode
+#     half; (b) an interaction with clear_keybuf() at replay_selector's own
+#     entry (0x41d312) that this pass did not trace; (c) the still-
+#     unexplained poll_control/is_any counter path being a PRECONDITION
+#     (e.g. must reach 0) before keypressed()/readkey() are even consulted -
+#     re-reading 0x41d40c-0x41d423 with a live single-step trace (carrier's
+#     own --trace-window, milestone 9) would settle this faster than static
+#     disassembly.
+20 press KEY_DOWN
+40 release KEY_DOWN
+60 press KEY_DOWN
+80 release KEY_DOWN
+100 press KEY_DOWN
+120 release KEY_DOWN
+140 press KEY_DOWN
+160 release KEY_DOWN
+180 press KEY_DOWN
+200 release KEY_DOWN
+240 press KEY_ENTER
+600 release KEY_ENTER
+2000 press KEY_DOWN
+2020 release KEY_DOWN
+2100 press KEY_ENTER
+2400 release KEY_ENTER

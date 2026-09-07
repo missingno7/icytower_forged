@@ -68,6 +68,7 @@ Every invocation prints the exact carrier.exe command line it runs.
 """
 
 import hashlib
+import json
 import shutil
 import subprocess
 import sys
@@ -89,6 +90,26 @@ COMPARE_DIGESTS = CARRIER_DIR / "scripts" / "compare_digests.py"
 # header line on a real run (det.cpp's sha256_file_hex).
 FINGERPRINT_SHA256 = "7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d"
 FINGERPRINT_SIZE = 3753885
+
+# carrier/NOTES.md "Headless, frame oracle, named globals, .itr workload"
+# item 3: score/floor/combo are NOT their own top-level DWARF globals - they
+# are fields of the per-player Tplayer struct (src/icytower/game_types.h),
+# reached through the two globals that DO exist standalone: `player_id`
+# (which player slot is active) and `ply` (Tplayer* ply[1000]). The carrier's
+# --print-globals is generic (carrier/src/print_globals.cpp, carrier/gen/
+# gen_print_globals.py) - it does not hard-code any of these names; this
+# list is project-specific DATA passed on the command line, same as any
+# other --print-globals caller would supply. `level` is the DWARF field name
+# for the floor counter (Tplayer.level, offset 40); best_combo/latest_combo
+# are the two combo-tracking fields DWARF actually names (there is no single
+# field simply called "combo").
+ICY_TOWER_GLOBALS = [
+    "player_id",
+    "ply[player_id]->score",
+    "ply[player_id]->level",
+    "ply[player_id]->best_combo",
+    "ply[player_id]->latest_combo",
+]
 
 
 class PlayError(RuntimeError):
@@ -174,6 +195,29 @@ def last_tick_of(digest_path: Path) -> int | None:
         return None
 
 
+def print_globals_summary(report_path: Path) -> None:
+    """Prints the carrier's own --print-globals evaluation (carrier/src/
+    print_globals.cpp, "print_globals" array in --report's JSON) right next
+    to the EQUAL/first-difference verdict, per carrier/NOTES.md "Headless,
+    frame oracle, named globals, .itr workload" item 3 - the score/floor/
+    combo values the replay actually reached, not just whether the digest
+    stream matched."""
+    try:
+        report = json.loads(report_path.read_text())
+    except (OSError, ValueError) as error:
+        print(f"play.py: could not read {report_path} for --print-globals ({error})", file=sys.stderr)
+        return
+    rows = report.get("print_globals")
+    if not rows:
+        return
+    print("play.py: final globals (score/floor/combo):")
+    for row in rows:
+        if "error" in row:
+            print(f"  {row['expr']} = <error: {row['error']}>")
+        else:
+            print(f"  {row['expr']} = {row['value']}")
+
+
 def compare_digests(a: Path, b: Path) -> int:
     cmd = [sys.executable, str(COMPARE_DIGESTS), str(a), str(b)]
     print("$", subprocess.list2cmdline(cmd))
@@ -253,10 +297,13 @@ def main(argv: list[str]) -> int:
             if not script_path.is_file():
                 raise PlayError(f"no recorded replay at {script_path} (record one first with --record-replay {play_name})")
             replay_digest = REPLAYS_DIR / f"{play_name}.replay.digest"
+            replay_report = REPLAYS_DIR / f"{play_name}.replay.report.json"
             replay_args = [
                 "--det", f"--pace={pace}", "--input=script",
                 "--input-script", str(script_path),
                 "--digest-out", str(replay_digest),
+                "--report", str(replay_report),
+                "--print-globals", ",".join(ICY_TOWER_GLOBALS),
             ]
             # The carrier has no other way to know a replayed script "is
             # done" - it keeps running past the last scripted event exactly
@@ -285,8 +332,11 @@ def main(argv: list[str]) -> int:
                     f"(replay itself ran fine - digest is at {replay_digest})",
                     file=sys.stderr,
                 )
+                print_globals_summary(replay_report)
                 return 0
-            return compare_digests(baseline_digest, replay_digest)
+            verdict = compare_digests(baseline_digest, replay_digest)
+            print_globals_summary(replay_report)
+            return verdict
 
         if no_det:
             return run_carrier(["--interactive"])

@@ -3161,3 +3161,325 @@ either direction).
   an 11th argument would need this raised again, the same way this pass
   had to raise it from 4.
 
+## Headless, frame oracle, named globals, .itr workload
+
+Follow-up pass (2026-09-07) on win32_pilot.md SS8 row 9a and its own
+"Suggested next passes": true headless (no DirectDraw), a presentation-
+independent frame oracle above `blit_to_screen`, a generic named-globals
+printer, and a workload that drives the game's own replay browser. New
+files: `carrier/src/headless.{hpp,cpp}`, `carrier/src/frame.{hpp,cpp}`,
+`carrier/src/print_globals.{hpp,cpp}`, `carrier/gen/gen_print_globals.py`
+(+ generated `carrier/gen/it_print_globals.inc`), `carrier/scripts/
+play_itr.txt`. Small additions: `main.cpp` (option parsing/wiring/env
+passthrough), `trace.cpp` (three new `--report` sections), `build.cmd`
+(compiles the three new .cpp files), `scripts/play.py` (Icy Tower globals
+list for `--play-replay`). **Ran under this task's serialized-access rule**
+(restore before every launch, no concurrent `carrier.exe`), except one
+`itr5` diagnostic run that was killed after running far past its
+`--run-seconds` budget under heavy host load from back-to-back prior
+runs - not treated as a `--run-seconds` regression (see item 4).
+
+**Gates re-verified with the final binary** (assets restored before every
+launch, per the existing convention):
+
+```
+G1 (scripts/newgame.txt)                        EQUAL (876 ticks)
+G2 (compare_fn_digests.py, update_frame)         EQUAL (877 invocations)
+human_test (replays/human_test.txt vs .digest)   EQUAL (2293 ticks)
+all-35 bound (--bind-file all35_src.bindfile)    EQUAL (2293 ticks)
+```
+
+Unchanged from every prior pass - none of this pass's new mechanisms are
+wired into the default automated code path (see item 1's own finding on
+why `--headless` stayed opt-in rather than becoming the implied default).
+
+### 1. True headless: mechanism works, full operation does not (on this host)
+
+**Mechanism, as specified.** `set_gfx_mode(int card, int w, int h, int v_w,
+int v_h)` (graphics.c, VA 0x450688) and `install_sound(int digi, int midi,
+const char *cfg)` (sound.c, VA 0x4417b0) are Allegro-internal functions, not
+imports - so they cannot be IAT-wrapped. Rather than a 5-byte entry-patch
+trampoline (which would need to relocate and re-execute the patched bytes
+just to let the ORIGINAL driver-init code still run with different
+arguments), this pass reused the existing hardware-breakpoint table
+(det.hpp's `det_register_breakpoint`, the same DR0-DR3 table the tick
+safepoint and `_switch_in`/`_handle_mouse_input` share): the breakpoint
+fires with `EIP == VA`, i.e. *before* the callee's own prologue runs, so
+`CONTEXT->Esp` is exactly `[retaddr][arg0][arg1]...` as the caller's `call`
+left it - the callback rewrites those guest-memory dwords in place and
+returns; the existing RF-flag single-step-over then lets the *unmodified*
+original instruction execute next, reading the new argument values as if
+the caller had pushed them. No bytes patched, no trampoline, no relocated
+prologue.
+
+`headless.cpp`: `--headless` arms a breakpoint at `set_gfx_mode`'s entry
+that rewrites `card -> GFX_GDI` (0x47444942, `carrier/gen/pf_lib_bindings.h`
+line 420) and `w,h -> 640,480`, leaving `v_w`/`v_h` alone (GFX_GDI has no
+virtual-screen/page-flip concept). `--no-sound` arms a second breakpoint at
+`install_sound`'s entry that rewrites `digi,midi -> DIGI_NONE,MIDI_NONE`
+(0,0 - Allegro's public `digi.h`/`midi.h` API, stable across the whole 4.x
+series, not FOURCC-encoded like `GFX_*`, so not re-derived from
+disassembly). Both breakpoints are persistent (not disarmed after the first
+hit), since `set_gfx_mode` has up to 18 call sites in `init_game`/
+`options.c`'s own resolution-testing retry loop (`artifacts/disasm.txt`
+0x40db91-0x40fe3b, all pushing small literal `card` values 1,2,3,... - NOT
+Allegro's public `GFX_*` FOURCC constants, confirmed by cross-checking
+`install_sound`'s own observed original args, which WERE the real
+`DIGI_AUTODETECT`/`MIDI_AUTODETECT` value -1 exactly as documented).
+
+**MEASURED, load-bearing finding: `--headless` gets the guest through
+`set_gfx_mode` successfully (assets/log.txt shows "Graphics mode set." and
+the full startup sequence through "MAIN MENU LOOP", byte-identical in kind
+to a non-headless run) but the run then stalls before a single safepoint,
+reproduced every way tried:**
+
+```
+--window=hidden                              stuck at virtual T=36, 0 safepoints, 20+ real
+                                              DirectInput key-violation storm, window rect
+                                              (-32000,-32000) - the Windows "minimized" sentinel
+--headless --window=minnoactive              same: 3 extra set_gfx_mode(-1,0,0,...) "reset" calls
+                                              observed (Allegro's own internal cleanup pattern
+                                              after a failed driver init), then guest _cexit
+--headless --interactive                     window genuinely shown+focused (no violations,
+                                              no reset calls this time), STILL stuck at T=36
+--headless --interactive --window=normal     window on-screen at a real desktop position,
+                                              still stuck at T=36 for a FULL 300 real seconds
+                                              (watchdog fired at exactly --run-seconds, so this
+                                              is a genuine stall, not merely slow rendering)
+```
+
+Every variant reaches the identical wall: virtual T=36 (the tick right after
+`newgame.txt`'s scripted ENTER press at T=20 is delivered), then nothing -
+`assets/log.txt` never advances past "MAIN MENU LOOP", and stderr shows a
+repeating `SUPPRESSED window switch in`/`switch out` flap. This is a real,
+reproducible interaction between the forced `GFX_GDI` mode and this host's
+window/focus behavior (not a bug in the breakpoint mechanism itself -
+`--no-sound` alone, using the IDENTICAL breakpoint technique, works
+perfectly: see item 4 below), not root-caused further within this pass's
+budget. Candidates for a follow-up: GDI's software blit path may need a
+window that is never minimized/hidden even transiently (this host's
+automated-run window policy minimizes by default - see "Environment
+isolation"); or the GDI driver's own window-recreation-on-mode-set may be
+racing with Allegro's own switch-callback machinery in a way cnc-ddraw's
+DirectDraw path does not.
+
+**Consequence for the task's own decision point** ("if it changes...
+report... and decide"): since forcing GDI does not merely shift a digest
+value here but prevents the run from ever reaching a digest at all,
+`--headless` was **not** wired to be implied by the default hidden window -
+doing so would have silently broken every existing automated run's timing
+assumptions, not just moved a hash. `main.cpp`'s `resolve_headless()` was
+implemented, tested, and reverted to explicit-opt-in-only; its own comment
+records the measurement and the reasoning. `--headless` remains available,
+correctly installed, and its argument-rewrite is proven correct by its own
+stderr line and by `assets/log.txt`'s "Graphics mode set." - but is
+EXPERIMENTAL/BROKEN for actually reaching gameplay on this host, and is
+flagged as such rather than claimed working.
+
+### 2. Frame oracle: presentation-independence proven where reachable; headless comparison blocked by item 1
+
+`frame.cpp`: a breakpoint at `blit_to_screen`'s entry (VA 0x40b6bc, `void
+blit_to_screen(BITMAP *)`) reads the one cdecl argument directly - confirmed
+by disassembly to be the SAME bitmap at every one of its ~20 call sites, not
+just the `play()` one (main.c's `swap_screen`, VA 0x4dd194, the game's own
+off-screen back buffer - `draw_frame()` has just finished rendering into it;
+`screen`, VA 0x4dda8c, is the driver-owned front buffer and is deliberately
+NOT what this sensor reads, per win32_pilot.md sec 4a). BITMAP layout
+(`carrier/gen/it_types.h`): `w`@0, `h`@4, `vtable`@28 (`GFX_VTABLE
+*`, whose OWN first member is `color_depth`, matching Allegro's public
+`bitmap_color_depth(bmp)` macro exactly), `line[]`@64 (one row pointer per
+row). `bpp = (color_depth+7)/8` (Allegro's own `BYTES_PER_PIXEL` macro); the
+digest itself never interprets pixel format - it `sha256`s `w*bpp` raw bytes
+per row via each row's own `line[]` pointer, so it is correct for
+8/15/16/24/32bpp without caring which. `--frame-digest-every N` (default 1)
+throttles by call count; `T <sha256> w h bpp` is written per emitted line,
+`T` from the SAME `det_tick()` the per-tick digest uses, so the two streams
+line up. `--frame-dump-at T PATH` writes one binary PPM (P6) at the first
+call observed at that tick, converting 8bpp (via a direct call to Allegro's
+own `get_palette`, VA 0x44c47c - safe because the sensor runs synchronously
+on the guest's own main thread) /15/16/24/32bpp to 24-bit RGB for a human to
+look at.
+
+**Proof, where reachable** (headless is blocked by item 1, so this is
+`--window=hidden` vs `--window=hidden`, both cnc-ddraw - the achievable half
+of the task's own comparison, and still exactly the claim win32_pilot.md
+sec 4a makes: presentation is below the boundary):
+
+```
+frameA.txt vs frameB.txt (two independent runs, scripts/newgame.txt, T=20..700)
+  683 digest lines each, BYTE-IDENTICAL FILES
+--frame-dump-at 200 PATH -> 640x480, 4 bpp, 921615-byte PPM (15-byte header +
+  640*480*3 pixel bytes exactly), real (non-degenerate) pixel data confirmed
+  by inspection (a plausible dark menu-background RGB triple repeating, not
+  all-zero/garbage)
+```
+
+The `--headless` (GDI) vs `--window=normal` (cnc-ddraw) comparison the task
+also asked for could not be run: item 1's stall means no headless run ever
+reaches a single `blit_to_screen` call past the menu's own idle-loop
+rendering, so there is no frame stream to compare. This is the SAME
+limitation as item 1, not a new one - once item 1's stall is root-caused,
+this comparison is the natural next proof (the frame-oracle mechanism
+itself needs no further work; only a working headless run to feed it).
+
+### 3. Generic named-globals summary at shutdown: `--print-globals`
+
+`carrier/gen/gen_print_globals.py` (new) parses the SAME three sources
+`carrier/scripts/pf_inspect.py` already parses offline in Python
+(`interop_index.json`'s globals list, `it_types.h`'s struct members,
+`it_types_check.c`'s authoritative sizeof/offsetof) and emits
+`carrier/gen/it_print_globals.inc`: every global and every struct member,
+pre-resolved (typedefs chased down to a primitive kind/size or a known
+struct name, pointer count and array dims split out) so the RUNTIME walker
+(`carrier/src/print_globals.cpp`) never parses a type string - only table
+lookups. `--print-globals expr1,expr2,...` accepts a plain global name
+optionally followed by `[N]`/`[other_global_name]` indexing (the index can
+be a literal or another live global's own value - read at evaluation time,
+which is what makes `ply[player_id]` work generically) and `->field`/
+`.field` member access (both auto-dereference, so either spelling works
+regardless of whether the current value is a pointer or a direct struct).
+No struct/global/field name is hard-coded in `print_globals.cpp` -
+everything it knows comes from the generated table; Icy-Tower-specific
+names are supplied on the command line as data. Printed as `global <expr> =
+<value>` to stdout at shutdown (while the guest's memory is still mapped in
+this same process, called from `carrier_shutdown()` before
+`TerminateProcess`) and as a `"print_globals"` array in `--report`'s JSON.
+
+**Why `score`/`floor`/`combo` aren't literal top-level DWARF globals, and
+what the generic path names for them instead:** they are fields of the
+per-player `Tplayer` struct (`src/icytower/game_types.h`), reached through
+the two globals that DO exist standalone - `player_id` (which slot is
+active) and `ply` (`Tplayer *ply[1000]`). DWARF's own field names are
+`score`, `level` (the floor counter - the game's own source literally calls
+it `level`, not `floor`) and `best_combo`/`latest_combo` (there is no
+single field named plainly `combo`). Verified end to end:
+
+```
+global player_id = 462
+global ply[player_id]->score = 0
+global ply[player_id]->level = 0
+global ply[player_id]->best_combo = 0
+global ply[player_id]->latest_combo = <a stale/uninitialized-looking value at T<126>
+```
+
+(all zero/uninitialized-looking here because this smoke test stopped before
+`play()`'s first safepoint - the mechanism, not the specific values, is what
+this proves). `scripts/play.py`'s `--play-replay` now passes exactly this
+five-expression list (`ICY_TOWER_GLOBALS`) via `--print-globals` and
+`--report`, and prints them labeled right after the EQUAL/first-difference
+verdict (`print_globals_summary`), reading the structured JSON rather than
+scraping console text.
+
+### 4. `--no-sound`: works, and does change the digest (as warned)
+
+Same breakpoint mechanism as item 1's `set_gfx_mode` sensor, at
+`install_sound`'s entry - and, unlike headless, this one works completely
+cleanly: a full `--det --no-sound` run of `scripts/newgame.txt` reaches
+**876 safepoints** (identical count to every other G1 run) with
+`install_sound(digi=-1,midi=-1) -> (DIGI_NONE,MIDI_NONE)` observed exactly
+once, confirming the game's own default install call really does request
+`DIGI_AUTODETECT`/`MIDI_AUTODETECT` (-1,-1 - Allegro's real constants,
+corroborating the values item 1 assumed for its own `set_gfx_mode`
+override). As the task anticipated ("report whether the game's logic reads
+the install result into digest-domain globals"): **yes** -
+`compare_digests.py` against the G1 baseline reports `FIRST DIFFERENCE at
+tick T=126` (the very first digest line), confirming Allegro voice ids
+(`checkMusicVoiceID` et al., already flagged as digest-scope in
+"Environment isolation" part D) do change under `--no-sound`. Kept **OFF by
+default**, as instructed, so gates stay comparable; the option exists and
+is proven functional for anyone who deliberately wants a device-less run
+and accepts the absolute-hash shift.
+
+### 5. `.itr` workload: navigation solved, final selection not yet - `carrier/scripts/play_itr.txt`
+
+Milestone 12 at scale's own "Known gaps" flagged this as "not attempted...
+would need exploratory menu navigation first." This pass did that
+navigation, by disassembly rather than trial-and-error where possible:
+
+- `main_menu` (VA 0x4bd380, `notes/asset_census.md`): "Play Game /
+  Instructions / Profile / High Scores / Load Replay / Options / Exit",
+  item 0 default-selected (same as `newgame.txt`). **MEASURED**: 4x
+  `KEY_DOWN` only reaches item 3 ("High Scores" - confirmed by `"
+  high scores selected"` in `assets/log.txt`); one tap is evidently
+  absorbed somewhere. 5x `KEY_DOWN` reliably reaches item 4 ("Load
+  Replay" - confirmed by `" load replay selected"` /
+  `"   opening profiles/MissingNO/replays/"`, reproduced across every rerun
+  of this pass).
+- `__mangled_main`'s own dispatch (VA 0x4163f4-0x416403) calls
+  `replay_selector(ctrl=0x5000c8)` DIRECTLY when "Load Replay" is confirmed
+  - there is no separate file-browser menu screen to navigate through
+  first. `run_demo()` (which `replay_selector`'s caller invokes with the
+  loaded replay) calls `new_game()` then `play()` directly (VA 0x415e96) -
+  i.e. the EXISTING safepoint/tick-sensor/digest infrastructure applies to
+  `.itr` playback completely unchanged, no new plumbing needed there.
+  `--print-globals num_itr_files` (VA 0x4dd744, `it_globals.h`) read back
+  **3** on the `MissingNO` profile, confirming the file list is populated
+  (not the reason selection fails).
+- `replay_selector` (VA 0x41d258) does **not** confirm a selection via
+  `poll_control()`/`is_any()` despite that being the more obvious read of
+  its own polling loop (0x41d3d1-0x41d423 decrements a counter while a
+  control key is held - a still-unidentified mechanism, working hypothesis
+  an idle/attract-mode timeout, not confirmed). The REAL confirm path is
+  Allegro's buffered keypress queue - `keypressed()`/`readkey()`
+  (0x41d416/0x41d664/0x41d671) - dispatched through a scancode-indexed jump
+  table at VA 0x4d7b18; both `KEY_ENTER`(67) and `KEY_SPACE`(75) dispatch to
+  0x41d9dd, the actual "confirm the highlighted entry" handler (it checks a
+  per-entry "is this a directory" byte at `0x50093c + cursor*24` before
+  calling `play_menu_select()` and setting the loop's own exit flag).
+
+**Not yet solved**: every script variant tried (holding `KEY_ENTER`, a short
+tap, moving the cursor off entry 0 first with `KEY_DOWN` in case entry 0 is
+a non-file marker) left virtual `T` advancing into the tens of thousands of
+ticks with **zero safepoints** - i.e. `0x41d9dd` was never observed to fire,
+even though the SAME direct-injection `_handle_key_press` mechanism reaches
+`is_enter`/menu confirmation correctly everywhere else in this project
+(`newgame.txt`'s own proven ENTER-hold). Not root-caused within this pass's
+budget; `carrier/scripts/play_itr.txt` is left checked in with the full
+disassembly evidence and three concrete follow-up candidates in its own
+header comment (keycode=0 interacting with `readkey()`'s packing;
+`clear_keybuf()` at `replay_selector`'s entry; the still-unexplained
+`poll_control`/`is_any` counter being a precondition gate on the
+`keypressed()` path) - a future pass with milestone 9's `--trace-window`
+live single-step trace should settle this far faster than more static
+disassembly reading.
+
+### New/changed options and files (this pass)
+
+| what | where |
+|---|---|
+| `--headless`, `--no-sound` (bare flags) | `main.cpp`, `headless.hpp/.cpp` |
+| `--frame-digest-every N`, `--frame-digest-out PATH`, `--frame-dump-at T PATH` | `main.cpp`, `frame.hpp/.cpp` |
+| `--print-globals expr1,expr2,...` | `main.cpp`, `print_globals.hpp/.cpp`, `gen/gen_print_globals.py`, `gen/it_print_globals.inc` |
+| `"headless"`, `"frame_oracle"`, `"print_globals"` objects in `--report` | `trace.cpp` |
+| `carrier/scripts/play_itr.txt` | new (navigation half working, see item 5) |
+| `ICY_TOWER_GLOBALS`, `print_globals_summary` | `scripts/play.py` (`--play-replay`) |
+
+### Known gaps / open problems (this pass)
+
+- **`--headless` does not reach gameplay on this host** (item 1) - the
+  argument-rewrite mechanism is proven correct (log evidence), but a
+  genuine post-mode-set stall (not merely slower rendering) blocks every
+  variant tried. Root cause not identified; three candidate directions are
+  listed in item 1. Kept explicit-opt-in, not implied by default.
+- **The headless-vs-cnc-ddraw frame-oracle comparison could not be run**
+  (item 2) - directly blocked by the above. The frame-oracle mechanism
+  itself is proven deterministic on the reachable (non-headless) comparison.
+- **`.itr` playback's final "confirm selection" step is unsolved** (item 5)
+  - navigation to `replay_selector` is solved and reproducible; the
+  `readkey()`-dispatched confirm handler was not observed to fire despite
+  the same key-injection mechanism working everywhere else in this project.
+- **`print_globals`'s array/struct-path parser is deliberately scoped**: one
+  level of `[index]` per array dimension (up to 2 dims, matching the
+  generator's own cap), and no arithmetic/comparison expressions - it walks
+  a chain of index/member accesses, nothing more. Sufficient for every
+  Icy Tower global this pass needed; a future user wanting e.g. a computed
+  offset would need the generator/walker extended.
+- **The `itr5` diagnostic run needed a manual kill** after running for
+  several real minutes without its `--run-seconds 60` watchdog visibly
+  firing, following a burst of many back-to-back `carrier.exe` launches on
+  a loaded host; a controlled, isolated re-run of the exact same command
+  immediately afterward (the `--run-seconds 10` sanity check in this pass's
+  own working notes) completed in ~2 seconds, so this was not chased
+  further as a `--run-seconds`/watchdog regression - flagged in case a
+  future pass sees it recur under similar host load.
+

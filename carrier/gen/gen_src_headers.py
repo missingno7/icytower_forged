@@ -63,6 +63,26 @@ BINDINGS_GUARD = 'ICYTOWER_BINDINGS_ACTIVE'
 # neither is ever defined in a given translation unit.
 UPSTREAM_GUARD = 'ICYTOWER_UPSTREAM_ALLEGRO'
 
+# Hand-curated, same spirit and same narrow scope as carrier/gen/
+# gen_bindings.py's MEMBER_ACCESS_COLLISIONS (found together, PROMOTIONS.md
+# batch 7): a DWARF parameter NAME that collides with an Allegro/game global
+# name some OTHER force-included bindings header (carrier/gen/
+# pf_lib_bindings.h here -- Allegro's own `extern volatile char key[...]`)
+# binds to a macro. game_funcs.h emits a plain forward DECLARATION (never a
+# definition -- see this file's own header comment, point 3), so the
+# parameter name has zero semantic effect on any caller; renaming it here
+# only in the prototype text is enough to stop the macro from also
+# rewriting it (`int check_control_key(Tcontrol *c, int key)` ->
+# `int check_control_key(Tcontrol *c, int (*(volatile char(*)[127])0x...))`
+# otherwise -- a syntax error, found compiling start_reward.c, the first
+# src/ file to include BOTH game_funcs.h and (transitively, for
+# asset_bitmap()) pf_lib_bindings.h in the same translation unit).
+PROTOTYPE_PARAM_RENAMES = {
+    'key': 'key_arg',   # check_control_key(Tcontrol *, int key) -- collides
+                         # with Allegro's `key[]` keyboard-state array via
+                         # pf_lib_bindings.h.
+}
+
 # scripts/check_native_layer.py's BANNED_IDENT_RE, reproduced here (not
 # imported -- it is a purity-gate detail, not part of the DWARF model this
 # script otherwise reuses from gen_interop.py) only so this generator can
@@ -346,6 +366,10 @@ def main():
     ap.add_argument('--functions', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--scope', choices=['game', 'all'], default='game')
+    ap.add_argument('--names', default=None,
+                     help='names.json (win32_pilot.md mechanism A) -- see '
+                          'gen_interop.py --names for the full description. '
+                          'Default: <repo>/src/icytower/names.json if present.')
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -355,6 +379,17 @@ def main():
     gi.ANON_TYPEDEF_NAMES = gi.compute_anon_typedef_names(dies)
     canonical, type_conflicts = gi.compute_canonical(dies, gi.ANON_TYPEDEF_NAMES)
     cache = {}
+
+    names_path = args.names
+    if names_path is None:
+        default_names = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'icytower', 'names.json'))
+        if os.path.exists(default_names):
+            names_path = default_names
+    gi.NAMES_TABLE = gi.load_names_table(names_path)
+    if gi.NAMES_TABLE:
+        print('names table: %d hand-curated name(s) loaded from %s' %
+              (len(gi.NAMES_TABLE), names_path), file=sys.stderr)
 
     scope_cus = gi.in_scope_cus(dies, args.scope)
     print('in-scope CUs: %d' % len(scope_cus), file=sys.stderr)
@@ -675,7 +710,7 @@ def main():
             f.write('/* ---- %s ---- */\n' % cu)
             for fn in by_cu_fn[cu]:
                 conv = '__stdcall ' if fn['calling_convention'] == 'stdcall' else '__cdecl '
-                params = [gi.decl(pt, pn) for (pn, pt) in fn['params']]
+                params = [gi.decl(pt, PROTOTYPE_PARAM_RENAMES.get(pn, pn)) for (pn, pt) in fn['params']]
                 if fn['variadic']:
                     params.append('...')
                 paramstr = ', '.join(params) if params else ('void' if fn['prototyped'] else '')
