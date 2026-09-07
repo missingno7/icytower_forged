@@ -333,3 +333,129 @@ generators, no hand-editing.
 - Carrier-world compile: `cl /nologo /c /W3 /TC /Icarrier\gen /FIpf_bindings_src.h` over all 14 promoted-batch `src\icytower\*.c` files (batches 1-4) — 0 errors, 0 warnings.
 - Upstream-world build: `mingw32-make -f src\build\Makefile.standalone` — `libicytower.a` + `standalone_smoke.exe` build clean; `standalone_smoke.exe` run: 16/16 PASS, 0 failure(s) (that Makefile's `SOURCES` list is a hand-maintained subset predating batches 3-4 and was left untouched — this is a regression check on the existing target).
 - Offline harness, all 31 batch 1-3 functions rerun at 20000 vectors each: 30/31 still EQUAL, unchanged; `line_intersect` still DIFFERs under MSVC exactly as already documented (the pre-existing, separately-tracked x87 precision gap) — confirming this pass's generator changes introduced no regression.
+
+## Batch 5 (2026-09-07 — add_floor pass)
+
+`add_floor` (0x4167dc, 608 bytes, map.c) — the tower layout generator,
+`is_solid`/`getFloorData`/`get_level`'s producer counterpart, and the
+subject of `notes/layout_determinism.md`/`notes/layout_rules_1.5.1.md`.
+The one function this pass set out to recover; no other candidate was in
+scope.
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `add_floor` | 0x4167dc | 608 | map.c | **EQUAL** (4 seeds x 20000 = 80000 vectors, MSVC `src_check.exe`); **EQUAL** (4 seeds x 20000 = 80000 vectors, GCC `-m32 -mfpmath=387 -mno-sse2 -O2`, `gcc_check_x87_nosse_O2.exe`) | Domain: the whole 772-byte `Tmap` (32 x `Tfloor`, no return value). GCC x87 is the toolchain of record — the `floor_shrink!=0 && new k<=2999` branch keeps a `fidivr`/`fmuls` pair on the x87 register stack, the same shape as `line_intersect`/`new_rand`'s x87-sensitivity; MSVC (plain `float`/SSE) happened to also come back EQUAL on all 4 seeds tested, unlike those two functions, but the vector generator does not specifically target this ratio's float-truncation boundary the way `line_intersect`'s `_boundary()` helper does, so an MSVC divergence here is "not found in 80000 vectors", not "ruled out" — see `notes/layout_rules_1.5.1.md` SS3. Two bugs found and fixed this pass, both below. | pending |
+
+Negative control: `--fault add_floor:5:0`, 200 vectors, comparator names
+`Tmap+0x0 (VA 0x00792000)` exactly — full detail in
+`artifacts/src_equivalence.json`.
+
+### Bug 1: the harness let a raw guest VA reach a real pointer dereference
+
+`add_floor` is the first promoted function to call `get_demo()`
+*internally* (not through its own parameter) and then dereference the
+result (`get_demo()->floor_shrink`). `get_demo()`'s own PROMOTIONS.md entry
+above says its pointer return needs "no host/guest translation ... needed
+anywhere" — true when nothing dereferences it (its own offline test),
+false the moment a caller does. `src_check.c`'s vector-driven `demo` write
+stored a guest VA (the wire format every pointer-shaped write uses); the
+very first multi-vector run segfaulted because nothing translated it to a
+host pointer before `add_floor` dereferenced it. Fixed with the same
+"second translation, driver-side, immediately before the call" pattern
+`update_frame`'s `ply[player_id]` fixup already established in
+`src_check.c`'s own header comment. `gcc_check.c` never had this bug — its
+`demo` is a plain global the driver already assigns through `tr()`
+explicitly.
+
+### Bug 2: two wrong magic-multiply divisors
+
+`room[31].tiles` (`k/500`, capped at 10 past `k=4999`) and `room[31].sign`
+(`(new level)/5`, on the 1-in-50 checkpoints that get one) are each a
+magic-multiply reciprocal in the disassembly (`0x10624dd3>>5`,
+`0x66666667>>1`), not a literal-constant `idiv`. An early hand-read
+guessed 20 and 10 by eyeballing the constants against a standard
+magic-number table — both wrong. The first 20000-vector run (after bug 1's
+fix) DIFFERed at `Tmap+0x2fc` (`tiles`); both divisors were re-derived
+correctly by brute-force testing the magic-multiply arithmetic against
+every plausible small divisor over a 0..20000 sweep, the same technique
+`particle.c`'s `create_particle()` note already documents for its own two
+magic constants. Full arithmetic and the SAME/CHANGED/UNKNOWN comparison
+against 1.3's `new_floor()` are in `notes/layout_rules_1.5.1.md`.
+
+### Harness changes (additive, none touching `src/`)
+
+- `carrier/lift/harness/lift_check.py`: `Oracle` gained a `rand()`-thunk
+  hook (`UC_HOOK_CODE` at `RAND_THUNK_VA=0x4bad18`, the `_rand` IAT thunk
+  unicorn cannot otherwise reach — msvcrt.dll is never mapped there) that
+  emulates msvcrt's LCG in Python from a per-vector seed and simulates the
+  `ret` itself; `Oracle.call()` now loops `emu_start()`, resuming from
+  wherever the hook redirects, instead of a single `emu_start` per call.
+  Plus `gen_add_floor` + the `add_floor` `SPECS` entry (additive).
+- `carrier/lift/harness/pf_harness_rand.h` (new, harness-only): force-included
+  macro `#define rand harness_rand`, pulling `<stdlib.h>` in first so only
+  `map.c`'s own token is redirected. `carrier/lift/harness/harness_rand.c`
+  (new): the compiled-candidate half — the same LCG, its own state word
+  `harness_rand_state`, set by both drivers from a scratch VA
+  (`RAND_SEED_VA=0x794020`) immediately before calling `add_floor`.
+- `carrier/lift/harness/src_check.c`: `add_floor` dispatch branch (with the
+  bug-1 `demo`-pointer fixup) + 2 new extern declarations.
+- `carrier/lift/harness/build_src.cmd`: file list extended with
+  `harness_rand.c`; `/FIpf_harness_rand.h` added.
+- `carrier/lift/harness/gcc_check.c`: extended to wire `add_floor` — `demo`
+  given its own plain-global storage (synced via `tr()`, correctly, from
+  the start) alongside `collision_type`/`max_speed`/`seed`; also needed
+  `ctrl`/`hasFocus`/`closeButtonClicked` storage purely to satisfy the
+  linker once `main_state.c` (for `get_demo`) was linked in.
+- `carrier/lift/harness/build_src_gcc.sh`/`build_src_gcc.cmd`: file list
+  extended with `map.c`, `main_state.c`, `harness_rand.c`;
+  `-include pf_harness_rand.h` added. `gcc_check_x87_nosse_O2.exe`
+  (the `--toolchain gcc` default) rebuilt in place.
+- `carrier/gen/pf_bindings_src.h`/`_types.h`,
+  `carrier/lift/harness/pf_bindings_harness.h`/`_types.h`: regenerated via
+  `scan_src_defs.py`'s auto-scanned `--exclude` list (41 names now, up from
+  39 — `add_floor` plus the file-static data table `floor_size_modifiers`,
+  which also needed excluding: it collided with the SAME "declaring an
+  already-address-bound plain name is a syntax error" class `src/README.md`
+  already documents for functions, just for a `static const` data table
+  instead of a function definition).
+
+### Totals (updated)
+
+| | batch 5 (this pass) | cumulative (5 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 1 | 36 |
+| original bytes recovered | 608 | 2636 |
+
+## Purity gate (updated)
+
+```
+python scripts/check_native_layer.py
+check_native_layer: scanned 25 file(s) under .../src, 0 violation(s)
+```
+
+## Compile (both worlds, batch 5)
+
+```
+standalone: cl /nologo /c /W3 /TC /Isrc\icytower
+            src\icytower\update_frame.c src\icytower\is_solid.c
+            src\icytower\jump_player.c src\icytower\map.c src\icytower\add_combo.c
+            src\icytower\add_jump_sequence.c src\icytower\line_intersect.c
+            src\icytower\control.c src\icytower\particle.c src\icytower\scroller.c
+            src\icytower\timer.c src\icytower\main_state.c src\icytower\state.c
+            src\icytower\new_rand.c src\icytower\ok_to_play.c
+            -- 0 errors, 0 warnings
+
+carrier:    python carrier\gen\scan_src_defs.py --src-dir src\icytower   (40 function
+            names + floor_size_modifiers, auto-scanned)
+            python carrier\gen\gen_bindings.py --exclude <scanned names> ^
+                --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+                --out carrier\gen\pf_bindings_src.h --types-out carrier\gen\pf_bindings_src_types.h
+
+            cl /nologo /c /W3 /TC /Icarrier\gen /FIpf_bindings_src.h
+               src\icytower\update_frame.c src\icytower\is_solid.c src\icytower\jump_player.c
+               src\icytower\map.c src\icytower\add_combo.c src\icytower\add_jump_sequence.c
+               src\icytower\line_intersect.c src\icytower\control.c src\icytower\particle.c
+               src\icytower\scroller.c src\icytower\timer.c src\icytower\main_state.c
+               src\icytower\new_rand.c src\icytower\ok_to_play.c
+            -- 0 errors, 0 warnings (carrier world)
+```

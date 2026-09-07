@@ -14,8 +14,8 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 if errorlevel 1 ( echo FAILED: no MSVC x86 environment & exit /b 1 )
 if not exist obj_src mkdir obj_src
 cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\..\gen /I. /I..\..\..\src\icytower ^
-   /FIpf_harness_mem.h /FIpf_bindings_harness.h ^
-   src_check.c ..\..\..\src\icytower\update_frame.c ..\..\..\src\icytower\is_solid.c ^
+   /FIpf_harness_mem.h /FIpf_bindings_harness.h /FIpf_harness_rand.h ^
+   src_check.c harness_rand.c ..\..\..\src\icytower\update_frame.c ..\..\..\src\icytower\is_solid.c ^
    ..\..\..\src\icytower\jump_player.c ..\..\..\src\icytower\map.c ^
    ..\..\..\src\icytower\add_combo.c ..\..\..\src\icytower\add_jump_sequence.c ^
    ..\..\..\src\icytower\line_intersect.c ^

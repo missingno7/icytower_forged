@@ -71,6 +71,8 @@
 
 #define G_PLAYER_ID 0x4fe518u
 #define G_PLY       0x4ff128u
+#define G_DEMO      0x4dd250u
+#define RAND_SEED_VA 0x794020u
 
 unsigned char *pf_guest = 0;
 static unsigned char *pf_pristine = 0;
@@ -118,6 +120,15 @@ extern int  new_rand(void);
 extern void update_particle(Tparticle *);
 extern int  create_particle(Tparticle *, int, int);
 extern int  ok_to_play(void);
+/* add_floor pass (2026-09-07): add_floor() calls the game's own rand(),
+ * redirected in THIS build only to harness_rand() by pf_harness_rand.h
+ * (force-included alongside pf_bindings_harness.h -- see that header's own
+ * comment for the full rationale). demo (used by get_demo(), which
+ * add_floor() calls internally) is already bound through PF_MEM by
+ * pf_bindings_harness.h, so no extra fixup is needed for it here -- only
+ * harness_rand_state needs seeding per vector, from RAND_SEED_VA. */
+extern void add_floor(Tmap *);
+extern unsigned int harness_rand_state;
 
 static unsigned int rd32(FILE *f)
 {
@@ -328,6 +339,22 @@ int main(int argc, char **argv)
             eax = (unsigned int)create_particle(p, (int)a[1], (int)a[2]);
         } else if (!strcmp(fn, "ok_to_play")) {
             eax = (unsigned int)ok_to_play();
+        } else if (!strcmp(fn, "add_floor")) {
+            /* second translation of the pointer VALUE stored in the `demo`
+             * global -- add_floor calls get_demo() internally, which just
+             * relays that value verbatim (see get_demo's own PROMOTIONS.md
+             * entry: "never dereferenced ... so no host/guest translation
+             * is needed anywhere" -- true for get_demo() alone, not for a
+             * caller that dereferences the result). Nothing translates it
+             * unless this driver does, exactly like the update_frame
+             * ply[player_id] fixup above. */
+            unsigned int *demo_slot = (unsigned int *)PF_MEM(G_DEMO);
+            Tmap *m = (Tmap *)tr(a[0]);
+            if (*demo_slot >= PF_GUEST_BASE && *demo_slot < PF_GUEST_BASE + PF_GUEST_SIZE)
+                *demo_slot = (unsigned int)(size_t)PF_MEM(*demo_slot);
+            harness_rand_state = *(unsigned int *)tr(RAND_SEED_VA);
+            add_floor(m);
+            eax = 0;
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);
             return 2;

@@ -3,8 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 13:41:49 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle
+ * Generated: 2026-09-07 14:12:51 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle
  * Addresses wrapped with --mem-macro: PF_MEM(...)
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
@@ -117,8 +117,7 @@
 #define fast_fast_forward (*(int *)PF_MEM(0x4dd258))
 /* fast_forward  VA=0x4dd254  type=int  cu=F:\projects\icytower\trunk\source\main.c */
 #define fast_forward (*(int *)PF_MEM(0x4dd254))
-/* floor_size_modifiers  VA=0x4bdb60  type=int [5]  cu=F:\projects\icytower\trunk\source\map.c */
-#define floor_size_modifiers (*(int (*)[5])PF_MEM(0x4bdb60))
+/* excluded by --exclude: floor_size_modifiers */
 /* floor_size_selection  VA=0x4fe7b8  type=Tmenu_selection  cu=F:\projects\icytower\trunk\source\main.c */
 #define floor_size_selection (*(Tmenu_selection *)PF_MEM(0x4fe7b8))
 /* floors  VA=0x4dd304  type=Tmenu_floor_selection  cu=F:\projects\icytower\trunk\source\main.c */
@@ -373,9 +372,7 @@
 /* prototype: char * _strptime(const char *, const char *, struct it_orig_tm *, int *) */
 #define _strptime ((PFN__strptime)PF_MEM(0x41f640))
 /* excluded by --exclude (compiled natively): add_combo */
-/* add_floor  VA=0x4167dc  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: void add_floor(Tmap *) */
-#define add_floor ((PFN_add_floor)PF_MEM(0x4167dc))
+/* excluded by --exclude (compiled natively): add_floor */
 /* add_itr_file  VA=0x41e740  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int add_itr_file(const char *, int, void *) */
 #define add_itr_file ((PFN_add_itr_file)PF_MEM(0x41e740))

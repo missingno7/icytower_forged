@@ -27,8 +27,8 @@ import subprocess
 import sys
 
 import pefile
-from unicorn import (Uc, UC_ARCH_X86, UC_MODE_32, UcError)
-from unicorn.x86_const import (UC_X86_REG_ESP, UC_X86_REG_EAX)
+from unicorn import (Uc, UC_ARCH_X86, UC_MODE_32, UcError, UC_HOOK_CODE)
+from unicorn.x86_const import (UC_X86_REG_ESP, UC_X86_REG_EAX, UC_X86_REG_EIP)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GUEST_BASE = 0x400000
@@ -97,6 +97,17 @@ SZ_CONTROL = 36                        # Tcontrol: 8 ints + 1 byte + 3 pad
 SZ_COMBO = 12                          # Tgd_combo: start, end, length (3 ints)
 GD_LOW_WINDOW = 26                     # combos[0..25] -- covers every "small" comboPosts vector
 GD_HIGH_BASE = 4990                    # combos[4990..4999] -- covers the boundary vectors
+
+# -- add_floor pass (2026-09-07) --
+DEMO_VA = 0x7c0000                     # scratch Treplay-shaped struct: only
+SZ_DEMO = 0x100                        #   floor_shrink@0x8c/floor_size@0x90 matter
+RAND_SEED_VA = 0x794020                # harness-only: initial msvcrt-LCG state word,
+                                        # read by BOTH the unicorn rand() hook below
+                                        # AND harness_rand_state on the compiled side
+                                        # (src_check.c/gcc_check.c) -- see
+                                        # harness/pf_harness_rand.h's header comment.
+RAND_THUNK_VA = 0x4bad18               # _rand: `jmp *[0x514944]` (msvcrt IAT slot,
+                                        # unmapped in unicorn -- see Oracle._rand_hook)
 
 
 def i32(v):
@@ -491,6 +502,89 @@ def gen_ok_to_play(rng, k):
 
 
 # --------------------------------------------------------------------------
+# add_floor (0x4167dc) -- the tower layout generator pass (2026-09-07).
+#
+# Domain: the WHOLE Tmap (772 bytes) -- the shift touches room[0..30], the
+# generation logic touches room[31]. No return value.
+#
+# room[31].level is the one field that actually steers the branch structure
+# (notes/layout_determinism.md SS2's KNOWN table); level_pool below hits
+# every boundary by hand (k%250, k%2500, k%5, and the five floor_shrink!=0
+# height breakpoints at 2999/5004/7504/10004/50005) before falling back to
+# four random families that keep landing near those same boundaries by
+# construction, so the random tail is not just uniform noise either.
+#
+# floor_size is kept in [0,4] -- floor_size_modifiers[5] is NOT
+# range-checked by the original, so an out-of-range index reads whatever
+# static data happens to sit next to the table at its real address
+# (0x4bdb60), which the recovered source's own array (at a different host
+# address) cannot reproduce; notes/layout_rules_1.5.1.md documents this as
+# a deliberate domain restriction, not an oversight.
+# --------------------------------------------------------------------------
+
+ADD_FLOOR_LEVEL_POOL = [
+    0, 1, 2, 3, 4, 5, 6, 10, 15, 20, 25,
+    249, 250, 251, 499, 500, 501, 749, 750, 999, 1000, 1001,
+    2495, 2499, 2500, 2501, 2504, 2505, 2999, 3000, 3001, 3004, 3005,
+    4750, 4995, 4999, 5000, 5001, 5004, 5005, 5006, 5010, 5250, 5500,
+    7495, 7499, 7500, 7501, 7504, 7505, 7510,
+    9995, 9999, 10000, 10001, 10004, 10005, 10010,
+    24995, 25000, 25005, 49995, 49999, 50000, 50004, 50005, 50006, 50010,
+    75000, 100000, 249995, 250000, 250001, 250005, 500000,
+]
+
+
+def gen_add_floor(rng, k):
+    m = bytearray(SZ_MAP)
+    for r in range(31):
+        b = r * 24
+        struct.pack_into("<i", m, b + 0, rng.choice([0, -1, 0, rng.randint(-3, 3)]))
+        struct.pack_into("<i", m, b + 4, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 8, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 12, rng.getrandbits(20))
+        struct.pack_into("<i", m, b + 16, rng.getrandbits(20))
+        struct.pack_into("<i", m, b + 20, rng.getrandbits(20))
+    struct.pack_into("<i", m, 768, rng.randint(-100000, 100000))     # m->offset (unread)
+
+    # room[31]: empty/start_tile/end_tile/sign/tiles are stale-on-entry
+    # bytes any EMPTY-branch vector must carry through unchanged, so they
+    # get arbitrary values too; level is the pooled/boundary-hunting one.
+    b31 = 31 * 24
+    struct.pack_into("<i", m, b31 + 0, rng.choice([0, -1, rng.randint(-3, 3)]))
+    struct.pack_into("<i", m, b31 + 4, rng.randint(-40, 40))
+    struct.pack_into("<i", m, b31 + 8, rng.randint(-40, 40))
+    struct.pack_into("<i", m, b31 + 16, rng.getrandbits(20))
+    struct.pack_into("<i", m, b31 + 20, rng.getrandbits(20))
+
+    if k < len(ADD_FLOOR_LEVEL_POOL):
+        level = ADD_FLOOR_LEVEL_POOL[k]
+    else:
+        fam = k % 4
+        if fam == 0:
+            level = rng.randrange(0, 300000)
+        elif fam == 1:
+            level = rng.choice([250, 2500]) * rng.randint(0, 400) + rng.randint(-2, 2)
+        elif fam == 2:
+            level = 5 * rng.randint(0, 60000) + rng.choice([0, 1, 2, 3, 4])
+        else:
+            level = rng.randrange(0, 1 << 30)
+    level = max(0, level) & 0x7FFFFFFF
+    struct.pack_into("<i", m, b31 + 12, level)
+
+    demo = bytearray(SZ_DEMO)
+    floor_shrink = 0 if k % 2 == 0 else (rng.randint(-1000, 1000) or 7)
+    floor_size = rng.randrange(5)
+    struct.pack_into("<i", demo, 0x8c, floor_shrink)
+    struct.pack_into("<i", demo, 0x90, floor_size)
+
+    rand_seed = rng.getrandbits(32)
+
+    writes = [(MAP_VA, bytes(m)), (DEMO_VA, bytes(demo)),
+              (G_DEMO, u32(DEMO_VA)), (RAND_SEED_VA, u32(rand_seed))]
+    return [MAP_VA], writes
+
+
+# --------------------------------------------------------------------------
 # line_intersect (0x406b80) -- the x87 discriminator
 #
 #   D  = dx1*dy3 - dx3*dy1        (32-bit IMULs, wrapping)
@@ -745,6 +839,9 @@ SPECS = {
                         "domain_names": ["Tparticle[512]", "seed"]},
     "ok_to_play": {"va": 0x406a50, "gen": gen_ok_to_play, "cmp_eax": True,
                    "domain": [], "domain_names": []},
+    # -- add_floor pass (2026-09-07) --
+    "add_floor": {"va": 0x4167dc, "gen": gen_add_floor, "cmp_eax": False,
+                 "domain": [(MAP_VA, SZ_MAP)], "domain_names": ["Tmap"]},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -754,6 +851,8 @@ SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
                     "clickedCloseButton")
 
 SRC_BATCH4_FUNCS = "new_rand,update_particle,create_particle,ok_to_play"
+
+SRC_ADD_FLOOR_FUNCS = "add_floor"
 
 
 # --------------------------------------------------------------------------
@@ -771,6 +870,28 @@ class Oracle(object):
         self.stub = bytes([0xDB, 0xE3, 0xD9, 0x2D]) + u32(CW_SLOT)  # fninit; fldcw
         self.mu.mem_write(CW_SLOT, struct.pack("<H", CW_INIT))
         self.mu.mem_write(CW_STUB, self.stub)
+        self._rand_state = 0
+        # Harness-only shim (see harness/pf_harness_rand.h's header comment
+        # for the full rationale and the compiled-side half of this same
+        # trick): unicorn never maps msvcrt.dll, so add_floor's
+        # `call 0x4bad18` (the _rand thunk, `jmp *[0x514944]`, an IAT slot)
+        # would fault here. Hook the thunk's entry address instead of
+        # letting the jmp execute -- emulate the LCG in Python from
+        # self._rand_state (seeded per-vector via RAND_SEED_VA, gen_add_floor),
+        # write EAX, and simulate the eventual `ret` ourselves by popping
+        # the return address ourselves and redirecting EIP + emu_stop().
+        self.mu.hook_add(UC_HOOK_CODE, self._rand_hook,
+                          begin=RAND_THUNK_VA, end=RAND_THUNK_VA)
+
+    def _rand_hook(self, uc, address, size, data):
+        esp = uc.reg_read(UC_X86_REG_ESP)
+        ret_addr = struct.unpack("<I", bytes(uc.mem_read(esp, 4)))[0]
+        self._rand_state = (self._rand_state * 214013 + 2531011) & 0xFFFFFFFF
+        result = (self._rand_state >> 16) & 0x7fff
+        uc.reg_write(UC_X86_REG_EAX, result)
+        uc.reg_write(UC_X86_REG_ESP, esp + 4)
+        uc.reg_write(UC_X86_REG_EIP, ret_addr)
+        uc.emu_stop()
 
     def fpu_reset(self):
         """FNINIT + FLDCW 0x037F -- the x87 state ___mingw_CRTStartup leaves."""
@@ -783,8 +904,11 @@ class Oracle(object):
 
     def call(self, va, args, writes, domain):
         self.fpu_reset()
+        self._rand_state = 0
         for wva, wb in writes:
             self.mu.mem_write(wva, wb)
+            if wva == RAND_SEED_VA and len(wb) == 4:
+                self._rand_state = struct.unpack("<I", wb)[0]
         esp = STACK_BASE + STACK_SIZE - 0x1000
         for a in reversed(args):
             esp -= 4
@@ -792,7 +916,13 @@ class Oracle(object):
         esp -= 4
         self.mu.mem_write(esp, u32(RET_MAGIC))
         self.mu.reg_write(UC_X86_REG_ESP, esp)
-        self.mu.emu_start(va, RET_MAGIC, count=4000000)
+        pc = va
+        while True:
+            self.mu.emu_start(pc, RET_MAGIC, count=4000000)
+            eip = self.mu.reg_read(UC_X86_REG_EIP)
+            if eip == RET_MAGIC:
+                break
+            pc = eip                # resumed here by _rand_hook's emu_stop()
         eax = self.mu.reg_read(UC_X86_REG_EAX) & 0xFFFFFFFF
         dom = b"".join(bytes(self.mu.mem_read(dva, dn)) for dva, dn in domain)
         return eax, dom
@@ -912,14 +1042,14 @@ def main():
                                             "src": "src_check.exe"}.get(args.form, "lift_check.exe"))
     if args.funcs is None:
         if args.toolchain == "gcc":
-            args.funcs = "line_intersect,jump_player"
+            args.funcs = "line_intersect,jump_player,add_floor"
         elif args.form == "native":
             args.funcs = "update_frame,is_solid"
         elif args.form == "src":
             args.funcs = ("update_frame,is_solid,jump_player,getFloorData,reset_map,"
                          "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
                          "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
-                         "," + SRC_BATCH4_FUNCS)
+                         "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS)
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")

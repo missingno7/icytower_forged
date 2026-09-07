@@ -34,11 +34,14 @@ if [ ! -x "$GCC" ]; then GCC=gcc; fi
 mkdir -p obj_gcc
 "$GCC" -m32 "$@" -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
     -I. -I../../../src/icytower \
-    gcc_check.c \
+    -include pf_harness_rand.h \
+    gcc_check.c harness_rand.c \
     ../../../src/icytower/line_intersect.c \
     ../../../src/icytower/jump_player.c \
     ../../../src/icytower/new_rand.c \
     ../../../src/icytower/particle.c \
     ../../../src/icytower/ok_to_play.c \
+    ../../../src/icytower/map.c \
+    ../../../src/icytower/main_state.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"

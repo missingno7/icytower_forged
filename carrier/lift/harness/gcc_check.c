@@ -31,6 +31,21 @@
  *                   x87 build in the first place (PROMOTIONS.md batch 3's
  *                   "Skipped this pass" note).
  *   ok_to_play      batch 4: trivial control, no FP, no globals.
+ *   add_floor       add_floor pass (2026-09-07): the tower layout
+ *                   generator (map.c) -- has its own x87-sensitive width
+ *                   formula (a fidivr/fmuls kept on the x87 stack, same
+ *                   shape as line_intersect/new_rand) AND calls the game's
+ *                   own rand() (redirected to harness_rand() by
+ *                   pf_harness_rand.h, force-included below -- see that
+ *                   header's comment for why: unicorn has no msvcrt.dll
+ *                   mapped, so lift_check.py's ORIGINAL side hooks
+ *                   add_floor's `call 0x4bad18` in Python instead; this
+ *                   driver's job is to make the COMPILED side draw from
+ *                   the identical LCG, seeded the same way per vector).
+ *                   Also calls get_demo() (main_state.c, linked in below),
+ *                   so this driver supplies `demo` directly, synced from
+ *                   G_DEMO the same way seed/collision_type/max_speed
+ *                   already are.
  *
  * Deliberately its own, wholly GCC-compiled executable -- no object file
  * from this build is ever linked against an MSVC-built one. That sidesteps
@@ -69,6 +84,11 @@
 
 #include "game_types.h"
 #include "game_state.h"
+#include "pf_harness_rand.h"    /* #define rand harness_rand -- see that
+                                 * header's comment; applies to every
+                                 * src/icytower file compiled alongside this
+                                 * driver in the same invocation, none of
+                                 * which call plain rand() except map.c */
 
 #define PF_GUEST_BASE 0x400000u
 #define PF_GUEST_SIZE 0x400000u          /* 0x400000 .. 0x800000 */
@@ -79,6 +99,8 @@
 #define G_COLLISION_TYPE 0x4dd140u
 #define G_MAX_SPEED      0x4bdb80u
 #define G_SEED           0x4ff108u
+#define G_DEMO           0x4dd250u
+#define RAND_SEED_VA     0x794020u
 
 /* storage for game_state.h's extern decls -- the STANDALONE world's
  * contract (win32_pilot.md SS7a: "a state.c defines the globals"); this
@@ -90,6 +112,15 @@
 int collision_type;
 double max_speed[5];
 double seed;
+Treplay *demo;    /* add_floor's get_demo() reads this global directly */
+/* main_state.c (get_demo, linked in for add_floor) also defines
+ * get_controls()/switchedFromProgram()/switchedToProgram()/
+ * clickedCloseButton(), which this driver never calls but which still
+ * need SOME storage to satisfy the linker -- unused by add_floor, values
+ * never read or written by this driver. */
+Tcontrol ctrl;
+int hasFocus;
+int closeButtonClicked;
 
 unsigned char *pf_guest = 0;
 static unsigned char *pf_pristine = 0;
@@ -106,6 +137,7 @@ extern int new_rand(void);
 extern void update_particle(Tparticle *);
 extern int create_particle(Tparticle *, int, int);
 extern int ok_to_play(void);
+extern void add_floor(Tmap *);
 
 static unsigned int rd32(FILE *f)
 {
@@ -141,10 +173,11 @@ int main(int argc, char **argv)
     fn = argv[4];
     if (strcmp(fn, "line_intersect") != 0 && strcmp(fn, "jump_player") != 0 &&
         strcmp(fn, "new_rand") != 0 && strcmp(fn, "update_particle") != 0 &&
-        strcmp(fn, "create_particle") != 0 && strcmp(fn, "ok_to_play") != 0) {
+        strcmp(fn, "create_particle") != 0 && strcmp(fn, "ok_to_play") != 0 &&
+        strcmp(fn, "add_floor") != 0) {
         fprintf(stderr, "gcc_check only wires up line_intersect/jump_player/"
-                        "new_rand/update_particle/create_particle/ok_to_play; "
-                        "got '%s'\n", fn);
+                        "new_rand/update_particle/create_particle/ok_to_play/"
+                        "add_floor; got '%s'\n", fn);
         return 2;
     }
 
@@ -225,8 +258,14 @@ int main(int argc, char **argv)
             seed = *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE));
             eax = (unsigned int)create_particle(p, (int)a[1], (int)a[2]);
             *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
-        } else { /* ok_to_play */
+        } else if (!strcmp(fn, "ok_to_play")) {
             eax = (unsigned int)ok_to_play();
+        } else { /* add_floor */
+            Tmap *m = (Tmap *)tr(a[0]);
+            demo = (Treplay *)tr(*(unsigned int *)(pf_guest + (G_DEMO - PF_GUEST_BASE)));
+            harness_rand_state = *(unsigned int *)(pf_guest + (RAND_SEED_VA - PF_GUEST_BASE));
+            add_floor(m);
+            eax = 0;
         }
 
         fwrite(&eax, 4, 1, fo);
