@@ -42,6 +42,21 @@ the names of the functions currently promoted to NATIVE (win32_pilot.md
 SS3's binding table is the runtime side of the same idea, this is the
 compile-time side).
 
+Guest-owned CRT imports (`GUEST_CRT_IMPORTS`, divergence 008): a promoted
+function in src/ that calls a C-library function the GAME imports -- today
+just `rand()`, in map.c's add_floor() -- must reach the *guest's* import,
+not the carrier's own statically-linked CRT. They are two different
+functions with two different states: the guest's msvcrt `rand` is reached
+through the IAT slot the carrier owns and (in --det) replaces with det.cpp's
+pinned LCG, which `srand()` seeds and the snapshot captures; the carrier's
+own `rand` is a separate, never-seeded UCRT generator. Linking src/ code to
+the latter silently drew the whole tower layout from the wrong stream (see
+notes/living_record.md divergence 008). So for each name below this header
+emits a call-through-the-IAT-slot macro, exactly what the original machine
+code's `call _rand -> jmp *[slot]` thunk does. The slot VA comes from
+imports.json (the same evidence file gen_imports.py reads), never from a
+hand-typed address.
+
 CRT/Windows identifier collisions: INTEROP_NOTES.md's generator renames
 type names that collide with real CRT/UCRT types it must coexist with
 (`FILE`->`it_orig_FILE` etc, see CRT_RENAME there) because the *type name*
@@ -118,6 +133,104 @@ RESERVED_CRT_WINDOWS_IDENTS = {
     'unsigned', 'void', 'volatile', 'while',
 }
 
+# ---------------------------------------------------------------------
+# Guest-owned CRT imports (divergence 008) -- see this module's docstring.
+#
+# Hand-curated on purpose, and deliberately TINY: binding a CRT name in
+# src/'s force-included header is exactly the "shadow a system function"
+# hazard RESERVED_CRT_WINDOWS_IDENTS exists to avoid, so a name earns a
+# place here only when a promoted src/ function genuinely must share the
+# GUEST's copy of that function's state.
+#
+#   rand   map.c's add_floor() is the game's only live gameplay consumer of
+#          libc rand() (notes/layout_determinism.md SS1). Its stream IS the
+#          tower layout, seeded by new_game()'s srand(Treplay.random_seed);
+#          in --det the carrier replaces the guest's msvcrt slot with
+#          det.cpp's pinned LCG so a replay is reproducible and the RNG
+#          state is snapshot-capturable. The carrier's own linked-in CRT
+#          rand() is a different generator with a different, never-seeded
+#          state -- MEASURED: with add_floor bound to src, the pinned state
+#          stayed at the seed (16944) and rng_calls stopped at 4, while the
+#          ORIGINAL form advanced it 10 times to 0xea58d532 over the same
+#          30 initial floors.
+#   srand  not used by any promoted function today, but listed for the same
+#          reason and to keep the seed/draw pair from ever splitting across
+#          two generators if one is promoted later.
+#
+# Each entry maps a plain C name to the msvcrt import whose IAT slot it must
+# call through; the slot VA is looked up in imports.json, never typed here.
+GUEST_CRT_IMPORTS = {
+    'rand':  ('msvcrt.dll', 'rand',  'int',  '(void)'),
+    'srand': ('msvcrt.dll', 'srand', 'void', '(unsigned)'),
+}
+
+# System headers that must be pulled in BEFORE the macros above are defined,
+# so the macro rewrites CALLS in src/ and never the library's own
+# declaration text. Same trick, same reason, as carrier/lift/harness/
+# pf_harness_rand.h uses for the offline harness build.
+GUEST_CRT_PRE_INCLUDES = ['<stdlib.h>']
+
+
+def load_import_slots(path):
+    """imports.json -> {(dll_lower, name): [iat_slot_va_int, ...]}.
+
+    imports.json is a flat list of [dll, name, "0x...."] triples (the same
+    file carrier/gen/gen_imports.py consumes). Anything else is a hard
+    error rather than a guess.
+
+    A name CAN legitimately appear more than once with different slots (this
+    image imports msvcrt!_stat twice, MEASURED), so the duplicate is kept
+    rather than rejected here; ambiguity is only fatal for a name
+    GUEST_CRT_IMPORTS actually asks for, where picking one of two slots
+    would be a guess.
+    """
+    raw = json.loads(Path(path).read_text(encoding='utf-8'))
+    slots = {}
+    for entry in raw:
+        if not (isinstance(entry, list) and len(entry) == 3):
+            raise ValueError('imports.json: unexpected entry %r' % (entry,))
+        dll, name, va = entry
+        slots.setdefault((dll.lower(), name), []).append(int(va, 16))
+    return slots
+
+
+def emit_guest_crt_imports(slots, mem_macro):
+    """The `#define rand ...` block, as a list of output lines."""
+    lines = []
+    lines.append('/* ------------------------------------------------------------------ */')
+    lines.append('/* CRT functions the GUEST imports: call through the guest IAT slot,   */')
+    lines.append('/* not the carrier\'s own linked-in CRT (divergence 008 -- see          */')
+    lines.append('/* gen_bindings.py\'s docstring and notes/living_record.md).            */')
+    lines.append('/* ------------------------------------------------------------------ */')
+    for inc in GUEST_CRT_PRE_INCLUDES:
+        lines.append('#include %s  /* pulled in FIRST: the macros below must rewrite '
+                      'calls in src/, never this header\'s own declarations */' % inc)
+    lines.append('')
+    emitted = []
+    for name in sorted(GUEST_CRT_IMPORTS):
+        dll, imp, ret, params = GUEST_CRT_IMPORTS[name]
+        found = sorted(set(slots.get((dll.lower(), imp), [])))
+        if not found:
+            raise ValueError('imports.json has no %s!%s -- GUEST_CRT_IMPORTS is '
+                              'out of date with the guest image' % (dll, imp))
+        if len(found) > 1:
+            raise ValueError('imports.json has %d distinct IAT slots for %s!%s '
+                              '(%s) -- which one src/ should call through is a '
+                              'guess, so GUEST_CRT_IMPORTS refuses to bind it'
+                              % (len(found), dll, imp,
+                                 ', '.join('0x%08x' % v for v in found)))
+        va = found[0]
+        addr = '0x%08x' % va
+        if mem_macro:
+            addr = '%s(%s)' % (mem_macro, addr)
+        lines.append('/* %s  -> %s!%s IAT slot VA=0x%08x  (the original\'s own '
+                      '`call _%s -> jmp *[slot]`) */' % (name, dll, imp, va, imp))
+        lines.append('typedef %s (__cdecl *PFN_crt_%s)%s;' % (ret, name, params))
+        lines.append('#define %s (*(PFN_crt_%s *)%s)' % (name, name, addr))
+        emitted.append(name)
+    lines.append('')
+    return lines, emitted
+
 # Hand-curated, NOT a blanket scan of every struct member name in scope:
 # a global name unsafe to bind through a plain #define because it is ALSO
 # used, somewhere in the ORIGINAL game source, as a struct member name that
@@ -176,6 +289,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--index', default=str(HERE / 'interop_index.json'))
+    ap.add_argument('--imports', default=str(HERE.parent.parent / 'imports.json'),
+                     help='imports.json (the guest PE import table, [dll, name, '
+                          'iat_slot_va] triples) -- the evidence source for '
+                          'GUEST_CRT_IMPORTS\' slot addresses.')
     ap.add_argument('--globals-header', default=str(HERE / 'it_globals.h'))
     ap.add_argument('--funcs-header', default=str(HERE / 'it_funcs.h'))
     ap.add_argument('--out', default=str(HERE / 'pf_bindings.h'))
@@ -209,6 +326,11 @@ def main():
     mem_macro = args.mem_macro
 
     index = load_index(args.index)
+    try:
+        import_slots = load_import_slots(args.imports)
+    except (OSError, ValueError) as e:
+        sys.stderr.write('gen_bindings.py: %s: %s\n' % (args.imports, e))
+        return 1
     idx_globals = index['globals']
     idx_functions = index['functions']
 
@@ -238,6 +360,7 @@ def main():
     lines.append(' *   %s' % Path(args.index).name)
     lines.append(' *   %s (reused cast expressions)' % Path(args.globals_header).name)
     lines.append(' *   %s (reused PFN_* typedefs + cast expressions)' % Path(args.funcs_header).name)
+    lines.append(' *   %s (IAT slot VAs for GUEST_CRT_IMPORTS)' % Path(args.imports).name)
     lines.append(' * Generated: %s UTC' % datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
     if exclude:
         lines.append(' * Excluded (compiled natively, name kept free): %s' %
@@ -266,6 +389,12 @@ def main():
     lines.append('#include "pf_bindings_types.h"  /* struct/enum/typedef layouts */')
     lines.append('#include "it_funcs.h"           /* PFN_<name> typedefs, reused verbatim */')
     lines.append('')
+    try:
+        crt_lines, emitted_crt_imports = emit_guest_crt_imports(import_slots, mem_macro)
+    except ValueError as e:
+        sys.stderr.write('gen_bindings.py: %s\n' % e)
+        return 1
+    lines.extend(crt_lines)
     lines.append('/* ------------------------------------------------------------------ */')
     lines.append('/* globals: <name> -> (*(T*)VA), identical to it_globals.h IT_G_<name> */')
     lines.append('/* ------------------------------------------------------------------ */')
@@ -367,6 +496,7 @@ def main():
         'functions_total': len(idx_functions),
         'functions_emitted': len(emitted_functions),
         'functions_excluded': excluded_functions,
+        'guest_crt_imports': emitted_crt_imports,
         'reserved_collisions': reserved_collisions,
         'member_name_collisions': member_collisions,
         'out': args.out,

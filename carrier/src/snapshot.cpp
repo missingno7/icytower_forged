@@ -47,7 +47,12 @@
 // bind.cpp each own their half (det.hpp/bind.hpp).
 // ---------------------------------------------------------------------
 #define PF_CARRIER_STATE_MAGIC   0x53434650u // 'PFCS'
-#define PF_CARRIER_STATE_VERSION 1u
+// v2 (divergence 008): BindSavedState's per-function counter arrays grew
+// from a stale [8] to bind.hpp's kBindMaxFns (42), so carrier.bin is a
+// different size and shape than every snapshot taken before that fix. The
+// size check below already rejects those, but the stamp makes the reason
+// legible rather than "wrong size for this build".
+#define PF_CARRIER_STATE_VERSION 2u
 
 struct CarrierState {
     uint32_t       magic;

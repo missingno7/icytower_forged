@@ -3,7 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 16:23:32 UTC
+ *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
+ * Generated: 2026-09-07 16:50:35 UTC
  * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
@@ -23,6 +24,20 @@
 
 #include "pf_bindings_types.h"  /* struct/enum/typedef layouts */
 #include "it_funcs.h"           /* PFN_<name> typedefs, reused verbatim */
+
+/* ------------------------------------------------------------------ */
+/* CRT functions the GUEST imports: call through the guest IAT slot,   */
+/* not the carrier's own linked-in CRT (divergence 008 -- see          */
+/* gen_bindings.py's docstring and notes/living_record.md).            */
+/* ------------------------------------------------------------------ */
+#include <stdlib.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
+
+/* rand  -> msvcrt.dll!rand IAT slot VA=0x00514944  (the original's own `call _rand -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_rand)(void);
+#define rand (*(PFN_crt_rand *)0x00514944)
+/* srand  -> msvcrt.dll!srand IAT slot VA=0x0051495c  (the original's own `call _srand -> jmp *[slot]`) */
+typedef void (__cdecl *PFN_crt_srand)(unsigned);
+#define srand (*(PFN_crt_srand *)0x0051495c)
 
 /* ------------------------------------------------------------------ */
 /* globals: <name> -> (*(T*)VA), identical to it_globals.h IT_G_<name> */

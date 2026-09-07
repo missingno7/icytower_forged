@@ -594,6 +594,31 @@ ADD_FLOOR_LEVEL_POOL = [
     75000, 100000, 249995, 250000, 250001, 250005, 500000,
 ]
 
+# Directed cross-product (divergence 008, notes/living_record.md): the
+# pooled levels above used to be paired with `floor_shrink = 0 if k % 2 == 0`
+# and a random floor_size, which silently made the DIRECTED half of this
+# generator one-sided -- an even-indexed pooled level was NEVER seen with
+# floor_shrink != 0 (the float-ratio branch) and an odd-indexed one never
+# with floor_shrink == 0 (the `6 + rand()%10` branch), so half of every
+# hand-picked boundary went untested in the branch it was picked for.
+#
+# The first len(pool)*2*5 vectors now enumerate every
+# (pooled level, floor_shrink in {0, 1}, floor_size in 0..4) triple
+# deterministically instead. That includes, by construction, the exact
+# in-vivo precondition divergence 008 first showed up at:
+# level=5 (-> new level 6, the first REAL floor a game ever generates),
+# floor_shrink=1, floor_size=1 -- the `human_test.txt` Treplay's own
+# settings (MEASURED from the tick-220 snapshot: Treplay+0x8c..0x90 =
+# {1, 1}), which reaches the k<=2999 float-ratio branch: ratio =
+# (6/-5+300)/300.0f*10.0f = 9.9667f, width = 6 + rand()%9.
+# floor_shrink is pinned to exactly 1 here (not a random nonzero) because
+# the original only ever tests it against 0; the random tail below still
+# sweeps arbitrary nonzero values.
+ADD_FLOOR_DIRECTED = [(level, shrink, size)
+                      for level in ADD_FLOOR_LEVEL_POOL
+                      for shrink in (0, 1)
+                      for size in range(5)]
+
 
 def gen_add_floor(rng, k):
     m = bytearray(SZ_MAP)
@@ -617,8 +642,9 @@ def gen_add_floor(rng, k):
     struct.pack_into("<i", m, b31 + 16, rng.getrandbits(20))
     struct.pack_into("<i", m, b31 + 20, rng.getrandbits(20))
 
-    if k < len(ADD_FLOOR_LEVEL_POOL):
-        level = ADD_FLOOR_LEVEL_POOL[k]
+    directed = ADD_FLOOR_DIRECTED[k] if k < len(ADD_FLOOR_DIRECTED) else None
+    if directed is not None:
+        level = directed[0]
     else:
         fam = k % 4
         if fam == 0:
@@ -633,8 +659,11 @@ def gen_add_floor(rng, k):
     struct.pack_into("<i", m, b31 + 12, level)
 
     demo = bytearray(SZ_DEMO)
-    floor_shrink = 0 if k % 2 == 0 else (rng.randint(-1000, 1000) or 7)
-    floor_size = rng.randrange(5)
+    if directed is not None:
+        _, floor_shrink, floor_size = directed
+    else:
+        floor_shrink = 0 if k % 2 == 0 else (rng.randint(-1000, 1000) or 7)
+        floor_size = rng.randrange(5)
     struct.pack_into("<i", demo, 0x8c, floor_shrink)
     struct.pack_into("<i", demo, 0x90, floor_size)
 

@@ -175,6 +175,20 @@ static const int floor_size_modifiers[5] = { 2, 0, -2, -4, -6 };
  * matching this project's established practice (see add_combo.c's own
  * note on the same kind of redundancy).
  *
+ * The rand() calls below are ordinary, unqualified C -- this file knows
+ * nothing about where they land, exactly like every other name in src/.
+ * Worth knowing anyway, because it cost a real in-vivo divergence
+ * (notes/living_record.md 008): add_floor is the game's ONLY live gameplay
+ * consumer of libc rand(), so this stream IS the tower layout, and it must
+ * be the SAME stream the rest of the game draws from -- the one
+ * new_game()'s srand(Treplay.random_seed) seeds. Whoever compiles this
+ * file is responsible for making `rand` mean the game's rand: the offline
+ * harness does it with pf_harness_rand.h's per-vector LCG shim, the
+ * carrier does it by binding the name to the guest's own msvcrt IAT slot
+ * (carrier/gen/gen_bindings.py's GUEST_CRT_IMPORTS). A build that resolves
+ * it to its own C library instead compiles, links, runs, and generates a
+ * perfectly plausible -- but different -- tower.
+ *
  * tiles' and sign's divisors (500 and 5) are each a magic-multiply
  * reciprocal in the disassembly (0x10624dd3>>5 and 0x66666667>>1), NOT a
  * plain `idiv` with a literal constant -- an early hand-read guessed 20

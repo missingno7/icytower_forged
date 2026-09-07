@@ -99,6 +99,26 @@ win32_pilot.md §8a metrics table (137176 crossings/invocations, 0 domain
 read failures, 0 faults injected, 2028 original `.text` bytes no longer
 executed).
 
+## All 40 bound at once (divergence 008 pass, 2026-09-07)
+
+With `add_floor` fixed, every row of the generated binding table can be
+bound simultaneously — the five rows the generator added after milestone 12
+(`add_floor`, `reset_player`, `update_player`,
+`handle_player_collision_original`, `play_jump_sound`) on top of the
+original 35. `carrier/scripts/all_src.bindfile` is that list;
+`all35_src.bindfile` is left untouched so the milestone-12 measurement above
+stays reproducible exactly as it was taken.
+
+```
+carrier.exe --det --pace=fast --input=script --input-script ../replays/human_test.txt \
+  --stop-at-tick 2528 --run-seconds 300 \
+  --bind-file <abs>/carrier/scripts/all_src.bindfile --digest-out ticks.txt
+python carrier/scripts/compare_digests.py ticks.txt replays/human_test.digest
+```
+
+Result: **EQUAL (2293 ticks)** — 40 `src/` forms replacing the original
+machine code simultaneously for the entire recording.
+
 ## Binding table generated (2026-09-07)
 
 `carrier/src/bind.cpp`'s hand-maintained 35-row table (name/VA/argc/
@@ -139,7 +159,7 @@ every run, per this file's own convention):
 |---|---|---:|---|
 | `reset_player` | 0x418550 | 1 | EQUAL |
 | `update_player` | 0x418740 | 2293 | **EQUAL** (x87, GCC build) |
-| `add_floor` | 0x4167dc | (6 common before the split) | **DIFFER** — `FIRST DIFFERENCE fn=add_floor k=5 T=220 field=post`: identical arguments (`args=004f8b18`) and identical pre-state (`pre` at k=5 equals the previous invocation's `post`, matching between ORIGINAL and SRC through k=4) — a real, reproducible divergence in the recovered source, not upstream drift. Root cause not investigated this pass (verification only, `src/` out of scope); flagged as a background task with this evidence. Per-tick global digest also diverges, first at T=237. |
+| `add_floor` | 0x4167dc | 533 | **EQUAL** (was DIFFER; see "Divergence 008" below) |
 | `handle_player_collision_original` | 0x407e10 | 0 | UNVERIFIED IN VIVO — `replays/human_test.txt` never takes the collision branch that reaches it (same class of gap already documented for `is_solid` above); comparison domain is also the stated *default* (empty — no call-trace mechanism in `bind.cpp` yet, see `fn_domains.json`), so even a reaching workload would only be checking that both forms return without a fault, not that their game-state effects agree. |
 | `play_jump_sound` | 0x406ecc | 46 | EQUAL, but **vacuously**: `play_jump_sound` returns `void` (no EAX comparison) and has the default *empty* domain (no call-trace mechanism, same reason as `handle_player_collision_original`), so this "EQUAL" only certifies that both forms ran 46 times without crashing — not that they had the same effect. A real check needs the call-trace domain `carrier/lift/harness/lift_check.py`'s own `SPECS` entry for this function already uses offline; not implemented in `bind.cpp` this pass. |
 
@@ -147,9 +167,80 @@ every run, per this file's own convention):
 (`build_blockers.json` above) and so cannot be bound or tested at all this
 pass.
 
-**Updated summary: 28 EQUAL (27 unchanged + `update_player`; `reset_player`
-and the vacuous `play_jump_sound` also EQUAL but noted separately above), 2
-DIFFER (`add_jump_sequence`, now also `add_floor`), 8 unverified in vivo
+**Updated summary: 29 EQUAL (27 unchanged + `update_player` + `add_floor`;
+`reset_player` and the vacuous `play_jump_sound` also EQUAL but noted
+separately above), 1 DIFFER (`add_jump_sequence`), 8 unverified in vivo
 (the 7 already listed plus `handle_player_collision_original`), 2 functions
 with no bindable form at all (`draw_buffer`, `start_reward`, asset-seam
 blocked).**
+
+## Divergence 008 — `add_floor` (2026-09-07), RESOLVED
+
+The DIFFER this table used to carry for `add_floor` was
+`FIRST DIFFERENCE fn=add_floor k=5 T=220 field=post`, with identical
+arguments (`args=004f8b18`) and identical pre-state through k=4. It was
+**not** a fault in the recovered rules; it was a **binding** gap. Full
+narrative in `notes/living_record.md` entry 008 and `carrier/NOTES.md`
+"Divergence 008"; the short version, in the order the evidence arrived:
+
+**Which bytes.** Two snapshots at tick 220 (one unbound, one
+`--bind add_floor=src`) and `pf_inspect.py diff` name the field directly:
+
+```
+FIRST DIFFERING GLOBAL INSIDE THE PER-TICK DIGEST SCOPE:
+  map @0x004f8b18 (Tmap, 784 bytes, main.c)
+  first differing byte: +172 (VA 0x004f8bc4)  A=14 B=17
+  member: .room+172
+```
+
+Offset 172 = `room[7]` (7 x 24) + 4 = **`Tfloor.start_tile`**, and the
+adjacent `.end_tile` differs too: ORIGINAL `{start_tile=20, end_tile=29}`
+vs SRC `{23, 34}` — same `level` (6), same branch of the generator, just
+different numbers out of `rand()`.
+
+**Why k=5 specifically.** k=5 is the first invocation that calls `rand()`
+at all: `level` 0 is a checkpoint floor and levels 1..4 are empty filler
+rows, all four of which draw 0 `rand()` (`notes/layout_determinism.md` §2's
+table). Level 5 is the first *real* floor any game generates.
+
+**Root cause.** `map.c` calls plain `rand()`. `carrier/gen/
+pf_bindings_src.h` bound every game global and game function by name but
+nothing bound `rand`, so the link resolved it to the **carrier's own**
+statically-linked UCRT `rand` (`_rand ... libucrt:rand.obj` in
+`carrier/obj/carrier.map`; `U _rand` in `carrier/obj_gcc/map.o`) — a
+different generator, with a different state, that `srand()` never reaches —
+instead of the **guest's** msvcrt `rand` import, whose IAT slot the carrier
+owns and, in `--det`, replaces with `det.cpp`'s pinned LCG. MEASURED at the
+same tick-220 snapshots:
+
+| run | pinned `rng_state` | `rng_calls` |
+|---|---|---:|
+| ORIGINAL | 0xea58d532 | 14 |
+| SRC (before the fix) | 16944 — *still exactly the seed* | 4 |
+
+i.e. the `src` form advanced the game's own RNG **zero** times across all 30
+initial floors, while the original drew 10 (5 real floors x 2 draws).
+Re-running the pinned LCG from `srand(16944)` in Python reproduces the
+ORIGINAL floor exactly (`r1=22602` -> width 9, `start_tile` 20,
+`end_tile` 29), which is the positive proof that `map.c`'s recovered rules
+were right all along and only its `rand()` *source* was wrong.
+
+**Fix.** `carrier/gen/gen_bindings.py` gained `GUEST_CRT_IMPORTS`, which
+emits into `pf_bindings_src.h`
+
+```c
+#include <stdlib.h>   /* first, so the macro rewrites CALLS, not declarations */
+typedef int (__cdecl *PFN_crt_rand)(void);
+#define rand (*(PFN_crt_rand *)0x00514944)
+```
+
+— a call through the guest's own IAT slot, which is exactly what the
+original machine code's `call _rand -> jmp *[0x514944]` thunk does. The
+slot VA comes from `imports.json`; nothing is hand-typed. `map.c` is
+unchanged except for a header note recording that its `rand()` is part of
+its binding surface.
+
+**After the fix** (`carrier/scripts/bind_all.py --fn add_floor`,
+`replays/human_test.txt`): `EQUAL (533 invocations)` per invocation, and
+`EQUAL (2293 ticks)` for the whole-simulation per-tick digest against
+`replays/human_test.digest`.

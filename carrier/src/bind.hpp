@@ -63,11 +63,29 @@ void bind_report_json(FILE* f);
 // --fn-digest-out would keep counting up across the rewind and
 // compare_fn_digests.py could not line the two passes up. Fixed-size POD,
 // written verbatim into the snapshot's carrier.bin.
+//
+// These are PER-BOUND-FUNCTION counters (one slot per binding-table row) -
+// NOT nested/re-entrant stub state; the stub keeps no saved state of its
+// own (its `id` rides on the guest stack, bind.cpp's bind_stub_common).
+// So the arrays must be exactly as wide as the binding table, and their
+// width is pinned to it HERE, in the one header both bind.cpp and
+// snapshot.cpp include, instead of being restated as a literal:
+// divergence 008's own pass found them still sized [8] - a stale relic of
+// the milestone-8 era, with a comment that claimed "== bind.cpp's kMaxFns"
+// long after kMaxFns had grown 8 -> 35 -> 42, so bind_state_save/load's
+// `i < kMaxFns` loops were writing 34 slots past the end of each array
+// (and past the end of the enclosing CarrierState) on every
+// --snapshot-at-tick / --restore-at-tick. bind.cpp derives its kMaxFns
+// from this constant and static_asserts the GENERATED table's kNumFns
+// against it, so the two can no longer drift apart silently.
 // ---------------------------------------------------------------------
+const unsigned kBindMaxFns = 42;  // >= gen/bind_table.inc's kNumFns; bind.cpp
+                                   // static_asserts that, and asserts it also
+                                   // matches its BIND_STUB(N) count.
 struct BindSavedState {
-    long long invocations[8];   // == bind.cpp's kMaxFns
-    long long crossings[8];
-    long long records[8];
+    long long invocations[kBindMaxFns];
+    long long crossings[kBindMaxFns];
+    long long records[kBindMaxFns];
     long long faults_applied;
     long long domain_read_failures;
 };

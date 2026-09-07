@@ -86,7 +86,8 @@ extern "C" void pf_trap(unsigned int va, const char* why) {
 // ---------------------------------------------------------------------
 namespace {
 
-const unsigned kMaxFns = 42;  // == number of BIND_STUB(N) definitions below,
+const unsigned kMaxFns = kBindMaxFns;
+                               // == number of BIND_STUB(N) definitions below,
                                // and >= bind_table.inc's kNumFns (currently
                                // also 42 - every function scan_src_defs.py
                                // currently finds in src/icytower/*.c that
@@ -94,7 +95,11 @@ const unsigned kMaxFns = 42;  // == number of BIND_STUB(N) definitions below,
                                // table generated" pass). Raise both together
                                // (mechanical, same as Milestone 12 at scale's
                                // own 8->35 bump) the day src/icytower gains
-                               // a 43rd function.
+                               // a 43rd function. The value itself lives in
+                               // bind.hpp (kBindMaxFns) because snapshot.cpp's
+                               // BindSavedState must be exactly this wide -
+                               // divergence 008 found it stuck at [8], which
+                               // made bind_state_save/load overrun it.
 const unsigned kMaxArgs = 10; // widest real cdecl arity among the bound
                                // functions: line_intersect
                                // (x1,y1,x2,y2,x3,y3,x4,y4,px_out,py_out). The
@@ -178,6 +183,16 @@ struct FnDesc {
 // themselves. See that file's own header for exactly where each field comes
 // from; see carrier/gen/fn_domains.json for the hand-curated domain data.
 #include "../gen/bind_table.inc"
+
+// The generated table is the authority on how many rows exist; kMaxFns
+// (== bind.hpp's kBindMaxFns, which also sizes BindSavedState's per-function
+// counter arrays) is the hand-written capacity that must cover it. Before
+// divergence 008 nothing checked this, and BindSavedState was 34 slots too
+// narrow - a silent out-of-bounds write on every snapshot/restore. Now the
+// day src/icytower gains a 43rd bindable function, the build stops here.
+static_assert(kNumFns <= (int)kMaxFns,
+              "gen/bind_table.inc has more rows than bind.hpp's kBindMaxFns: "
+              "raise kBindMaxFns and add matching BIND_STUB(N) definitions");
 
 // Cheap committed-memory probe (one-entry cache: the domains hit the same
 // few regions every invocation). Used so a bad/uninitialized guest pointer
@@ -544,6 +559,10 @@ void* const kStubs[kMaxFns] = {
     (void*)bind_stub_35, (void*)bind_stub_36, (void*)bind_stub_37, (void*)bind_stub_38, (void*)bind_stub_39,
     (void*)bind_stub_40, (void*)bind_stub_41,
 };
+// A short kStubs initializer would zero-fill silently (a null stub pointer =
+// a crash the first time that row is bound), so pin the count too.
+static_assert(sizeof(kStubs) / sizeof(kStubs[0]) == kMaxFns,
+              "kStubs has fewer entries than kMaxFns: add BIND_STUB(N) definitions");
 
 // ---------------------------------------------------------------------
 // ORIGINAL-form sensing: hardware breakpoints, no patched bytes.

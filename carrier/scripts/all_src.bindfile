@@ -1,0 +1,58 @@
+# all_src.bindfile - every row of the GENERATED binding table
+# (carrier/gen/bind_table.inc, from carrier/gen/gen_bind_table.py) bound to
+# its src/icytower form at once, via --bind-file.
+#
+# Supersedes all35_src.bindfile, which is kept unchanged so the milestone-12
+# "all 35 bound at once" result in carrier/NOTES.md stays reproducible
+# exactly as it was measured. The five rows below the rule are the ones the
+# generated table added after that milestone (carrier/NOTES.md "binding
+# table generated"): add_floor was DIFFERing in vivo until divergence 008
+# (notes/living_record.md) fixed its rand() binding, which is why this file
+# only becomes usable now.
+#
+# draw_buffer and start_reward are absent on purpose: they have no src form
+# linked into carrier.exe at all (carrier/gen/build_blockers.json, asset-seam
+# unresolved externals), so naming them here would abort bind_init.
+#
+# Order follows bind_table.inc's own row order.
+add_combo=src
+add_jump_sequence=src
+get_gamepad=src
+is_up=src
+is_down=src
+is_left=src
+is_right=src
+is_fire=src
+is_pause=src
+is_enter=src
+is_any=src
+set_control=src
+init_control=src
+check_control_key=src
+is_solid=src
+jump_player=src
+line_intersect=src
+get_demo=src
+get_controls=src
+switchedFromProgram=src
+switchedToProgram=src
+clickedCloseButton=src
+getFloorData=src
+reset_map=src
+get_level=src
+new_rand=src
+ok_to_play=src
+reset_particles=src
+update_particle=src
+create_particle=src
+scroll_scroller=src
+restart_scroller=src
+cycle_counter=src
+fps_counter=src
+update_frame=src
+# --- added by the generated binding table (post-milestone-12) ---
+handle_player_collision_original=src
+add_floor=src
+play_jump_sound=src
+reset_player=src
+update_player=src

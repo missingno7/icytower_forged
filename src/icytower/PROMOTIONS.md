@@ -344,11 +344,49 @@ scope.
 
 | function | VA | size | CU | offline result | notes | carrier bind |
 |---|---|---:|---|---|---|---|
-| `add_floor` | 0x4167dc | 608 | map.c | **EQUAL** (4 seeds x 20000 = 80000 vectors, MSVC `src_check.exe`); **EQUAL** (4 seeds x 20000 = 80000 vectors, GCC `-m32 -mfpmath=387 -mno-sse2 -O2`, `gcc_check_x87_nosse_O2.exe`) | Domain: the whole 772-byte `Tmap` (32 x `Tfloor`, no return value). GCC x87 is the toolchain of record — the `floor_shrink!=0 && new k<=2999` branch keeps a `fidivr`/`fmuls` pair on the x87 register stack, the same shape as `line_intersect`/`new_rand`'s x87-sensitivity; MSVC (plain `float`/SSE) happened to also come back EQUAL on all 4 seeds tested, unlike those two functions, but the vector generator does not specifically target this ratio's float-truncation boundary the way `line_intersect`'s `_boundary()` helper does, so an MSVC divergence here is "not found in 80000 vectors", not "ruled out" — see `notes/layout_rules_1.5.1.md` SS3. Two bugs found and fixed this pass, both below. | pending |
+| `add_floor` | 0x4167dc | 608 | map.c | **EQUAL** (4 seeds x 20000 = 80000 vectors, MSVC `src_check.exe`); **EQUAL** (4 seeds x 20000 = 80000 vectors, GCC `-m32 -mfpmath=387 -mno-sse2 -O2`, `gcc_check_x87_nosse_O2.exe`) | Domain: the whole 772-byte `Tmap` (32 x `Tfloor`, no return value). GCC x87 is the toolchain of record — the `floor_shrink!=0 && new k<=2999` branch keeps a `fidivr`/`fmuls` pair on the x87 register stack, the same shape as `line_intersect`/`new_rand`'s x87-sensitivity; MSVC (plain `float`/SSE) happened to also come back EQUAL on all 4 seeds tested, unlike those two functions, but the vector generator does not specifically target this ratio's float-truncation boundary the way `line_intersect`'s `_boundary()` helper does, so an MSVC divergence here is "not found in 80000 vectors", not "ruled out" — see `notes/layout_rules_1.5.1.md` SS3. Two bugs found and fixed this pass, both below. Re-verified after divergence 008 (see the addendum below this table): still **EQUAL** on 4 seeds x 20000 for both toolchains, now with a strengthened directed vector class. | **EQUAL in vivo** (533 invocations, `replays/human_test.txt`; per-tick digest EQUAL 2293 ticks) |
 
 Negative control: `--fault add_floor:5:0`, 200 vectors, comparator names
 `Tmap+0x0 (VA 0x00792000)` exactly — full detail in
-`artifacts/src_equivalence.json`.
+`artifacts/src_equivalence.json`. Re-run after divergence 008 (GCC, 100
+vectors): still `DIFFER at vector 5 ... Tmap+0x0 (VA 0x00792000)`, so the
+strengthened generator has not blunted the oracle.
+
+### Addendum — divergence 008 (2026-09-07): the rand() binding
+
+`add_floor` passed 160 000 offline vectors and then **DIFFERed in vivo** at
+`k=5 T=220 field=post`. The recovered rules were not at fault: the
+divergence was that `map.c`'s `rand()` linked to the **carrier's own** CRT
+instead of the **guest's** msvcrt import, so it drew the tower layout from a
+never-seeded generator with a state of its own. `src/icytower/INVIVO.md`
+"Divergence 008" carries the byte-level evidence (`map.room[7].start_tile`/
+`.end_tile`, and the pinned `rng_state`/`rng_calls` measured on both sides);
+`notes/living_record.md` entry 008 carries the narrative. Fixed in
+`carrier/gen/gen_bindings.py` (`GUEST_CRT_IMPORTS` binds `rand`/`srand` to
+the guest's IAT slots), not in `map.c`, which is unchanged apart from a new
+header note.
+
+**Two things this pass changed about how `add_floor` is verified**, both
+worth carrying forward to the next promoted function that calls a library
+function:
+
+1. **The offline oracle cannot see a binding.** `lift_check.py`
+   force-includes `carrier/lift/harness/pf_harness_rand.h`, which redirects
+   `map.c`'s `rand()` to the harness's own per-vector-seeded LCG on BOTH
+   sides. That is the right thing for an offline check — but it means the
+   harness tests the *algorithm* and structurally cannot test *which copy of
+   the library the real build reaches*. In vivo stays the authority for any
+   function whose behaviour depends on library STATE.
+2. **The directed vector class was one-sided and is not any more.**
+   `gen_add_floor` paired its hand-picked level pool with
+   `floor_shrink = 0 if k % 2 == 0`, so an even-indexed pooled level was
+   never tested with `floor_shrink != 0` (the float-ratio branch) and an
+   odd-indexed one never with `floor_shrink == 0` — half of every boundary
+   went untested in the branch it was chosen for. It now enumerates the full
+   `(pooled level) x (floor_shrink in {0,1}) x (floor_size in 0..4)`
+   cross-product: 750 directed vectors, which include the exact in-vivo
+   precondition (`level=5, floor_shrink=1, floor_size=1` — MEASURED from
+   `Treplay+0x8c..0x90` in a tick-220 snapshot of `human_test.txt`).
 
 ### Bug 1: the harness let a raw guest VA reach a real pointer dereference
 
