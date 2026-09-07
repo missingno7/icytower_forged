@@ -3,7 +3,8 @@
 # experiment (see harness/GCC_X87.md) with the 32-bit MinGW GCC now
 # installed at C:\msys64\mingw32\bin\gcc.exe.
 #
-# Compiles gcc_check.c (this dir) together with the SAME, UNCHANGED
+# Compiles gcc_check.c (port_forge/tools/win32_oracle/, notes/
+# extraction_plan.md S3) together with the SAME, UNCHANGED
 # src/icytower/line_intersect.c and .../jump_player.c the MSVC src_check.exe
 # links (build_src.cmd) into one wholly-GCC executable -- no MSVC object
 # file is ever linked against a GCC one (see gcc_check.c's header comment
@@ -18,7 +19,9 @@
 #   build_src_gcc.sh gcc_check_x87_O2_fs.exe -mfpmath=387 -O2 -ffloat-store
 #
 # src/ itself needs no change and no seam (win32_pilot.md SS7a); the only
-# additive plumbing is this script, gcc_check.c and pf_bindings_gcc_min.h.
+# additive plumbing is this script, port_forge/tools/win32_oracle/'s generic
+# gcc_check.c/pf_harness_*.h, and this project's own
+# icytower_harness_project_gcc.c/pf_harness_calltrace.h/pf_bindings_gcc_min.h.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -31,12 +34,15 @@ OUT="$1"; shift
 GCC=/mingw32/bin/gcc.exe
 if [ ! -x "$GCC" ]; then GCC=gcc; fi
 
+PF_ORACLE=../../../port_forge/tools/win32_oracle
+
 mkdir -p obj_gcc
 "$GCC" -m32 "$@" -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
-    -I. -I../../gen -I../../../src/icytower \
+    -I. -I../../gen -I../../../src/icytower -I"$PF_ORACLE" \
     -include pf_harness_rand.h -include pf_harness_calltrace.h \
     -include pf_harness_msvc_types.h \
-    gcc_check.c harness_rand.c call_trace_stubs.c \
+    "$PF_ORACLE/gcc_check.c" "$PF_ORACLE/harness_rand.c" \
+    icytower_harness_project_gcc.c call_trace_stubs.c \
     ../../../src/icytower/line_intersect.c \
     ../../../src/icytower/jump_player.c \
     ../../../src/icytower/new_rand.c \

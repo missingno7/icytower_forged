@@ -30,6 +30,10 @@ carrier/lift/**/*.obj
 carrier/lift/**/*.exe
 tools_recon/_probe.*
 artifacts/repro_backup_*/
+# divergence 009: raw snapshot components (90 MB-class; the pf_inspect diff
+# they produced is quoted in carrier/NOTES.md, the snapshots are regenerable
+# with --snapshot-at-tick 237)
+artifacts/div009/snap_*/
 artifacts/*.bin
 artifacts/dump_digest*.txt
 artifacts/.repro_backup_path.txt

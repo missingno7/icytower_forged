@@ -4,7 +4,7 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-07 17:42:45 UTC
+ * Generated: 2026-09-07 18:13:39 UTC
  * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, draw_scroller, draw_star_field, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
