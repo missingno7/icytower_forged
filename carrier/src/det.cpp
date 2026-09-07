@@ -17,7 +17,10 @@
 #include "det.hpp"
 #include "snapshot.hpp" // milestones 8-9: safepoint snapshot / in-process rewind
 #include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
+#include "../../port_forge/src/platform/win32/arena.hpp"
+#include "../../port_forge/src/platform/win32/rng.hpp"
 #include "../../port_forge/src/core/sha256.hpp"
+#include "../win32_policy.hpp"
 
 // KNOWN (artifacts/functions.json + disasm.txt): Allegro internals this
 // module calls directly by address (they're outside the game's own 25 CUs,
@@ -284,347 +287,78 @@ void det_bind_real(const char* name, void* real_proc, int id) {
 //     state = state * 214013 + 2531011;  return (state >> 16) & 0x7fff;
 // with the pre-srand default state 1.
 // ---------------------------------------------------------------------
-static unsigned g_rng_state = 1;      // msvcrt's documented default seed
-static long g_rng_calls = 0;          // diagnostics only (report/manifest)
-static long g_rng_seeds = 0;
-
-static int rng_next() {
-    g_rng_state = g_rng_state * 214013u + 2531011u;
-    return (int)((g_rng_state >> 16) & 0x7fffu);
-}
-
+// The generator itself, its state, and the selftest are
+// pf::win32::rng_* (port_forge/src/platform/win32/rng.hpp). Only the
+// wrappers stay here: whether this run is deterministic at all, the import
+// counting, and the forward to the real msvcrt entry points are carrier
+// composition, not the generator.
 extern "C" int __cdecl det_wrap_rand() {
     pf_count_import(g_id_rand);
-    if (g_det_mode) { ++g_rng_calls; return rng_next(); }
+    if (g_det_mode) return pf::win32::rng_next();
     if (g_real_rand) return ((int(__cdecl*)())g_real_rand)();
     return 0;
 }
 
 extern "C" void __cdecl det_wrap_srand(unsigned seed) {
     pf_count_import(g_id_srand);
-    if (g_det_mode) { g_rng_state = seed; ++g_rng_seeds; return; }
+    if (g_det_mode) { pf::win32::rng_seed(seed); return; }
     if (g_real_srand) ((void(__cdecl*)(unsigned))g_real_srand)(seed);
 }
 
 // Snapshot accessors (snapshot.cpp).
-unsigned det_rng_state() { return g_rng_state; }
-void det_set_rng_state(unsigned s) { g_rng_state = s; }
-long det_rng_calls() { return g_rng_calls; }
-void det_set_rng_calls(long n) { g_rng_calls = n; }
+unsigned det_rng_state() { return pf::win32::rng_state(); }
+void det_set_rng_state(unsigned s) { pf::win32::rng_set_state(s); }
+long det_rng_calls() { return pf::win32::rng_calls(); }
+void det_set_rng_calls(long n) { pf::win32::rng_set_calls(n); }
 
-// --rng-selftest: the unit check win32_pilot.md's milestone-8 brief asks for.
-// Runs AFTER imports_init (so g_real_rand/g_real_srand point at the REAL
-// msvcrt.dll entry points the guest would otherwise have used) and BEFORE
-// the guest starts; the process exits with 0 on match, 4 on mismatch.
-int det_rng_selftest() {
-    if (!g_real_rand || !g_real_srand) {
-        fprintf(stderr, "det: --rng-selftest: msvcrt rand/srand were not resolved\n");
-        return 4;
-    }
-    typedef int(__cdecl * RandFn)();
-    typedef void(__cdecl * SrandFn)(unsigned);
-    static const unsigned kSeeds[] = {1u, 12345u, 0u, 2531011u, 0xdeadbeefu};
-    int bad = 0, checked = 0;
-    for (unsigned seed : kSeeds) {
-        ((SrandFn)g_real_srand)(seed);
-        unsigned model = seed;
-        for (int i = 0; i < 1000; ++i) {
-            int real_v = ((RandFn)g_real_rand)();
-            model = model * 214013u + 2531011u;
-            int model_v = (int)((model >> 16) & 0x7fffu);
-            ++checked;
-            if (real_v != model_v) {
-                if (++bad <= 5)
-                    fprintf(stderr, "det: --rng-selftest MISMATCH seed=%u i=%d real=%d model=%d\n",
-                            seed, i, real_v, model_v);
-            }
-        }
-    }
-    fprintf(stderr, "det: --rng-selftest: %d values across %d seeds, %d mismatch(es) - %s\n",
-            checked, (int)(sizeof(kSeeds) / sizeof(kSeeds[0])), bad, bad ? "FAIL" : "OK");
-    printf("rng-selftest: %s (%d values, %d mismatches)\n", bad ? "FAIL" : "OK", checked, bad);
-    fflush(stdout);
-    return bad ? 4 : 0;
-}
+// --rng-selftest: the unit check win32_pilot.md's milestone-8 brief asks
+// for. Runs AFTER imports_init (so g_real_rand/g_real_srand point at the
+// REAL msvcrt.dll entry points the guest would otherwise have used) and
+// BEFORE the guest starts; the process exits with 0 on match, 4 on
+// mismatch.
+int det_rng_selftest() { return pf::win32::rng_selftest(g_real_rand, g_real_srand); }
 
 // ---------------------------------------------------------------------
-// A (extended). Deterministic heap arena, det mode only. MEASURED
-// (carrier/NOTES.md "Milestones 5-7"): two --det runs of the identical
-// script produced byte-different .data/.bss digests from tick 1 even though
-// every other observable (log.txt gameplay lines, RNG-driven tower layout)
-// matched, traced to log.txt's own "Graphics mode set. (screen = %d)" line
-// printing a different raw pointer value each run - Windows randomizes the
-// msvcrt heap's base address per PROCESS (independent of image ASLR), and
-// that BITMAP* is a msvcrt-heap pointer stored directly in a .bss global.
-// Fix, already anticipated by the architecture doc (win32_pilot.md sec 6,
-// "redirect [malloc] to a fixed-address arena so heap contents are ordinary
-// guest pages"): in det mode, malloc/calloc/realloc/free are redirected to
-// a fixed-address bump allocator that never reclaims memory. A leak-only
-// allocator is fine here - total allocation volume for a bounded proof run
-// is a few MB, and a pure bump pointer is trivially reproducible: once
-// every other nondeterminism source (time/clock/QPC/keyboard/timer thread)
-// is pinned, the SEQUENCE of malloc calls is itself deterministic, so the
-// same sequence of bump offsets - hence the same fixed addresses - comes
-// out every run.
-//
+// A (extended). The deterministic heap arena, det mode only. The whole
+// rationale - why a fixed-address heap is needed at all (Windows
+// randomizes the CRT heap base per process and the guest bakes heap
+// pointers into .bss), why a bump-only allocator was NOT enough
+// (divergence 004: the main menu creates and destroys an ~800 KB bitmap
+// every frame and exhausted 256 MiB in ~450 ticks), and the two properties
+// the allocator has to keep - is in
+// port_forge/src/platform/win32/arena.hpp, with the code it explains.
 // ---------------------------------------------------------------------
-// Divergence 004 (notes/living_record.md): the bump-only form above is NOT
-// viable for anything that sits in the main MENU, which creates and destroys
-// a full-screen ~800 KB bitmap EVERY FRAME (~40 MB/s). A human recording
-// (replays/second_human) exhausted the whole 256 MiB in ~450 ticks and
-// crashed in main_menu_callback on the first failed allocation. Replaced by
-// a real allocator, with the two properties the rest of this carrier needs:
-//
-//   1. DETERMINISTIC given a deterministic call sequence. Explicit
-//      doubly-linked free list, FIRST FIT from the head, LIFO insertion,
-//      immediate boundary-tag coalescing of both neighbours, and a bump
-//      "top" for memory never handed out before. Every one of those steps is
-//      a pure function of the call sequence: no addresses, no timestamps, no
-//      randomization, no size-class hashing, no per-run policy. Two runs that
-//      make the same malloc/free calls in the same order get byte-identical
-//      block addresses (this is what G1/G2/G3 verify).
-//   2. ALL ALLOCATOR STATE LIVES INSIDE THE ARENA REGION. The control block
-//      (top / free-list head / stats) is at arena offset 0, block headers and
-//      footers are in the blocks themselves, and the free-list links live in
-//      the payload of the free blocks. So the EXISTING snapshot component
-//      ("arena", 0x20000000, `arena_offset` bytes) captures the allocator
-//      whole, unchanged - no new snapshot component, no new carrier global.
-//      `DetSavedState::arena_offset` keeps its meaning ("bytes of the arena
-//      that are live"), it is now just read out of the control block.
-//
-// Layout, all block sizes and block offsets are multiples of 16:
-//
-//   [0 .. 64)              ArenaCtl        (top, free_head, stats)
-//   [64 .. top)            blocks, each:   ArenaHdr(16) payload ArenaFtr(8)
-//   [top .. ARENA_SIZE)    never touched   (bump region)
-//
-// The footer is the Knuth boundary tag that makes backward coalescing O(1);
-// the header is 16 bytes rather than 8 so that every payload is 16-aligned
-// (msvcrt's own x86 malloc guarantees 8; 16 is a strict superset and keeps
-// the arithmetic trivial). Freeing the block that ends exactly at `top` gives
-// its bytes back to the bump region instead of the free list, which is what
-// keeps `top` - and therefore the snapshot's arena component - bounded by the
-// PEAK LIVE footprint rather than by total allocation volume.
-// ---------------------------------------------------------------------
-#define ARENA_BASE  ((uintptr_t)0x20000000u)
-#define ARENA_SIZE  (256u * 1024u * 1024u)
-#define ARENA_ALIGN 16u
-#define ARENA_HDR   16u
-#define ARENA_FTR   8u
-#define ARENA_MIN_BLOCK 32u          // hdr(16) + 8 bytes of free-list links + ftr(8)
-#define ARENA_CTL_SIZE  64u
-#define ARENA_MAGIC      0x50464152u // 'RAFP' - a block handed out to the guest
-#define ARENA_MAGIC_FREE 0x46464152u // 'RAFF' - a block on the free list
-#define ARENA_CTL_MAGIC  0x50464143u // 'CAFP'
-
-struct ArenaHdr { uint32_t size; uint32_t magic; uint32_t user; uint32_t pad; };
-struct ArenaFtr { uint32_t size; uint32_t magic; };
-struct ArenaLink { uint32_t next; uint32_t prev; };   // arena offsets; 0 == null
-struct ArenaCtl {
-    uint32_t magic;
-    uint32_t top;          // first byte of the never-yet-used bump region
-    uint32_t free_head;    // head of the explicit free list, 0 = empty
-    uint32_t hwm;          // high-water mark: the largest `top` ever reached
-    uint32_t live_blocks;
-    uint32_t live_bytes;   // payload bytes currently handed out
-    uint32_t peak_live_bytes;
-    uint32_t n_malloc, n_calloc, n_realloc, n_free, n_free_foreign, n_free_bad;
-    uint32_t pad[3];
-};
-
-static uint8_t* g_arena_base = nullptr;
-static CRITICAL_SECTION g_arena_cs;
-
-static inline ArenaCtl*  a_ctl()             { return (ArenaCtl*)g_arena_base; }
-static inline ArenaHdr*  a_hdr(uint32_t off) { return (ArenaHdr*)(g_arena_base + off); }
-static inline ArenaLink* a_link(uint32_t off){ return (ArenaLink*)(g_arena_base + off + ARENA_HDR); }
-static inline ArenaFtr*  a_ftr(uint32_t off, uint32_t size) {
-    return (ArenaFtr*)(g_arena_base + off + size - ARENA_FTR);
-}
-static inline void a_set_block(uint32_t off, uint32_t size, uint32_t magic, uint32_t user) {
-    ArenaHdr* h = a_hdr(off);
-    h->size = size; h->magic = magic; h->user = user; h->pad = 0;
-    ArenaFtr* f = a_ftr(off, size);
-    f->size = size; f->magic = magic;
-}
-
-static void arena_init() {
-    g_arena_base = (uint8_t*)VirtualAlloc((void*)ARENA_BASE, ARENA_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    if (!g_arena_base) {
-        fprintf(stderr, "det: arena VirtualAlloc(0x%08x) FAILED gle=%lu - falling back to the real heap "
-                         "(digest equality will NOT hold across runs; see carrier/NOTES.md)\n",
-                (unsigned)ARENA_BASE, GetLastError());
-        return;
-    }
-    InitializeCriticalSection(&g_arena_cs);
-    ArenaCtl* c = a_ctl();
-    memset(c, 0, sizeof(*c));
-    c->magic = ARENA_CTL_MAGIC;
-    c->top = ARENA_CTL_SIZE;
-    c->free_head = 0;
-    c->hwm = ARENA_CTL_SIZE;
-    fprintf(stderr, "det: deterministic heap arena at %p, size=%uMB (free-list allocator, "
-                     "first-fit + coalescing, state in-arena)\n",
-            g_arena_base, ARENA_SIZE / (1024u * 1024u));
-}
-
-// --- explicit free list (LIFO insert, first-fit search) ------------------
-static void fl_insert(uint32_t off) {
-    ArenaCtl* c = a_ctl();
-    ArenaLink* n = a_link(off);
-    n->prev = 0;
-    n->next = c->free_head;
-    if (n->next) a_link(n->next)->prev = off;
-    c->free_head = off;
-}
-static void fl_remove(uint32_t off) {
-    ArenaCtl* c = a_ctl();
-    ArenaLink* n = a_link(off);
-    if (n->prev) a_link(n->prev)->next = n->next;
-    else         c->free_head = n->next;
-    if (n->next) a_link(n->next)->prev = n->prev;
-}
-
-// Caller holds g_arena_cs.
-static uint32_t arena_carve(size_t n) {
-    ArenaCtl* c = a_ctl();
-    size_t need = ARENA_HDR + n + ARENA_FTR;
-    need = (need + ARENA_ALIGN - 1) & ~(size_t)(ARENA_ALIGN - 1);
-    if (need < ARENA_MIN_BLOCK) need = ARENA_MIN_BLOCK;
-    if (need > ARENA_SIZE) return 0;
-
-    // 1. first fit over the free list
-    for (uint32_t off = c->free_head; off; off = a_link(off)->next) {
-        uint32_t bs = a_hdr(off)->size;
-        if (bs < need) continue;
-        fl_remove(off);
-        if (bs - need >= ARENA_MIN_BLOCK) {          // split; remainder stays free
-            a_set_block(off, (uint32_t)need, ARENA_MAGIC, (uint32_t)n);
-            uint32_t rest = off + (uint32_t)need;
-            a_set_block(rest, bs - (uint32_t)need, ARENA_MAGIC_FREE, 0);
-            if (rest + (bs - (uint32_t)need) == c->top) c->top = rest;  // back to the bump region
-            else fl_insert(rest);
-        } else {
-            a_set_block(off, bs, ARENA_MAGIC, (uint32_t)n);
-        }
-        return off;
-    }
-
-    // 2. nothing fits - take fresh bytes from the bump region
-    if (c->top + need > ARENA_SIZE) return 0;
-    uint32_t off = c->top;
-    c->top += (uint32_t)need;
-    if (c->top > c->hwm) c->hwm = c->top;
-    a_set_block(off, (uint32_t)need, ARENA_MAGIC, (uint32_t)n);
-    return off;
-}
-
-static void* arena_alloc(size_t n) {
-    if (!g_arena_base) return nullptr;
-    EnterCriticalSection(&g_arena_cs);
-    uint32_t off = arena_carve(n);
-    if (!off) {
-        ArenaCtl* c = a_ctl();
-        unsigned top = c->top, live = c->live_bytes;
-        LeaveCriticalSection(&g_arena_cs);
-        fprintf(stderr, "det: arena exhausted (requested %zu, top %u/%u, live %u)\n",
-                n, top, ARENA_SIZE, live);
-        return nullptr;
-    }
-    ArenaCtl* c = a_ctl();
-    c->live_blocks++;
-    c->live_bytes += a_hdr(off)->size;
-    if (c->live_bytes > c->peak_live_bytes) c->peak_live_bytes = c->live_bytes;
-    LeaveCriticalSection(&g_arena_cs);
-    return (void*)(g_arena_base + off + ARENA_HDR);
-}
-
-// True only for a pointer this allocator actually handed out and that is
-// still live. Anything else (NULL, an interior pointer, or a block msvcrt
-// allocated internally and handed to the guest) is NOT ours.
-static bool arena_owns(void* p) {
-    if (!g_arena_base || !p) return false;
-    uintptr_t a = (uintptr_t)p;
-    if (a < (uintptr_t)g_arena_base + ARENA_CTL_SIZE + ARENA_HDR) return false;
-    if (a >= (uintptr_t)g_arena_base + ARENA_SIZE) return false;
-    if ((a - (uintptr_t)g_arena_base - ARENA_HDR) % ARENA_ALIGN != 0) return false;
-    uint32_t off = (uint32_t)(a - (uintptr_t)g_arena_base - ARENA_HDR);
-    return a_hdr(off)->magic == ARENA_MAGIC;
-}
-
-static size_t arena_size_of(void* p) {
-    if (!arena_owns(p)) return 0;
-    uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
-    return a_hdr(off)->user;
-}
-// Payload bytes actually available in p's block (>= the requested size).
-static size_t arena_capacity_of(void* p) {
-    uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
-    return a_hdr(off)->size - ARENA_HDR - ARENA_FTR;
-}
-
-static void arena_free(void* p) {
-    uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
-    EnterCriticalSection(&g_arena_cs);
-    ArenaCtl* c = a_ctl();
-    ArenaHdr* h = a_hdr(off);
-    if (h->magic != ARENA_MAGIC) { c->n_free_bad++; LeaveCriticalSection(&g_arena_cs); return; }
-    uint32_t size = h->size;
-    c->live_blocks--;
-    c->live_bytes -= size;
-
-    // coalesce forward
-    uint32_t nxt = off + size;
-    if (nxt < c->top && a_hdr(nxt)->magic == ARENA_MAGIC_FREE) {
-        fl_remove(nxt);
-        size += a_hdr(nxt)->size;
-    }
-    // coalesce backward through the previous block's boundary tag
-    if (off > ARENA_CTL_SIZE) {
-        ArenaFtr* pf = (ArenaFtr*)(g_arena_base + off - ARENA_FTR);
-        if (pf->magic == ARENA_MAGIC_FREE && pf->size <= off - ARENA_CTL_SIZE) {
-            uint32_t prev = off - pf->size;
-            fl_remove(prev);
-            off = prev;
-            size += pf->size;
-        }
-    }
-    a_set_block(off, size, ARENA_MAGIC_FREE, 0);
-    if (off + size == c->top) c->top = off;   // give the tail back to the bump region
-    else fl_insert(off);
-    LeaveCriticalSection(&g_arena_cs);
-}
-
-// Arena statistics, for the shutdown line and the --report JSON. Zero when
-// the arena is not active (non-det runs).
+// The allocator itself is pf::win32::arena_*
+// (port_forge/src/platform/win32/arena.hpp); its placement is
+// icytower::kArena (carrier/win32_policy.hpp). Only the four wrappers stay
+// here, because "is this run deterministic", the import counting and the
+// forward to the real msvcrt heap are carrier composition.
 void det_arena_stats(unsigned* top, unsigned* hwm, unsigned* live_bytes,
                      unsigned* peak_live_bytes, unsigned* live_blocks) {
-    unsigned z = 0;
-    if (top) *top = 0; if (hwm) *hwm = 0; if (live_bytes) *live_bytes = 0;
-    if (peak_live_bytes) *peak_live_bytes = 0; if (live_blocks) *live_blocks = 0;
-    if (!g_arena_base) return;
-    ArenaCtl* c = a_ctl();
-    (void)z;
-    if (top) *top = c->top;
-    if (hwm) *hwm = c->hwm;
-    if (live_bytes) *live_bytes = c->live_bytes;
-    if (peak_live_bytes) *peak_live_bytes = c->peak_live_bytes;
-    if (live_blocks) *live_blocks = c->live_blocks;
+    pf::win32::ArenaStats s = pf::win32::arena_stats();
+    if (top) *top = s.top;
+    if (hwm) *hwm = s.hwm;
+    if (live_bytes) *live_bytes = s.live_bytes;
+    if (peak_live_bytes) *peak_live_bytes = s.peak_live_bytes;
+    if (live_blocks) *live_blocks = s.live_blocks;
 }
-unsigned det_arena_top() { return g_arena_base ? a_ctl()->top : 0; }
+unsigned det_arena_top() { return pf::win32::arena_top(); }
 
 extern "C" void* __cdecl det_wrap_malloc(size_t n) {
     pf_count_import(g_id_malloc);
-    if (g_det_mode && g_arena_base) { a_ctl()->n_malloc++; return arena_alloc(n); }
+    if (g_det_mode && pf::win32::arena_active()) {
+        pf::win32::arena_count_malloc();
+        return pf::win32::arena_alloc(n);
+    }
     return g_real_malloc ? ((void*(__cdecl*)(size_t))g_real_malloc)(n) : nullptr;
 }
 extern "C" void* __cdecl det_wrap_calloc(size_t count, size_t size) {
     pf_count_import(g_id_calloc);
-    if (g_det_mode && g_arena_base) {
-        a_ctl()->n_calloc++;
+    if (g_det_mode && pf::win32::arena_active()) {
+        pf::win32::arena_count_calloc();
         size_t n = count * size;
-        void* p = arena_alloc(n);
-        // MUST zero explicitly now: unlike the bump-only form, a block can be
+        void* p = pf::win32::arena_alloc(n);
+        // MUST zero explicitly: unlike a bump-only allocator, a block can be
         // recycled memory, not a fresh (already-zero) VirtualAlloc page.
         if (p && n) memset(p, 0, n);
         return p;
@@ -633,35 +367,34 @@ extern "C" void* __cdecl det_wrap_calloc(size_t count, size_t size) {
 }
 extern "C" void* __cdecl det_wrap_realloc(void* p, size_t n) {
     pf_count_import(g_id_realloc);
-    if (g_det_mode && g_arena_base) {
-        a_ctl()->n_realloc++;
-        if (!p) return arena_alloc(n);                 // realloc(NULL, n) == malloc(n)
-        if (!arena_owns(p)) return arena_alloc(n);     // foreign pointer: same as before this change
-        size_t cap = arena_capacity_of(p);
-        if (n <= cap) {                                // fits in place - msvcrt may do this too
-            uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
-            a_hdr(off)->user = (uint32_t)n;
+    if (g_det_mode && pf::win32::arena_active()) {
+        pf::win32::arena_count_realloc();
+        if (!p) return pf::win32::arena_alloc(n);              // realloc(NULL, n) == malloc(n)
+        if (!pf::win32::arena_owns(p)) return pf::win32::arena_alloc(n); // foreign pointer
+        size_t cap = pf::win32::arena_capacity_of(p);
+        if (n <= cap) {                                        // fits in place - msvcrt may do this too
+            pf::win32::arena_set_user_size(p, n);
             return p;
         }
-        size_t old = arena_size_of(p);
-        void* np = arena_alloc(n);
-        if (!np) return nullptr;                       // msvcrt: original block stays valid
-        if (old) memcpy(np, p, old < n ? old : n);     // growth copies
-        arena_free(p);
+        size_t old = pf::win32::arena_size_of(p);
+        void* np = pf::win32::arena_alloc(n);
+        if (!np) return nullptr;                               // msvcrt: original block stays valid
+        if (old) memcpy(np, p, old < n ? old : n);             // growth copies
+        pf::win32::arena_free(p);
         return np;
     }
     return g_real_realloc ? ((void*(__cdecl*)(void*, size_t))g_real_realloc)(p, n) : nullptr;
 }
 extern "C" void __cdecl det_wrap_free(void* p) {
     pf_count_import(g_id_free);
-    if (g_det_mode && g_arena_base) {
-        a_ctl()->n_free++;
-        if (!p) return;                     // free(NULL) is a no-op
-        if (!arena_owns(p)) {               // msvcrt-internal block, or already freed:
-            a_ctl()->n_free_foreign++;      // leak it, exactly as the bump allocator did
+    if (g_det_mode && pf::win32::arena_active()) {
+        pf::win32::arena_count_free();
+        if (!p) return;                            // free(NULL) is a no-op
+        if (!pf::win32::arena_owns(p)) {           // msvcrt-internal block, or already freed:
+            pf::win32::arena_count_free_foreign(); // leak it, exactly as the bump allocator did
             return;
         }
-        arena_free(p);
+        pf::win32::arena_free(p);
         return;
     }
     if (g_real_free) ((void(__cdecl*)(void*))g_real_free)(p);
@@ -2511,7 +2244,8 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     g_main_tid = GetCurrentThreadId();
     g_start_tick64 = GetTickCount64();
     g_parked_event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
-    if (g_det_mode) arena_init();
+    pf::win32::rng_init(icytower::kRng);
+    if (g_det_mode) pf::win32::arena_init(icytower::kArena);
 
     bool need_safepoint = opt.stop_at_tick > 0 || opt.force_safepoint;
     if (opt.digest_out && opt.digest_out[0]) {
@@ -2727,8 +2461,8 @@ void det_state_save(DetSavedState* s) {
     memset(s, 0, sizeof(*s));
     s->virtual_ms = g_virtual_ms;
     s->units_reported = g_units_reported;
-    s->rng_state = g_rng_state;
-    s->rng_calls = g_rng_calls;
+    s->rng_state = pf::win32::rng_state();
+    s->rng_calls = pf::win32::rng_calls();
     s->script_cursor = (unsigned)g_script_cursor;
     // "How many bytes of the arena are live" - now read out of the arena's
     // OWN control block (divergence 004 rewrite): the allocator's whole state
@@ -2763,8 +2497,8 @@ void det_state_save(DetSavedState* s) {
 void det_state_load(const DetSavedState* s) {
     g_virtual_ms = s->virtual_ms;
     g_units_reported = s->units_reported;
-    g_rng_state = s->rng_state;
-    g_rng_calls = (long)s->rng_calls;
+    pf::win32::rng_set_state(s->rng_state);
+    pf::win32::rng_set_calls((long)s->rng_calls);
     g_script_cursor = (size_t)s->script_cursor;
     // Nothing to do for the arena: snapshot.cpp has already memcpy'd
     // [0x20000000, +arena_offset) back, and that range CONTAINS the whole
@@ -2849,14 +2583,14 @@ void det_shutdown() {
     for (int i = 0; i < g_env_count; ++i)
         fprintf(stderr, "det:   getenv(\"%s\") x%ld -> %s\n", g_env_names[i], g_env_hits[i],
                 g_env_found[i] ? "a value" : "NULL (unset on this host)");
-    if (g_arena_base) {
-        ArenaCtl* c = a_ctl();
+    if (pf::win32::arena_active()) {
+        pf::win32::ArenaStats a = pf::win32::arena_stats();
         fprintf(stderr,
                 "det: arena high-water %u bytes (%.2f MB), live %u bytes in %u blocks, "
                 "peak live %u bytes; calls malloc=%u calloc=%u realloc=%u free=%u "
                 "(foreign %u, bad %u)\n",
-                c->hwm, c->hwm / (1024.0 * 1024.0), c->live_bytes, c->live_blocks,
-                c->peak_live_bytes, c->n_malloc, c->n_calloc, c->n_realloc, c->n_free,
-                c->n_free_foreign, c->n_free_bad);
+                a.hwm, a.hwm / (1024.0 * 1024.0), a.live_bytes, a.live_blocks,
+                a.peak_live_bytes, a.n_malloc, a.n_calloc, a.n_realloc, a.n_free,
+                a.n_free_foreign, a.n_free_bad);
     }
 }

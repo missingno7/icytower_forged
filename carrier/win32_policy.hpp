@@ -25,7 +25,9 @@
 // parser just to know its own guest's ImageBase.
 #pragma once
 
+#include "../port_forge/src/platform/win32/arena.hpp"
 #include "../port_forge/src/platform/win32/policy.hpp"
+#include "../port_forge/src/platform/win32/rng.hpp"
 
 namespace icytower {
 
@@ -78,6 +80,36 @@ inline constexpr pf::win32::SidecarDll kSidecars[kSidecarCount] = {
     { "DDRAW.dll",      pf::win32::SidecarDll::AssetsDir, nullptr },
     { "libpng3.dll",    pf::win32::SidecarDll::AssetsDir, nullptr },
     { "pthreadGC2.dll", pf::win32::SidecarDll::AssetsDir, nullptr },
+};
+
+// ---------------------------------------------------------------------
+// The deterministic heap arena's placement.
+//
+// 0x20000000 is free in this process and stays free: it is above the guest
+// image [0x400000, 0x78c000), above the fixed guest stack at 0x0e000000,
+// and above carrier.exe itself (build.cmd links it /BASE:0x10000000, ~1.2
+// MB), so [0x20000000, 0x30000000) clears all three with a wide margin. It
+// is the third of the three ranges carrier/win32_policy.json's purity gate
+// names as guest address space.
+//
+// 256 MiB is sized by measurement, not by guess: the human_test workload's
+// arena high-water mark is ~29.7 MB (28.32 MB live at peak) with the menu
+// churn divergence 004 documents, and the bump region has to absorb
+// fragmentation on top of that.
+inline constexpr pf::win32::ArenaPolicy kArena = {
+    /* base_va */ 0x20000000ul,
+    /* size    */ 256ul * 1024ul * 1024ul,
+    /* align   */ 16u,
+};
+
+// The guest links a msvcrt-family CRT (notes/binary_recon.md: mingw gcc
+// 4.4.1 against msvcrt.dll), so the pinned generator is msvcrt's own LCG
+// with its documented pre-srand state of 1. --rng-selftest verifies that
+// against the REAL msvcrt.dll rand() over 5000 values before the guest
+// starts, so this is a checked claim rather than an assumption.
+inline constexpr pf::win32::RngPolicy kRng = {
+    pf::win32::RngPolicy::MsvcrtLcg,
+    /* seed_default */ 1u,
 };
 
 }  // namespace icytower
