@@ -149,5 +149,13 @@ void* wrappers_lookup(const char* name) {
     if (strcmp(name, "WaitForSingleObject") == 0) return (void*)det_wrap_WaitForSingleObject;
     if (strcmp(name, "rand") == 0) return (void*)det_wrap_rand;
     if (strcmp(name, "srand") == 0) return (void*)det_wrap_srand;
+    // "Environment isolation" pass (carrier/NOTES.md) - each forwards to the
+    // real function unless --det / a non-interactive run asks otherwise.
+    if (strcmp(name, "ShowWindow") == 0) return (void*)det_wrap_ShowWindow;
+    if (strcmp(name, "SetForegroundWindow") == 0) return (void*)det_wrap_SetForegroundWindow;
+    if (strcmp(name, "SetWindowPos") == 0) return (void*)det_wrap_SetWindowPos;
+    if (strcmp(name, "CreateWindowExA") == 0) return (void*)det_wrap_CreateWindowExA;
+    if (strcmp(name, "pthread_create") == 0) return (void*)det_wrap_pthread_create;
+    if (strcmp(name, "getenv") == 0) return (void*)det_wrap_getenv;
     return nullptr;
 }

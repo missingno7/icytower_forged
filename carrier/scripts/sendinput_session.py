@@ -204,7 +204,10 @@ QUIT_VIA_MENU = [False]
 
 def record(rec_path, dig_path, trace_path, seconds, seed, run_seconds):
     restore_assets()
-    args = [os.path.join(CARRIER_DIR, "carrier.exe"), "--det", "--pace=real", "--input=real",
+    # --interactive: this session NEEDS the guest window in the foreground for
+    # SendInput to reach its DirectInput keyboard, so it is one of the few runs
+    # allowed to take it (carrier/NOTES.md "Environment isolation" item 1).
+    args = [os.path.join(CARRIER_DIR, "carrier.exe"), "--det", "--pace=real", "--input=real", "--interactive",
             "--record-input", rec_path, "--digest-out", dig_path,
             "--report", dig_path + ".report.json",
             "--run-seconds", str(run_seconds)]

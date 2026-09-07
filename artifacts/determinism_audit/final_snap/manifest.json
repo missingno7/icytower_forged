@@ -1,0 +1,23 @@
+{
+  "format": "portforge-win32-carrier-snapshot-v1",
+  "tick": 400,
+  "capture_pid": 56920,
+  "safepoint_va": "0x004124f4",
+  "image_text_sha256": "143a3aadea1ed966304a5bda4bfc90c85bc88aae9d7a9225028dc43e0721333b",
+  "image_file_sha256": "7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
+  "total_bytes": 28795072,
+  "context": { "file": "context.bin", "size": 716, "sha256": "0394ede18bee6294a2c8a05426ff495578d987c5e09b2b62fc79db032dd64660",
+                "context_flags": "0x0001007f", "eip": "0x004124f4", "esp": "0x0e1fef30", "ebp": "0x0e1ff938", "eflags": "0x00000202",
+                "eax": "0x00000001", "ebx": "0x00000000", "ecx": "0x00000000", "edx": "0x00000000", "esi": "0xffffffff", "edi": "0x00000000",
+                "x87_control_word_context": "0x037f", "x87_control_word_live": "0x037f",
+                "has_floating_point": true, "has_extended_registers": true },
+  "data":  { "file": "data.bin",  "va": "0x004bc000", "size": 95988, "sha256": "866d53faac06153f2723f45a9d8a969584c702958b0b8f92230c1650407a5ad9" },
+  "bss":   { "file": "bss.bin",   "va": "0x004dd000", "size": 223608, "sha256": "205fbfeacbf459158a6c351a8efcf45d6b6067e00b1b2e0670f3d9d237c3d089" },
+  "arena": { "file": "arena.bin", "va": "0x20000000", "size": 28468560, "sha256": "2e5993c6334911e72d29b800a285281952bef55ddea7482b801ede4a09a1a1c6", "bump_pointer": 28468560 },
+  "stack": { "file": "stack.bin", "va": "0x0e1fef30", "size": 4304, "sha256": "53bdacea439750571b8be327ebf65a0cbd530ee7d8cef45d3e59adfc15d5c573", "top": "0x0e200000" },
+  "carrier": { "file": "carrier.bin", "size": 1896, "sha256": "4a03c267ecc10ac96f7f264800c0ccea511ddd700554ad3248fa27db04530b93",
+                "virtual_ms": 8000, "units_reported": 9545448, "rng_state": 993538943, "rng_calls": 14,
+                "input_script_cursor": 11, "arena_bump": 28468560, "real_key_queue_head": 0, "real_key_queue_tail": 0,
+                "fn_invocations": [276, 0, 0] },
+  "host_objects": "NOT captured (HWND, COM device pointers, kernel HANDLEs, GDI objects, DirectSound mixer). The in-process rewind relies on them surviving in this same process - see carrier/NOTES.md 'Milestones 8-9'."
+}

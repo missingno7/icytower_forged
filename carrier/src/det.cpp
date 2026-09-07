@@ -32,6 +32,56 @@
 #define VA_KEY_DINPUT_SCANCODE  0x46d5a8u  // wkeybd.c: key_dinput_handle_scancode(al=scancode,edx=?) - reg-passed args, no stack args
 #define VA_HW_TO_MYCODE         0x4daf80u  // wkeybd.c: unsigned char hw_to_mycode[256] - DIK_* -> Allegro code (item 2)
 
+// --- "Environment isolation" pass (carrier/NOTES.md) ---------------------
+// KNOWN, all four read out of artifacts/disasm.txt + artifacts/functions.json
+// in this pass (the exact listings are quoted in NOTES.md):
+//
+//   _switch_in  (dispsw.c, 0x4657e4, 35 B) and _switch_out (0x465808, 35 B)
+//   are `void f(void)` and their ENTIRE body is "for i in 0..7: if
+//   cb_table[i] then call cb_table[i]()" over switch_in_cb[8] @0x4ea080 /
+//   switch_out_cb[8] @0x4ea060. They are reached from EXACTLY two places
+//   each - the two tail `jmp`s at the end of _win_switch_in (0x47a47c) and
+//   _win_switch_out (0x47a3d4) - and they are the single choke point through
+//   which the game's registered switchedToProgram / switchedFromProgram
+//   callbacks (notes/library_boundary.md: 3 pairs registered via
+//   set_display_switch_callback) are invoked. Those callbacks write hasFocus
+//   (0x4bc020), which IS in the 151-global digest domain
+//   (carrier/gen/game_globals.inc) and IS read by play() at 0x411c6b/
+//   0x411cd7 - so window activation reaches the verdict.
+//
+//   _handle_mouse_input (mouse.c, 0x45f9bc, 26 B) is `void f(void)` whose
+//   whole body is "if (mouse_callback) return; else tail-jmp update_mouse()"
+//   - the ONE path from the DirectInput mouse driver's own
+//   mouse_dinput_handle (0x461a64, called from the window thread's
+//   MsgWaitForMultipleObjects handler table) to the public mouse_x/mouse_y/
+//   mouse_b globals the game reads.
+//
+//   fldads_threadmain (fld_adspot.c, 0x404014) is the start routine of the
+//   binary's ONLY pthread_create call (fldads_start, 0x403ac8).
+//
+// All three patched functions take no arguments and return void, so a plain
+// `ret` at their entry is a complete, convention-correct neutralization (the
+// two tail-jumped ones return straight to _win_switch_*'s own caller).
+#define VA_SWITCH_IN            0x4657e4u
+#define VA_SWITCH_OUT           0x465808u
+// wdispsw.c: the two functions directx_wnd_proc's WM_ACTIVATE arm calls
+// (0x4793bb/0x47941f -> _win_switch_in, 0x479678 -> _win_switch_out); each
+// ends in a tail `jmp` to _switch_in/_switch_out above. --inject-real-test
+// feeds a scripted `T switch in|out` through THESE, i.e. through the real
+// Allegro path, so the capture hook sees it exactly as a real WM_ACTIVATE
+// would produce it - the same fallback pattern this carrier already uses for
+// keys (carrier/NOTES.md "Input policy and recording" part C).
+#define VA_WIN_SWITCH_IN        0x47a47cu
+#define VA_WIN_SWITCH_OUT       0x47a3d4u
+#define VA_SWITCH_IN_CB         0x4ea080u  // void (*switch_in_cb[8])(void)
+#define VA_SWITCH_OUT_CB        0x4ea060u  // void (*switch_out_cb[8])(void)
+#define VA_HANDLE_MOUSE_INPUT   0x45f9bcu
+#define VA_FLDADS_THREADMAIN    0x404014u
+
+// The virtual epoch det_wrap_time returns when no recording supplies a value
+// (unchanged from milestones 5-7 - this is what keeps G1 byte-identical).
+#define DET_VIRTUAL_EPOCH 1700000000L
+
 // KNOWN (task brief + Allegro 4.4 timer.h): timer units/second. Confirmed
 // against tim_win32_high_perf_thread's own disassembly, which multiplies
 // QPC-elapsed-time by the literal constant 0x1234dd == 1193181 before
@@ -73,6 +123,46 @@ const char* input_policy_name(InputPolicy p) {
 }
 const char* det_input_policy_name() { return input_policy_name(g_input_policy); }
 long det_real_key_violations() { return g_real_key_violations; }
+
+// --- "Environment isolation" pass: window / focus / mouse / ad policy -----
+static bool g_interactive = false;
+static WindowMode g_window_mode = WindowMode::MinNoActive;
+const char* window_mode_name(WindowMode m) {
+    switch (m) {
+        case WindowMode::Normal: return "normal";
+        case WindowMode::MinNoActive: return "minnoactive";
+        case WindowMode::Hidden: return "hidden";
+    }
+    return "(unknown)";
+}
+// Counters, all reported in --report's "environment" object (det_environment_json).
+static long g_switch_captured = 0;   // real switch out/in seen at the choke point (input=real)
+static long g_switch_suppressed = 0; // real switch out/in dropped outright (input=script/none)
+static long g_switch_delivered = 0;  // switch events handed to the game at a tick boundary
+static long g_switch_recorded = 0;   // switch events written to --record-input
+static long g_mouse_parked = 0;      // _handle_mouse_input calls short-circuited
+static long g_ad_thread_suppressed = 0;
+static long g_showwindow_substituted = 0, g_setforeground_suppressed = 0,
+            g_setwindowpos_noactivate = 0, g_createwindow_devisible = 0;
+static long g_time_recorded = 0, g_time_replayed = 0, g_time_underflow = 0,
+            g_time_offthread = 0;
+static bool g_switch_patched = false, g_mouse_patched = false;
+
+// DET_ISOLATE_OFF=<comma list of: ad,mouse,switch,window> - the determinism
+// audit's per-channel knob (same opt-in diagnostic style as DET_DUMP_MEM_TICK
+// / DET_INPUT_DELIVER_SUB). It turns OFF one of this pass's isolations so the
+// run can be compared against the fully isolated G1 baseline and the audit
+// can name the FIRST DIFFERING TICK per channel instead of asserting one.
+// Never used by any gate command.
+static bool isolate_off(const char* channel) {
+    static char list[128];
+    static bool loaded = false;
+    if (!loaded) {
+        if (!GetEnvironmentVariableA("DET_ISOLATE_OFF", list, sizeof(list))) list[0] = 0;
+        loaded = true;
+    }
+    return list[0] && strstr(list, channel) != nullptr;
+}
 
 static LONGLONG g_virtual_ms = 0;      // det mode only: accumulated Sleep(ms) on the main thread
 static LONGLONG g_units_reported = 0;  // running total already handed to _handle_timer_tick
@@ -133,6 +223,10 @@ static FARPROC g_real_malloc = nullptr, g_real_calloc = nullptr,
 static FARPROC g_real_Sleep = nullptr;
 static FARPROC g_real_WaitForSingleObject = nullptr; // item 3: parked timer thread
 static FARPROC g_real_rand = nullptr, g_real_srand = nullptr; // milestone 8: RNG pinning
+// "Environment isolation" pass.
+static FARPROC g_real_ShowWindow = nullptr, g_real_SetForegroundWindow = nullptr,
+               g_real_SetWindowPos = nullptr, g_real_CreateWindowExA = nullptr,
+               g_real_pthread_create = nullptr, g_real_getenv = nullptr;
 
 // Import ids (see wrappers.hpp/det_bind_real doc), one per always-installed
 // wrapper this file defines - each det_wrap_* below calls pf_count_import
@@ -141,7 +235,9 @@ static FARPROC g_real_rand = nullptr, g_real_srand = nullptr; // milestone 8: RN
 static int g_id_Sleep = -1, g_id_QPC = -1, g_id_timeGetTime = -1, g_id_time = -1,
            g_id_clock = -1, g_id_beginthread = -1,
            g_id_malloc = -1, g_id_calloc = -1, g_id_realloc = -1, g_id_free = -1,
-           g_id_WaitForSingleObject = -1, g_id_rand = -1, g_id_srand = -1;
+           g_id_WaitForSingleObject = -1, g_id_rand = -1, g_id_srand = -1,
+           g_id_ShowWindow = -1, g_id_SetForegroundWindow = -1, g_id_SetWindowPos = -1,
+           g_id_CreateWindowExA = -1, g_id_pthread_create = -1, g_id_getenv = -1;
 
 void det_bind_real(const char* name, void* real_proc, int id) {
     if (strcmp(name, "QueryPerformanceCounter") == 0) { g_real_QPC = (FARPROC)real_proc; g_id_QPC = id; }
@@ -157,6 +253,12 @@ void det_bind_real(const char* name, void* real_proc, int id) {
     else if (strcmp(name, "WaitForSingleObject") == 0) { g_real_WaitForSingleObject = (FARPROC)real_proc; g_id_WaitForSingleObject = id; }
     else if (strcmp(name, "rand") == 0) { g_real_rand = (FARPROC)real_proc; g_id_rand = id; }
     else if (strcmp(name, "srand") == 0) { g_real_srand = (FARPROC)real_proc; g_id_srand = id; }
+    else if (strcmp(name, "ShowWindow") == 0) { g_real_ShowWindow = (FARPROC)real_proc; g_id_ShowWindow = id; }
+    else if (strcmp(name, "SetForegroundWindow") == 0) { g_real_SetForegroundWindow = (FARPROC)real_proc; g_id_SetForegroundWindow = id; }
+    else if (strcmp(name, "SetWindowPos") == 0) { g_real_SetWindowPos = (FARPROC)real_proc; g_id_SetWindowPos = id; }
+    else if (strcmp(name, "CreateWindowExA") == 0) { g_real_CreateWindowExA = (FARPROC)real_proc; g_id_CreateWindowExA = id; }
+    else if (strcmp(name, "pthread_create") == 0) { g_real_pthread_create = (FARPROC)real_proc; g_id_pthread_create = id; }
+    else if (strcmp(name, "getenv") == 0) { g_real_getenv = (FARPROC)real_proc; g_id_getenv = id; }
 }
 
 // ---------------------------------------------------------------------
@@ -590,9 +692,23 @@ static void sub_tick_advance() {
 // ---------------------------------------------------------------------
 // B. Input script
 // ---------------------------------------------------------------------
-struct ScriptEvent { int tick; bool press; int scancode; };
+// "Environment isolation" pass: a script/recording is no longer keys only.
+// Every channel the carrier owns is recorded and replayed in the SAME file,
+// at the SAME tick-boundary handover point (divergence 005's rule), with one
+// line shape per channel:
+//     T press|release KEY_NAME|<scancode>     keyboard   (unchanged)
+//     T switch in|out                         window activation (item 2)
+//     T time <seconds>                        wall clock (item 4)
+// `time` events are NOT delivered at a tick boundary - they are CONSUMED by
+// det_wrap_time when the guest calls time(), in recorded order - so they live
+// in their own vector (g_time_values) instead of g_script.
+enum class EvKind { Press, Release, SwitchIn, SwitchOut };
+struct ScriptEvent { int tick; EvKind kind; int scancode; };
 static std::vector<ScriptEvent> g_script;
 static size_t g_script_cursor = 0;
+struct TimeEvent { int tick; long value; };
+static std::vector<TimeEvent> g_time_values;
+static size_t g_time_cursor = 0;
 
 static int resolve_key(const char* tok) {
     for (const KeyName& k : kKeyNames)
@@ -712,22 +828,199 @@ static void load_script(const char* path) {
     FILE* f = fopen(path, "r");
     if (!f) { fprintf(stderr, "det: could not open --input-script '%s'\n", path); return; }
     char line[256];
+    long bad = 0;
     while (fgets(line, sizeof(line), f)) {
         char* p = line;
         while (*p == ' ' || *p == '\t') ++p;
         if (*p == '#' || *p == '\n' || *p == 0 || *p == '\r') continue;
-        int tick; char verb[16]; char key[32];
-        if (sscanf(p, "%d %15s %31s", &tick, verb, key) != 3) continue;
+        int tick; char verb[16]; char arg[32];
+        if (sscanf(p, "%d %15s %31s", &tick, verb, arg) != 3) continue;
+        if (_stricmp(verb, "time") == 0) {
+            TimeEvent t; t.tick = tick; t.value = atol(arg);
+            g_time_values.push_back(t);
+            continue;
+        }
         ScriptEvent e;
         e.tick = tick;
-        e.press = (_stricmp(verb, "press") == 0);
-        e.scancode = resolve_key(key);
+        e.scancode = 0;
+        if (_stricmp(verb, "switch") == 0) {
+            if (_stricmp(arg, "in") == 0) e.kind = EvKind::SwitchIn;
+            else if (_stricmp(arg, "out") == 0) e.kind = EvKind::SwitchOut;
+            else { ++bad; continue; }
+        } else if (_stricmp(verb, "press") == 0) {
+            e.kind = EvKind::Press; e.scancode = resolve_key(arg);
+        } else if (_stricmp(verb, "release") == 0) {
+            e.kind = EvKind::Release; e.scancode = resolve_key(arg);
+        } else {
+            ++bad; continue;
+        }
         g_script.push_back(e);
     }
     fclose(f);
-    std::sort(g_script.begin(), g_script.end(),
-              [](const ScriptEvent& a, const ScriptEvent& b) { return a.tick < b.tick; });
-    fprintf(stderr, "det: loaded %zu input events from '%s'\n", g_script.size(), path);
+    // stable_sort, not sort: two events at the SAME tick must keep their file
+    // order (a `switch out` immediately followed by `switch in` at one tick is
+    // a real recording shape, and swapping them would invert the focus state).
+    std::stable_sort(g_script.begin(), g_script.end(),
+                     [](const ScriptEvent& a, const ScriptEvent& b) { return a.tick < b.tick; });
+    if (bad) {
+        fprintf(stderr, "det: FATAL - %ld unrecognized event line(s) in '%s' "
+                        "(expected `T press|release KEY`, `T switch in|out`, `T time <secs>`)\n",
+                bad, path);
+        exit(2); // fail loudly: a silently-skipped event is an unreplayable recording
+    }
+    fprintf(stderr, "det: loaded %zu input events and %zu recorded time value(s) from '%s'\n",
+            g_script.size(), g_time_values.size(), path);
+}
+
+// ---------------------------------------------------------------------
+// "Environment isolation" pass, item 2: window activation as a controlled
+// channel.
+//
+// THE CHANNEL, MEASURED (all addresses cited at the #defines at the top of
+// this file): a foreign window taking the foreground makes Windows send
+// WM_ACTIVATEAPP to the guest's own window thread; directx_wnd_proc
+// (0x4791e0) calls _win_switch_out/_win_switch_in (wdispsw.c), each of which
+// ends in a tail `jmp` to _switch_out/_switch_in (dispsw.c) - a bare loop
+// over an 8-entry callback table. Three of those entries are the game's own
+// switchedFromProgram/switchedToProgram (main.c, recovered verbatim in
+// src/icytower/main_state.c: `hasFocus = 0;` / `hasFocus = 1;`). hasFocus
+// (0x4bc020) and lastFocus (0x4bc024) are both inside the 151-global digest
+// domain, and play() compares them at 0x411c6b/0x411cd7 and restarts the
+// game music (writing checkMusicVoiceID @0x4bc174, also in the domain) when
+// they differ. So the operator's desktop CAN change the verdict.
+//
+// WHY NOT set_display_switch_mode (the other option the task offered): RULED
+// OUT BY EVIDENCE. _win_switch_out's disassembly branches on
+// get_display_switch_mode only to decide whether to ALSO reset an event and
+// drop the thread priority; BOTH arms end in the same `jmp _switch_out`, so
+// no switch mode - SWITCH_NONE, SWITCH_BACKGROUND or otherwise - stops the
+// callbacks. (The game already runs in SWITCH_BACKGROUND: _win_reset_switch_
+// mode at 0x47a508 calls set_display_switch_mode(3).) The callback
+// dispatchers are the only real choke point, so that is where the carrier
+// takes ownership.
+//
+// MECHANISM: a 5-byte `jmp rel32` entry patch (the same technique bind.cpp
+// already uses for LIFTED/NATIVE forms) to a carrier stub, NOT a hardware
+// breakpoint - the DR budget is fully spoken for (DR0 safepoint, DR1
+// key_dinput, DR2/DR3 reserved for bind.cpp's ORIGINAL-form sensing, which
+// gate G2 needs). Both patched functions are `void f(void)` reached by a tail
+// jmp, so the stub's plain `ret` is convention-correct.
+//
+//   --input=script|none : the stub counts and returns. NOTHING reaches the
+//                         game - the operator cannot perturb the run.
+//   --input=real        : the stub counts and QUEUES the event; it is handed
+//                         to the game from the main thread at the next tick
+//                         boundary (the same handover point keys use -
+//                         divergence 005's rule) by running the guest's own
+//                         callback table, and written to --record-input as
+//                         `T switch in|out`.
+//   replay of such a recording (--input=script) : the `T switch in|out` lines
+//                         are delivered at their tick through the same call.
+// ---------------------------------------------------------------------
+
+// Byte-for-byte what _switch_in/_switch_out do (their disassembly is quoted
+// in carrier/NOTES.md): call every non-null entry of the guest's own 8-slot
+// callback table, in index order. Used for DELIVERY in both modes, so the
+// patched originals are never re-entered.
+static void run_switch_callbacks(bool switch_in) {
+    typedef void(__cdecl * CbFn)(void);
+    CbFn* tab = (CbFn*)(uintptr_t)(switch_in ? VA_SWITCH_IN_CB : VA_SWITCH_OUT_CB);
+    for (int i = 0; i < 8; ++i)
+        if (tab[i]) tab[i]();
+}
+
+static const int kSwitchQueueCap = 64;
+static unsigned char g_switch_queue[kSwitchQueueCap];
+static int g_switch_head = 0, g_switch_tail = 0;
+static CRITICAL_SECTION g_switch_cs;
+static bool g_switch_cs_inited = false;
+
+static void switch_queue_init() {
+    if (!g_switch_cs_inited) { InitializeCriticalSection(&g_switch_cs); g_switch_cs_inited = true; }
+}
+static void switch_queue_push(bool switch_in) {
+    switch_queue_init();
+    EnterCriticalSection(&g_switch_cs);
+    int next = (g_switch_tail + 1) % kSwitchQueueCap;
+    if (next != g_switch_head) {
+        g_switch_queue[g_switch_tail] = switch_in ? 1 : 0;
+        g_switch_tail = next;
+    } else {
+        fprintf(stderr, "det: switch-event queue FULL, dropping a switch %s event\n",
+                switch_in ? "in" : "out");
+    }
+    LeaveCriticalSection(&g_switch_cs);
+}
+static bool switch_queue_pop(bool* switch_in) {
+    if (!g_switch_cs_inited) return false;
+    bool got = false;
+    EnterCriticalSection(&g_switch_cs);
+    if (g_switch_head != g_switch_tail) {
+        *switch_in = g_switch_queue[g_switch_head] != 0;
+        g_switch_head = (g_switch_head + 1) % kSwitchQueueCap;
+        got = true;
+    }
+    LeaveCriticalSection(&g_switch_cs);
+    return got;
+}
+
+// The two entry-patch stubs. Called (jumped to) from the guest's WINDOW
+// thread, with the guest stack and the caller's return address at [esp] -
+// a normal cdecl void(void) frame, which is exactly what MSVC emits here.
+static void switch_hook(bool switch_in) {
+    if (g_input_policy == InputPolicy::Real) {
+        ++g_switch_captured;
+        switch_queue_push(switch_in);
+        trace_input("_switch_in/out(capture,window thread)",
+                    switch_in ? "switch-in" : "switch-out", switch_in ? 1 : 0, "phase=capture");
+    } else {
+        ++g_switch_suppressed;
+        if (g_switch_suppressed <= 20)
+            fprintf(stderr, "det: T=%d SUPPRESSED window switch %s (input=%s; the operator's desktop "
+                            "may not reach the guest in an automated run)\n",
+                    det_current_tick(), switch_in ? "in" : "out", input_policy_name(g_input_policy));
+    }
+}
+extern "C" void __cdecl det_stub_switch_in() { switch_hook(true); }
+extern "C" void __cdecl det_stub_switch_out() { switch_hook(false); }
+
+// Item 3: the DirectInput MOUSE, parked exactly the way the keyboard is.
+//
+// CENSUS (the task's "find the readers of mouse_x/mouse_y/mouse_b in game
+// code"): across the WHOLE binary, game-owned code reads them in exactly ONE
+// function - main_menu_callback (main.c) - 4x mouse_b (0x4e8cf8), 1x mouse_x
+// (0x4e8ce8), 1x mouse_y (0x4e8cec), writing lastMouseB (0x4dd268, which IS
+// in the digest domain). Every other reader is Allegro's own (mouse.c,
+// gui.c's default_mouse_*). And that one reader sits INSIDE a branch guarded
+// by `pFLDAd != 0` (0x410140): it is the click hit-test on the fetched AD
+// BANNER. So the mouse reaches game state only through the ad, which item 5
+// suppresses in --det anyway. Decision (documented rather than assumed):
+// PARK the mouse in every carrier-owned run, in both record and script mode -
+// there is nothing worth recording, and parking it removes the second of the
+// two suspects "Divergences 004 and 005" left open.
+extern "C" void __cdecl det_stub_handle_mouse_input() { ++g_mouse_parked; }
+
+// 5-byte `jmp rel32` entry patch, same technique/protections as bind.cpp's
+// (VirtualProtect + FlushInstructionCache even though the image is mapped RWX,
+// so the patch keeps working when that TEMPORARY is retired). Fails loudly.
+static void patch_entry_jmp(DWORD_PTR va, void* target, const char* what) {
+    unsigned char* p = (unsigned char*)va;
+    intptr_t rel = (intptr_t)target - (intptr_t)(va + 5);
+    if (rel > 0x7fffffff || rel < -0x7fffffff) {
+        fprintf(stderr, "det: FATAL - %s stub is out of jmp rel32 range of 0x%08x\n", what, (unsigned)va);
+        exit(3);
+    }
+    DWORD old = 0;
+    if (!VirtualProtect(p, 5, PAGE_EXECUTE_READWRITE, &old)) {
+        fprintf(stderr, "det: FATAL - VirtualProtect(%s @0x%08x) failed gle=%lu\n",
+                what, (unsigned)va, GetLastError());
+        exit(3);
+    }
+    p[0] = 0xE9;
+    *(int32_t*)(p + 1) = (int32_t)rel;
+    VirtualProtect(p, 5, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), p, 5);
+    fprintf(stderr, "det: %s @0x%08x -> carrier stub (5-byte jmp rel32)\n", what, (unsigned)va);
 }
 
 // Called from the Sleep wrapper (main thread, both modes) right after the
@@ -762,6 +1055,46 @@ static void deliver_due_input() {
     typedef void(__cdecl * ReleaseFn)(int);
     while (g_script_cursor < g_script.size() && g_script[g_script_cursor].tick <= T) {
         const ScriptEvent& e = g_script[g_script_cursor];
+        // "Environment isolation" item 2: a recorded window-activation event
+        // is delivered here, at the same tick-boundary handover point keys
+        // use, by running the guest's own switch callback table - never by
+        // re-entering the patched _switch_in/_switch_out.
+        if (e.kind == EvKind::SwitchIn || e.kind == EvKind::SwitchOut) {
+            bool in = (e.kind == EvKind::SwitchIn);
+            typedef void(__cdecl * VoidFn)(void);
+            // g_in_delivery is set across the WHOLE switch handover, not just
+            // around a key call: Allegro's own _win_switch_out releases every
+            // held key (key_dinput_unacquire -> _handle_key_release) on its way
+            // to the callbacks. MEASURED: without this, a recording made
+            // through the real path replayed one tick later diverged at T=301
+            // of the newgame_switch workload, because the record run's
+            // switch-out released the held KEY_RIGHT and the replay's did not.
+            // With the flag set, those releases are recorded as ordinary key
+            // events at the same tick and the replay reproduces them.
+            g_in_delivery = true;
+            if (g_inject_real_test) {
+                // Feed it through Allegro's REAL _win_switch_in/_win_switch_out,
+                // whose tail jmp lands on the patched dispatcher - so the
+                // carrier's capture hook sees it exactly as a genuine
+                // WM_ACTIVATE would. Used to exercise the record path for the
+                // switch-OUT direction, which this host's OS never delivers
+                // (notes/determinism_audit.md).
+                ((VoidFn)(void*)(in ? VA_WIN_SWITCH_IN : VA_WIN_SWITCH_OUT))();
+            } else {
+                run_switch_callbacks(in);
+                ++g_switch_delivered;
+            }
+            g_in_delivery = false;
+            fprintf(stderr, "det: T=%d delivered switch %s (from script%s)\n", T, in ? "in" : "out",
+                    g_inject_real_test ? ", via _win_switch_in/out, --inject-real-test" : "");
+            trace_input("deliver_due_input(Sleep,after _handle_timer_tick)",
+                        in ? "switch-in" : "switch-out", in ? 1 : 0,
+                        g_inject_real_test ? "phase=deliver via=_win_switch_in/out"
+                                           : "phase=deliver via=switch_cb_table");
+            ++g_script_cursor;
+            continue;
+        }
+        bool press = (e.kind == EvKind::Press);
         if (g_inject_real_test) {
             // item 2 diagnostic: feed through the REAL DirectInput path's own
             // entry point instead of calling _handle_key_press/_handle_key_release
@@ -782,9 +1115,9 @@ static void deliver_due_input() {
                 continue;
             }
             g_in_delivery = true;
-            call_key_dinput_handle_scancode(dik, e.press ? 1 : 0);
+            call_key_dinput_handle_scancode(dik, press ? 1 : 0);
             g_in_delivery = false;
-        } else if (e.press) {
+        } else if (press) {
             g_in_delivery = true;
             ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(0, e.scancode);
             g_in_delivery = false;
@@ -793,10 +1126,10 @@ static void deliver_due_input() {
             ((ReleaseFn)(void*)VA_HANDLE_KEY_RELEASE)(e.scancode);
             g_in_delivery = false;
         }
-        fprintf(stderr, "det: T=%d delivered %s scancode=%d%s\n", T, e.press ? "press" : "release", e.scancode,
+        fprintf(stderr, "det: T=%d delivered %s scancode=%d%s\n", T, press ? "press" : "release", e.scancode,
                 g_inject_real_test ? " (via key_dinput_handle_scancode, --inject-real-test)" : "");
         trace_input("deliver_due_input(Sleep,after _handle_timer_tick)",
-                    e.press ? "press" : "release", e.scancode,
+                    press ? "press" : "release", e.scancode,
                     g_inject_real_test ? "via=key_dinput_handle_scancode" : "via=_handle_key_press/release");
         ++g_script_cursor;
     }
@@ -1040,6 +1373,28 @@ static void drain_real_key_queue() {
         fprintf(stderr, "det: T=%d delivered real %s scancode=%d (captured at tick boundary)\n",
                 T, e.press ? "press" : "release", e.allegro_code);
     }
+    // "Environment isolation" item 2: window activation is handed over at the
+    // SAME point, in the same tick, for exactly the reason divergence 005
+    // established for keys - an asynchronous handover cannot be replayed, and
+    // a recording must log what the carrier handed over, not what the host
+    // did. The recording line is written HERE (not at the capture point) so
+    // stamp == delivery tick by construction.
+    bool sw_in;
+    while (switch_queue_pop(&sw_in)) {
+        g_in_delivery = true;               // see deliver_due_input's switch arm
+        run_switch_callbacks(sw_in);
+        g_in_delivery = false;
+        ++g_switch_delivered;
+        if (g_record_file) {
+            fprintf(g_record_file, "%d switch %s\n", T, sw_in ? "in" : "out");
+            fflush(g_record_file);
+            ++g_switch_recorded;
+        }
+        fprintf(stderr, "det: T=%d delivered real switch %s (captured at tick boundary)\n",
+                T, sw_in ? "in" : "out");
+        trace_input("drain_real_key_queue(Sleep,after _handle_timer_tick)",
+                    sw_in ? "switch-in" : "switch-out", sw_in ? 1 : 0, "phase=deliver");
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -1220,6 +1575,10 @@ extern "C" uintptr_t __cdecl det_wrap_beginthread(void(__cdecl* start)(void*),
 // harmless if it never finds a window (e.g. running headless/automated).
 static bool g_tried_focus = false;
 struct FocusSearch { DWORD pid; HWND found; };
+// Same search, but WITHOUT the IsWindowVisible filter - an automated run's
+// window is minimized/hidden by design, so the shutdown diagnostic must be
+// able to find it anyway.
+static BOOL CALLBACK focus_enum_proc_any(HWND hwnd, LPARAM lparam);
 static BOOL CALLBACK focus_enum_proc(HWND hwnd, LPARAM lparam) {
     FocusSearch* s = (FocusSearch*)lparam;
     DWORD wnd_pid = 0;
@@ -1230,16 +1589,31 @@ static BOOL CALLBACK focus_enum_proc(HWND hwnd, LPARAM lparam) {
     }
     return TRUE;
 }
+// "Environment isolation" item 1: this is now gated on --interactive, NOT on
+// input_policy==Real. Taking the operator's foreground is only ever correct
+// when a human is actually there to look at the window; an automated
+// --input=real run (e.g. carrier/scripts/sendinput_session.py's focus-theft
+// test, or any headless record run) must not steal focus on its own.
 static void try_focus_guest_window_once() {
-    if (g_tried_focus || g_input_policy != InputPolicy::Real) return;
+    if (g_tried_focus || !g_interactive) return;
     FocusSearch s = {GetCurrentProcessId(), nullptr};
     EnumWindows(focus_enum_proc, (LPARAM)&s);
     if (s.found) {
         SetForegroundWindow(s.found);
         ShowWindow(s.found, SW_RESTORE);
-        fprintf(stderr, "det: focused guest window hwnd=%p (input_policy=real)\n", (void*)s.found);
+        fprintf(stderr, "det: focused guest window hwnd=%p (--interactive)\n", (void*)s.found);
         g_tried_focus = true; // succeeded - stop trying
     }
+}
+
+static BOOL CALLBACK focus_enum_proc_any(HWND hwnd, LPARAM lparam) {
+    FocusSearch* s = (FocusSearch*)lparam;
+    DWORD wnd_pid = 0;
+    GetWindowThreadProcessId(hwnd, &wnd_pid);
+    char cls[64] = "";
+    GetClassNameA(hwnd, cls, sizeof(cls));
+    if (wnd_pid == s->pid && strcmp(cls, "AllegroWindow") == 0) { s->found = hwnd; return FALSE; }
+    return TRUE;
     // else: window doesn't exist yet (still starting up) - retried on the
     // next Sleep call, cheap since it's a handful of EnumWindows calls total.
 }
@@ -1296,10 +1670,35 @@ extern "C" void __stdcall det_wrap_Sleep(DWORD ms) {
 // QueryPerformanceCounter, called by Allegro's timer thread internally (not
 // created in det mode) and by 6 one-shot anti-cheat/statistics call sites
 // inside play() - never read back into physics/replay/RNG.
+// ---------------------------------------------------------------------
+// Determinism-audit instrumentation ("Environment isolation" item 5): two
+// opt-in perturbation knobs, in the same style as DET_DUMP_MEM_TICK /
+// DET_INPUT_DELIVER_SUB. They turn "the census says play()'s clock/QPC calls
+// are telemetry, not simulation inputs" from a citation into a MEASUREMENT:
+//
+//   DET_PERTURB_CLOCK=<ms>  offsets what clock()/QPC/timeGetTime return.
+//                           G1 must stay EQUAL  -> those three do not reach
+//                           the digest domain.        (negative control)
+//   DET_PERTURB_TIME=<secs> offsets what time() returns.
+//                           G1 must CHANGE      -> time() does reach it, so
+//                           recording it (item 4) is load-bearing.
+//                                                     (positive control)
+// ---------------------------------------------------------------------
+static long long perturb_clock_ms() {
+    static long long v = -1;
+    if (v < 0) { char b[24]; v = GetEnvironmentVariableA("DET_PERTURB_CLOCK", b, sizeof(b)) ? _atoi64(b) : 0; }
+    return v;
+}
+static long perturb_time_s() {
+    static long v = -1;
+    if (v < 0) { char b[24]; v = GetEnvironmentVariableA("DET_PERTURB_TIME", b, sizeof(b)) ? atol(b) : 0; }
+    return v;
+}
+
 extern "C" BOOL __stdcall det_wrap_QueryPerformanceCounter(LARGE_INTEGER* out) {
     pf_count_import(g_id_QPC);
     if (g_det_mode) {
-        if (out) out->QuadPart = g_virtual_ms; // fake 1000 Hz counter tied to the virtual clock
+        if (out) out->QuadPart = g_virtual_ms + perturb_clock_ms(); // fake 1000 Hz counter tied to the virtual clock
         return TRUE;
     }
     if (g_real_QPC) return ((BOOL(__stdcall*)(LARGE_INTEGER*))g_real_QPC)(out);
@@ -1311,7 +1710,7 @@ extern "C" BOOL __stdcall det_wrap_QueryPerformanceCounter(LARGE_INTEGER* out) {
 // completeness/documentation and in case a future low-perf-timer path calls it.
 extern "C" DWORD __stdcall det_wrap_timeGetTime() {
     pf_count_import(g_id_timeGetTime);
-    if (g_det_mode) return (DWORD)g_virtual_ms;
+    if (g_det_mode) return (DWORD)(g_virtual_ms + perturb_clock_ms());
     if (g_real_timeGetTime) return ((DWORD(__stdcall*)())g_real_timeGetTime)();
     return 0;
 }
@@ -1322,10 +1721,63 @@ extern "C" DWORD __stdcall det_wrap_timeGetTime() {
 // tower-layout RNG seed reproducible across --det runs WITHOUT separately
 // wrapping rand()/srand(): rand()'s LCG is already a pure function of the
 // seed, and time() was the only host-entropy input to that seed.
+//
+// "Environment isolation" item 4 (win32_pilot.md sec 4a's rule, and
+// notes/living_record.md's own FOLLOW-UP entry: "record the observed
+// time()/clock values as events in record mode and replay them, so
+// interactive sessions vary while replays stay exact"). Three cases, in
+// priority order, so that G1 - a script run with no recorded values - is
+// byte-for-byte what it was before this pass:
+//
+//   1. the loaded script carried `T time <v>` lines  -> return them in order
+//      (a replay reproduces the recording's tower exactly);
+//   2. --record-input is active                      -> answer from the REAL
+//      clock and append `T time <v>` to the recording (so two sessions made
+//      minutes apart get different seeds and different towers);
+//   3. otherwise                                     -> the constant virtual
+//      epoch, exactly as milestones 5-7 defined it.
+//
+// Guard: only the guest MAIN thread may record/replay a value. The only
+// other time() caller in the binary is fldads_threadmain (suppressed in --det
+// by det_wrap_pthread_create), so an off-thread call is a real anomaly - it
+// is counted, logged and answered from the constant epoch rather than being
+// allowed to consume a recorded value out of order.
 extern "C" long __cdecl det_wrap_time(long* out) {
     pf_count_import(g_id_time);
     long v;
-    if (g_det_mode) v = (long)(1700000000 + g_virtual_ms / 1000);
+    if (g_det_mode) {
+        long epoch = (long)(DET_VIRTUAL_EPOCH + g_virtual_ms / 1000) + perturb_time_s();
+        bool main_thread = (GetCurrentThreadId() == g_main_tid);
+        if (!main_thread && (!g_time_values.empty() || g_record_file)) {
+            ++g_time_offthread;
+            if (g_time_offthread <= 5)
+                fprintf(stderr, "det: time() called from thread %lu (not the guest main thread) while the "
+                                "clock channel is recorded/replayed - answered from the constant epoch, "
+                                "NOT from the recording (call #%ld)\n",
+                        GetCurrentThreadId(), g_time_offthread);
+            v = epoch;
+        } else if (!g_time_values.empty()) {
+            if (g_time_cursor < g_time_values.size()) {
+                v = g_time_values[g_time_cursor++].value;
+                ++g_time_replayed;
+            } else {
+                ++g_time_underflow;
+                if (g_time_underflow <= 5)
+                    fprintf(stderr, "det: recorded clock UNDERFLOW - the guest asked for time() more times "
+                                    "than the recording holds (%zu values); falling back to the constant "
+                                    "epoch from call #%ld on\n",
+                            g_time_values.size(), g_time_underflow);
+                v = epoch;
+            }
+        } else if (g_record_file && g_real_time) {
+            v = ((long(__cdecl*)(long*))g_real_time)(nullptr);
+            fprintf(g_record_file, "%d time %ld\n", det_current_tick(), v);
+            fflush(g_record_file);
+            ++g_time_recorded;
+        } else {
+            v = epoch;
+        }
+    }
     else if (g_real_time) v = ((long(__cdecl*)(long*))g_real_time)(nullptr);
     else v = 0;
     if (out) *out = v;
@@ -1336,9 +1788,189 @@ extern "C" long __cdecl det_wrap_time(long* out) {
 // play()'s anti-cheat trio (qpc/clock/time), never gameplay.
 extern "C" long __cdecl det_wrap_clock() {
     pf_count_import(g_id_clock);
-    if (g_det_mode) return (long)g_virtual_ms;
+    if (g_det_mode) return (long)(g_virtual_ms + perturb_clock_ms());
     if (g_real_clock) return ((long(__cdecl*)())g_real_clock)();
     return 0;
+}
+
+// ---------------------------------------------------------------------
+// "Environment isolation" item 1: the guest's own window-management calls.
+//
+// MEASURED (artifacts/disasm.txt, quoted in carrier/NOTES.md): Allegro's
+// create_directx_window (0x478eb8) creates the window with dwStyle=0xCA0000
+// (WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX - note: NO WS_VISIBLE) and then does
+// ShowWindow(hwnd, SW_SHOWNORMAL) / SetForegroundWindow(hwnd) /
+// UpdateWindow(hwnd); set_video_mode (wddmode.c) repeats the ShowWindow +
+// SetForegroundWindow pair when the graphics mode is set. Those two calls -
+// and nothing else - are what puts the guest window in front of whatever the
+// operator is doing. All four wrappers below forward UNCHANGED when
+// --interactive; otherwise they substitute a non-activating form.
+//
+// This is a PRESENTATION-layer substitution, strictly below the PortForge
+// boundary (win32_pilot.md sec 4a), so it must not change game state - which
+// is exactly what gate G1 re-verifies after the change.
+// ---------------------------------------------------------------------
+extern "C" BOOL __stdcall det_wrap_ShowWindow(HWND h, int cmd) {
+    pf_count_import(g_id_ShowWindow);
+    int use = cmd;
+    if (!g_interactive && g_window_mode != WindowMode::Normal && !isolate_off("window")) {
+        // Only the ACTIVATING show commands are substituted; SW_HIDE and the
+        // already-non-activating forms pass through untouched (Allegro also
+        // calls ShowWindow on the console window at exit).
+        if (cmd == SW_SHOWNORMAL || cmd == SW_SHOWMAXIMIZED || cmd == SW_SHOW ||
+            cmd == SW_RESTORE || cmd == SW_SHOWDEFAULT) {
+            use = (g_window_mode == WindowMode::Hidden) ? SW_HIDE : SW_SHOWMINNOACTIVE;
+            ++g_showwindow_substituted;
+            fprintf(stderr, "det: ShowWindow(%p, %d) -> %d (window=%s, not --interactive)\n",
+                    (void*)h, cmd, use, window_mode_name(g_window_mode));
+        }
+    }
+    if (g_real_ShowWindow) return ((BOOL(__stdcall*)(HWND, int))g_real_ShowWindow)(h, use);
+    return FALSE;
+}
+
+extern "C" BOOL __stdcall det_wrap_SetForegroundWindow(HWND h) {
+    pf_count_import(g_id_SetForegroundWindow);
+    if (!g_interactive && !isolate_off("window")) {
+        ++g_setforeground_suppressed;
+        fprintf(stderr, "det: SetForegroundWindow(%p) SUPPRESSED (not --interactive)\n", (void*)h);
+        return TRUE; // Allegro ignores the result; TRUE keeps its own logic on the success path
+    }
+    if (g_real_SetForegroundWindow) return ((BOOL(__stdcall*)(HWND))g_real_SetForegroundWindow)(h);
+    return FALSE;
+}
+
+extern "C" BOOL __stdcall det_wrap_SetWindowPos(HWND h, HWND after, int x, int y,
+                                                int cx, int cy, UINT flags) {
+    pf_count_import(g_id_SetWindowPos);
+    UINT use = flags;
+    if (!g_interactive && !isolate_off("window") && !(flags & SWP_NOACTIVATE)) {
+        use |= SWP_NOACTIVATE;
+        ++g_setwindowpos_noactivate;
+    }
+    if (g_real_SetWindowPos)
+        return ((BOOL(__stdcall*)(HWND, HWND, int, int, int, int, UINT))g_real_SetWindowPos)(
+            h, after, x, y, cx, cy, use);
+    return FALSE;
+}
+
+// DET_TRACE_WNDMSG=1 (audit diagnostic): subclass the guest window right
+// after it is created and log every activation-class message it actually
+// receives - WM_ACTIVATE(0x06), WM_SETFOCUS(0x07), WM_KILLFOCUS(0x08),
+// WM_ACTIVATEAPP(0x1c), WM_NCACTIVATE(0x86) - then forward to Allegro's own
+// directx_wnd_proc unchanged. This is the "wrap the message path" instrument
+// the task named; it is used to MEASURE whether the operator's desktop can
+// reach the guest at all, and it changes no behaviour.
+static WNDPROC g_orig_wndproc = nullptr;
+static long g_wndmsg_activate = 0;
+static bool trace_wndmsg() {
+    static int v = -1;
+    if (v < 0) { char b[8]; v = GetEnvironmentVariableA("DET_TRACE_WNDMSG", b, sizeof(b)) && b[0] != '0'; }
+    return v != 0;
+}
+static LRESULT CALLBACK det_wndmsg_trace_proc(HWND h, UINT m, WPARAM wp, LPARAM lp) {
+    if (m == WM_ACTIVATE || m == WM_SETFOCUS || m == WM_KILLFOCUS ||
+        m == WM_ACTIVATEAPP || m == WM_NCACTIVATE) {
+        ++g_wndmsg_activate;
+        fprintf(stderr, "det: [wndmsg] T=%d hwnd=%p msg=0x%02x wparam=0x%08x lparam=0x%08x\n",
+                det_current_tick(), (void*)h, m, (unsigned)wp, (unsigned)lp);
+        fflush(stderr);
+    }
+    return CallWindowProcA(g_orig_wndproc, h, m, wp, lp);
+}
+
+extern "C" HWND __stdcall det_wrap_CreateWindowExA(DWORD ex, LPCSTR cls, LPCSTR name, DWORD style,
+                                                   int x, int y, int w, int hgt, HWND parent,
+                                                   HMENU menu, HINSTANCE inst, LPVOID param) {
+    pf_count_import(g_id_CreateWindowExA);
+    DWORD use_style = style, use_ex = ex;
+    if (!g_interactive && g_window_mode != WindowMode::Normal && !isolate_off("window")) {
+        // Belt and braces: the measured call already passes no WS_VISIBLE, so
+        // this normally changes nothing (the counter says whether it ever
+        // fires). WS_EX_NOACTIVATE is the OS-level guarantee that this window
+        // can never take the foreground, however it is later shown or clicked.
+        if (use_style & WS_VISIBLE) { use_style &= ~(DWORD)WS_VISIBLE; ++g_createwindow_devisible; }
+        use_ex |= WS_EX_NOACTIVATE;
+        fprintf(stderr, "det: CreateWindowExA class='%s' style=0x%08lx->0x%08lx ex=0x%08lx->0x%08lx "
+                        "(window=%s, not --interactive)\n",
+                cls ? cls : "(atom)", style, use_style, ex, use_ex, window_mode_name(g_window_mode));
+    }
+    HWND h = nullptr;
+    if (g_real_CreateWindowExA)
+        h = ((HWND(__stdcall*)(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU,
+                               HINSTANCE, LPVOID))g_real_CreateWindowExA)(
+            use_ex, cls, name, use_style, x, y, w, hgt, parent, menu, inst, param);
+    if (h && trace_wndmsg() && !g_orig_wndproc) {
+        g_orig_wndproc = (WNDPROC)(LONG_PTR)SetWindowLongA(h, GWL_WNDPROC, (LONG)(LONG_PTR)det_wndmsg_trace_proc);
+        fprintf(stderr, "det: DET_TRACE_WNDMSG - subclassed guest window %p (original wndproc=%p)\n",
+                (void*)h, (void*)g_orig_wndproc);
+    }
+    return h;
+}
+
+// ---------------------------------------------------------------------
+// "Environment isolation" item 5: the network ad fetch.
+//
+// MEASURED: fldads_start (0x403ac8) is the binary's ONLY pthread_create call
+// site and its start routine is always fldads_threadmain (0x404014); nothing
+// ever joins the handle (pthread_join is not imported at all - the only
+// pthreadGC2 imports are pthread_create/pthread_mutex_lock/unlock). The
+// thread fetches an ad list over HTTP from www.icytower.com, writes a local
+// CSV/PNG cache into assets\, and fills gpAdCache/giAdCacheSize - and FIVE
+// fld_adspot.c globals (giAdCacheSize, gpAdCache,
+// localFilename__fldads_get_local_cache_name, pFLDAdBitmap, pFLDAd) are
+// inside the 151-global digest domain, so the live network result CAN reach
+// the verdict. It is also the source of divergence 001. Suppressed in --det:
+// the game's observable result becomes the constant "no ads" (pFLDAd stays
+// NULL, which is also what makes main_menu_callback's mouse hit-test
+// unreachable - see det_stub_handle_mouse_input).
+// ---------------------------------------------------------------------
+extern "C" int __cdecl det_wrap_pthread_create(void* th, void* attr,
+                                               void* (__cdecl* start)(void*), void* arg) {
+    pf_count_import(g_id_pthread_create);
+    if (g_det_mode && (uintptr_t)(void*)start == VA_FLDADS_THREADMAIN && !isolate_off("ad")) {
+        ++g_ad_thread_suppressed;
+        fprintf(stderr, "det: ad-fetch thread SUPPRESSED (pthread_create(fldads_threadmain @0x%08x) "
+                        "is a no-op in --det; the game observes the constant 'no ads' result - "
+                        "carrier/NOTES.md 'Environment isolation')\n", VA_FLDADS_THREADMAIN);
+        return 0; // fldads_start ignores the return value (disasm 0x403aed: call, leave, ret)
+    }
+    if (g_real_pthread_create)
+        return ((int(__cdecl*)(void*, void*, void* (__cdecl*)(void*), void*))g_real_pthread_create)(
+            th, attr, start, arg);
+    return -1;
+}
+
+// ---------------------------------------------------------------------
+// "Environment isolation" item 5: environment variables. Instrumentation
+// only - the value is forwarded unchanged - but the distinct names asked for
+// and whether the host actually had a value are recorded, so the channel can
+// be reported from evidence instead of assumed inert.
+// ---------------------------------------------------------------------
+static const int kMaxEnvNames = 24;
+static char g_env_names[kMaxEnvNames][48];
+static long g_env_hits[kMaxEnvNames];
+static bool g_env_found[kMaxEnvNames];
+static int g_env_count = 0;
+static long g_env_calls = 0;
+
+extern "C" char* __cdecl det_wrap_getenv(const char* name) {
+    pf_count_import(g_id_getenv);
+    char* v = nullptr;
+    if (g_real_getenv) v = ((char*(__cdecl*)(const char*))g_real_getenv)(name);
+    ++g_env_calls;
+    const char* n = name ? name : "(null)";
+    for (int i = 0; i < g_env_count; ++i) {
+        if (strcmp(g_env_names[i], n) == 0) { ++g_env_hits[i]; g_env_found[i] = g_env_found[i] || (v != nullptr); return v; }
+    }
+    if (g_env_count < kMaxEnvNames) {
+        strncpy(g_env_names[g_env_count], n, sizeof(g_env_names[0]) - 1);
+        g_env_names[g_env_count][sizeof(g_env_names[0]) - 1] = 0;
+        g_env_hits[g_env_count] = 1;
+        g_env_found[g_env_count] = (v != nullptr);
+        ++g_env_count;
+    }
+    return v;
 }
 
 // ---------------------------------------------------------------------
@@ -1683,6 +2315,8 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     g_shutdown = shutdown_hook;
     g_input_policy = opt.input_policy;
     g_inject_real_test = opt.inject_real_test;
+    g_interactive = opt.interactive;
+    g_window_mode = opt.window_mode;
     strncpy(g_image_path, opt.image_path ? opt.image_path : "", sizeof(g_image_path) - 1);
     g_image_path[sizeof(g_image_path) - 1] = 0;
     g_main_tid = GetCurrentThreadId();
@@ -1779,11 +2413,94 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     }
 
     fprintf(stderr,
+            "det: interactive=%d window=%s (an automated run never takes the operator's foreground - "
+            "carrier/NOTES.md 'Environment isolation')\n",
+            (int)g_interactive, window_mode_name(g_window_mode));
+    fprintf(stderr,
             "det: det_mode=%d pace=%s input=%s inject_real_test=%d stop_at_tick=%d digest_out=%s record_input=%s input_script=%s\n",
             g_det_mode, g_pace_real ? "real" : "fast", input_policy_name(g_input_policy), g_inject_real_test, g_stop_at_tick,
             opt.digest_out && opt.digest_out[0] ? opt.digest_out : "(none)",
             opt.record_input && opt.record_input[0] ? opt.record_input : "(none)",
             opt.input_script && opt.input_script[0] ? opt.input_script : "(none)");
+}
+
+// ---------------------------------------------------------------------
+// "Environment isolation" pass: the entry patches. Separate from det_init
+// because the guest image is not mapped yet when det_init runs (main.cpp
+// calls det_init before pe_image_load, and this next to bind_init).
+//
+// Installed whenever the carrier owns determinism for this run:
+//   --det           (any input policy), or
+//   input != real   (script/none, the same rule that parks the keyboard).
+// A plain, un-det, --input=real oracle run is left completely untouched.
+// ---------------------------------------------------------------------
+void det_install_entry_patches() {
+    bool carrier_owns = g_det_mode || g_input_policy != InputPolicy::Real;
+    if (!carrier_owns) {
+        fprintf(stderr, "det: entry patches NOT installed (plain oracle run: no --det and input=real) - "
+                        "window activation and the mouse reach the game exactly as they would standalone\n");
+        return;
+    }
+    switch_queue_init();
+    if (!isolate_off("switch")) {
+        patch_entry_jmp(VA_SWITCH_IN, (void*)det_stub_switch_in, "_switch_in (dispsw.c)");
+        patch_entry_jmp(VA_SWITCH_OUT, (void*)det_stub_switch_out, "_switch_out (dispsw.c)");
+        g_switch_patched = true;
+    } else {
+        fprintf(stderr, "det: DET_ISOLATE_OFF=switch - window activation left UNCONTROLLED (audit mode)\n");
+    }
+    if (!isolate_off("mouse")) {
+        patch_entry_jmp(VA_HANDLE_MOUSE_INPUT, (void*)det_stub_handle_mouse_input,
+                        "_handle_mouse_input (mouse.c)");
+        g_mouse_patched = true;
+    } else {
+        fprintf(stderr, "det: DET_ISOLATE_OFF=mouse - the real mouse left UNCONTROLLED (audit mode)\n");
+    }
+    fprintf(stderr,
+            "det: window-activation channel %s; DirectInput mouse PARKED "
+            "(game code reads mouse_x/y/b in exactly one function, main_menu_callback's "
+            "pFLDAd-guarded ad hit-test - see carrier/NOTES.md 'Environment isolation')\n",
+            g_input_policy == InputPolicy::Real
+                ? "CAPTURED at the tick boundary and recorded as `T switch in|out`"
+                : "SUPPRESSED (nothing the operator does reaches the guest)");
+}
+
+// --report's "environment" object: one place that says what this run did to
+// every channel the "Environment isolation" pass took ownership of.
+void det_environment_json(char* buf, size_t n) {
+    char envs[1024]; envs[0] = 0;
+    size_t used = 0;
+    for (int i = 0; i < g_env_count; ++i) {
+        int w = _snprintf(envs + used, sizeof(envs) - used, "%s{\"name\":\"%s\",\"calls\":%ld,\"found\":%s}",
+                          i ? "," : "", g_env_names[i], g_env_hits[i], g_env_found[i] ? "true" : "false");
+        if (w < 0 || used + (size_t)w >= sizeof(envs) - 1) break;
+        used += (size_t)w;
+    }
+    envs[sizeof(envs) - 1] = 0;
+    _snprintf(buf, n,
+              "{\"interactive\":%s,\"window_mode\":\"%s\","
+              "\"showwindow_substituted\":%ld,\"setforeground_suppressed\":%ld,"
+              "\"setwindowpos_noactivate\":%ld,\"createwindow_devisible\":%ld,"
+              "\"switch_patched\":%s,\"switch_captured\":%ld,\"switch_suppressed\":%ld,"
+              "\"switch_delivered\":%ld,\"switch_recorded\":%ld,"
+              "\"mouse_patched\":%s,\"mouse_events_parked\":%ld,"
+              "\"ad_thread_suppressed\":%ld,"
+              "\"time_recorded\":%ld,\"time_replayed\":%ld,\"time_available\":%zu,"
+              "\"time_underflow\":%ld,\"time_offthread\":%ld,"
+              "\"perturb_clock_ms\":%lld,\"perturb_time_s\":%ld,"
+              "\"getenv_calls\":%ld,\"getenv_names\":[%s]}",
+              g_interactive ? "true" : "false", window_mode_name(g_window_mode),
+              g_showwindow_substituted, g_setforeground_suppressed,
+              g_setwindowpos_noactivate, g_createwindow_devisible,
+              g_switch_patched ? "true" : "false", g_switch_captured, g_switch_suppressed,
+              g_switch_delivered, g_switch_recorded,
+              g_mouse_patched ? "true" : "false", g_mouse_parked,
+              g_ad_thread_suppressed,
+              g_time_recorded, g_time_replayed, g_time_values.size(),
+              g_time_underflow, g_time_offthread,
+              perturb_clock_ms(), perturb_time_s(),
+              g_env_calls, envs);
+    buf[n - 1] = 0;
 }
 
 // ---------------------------------------------------------------------
@@ -1817,6 +2534,17 @@ void det_state_save(DetSavedState* s) {
         s->real_queue_press[i] = g_real_queue[i].press ? 1 : 0;
     }
     if (g_real_queue_cs_inited) LeaveCriticalSection(&g_real_queue_cs);
+    // "Environment isolation": the two new carrier-owned cursors/queues, for
+    // exactly the reason the script cursor and the key queue are already here
+    // (win32_pilot.md sec 6) - a rewind that moved the game back but left the
+    // recorded-clock cursor or a pending switch event running forward would
+    // not line up.
+    s->time_cursor = (int)g_time_cursor;
+    if (g_switch_cs_inited) EnterCriticalSection(&g_switch_cs);
+    s->switch_queue_head = g_switch_head;
+    s->switch_queue_tail = g_switch_tail;
+    memcpy(s->switch_queue_dir, g_switch_queue, sizeof(g_switch_queue));
+    if (g_switch_cs_inited) LeaveCriticalSection(&g_switch_cs);
 }
 
 void det_state_load(const DetSavedState* s) {
@@ -1844,6 +2572,13 @@ void det_state_load(const DetSavedState* s) {
         g_real_queue[i].press = s->real_queue_press[i] != 0;
     }
     LeaveCriticalSection(&g_real_queue_cs);
+    g_time_cursor = (size_t)s->time_cursor;
+    switch_queue_init();
+    EnterCriticalSection(&g_switch_cs);
+    g_switch_head = s->switch_queue_head;
+    g_switch_tail = s->switch_queue_tail;
+    memcpy(g_switch_queue, s->switch_queue_dir, sizeof(g_switch_queue));
+    LeaveCriticalSection(&g_switch_cs);
 }
 
 void det_shutdown() {
@@ -1857,6 +2592,50 @@ void det_shutdown() {
                     "%ld safepoints, guest cycle_count=%d)\n",
             det_current_tick(), (long long)g_virtual_ms, g_sleep_calls, g_safepoint_count,
             (int)IT_CYCLE_COUNT);
+    // Audit evidence for the activation channel: WHO is registered in the
+    // guest's own switch callback tables, and WHOSE window procedure the
+    // guest window actually has (cnc-ddraw subclasses it - see
+    // notes/determinism_audit.md). Printed unconditionally at shutdown so
+    // every archived stderr carries it.
+    {
+        void** in_cb = (void**)(uintptr_t)VA_SWITCH_IN_CB;
+        void** out_cb = (void**)(uintptr_t)VA_SWITCH_OUT_CB;
+        char line[256]; int n = 0;
+        n += _snprintf(line + n, sizeof(line) - n, "det: switch_in_cb =");
+        for (int i = 0; i < 8; ++i) n += _snprintf(line + n, sizeof(line) - n, " %p", in_cb[i]);
+        fprintf(stderr, "%s\n", line);
+        n = 0;
+        n += _snprintf(line + n, sizeof(line) - n, "det: switch_out_cb=");
+        for (int i = 0; i < 8; ++i) n += _snprintf(line + n, sizeof(line) - n, " %p", out_cb[i]);
+        fprintf(stderr, "%s\n", line);
+        FocusSearch s = {GetCurrentProcessId(), nullptr};
+        EnumWindows(focus_enum_proc_any, (LPARAM)&s);
+        if (s.found) {
+            LONG wp = GetWindowLongA(s.found, GWL_WNDPROC);
+            RECT r = {0, 0, 0, 0};
+            GetWindowRect(s.found, &r);
+            fprintf(stderr, "det: guest window %p wndproc=0x%08lx (%s) style=0x%08lx exstyle=0x%08lx "
+                            "rect=(%ld,%ld,%ld,%ld) activation-messages seen=%ld\n",
+                    (void*)s.found, (unsigned long)wp,
+                    ((unsigned long)wp == 0x4791e0ul) ? "Allegro's own directx_wnd_proc"
+                                                      : "SUBCLASSED - not Allegro's directx_wnd_proc@0x4791e0",
+                    (unsigned long)GetWindowLongA(s.found, GWL_STYLE),
+                    (unsigned long)GetWindowLongA(s.found, GWL_EXSTYLE),
+                    r.left, r.top, r.right, r.bottom, g_wndmsg_activate);
+        }
+    }
+    fprintf(stderr,
+            "det: environment isolation - window switch: captured=%ld suppressed=%ld delivered=%ld "
+            "recorded=%ld; mouse events parked=%ld; ad thread suppressed=%ld; "
+            "clock: recorded=%ld replayed=%ld/%zu underflow=%ld offthread=%ld; getenv calls=%ld "
+            "over %d distinct name(s)\n",
+            g_switch_captured, g_switch_suppressed, g_switch_delivered, g_switch_recorded,
+            g_mouse_parked, g_ad_thread_suppressed,
+            g_time_recorded, g_time_replayed, g_time_values.size(), g_time_underflow,
+            g_time_offthread, g_env_calls, g_env_count);
+    for (int i = 0; i < g_env_count; ++i)
+        fprintf(stderr, "det:   getenv(\"%s\") x%ld -> %s\n", g_env_names[i], g_env_hits[i],
+                g_env_found[i] ? "a value" : "NULL (unset on this host)");
     if (g_arena_base) {
         ArenaCtl* c = a_ctl();
         fprintf(stderr,

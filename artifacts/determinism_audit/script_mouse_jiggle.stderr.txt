@@ -1,0 +1,86 @@
+symbols_load: loaded 2433 functions from 'D:\Games\DOS\dos_recosystem\icytower_forged\artifacts\functions.json'
+det: deterministic heap arena at 20000000, size=256MB (free-list allocator, first-fit + coalescing, state in-arena)
+det: real keyboard PARKED (input=script; key_dinput_handle_scancode short-circuited)
+det: loaded 24 input events and 0 recorded time value(s) from 'scripts/newgame.txt'
+det: interactive=0 window=normal (an automated run never takes the operator's foreground - carrier/NOTES.md 'Environment isolation')
+det: det_mode=1 pace=real input=script inject_real_test=0 stop_at_tick=1000 digest_out=..\artifacts\determinism_audit\script_mouse_jiggle.txt record_input=(none) input_script=scripts/newgame.txt
+carrier: image=D:\Games\DOS\dos_recosystem\icytower_forged\assets\icytower15.exe
+carrier: cwd=D:\Games\DOS\dos_recosystem\icytower_forged\assets
+carrier: ddraw=local count_imports=1 guest_stack=fixed run_seconds=120
+carrier: input_policy=script
+carrier: mapped image_base=0x00400000 size=0x0038c000 entry=0x00401110
+imports_init: loaded DDRAW.dll (assets\)
+imports_init: loaded dinput.dll
+imports_init: loaded dsound.dll
+imports_init: loaded GDI32.dll
+imports_init: loaded KERNEL32.dll
+imports_init: loaded msvcrt.dll
+imports_init: loaded OLE32.dll
+imports_init: loaded libpng3.dll (assets\)
+imports_init: loaded pthreadGC2.dll (assets\)
+imports_init: loaded SHELL32.DLL
+imports_init: loaded USER32.dll
+imports_init: loaded WINMM.DLL
+imports_init: loaded WSOCK32.DLL
+imports_init: resolved 320/320 imports (0 failures)
+det: _switch_in (dispsw.c) @0x004657e4 -> carrier stub (5-byte jmp rel32)
+det: _switch_out (dispsw.c) @0x00465808 -> carrier stub (5-byte jmp rel32)
+det: _handle_mouse_input (mouse.c) @0x0045f9bc -> carrier stub (5-byte jmp rel32)
+det: window-activation channel SUPPRESSED (nothing the operator does reaches the guest); DirectInput mouse PARKED (game code reads mouse_x/y/b in exactly one function, main_menu_callback's pFLDAd-guarded ad hit-test - see carrier/NOTES.md 'Environment isolation')
+det: armed 2 hardware breakpoint(s) on the guest main thread
+carrier: entering guest at 0x00401110 (guest-stack=fixed)
+det: _beginthread(start=0x004790B8, stack=0)
+det: T=0 SUPPRESSED window switch in (input=script; the operator's desktop may not reach the guest in an automated run)
+det: SetForegroundWindow(07750E68) SUPPRESSED (not --interactive)
+det: ad-fetch thread SUPPRESSED (pthread_create(fldads_threadmain @0x00404014) is a no-op in --det; the game observes the constant 'no ads' result - carrier/NOTES.md 'Environment isolation')
+det: SetForegroundWindow(07750E68) SUPPRESSED (not --interactive)
+det: _beginthread(start=0x00478584, stack=0)
+det: timer thread PARKED (entry=0x00478584): running the ORIGINAL entry point on a real thread whose WaitForSingleObject calls are substituted to INFINITE (carrier/NOTES.md 'parked timer thread' - fixes divergence 003, the _tim_win32_exit join hang, generically)
+det: T=20 delivered press scancode=67
+det: T=200 delivered press scancode=83
+det: T=200 delivered press scancode=75
+det: T=215 delivered release scancode=75
+det: T=250 delivered press scancode=75
+det: T=265 delivered release scancode=75
+det: T=300 delivered press scancode=75
+det: T=315 delivered release scancode=75
+det: T=350 delivered press scancode=75
+det: T=365 delivered release scancode=75
+det: T=400 delivered press scancode=75
+det: T=415 delivered release scancode=75
+det: T=450 delivered press scancode=75
+det: T=465 delivered release scancode=75
+det: T=500 delivered press scancode=75
+det: T=515 delivered release scancode=75
+det: T=550 delivered press scancode=75
+det: VIOLATION - real key event reached key_dinput_handle_scancode while --input=script (violation #1, T=561) - neutralized, NOT delivered to the game
+det: T=565 delivered release scancode=75
+det: VIOLATION - real key event reached key_dinput_handle_scancode while --input=script (violation #2, T=565) - neutralized, NOT delivered to the game
+det: VIOLATION - real key event reached key_dinput_handle_scancode while --input=script (violation #3, T=566) - neutralized, NOT delivered to the game
+det: VIOLATION - real key event reached key_dinput_handle_scancode while --input=script (violation #4, T=569) - neutralized, NOT delivered to the game
+det: T=600 delivered press scancode=75
+det: T=615 delivered release scancode=75
+det: T=620 delivered release scancode=67
+det: T=650 delivered press scancode=75
+det: T=665 delivered release scancode=75
+det: T=700 delivered release scancode=83
+det: --stop-at-tick 1000 reached at T=1000, shutting down.
+det: shutdown at T=1000 (virtual_ms=20018, 10009 main-thread Sleep calls, 876 safepoints, guest cycle_count=1)
+det: switch_in_cb = 00406A6C 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+det: switch_out_cb= 00406A5C 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+det: guest window 07750E68 wndproc=0x004791e0 (Allegro's own directx_wnd_proc) style=0x95000000 exstyle=0x00040000 rect=(0,0,640,480) activation-messages seen=0
+det: environment isolation - window switch: captured=0 suppressed=1 delivered=0 recorded=0; mouse events parked=3769; ad thread suppressed=1; clock: recorded=0 replayed=0/0 underflow=0 offthread=0; getenv calls=16 over 3 distinct name(s)
+det:   getenv("ALLEGRO") x1 -> NULL (unset on this host)
+det:   getenv("PRINTF_EXPONENT_DIGITS") x13 -> NULL (unset on this host)
+det:   getenv("SCREEN_GAMMA") x2 -> NULL (unset on this host)
+det: arena high-water 29697392 bytes (28.32 MB), live 25991472 bytes in 2712 blocks, peak live 27222320 bytes; calls malloc=23600 calloc=4239 realloc=1575 free=25156 (foreign 0, bad 0)
+carrier_shutdown: det --stop-at-tick reached
+det: shutdown at T=1000 (virtual_ms=20018, 10009 main-thread Sleep calls, 876 safepoints, guest cycle_count=1)
+det: switch_in_cb = 00406A6C 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+det: switch_out_cb= 00406A5C 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+det: guest window 07750E68 wndproc=0x004791e0 (Allegro's own directx_wnd_proc) style=0x95000000 exstyle=0x00040000 rect=(0,0,640,480) activation-messages seen=0
+det: environment isolation - window switch: captured=0 suppressed=1 delivered=0 recorded=0; mouse events parked=3769; ad thread suppressed=1; clock: recorded=0 replayed=0/0 underflow=0 offthread=0; getenv calls=16 over 3 distinct name(s)
+det:   getenv("ALLEGRO") x1 -> NULL (unset on this host)
+det:   getenv("PRINTF_EXPONENT_DIGITS") x13 -> NULL (unset on this host)
+det:   getenv("SCREEN_GAMMA") x2 -> NULL (unset on this host)
+det: arena high-water 29697392 bytes (28.32 MB), live 25991472 bytes in 2712 blocks, peak live 27222320 bytes; calls malloc=23600 calloc=4239 realloc=1575 free=25156 (foreign 0, bad 0)

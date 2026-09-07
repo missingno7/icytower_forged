@@ -23,10 +23,18 @@ Usage:
         Build carrier/carrier.exe if missing (carrier/build.cmd), verify
         assets/icytower15.exe's sha256 against the fingerprint pinned below,
         then run it interactively:
-            --det --pace=real --input=real
+            --det --pace=real --input=real --interactive
         (deterministic virtual clock, real human keyboard/joystick, real
         time so a human can play at normal speed - see win32_pilot.md sec
         5a and carrier/NOTES.md "Input policy and recording").
+
+        --interactive is what allows the guest window to be shown normally
+        and brought to the foreground; WITHOUT it (every automated run,
+        including --play-replay below) the window is created
+        WS_EX_NOACTIVATE and shown SW_SHOWMINNOACTIVE, and the guest's own
+        SetForegroundWindow calls are suppressed, so a carrier run can never
+        interrupt whatever the operator is doing - carrier/NOTES.md
+        "Environment isolation".
 
     python scripts/play.py --record-replay NAME
         Same, plus:
@@ -229,7 +237,7 @@ def main(argv: list[str]) -> int:
             script_path = REPLAYS_DIR / f"{record_name}.txt"
             digest_path = REPLAYS_DIR / f"{record_name}.digest"
             code = run_carrier([
-                "--det", "--pace=real", "--input=real",
+                "--det", "--pace=real", "--input=real", "--interactive",
                 "--record-input", str(script_path),
                 "--digest-out", str(digest_path),
             ])
@@ -281,10 +289,10 @@ def main(argv: list[str]) -> int:
             return compare_digests(baseline_digest, replay_digest)
 
         if no_det:
-            return run_carrier([])
+            return run_carrier(["--interactive"])
 
         # Plain interactive default.
-        return run_carrier(["--det", "--pace=real", "--input=real"])
+        return run_carrier(["--det", "--pace=real", "--input=real", "--interactive"])
     finally:
         restore_assets(keep_state)
 

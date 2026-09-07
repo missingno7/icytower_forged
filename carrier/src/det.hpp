@@ -17,6 +17,16 @@ enum class InputPolicy { Real, Script, None };
 // the --report JSON. Never null.
 const char* input_policy_name(InputPolicy p);
 
+// "Environment isolation" pass (carrier/NOTES.md): how the guest's own
+// top-level window is allowed to appear on the operator's desktop. An
+// automated run must never take the foreground - see det.cpp's
+// det_wrap_ShowWindow/det_wrap_SetForegroundWindow/det_wrap_SetWindowPos/
+// det_wrap_CreateWindowExA and win32_pilot.md sec 4a (presentation is BELOW
+// the PortForge boundary, so suppressing it cannot change game state - which
+// is exactly what gate G1 re-verifies).
+enum class WindowMode { Normal, MinNoActive, Hidden };
+const char* window_mode_name(WindowMode m);
+
 struct DetOptions {
     bool det_mode;            // --det
     bool pace_real;           // --pace=real (default fast: never really Sleep in det mode)
@@ -50,6 +60,17 @@ struct DetOptions {
     // cycle_count (0x506938) before and after _handle_timer_tick, the
     // safepoint count and the exact call site. See det.cpp's trace_input.
     const char* trace_input;
+    // --- "Environment isolation" pass (carrier/NOTES.md) ------------------
+    // --interactive: a human is at the keyboard/screen for this run
+    // (scripts/play.py passes it for its interactive and --record-replay
+    // modes). ONLY an --interactive run may call SetForegroundWindow on the
+    // guest window or let the guest's own SetForegroundWindow/ShowWindow
+    // calls through; an automated run must never take the operator's
+    // foreground.
+    bool interactive;
+    // How the guest window is shown when !interactive (main.cpp defaults it
+    // to MinNoActive; --window=normal|minnoactive|hidden overrides).
+    WindowMode window_mode;
 };
 
 typedef void (*DetShutdownFn)(const char* reason);
@@ -68,6 +89,14 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook);
 // registers) - this spawns and joins that helper thread itself. Call once,
 // after imports_init(), before jumping into the guest entry point.
 void det_arm_main_thread();
+
+// "Environment isolation" pass: installs the 5-byte entry patches that put
+// the window-activation channel (_switch_in/_switch_out) and the DirectInput
+// mouse (_handle_mouse_input) under carrier control. Must run AFTER
+// pe_image_load has mapped the guest (there is nothing to patch before that)
+// and before the guest entry point - main.cpp calls it next to bind_init().
+// Inert outside --det when the input policy is Real (i.e. the plain oracle).
+void det_install_entry_patches();
 
 // Arms the same breakpoint table directly on an arbitrary (already-running)
 // thread - called from a helper thread with `thread` suspended first. Used
@@ -151,6 +180,10 @@ struct DetSavedState {
     unsigned char key_held[256];      // --record-input hygiene filter state
     long      real_key_violations;
     int       last_drain_tick;        // divergence 005: the tick the real-key queue was last drained at
+    // "Environment isolation" pass: the two new carrier-owned channels.
+    int       time_cursor;            // replay cursor into the recorded `T time <v>` values
+    int       switch_queue_head, switch_queue_tail;
+    unsigned char switch_queue_dir[64]; // kSwitchQueueCap; 1 = switch in, 0 = switch out
 };
 
 void det_state_save(DetSavedState* s);
@@ -188,6 +221,12 @@ unsigned det_arena_top();
 // --report JSON accessors (trace.cpp's trace_write_report calls these).
 const char* det_input_policy_name(); // "real" | "script" | "none" | "(unset)" before det_init runs
 long det_real_key_violations();      // see det_veh_handler's neutralize_keyboard_hit
+
+// "Environment isolation" pass: one JSON object summarising every channel
+// this pass took ownership of (focus/activation, mouse, ad thread, window
+// policy, recorded clock, getenv). Written by trace.cpp into --report's
+// top-level "environment" field; `buf` gets a `{...}` object, never null.
+void det_environment_json(char* buf, size_t n);
 
 // Wrapped imports - see wrappers.cpp's wrappers_lookup() for how these are
 // installed, and det.cpp for the evidence/semantics comment on each one.
@@ -228,4 +267,23 @@ extern "C" {
     void* __cdecl det_wrap_calloc(size_t count, size_t size);
     void* __cdecl det_wrap_realloc(void* p, size_t n);
     void __cdecl det_wrap_free(void* p);
+    // --- "Environment isolation" pass -------------------------------------
+    // Window policy (item 1): an automated run's guest window must never take
+    // the operator's foreground. Evidence for each substitution is at the
+    // wrapper in det.cpp; all four forward unchanged when --interactive.
+    BOOL __stdcall det_wrap_ShowWindow(HWND h, int cmd);
+    BOOL __stdcall det_wrap_SetForegroundWindow(HWND h);
+    BOOL __stdcall det_wrap_SetWindowPos(HWND h, HWND after, int x, int y, int cx, int cy, UINT flags);
+    HWND __stdcall det_wrap_CreateWindowExA(DWORD ex, LPCSTR cls, LPCSTR name, DWORD style,
+                                            int x, int y, int w, int hgt, HWND parent,
+                                            HMENU menu, HINSTANCE inst, LPVOID param);
+    // Network ad fetch (item 5): the ONE pthread_create call site in the whole
+    // binary is fldads_start -> fldads_threadmain (0x404014), and five
+    // fld_adspot.c globals are inside the 151-global digest domain, so the
+    // live HTTP result CAN reach the verdict. Suppressed in --det.
+    int __cdecl det_wrap_pthread_create(void* th, void* attr, void* (__cdecl* start)(void*), void* arg);
+    // Environment variables (item 5): instrumentation only - forwards every
+    // call, but records the distinct names asked for and whether the host had
+    // a value, so the channel can be reported as evidence instead of assumed.
+    char* __cdecl det_wrap_getenv(const char* name);
 }

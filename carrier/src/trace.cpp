@@ -153,6 +153,15 @@ void trace_write_report(const char* report_path) {
     // coordinate was wrong.
     fprintf(f, "  \"rng\": { \"state\": %u, \"calls\": %ld },\n",
             det_rng_state(), det_rng_calls());
+    // "Environment isolation" pass (carrier/NOTES.md): one object per run
+    // saying what happened to every host channel the carrier took ownership
+    // of - window policy, activation, mouse, ad thread, recorded clock,
+    // getenv. This is the machine-readable half of notes/determinism_audit.md.
+    {
+        char envbuf[2048];
+        det_environment_json(envbuf, sizeof(envbuf));
+        fprintf(f, "  \"environment\": %s,\n", envbuf);
+    }
     // Milestones 11-12 migration map (win32_pilot.md SS8a). Emits nothing at
     // all when no function was bound or sensed, so the report shape of every
     // pre-milestone-11 run is unchanged.

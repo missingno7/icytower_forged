@@ -36,6 +36,14 @@ static const char* kWrapNames[] = {
     // seed is outside every snapshot component. Forwards to the real
     // msvcrt rand/srand unless --det (see det.cpp).
     "rand", "srand",
+    // "Environment isolation" pass (carrier/NOTES.md): the guest's own window
+    // -management calls (an automated run must never take the operator's
+    // foreground), the ad-fetch thread (the one pthread_create call site,
+    // whose HTTP result reaches five globals inside the digest domain), and
+    // getenv (instrumentation only - the value is always forwarded). Each
+    // forwards unchanged unless --det / a non-interactive run asks otherwise.
+    "ShowWindow", "SetForegroundWindow", "SetWindowPos", "CreateWindowExA",
+    "pthread_create", "getenv",
 };
 static bool is_wrapped(const char* name) {
     for (const char* w : kWrapNames)

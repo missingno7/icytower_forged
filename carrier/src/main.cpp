@@ -206,6 +206,14 @@ struct Options {
     char trace_window_out[MAX_PATH];   // --trace-window-out PATH
     bool rng_selftest;                 // --rng-selftest (unit check, then exit)
     char trace_input[MAX_PATH];        // --trace-input PATH ("-" = stderr), divergence 005 diagnostic
+    // "Environment isolation" pass (carrier/NOTES.md): --interactive means a
+    // human is at this machine for this run (scripts/play.py passes it for
+    // its interactive and --record-replay modes). Only then may the guest
+    // window take the foreground. --window overrides how a non-interactive
+    // run's window is shown.
+    bool interactive;
+    WindowMode window_mode;
+    bool window_mode_explicit;
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -324,6 +332,9 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->trace_window_out[0] = 0;
     o->rng_selftest = false;
     o->trace_input[0] = 0;
+    o->interactive = false;
+    o->window_mode = WindowMode::MinNoActive;
+    o->window_mode_explicit = false;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
@@ -343,7 +354,8 @@ static void parse_args(int argc, char** argv, Options* o) {
             strncpy(name, arg + 2, sizeof(name) - 1);
             name[sizeof(name) - 1] = 0;
             if (strcmp(name, "det") == 0 || strcmp(name, "inject-real-test") == 0 ||
-                strcmp(name, "restore-fault") == 0 || strcmp(name, "rng-selftest") == 0) {
+                strcmp(name, "restore-fault") == 0 || strcmp(name, "rng-selftest") == 0 ||
+                strcmp(name, "interactive") == 0) {
                 value = "1"; // bare flags: --det / --inject-real-test (no value) means =1
             } else if (i + 1 < argc) {
                 strncpy(valbuf, argv[++i], sizeof(valbuf) - 1);
@@ -384,10 +396,22 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "trace-window-out") == 0) { strncpy(o->trace_window_out, value, sizeof(o->trace_window_out) - 1); }
         else if (strcmp(name, "trace-input") == 0) { strncpy(o->trace_input, value, sizeof(o->trace_input) - 1); }
         else if (strcmp(name, "rng-selftest") == 0) { o->rng_selftest = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "interactive") == 0) { o->interactive = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "window") == 0) {
+            o->window_mode_explicit = true;
+            if (_stricmp(value, "normal") == 0) o->window_mode = WindowMode::Normal;
+            else if (_stricmp(value, "minnoactive") == 0) o->window_mode = WindowMode::MinNoActive;
+            else if (_stricmp(value, "hidden") == 0) o->window_mode = WindowMode::Hidden;
+            else { fprintf(stderr, "error: --window='%s' is invalid (expected normal|minnoactive|hidden)\n", value); exit(2); }
+        }
         else { fprintf(stderr, "warning: unknown option --%s\n", name); }
     }
 
     if (o->cwd[0] == 0) dirname_of(o->image, o->cwd, sizeof(o->cwd));
+    // --interactive implies a normally-shown window unless --window says
+    // otherwise; a non-interactive run defaults to SW_SHOWMINNOACTIVE (see
+    // det.cpp's det_wrap_ShowWindow for why that particular form).
+    if (o->interactive && !o->window_mode_explicit) o->window_mode = WindowMode::Normal;
     resolve_input_policy(o, input_policy_str);
 }
 
@@ -458,6 +482,8 @@ static void options_to_env(const Options& o) {
     SetEnvironmentVariableA("PF_TRACE_WINDOW_OUT", o.trace_window_out);
     SetEnvironmentVariableA("PF_RNG_SELFTEST", o.rng_selftest ? "1" : "0");
     SetEnvironmentVariableA("PF_TRACE_INPUT", o.trace_input);
+    SetEnvironmentVariableA("PF_INTERACTIVE", o.interactive ? "1" : "0");
+    SetEnvironmentVariableA("PF_WINDOW", window_mode_name(o.window_mode));
 }
 
 static bool is_child_process() {
@@ -537,6 +563,15 @@ static void options_from_env(Options* o) {
     get_env_or("PF_RNG_SELFTEST", snap_buf, sizeof(snap_buf), "0");
     o->rng_selftest = (strcmp(snap_buf, "0") != 0);
     get_env_or("PF_TRACE_INPUT", o->trace_input, sizeof(o->trace_input), "");
+    char it_buf[16];
+    get_env_or("PF_INTERACTIVE", it_buf, sizeof(it_buf), "0");
+    o->interactive = (strcmp(it_buf, "0") != 0);
+    char win_buf[16];
+    get_env_or("PF_WINDOW", win_buf, sizeof(win_buf), "minnoactive");
+    if (_stricmp(win_buf, "normal") == 0) o->window_mode = WindowMode::Normal;
+    else if (_stricmp(win_buf, "hidden") == 0) o->window_mode = WindowMode::Hidden;
+    else o->window_mode = WindowMode::MinNoActive;
+    o->window_mode_explicit = true; // already resolved by the parent
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -653,6 +688,8 @@ int main(int argc, char** argv) {
     det_opt.image_path = o.image;
     det_opt.inject_real_test = o.inject_real_test;
     det_opt.trace_input = o.trace_input[0] ? o.trace_input : nullptr;
+    det_opt.interactive = o.interactive;
+    det_opt.window_mode = o.window_mode;
     // Milestones 8-9: snapshot/restore ride on the same tick safepoint.
     SnapshotOptions snap_opt;
     snap_opt.snapshot_at_tick = o.snapshot_at_tick;
@@ -732,6 +769,10 @@ int main(int argc, char** argv) {
     bind_opt.fn_digest_out = o.fn_digest_out[0] ? o.fn_digest_out : nullptr;
     bind_opt.fault_inject = o.fault_inject[0] ? o.fault_inject : nullptr;
     bind_init(bind_opt);
+    // "Environment isolation" pass (carrier/NOTES.md): the window-activation
+    // and mouse entry patches. Same placement constraint as bind_init - after
+    // the image is mapped, before the guest runs.
+    det_install_entry_patches();
 
     det_arm_main_thread(); // no-op unless digest/record/stop-at-tick asked for a breakpoint
 

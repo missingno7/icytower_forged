@@ -1,0 +1,8 @@
+﻿snapshot ..\artifacts\determinism_audit/clk2_snap
+  format=portforge-win32-carrier-snapshot-v1 tick=401 safepoint=0x004124f4
+  eip=0x004124f4 esp=0x0e1fef30 ebp=0x0e1ff938 eflags=0x00000202 x87cw=0x037f
+  carrier state: virtual_ms=8020 (tick 401) rng_state=1578811253 (0x5e1abf75) rng_calls=14 input_script_cursor=62 arena_bump=28468560
+
+  seed                         @0x004ff108  double               = 18448.0
+  rec_seed                     @0x004fe7a8  int                  = 17211
+  player_id                    @0x004fe518  int                  = 179
