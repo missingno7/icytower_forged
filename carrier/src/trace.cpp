@@ -6,6 +6,7 @@
 #include "trace.hpp"
 #include "import_types.hpp"
 #include "symbols.hpp"
+#include "det.hpp" // report.json: input_policy / real_key_violations (see det_input_policy_name/det_real_key_violations)
 
 #define PF_MAX_THREADS 32
 
@@ -61,21 +62,34 @@ void trace_close() {
     }
 }
 
-extern "C" void __cdecl pf_on_import(int id, void* frame) {
+// Single-place counting logic (see trace.hpp): both pf_on_import (trampoline-
+// routed imports) and pf_count_import (always-installed wrappers that are
+// wired directly into the IAT, bypassing the trampoline - wrappers.cpp/
+// det.cpp) funnel through here so g_call_count[]/g_thread_count[][] - and
+// hence the report.json numbers - are accurate for every import either way.
+extern "C" void __cdecl pf_count_import(int id) {
     if (id < 0 || id >= PF_MAX_IMPORTS) return; // corrupt call, don't crash the logger
     InterlockedIncrement(&g_call_count[id]);
+    if (!g_cs_ready) return;
+    DWORD tid = GetCurrentThreadId();
+    EnterCriticalSection(&g_cs);
+    int slot = thread_slot_for(tid);
+    if (slot >= 0) g_thread_count[slot][id]++;
+    LeaveCriticalSection(&g_cs);
+}
+
+extern "C" void __cdecl pf_on_import(int id, void* frame) {
+    if (id < 0 || id >= PF_MAX_IMPORTS) return; // corrupt call, don't crash the logger
+    pf_count_import(id);
 
     DWORD tid = GetCurrentThreadId();
 
     bool want_trace = g_trace_all || g_trace_enabled[id];
-    // Thread attribution and trace-line emission both need the critical
-    // section (the thread table is shared, and fprintf to one FILE* from
-    // multiple threads needs external serialization to avoid interleaved
-    // lines); take it once for whichever of the two we need this call.
+    // pf_count_import already did the increment/thread-attribution above;
+    // this second critical section only guards trace-line emission (needs
+    // the frame's return address/args, which pf_count_import never has).
     if (g_cs_ready) {
         EnterCriticalSection(&g_cs);
-        int slot = thread_slot_for(tid);
-        if (slot >= 0) g_thread_count[slot][id]++;
 
         if (want_trace && g_trace_file) {
             unsigned long seq = (unsigned long)InterlockedIncrement(&g_seq);
@@ -119,7 +133,8 @@ void trace_write_report(const char* report_path) {
         fprintf(stderr, "trace_write_report: could not open '%s'\n", report_path);
         return;
     }
-    fprintf(f, "{\n  \"imports\": [\n");
+    fprintf(f, "{\n  \"input_policy\": \"%s\",\n  \"real_key_violations\": %ld,\n  \"imports\": [\n",
+            det_input_policy_name(), det_real_key_violations());
     bool first = true;
     for (int id = 0; id < kNumImports && id < PF_MAX_IMPORTS; ++id) {
         long c = g_call_count[id];

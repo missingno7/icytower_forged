@@ -102,7 +102,7 @@ bool imports_init(const ImportsConfig& cfg) {
 
         void* iat_value;
         if (is_wrapped(e.name)) {
-            wrappers_bind_real(e.name, proc);
+            wrappers_bind_real(e.name, proc, i);
             void* wrapper = wrappers_lookup(e.name);
             iat_value = wrapper ? wrapper : proc;
         } else if (cfg.count_imports) {

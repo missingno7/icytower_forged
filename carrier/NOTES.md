@@ -542,6 +542,260 @@ Hardware breakpoints installed (not IAT wrappers): safepoint 0x4124f4
   (architecture doc §6), out of scope here; the digest-region fix
   sidesteps it rather than solving it.
 
+## Input policy and recording
+
+Follow-up pass (2026-09-07) on top of Milestones 5-7, addressing
+win32_pilot.md §5a ("Input source is an exclusive policy") and the two
+`NOTES.md` "known gaps" it left open: `--record-input` untested end-to-end,
+and the report JSON's per-import counts missing `_beginthread`/`Sleep`/QPC/
+`timeGetTime`/`time`/`clock`/`malloc`/`calloc`/`realloc`/`free`. Deterministic
+proof re-verified after every change below (`compare_digests.py`: **`EQUAL
+(876 ticks, ...)`**, same as before this pass - see "Proof rerun" at the end
+of this section).
+
+### A. Explicit `--input=real|script|none`
+
+Previously the exclusive-input requirement was met implicitly: `--det`
+always parked the real keyboard (a hardware breakpoint at
+`key_dinput_handle_scancode`'s entry, unconditionally), and `--input-script`
+added scripted events on top. That worked for the milestone-7 proof (which
+always used both together) but couldn't express "real keyboard, deterministic
+clock" or "no input at all", and - MEASURED, this pass - silently allowed
+both a real keyboard and a script to reach the game in a **non**-`--det`
+`--input-script` run (nothing parked the real path there at all).
+
+Now `--input=real|script|none` (`main.cpp`'s `resolve_input_policy`,
+`det.hpp`'s `InputPolicy`) is explicit, with the pre-existing implicit
+default preserved: `script` when `--input-script` is given, else `real`.
+Resolved and validated once, in the parent process, before
+`relaunch_as_reserved_child` - `--input=real` together with a real
+`--input-script` is a hard error (exit code 2) except under
+`--inject-real-test` (part C below); any other input-policy/`--input-script`
+mismatch (e.g. `--input=none --input-script X`) is a warning, and the script
+is simply not loaded. The resolved policy travels to the child via
+`PF_INPUT_POLICY` (env, like every other carrier flag - see `options_to_env`/
+`options_from_env`), is printed in the startup banner (stderr, one line, plus
+a duplicate on stdout per the task's literal "stdout banner" wording -
+`carrier: input_policy=...`), and is now a top-level field in `--report`'s
+JSON (`"input_policy"`, plus `"real_key_violations"` - part B).
+
+**Mechanism kept: breakpoint neutralization, not skipping the input
+thread.** The task offered a choice ("keep the existing breakpoint
+neutralization, or skip creating the DirectInput input thread if that
+proves cleaner"). Milestone 5-7's own measurement (`det_wrap_beginthread`'s
+diagnostic logging, cited above under "Milestones 5-7" part B) already
+established that `input_thread_proc` is **never spawned** in this
+build/config to begin with - only the timer and window threads are - so
+"skip creating the input thread" has nothing to skip; `key_dinput_handle_
+scancode` runs from the real window thread's message pump instead,
+unconditionally, in every mode. The breakpoint-neutralization mechanism
+(short-circuit the function at entry, `neutralize_keyboard_hit`) is
+therefore the only lever that actually exists for parking it, and this pass
+just changed **when** it's installed: previously gated on `g_det_mode`
+alone, now on `input_policy != Real` (Script **and** None both park it, not
+just when `--det` happens to also be set - this is the actual non-det-mode
+mixing bug fixed above).
+
+**Runtime assertion.** Because the neutralize breakpoint is a measured
+fallback (win32_pilot.md's own words: "leave [the thread] and neutralize the
+keyboard by never acquiring"), not a proof the real path is silent, every
+hit of it while parked is now counted and logged as a violation
+(`neutralize_keyboard_hit`, `g_real_key_violations`, capped at 20 printed
+lines to avoid log spam, uncapped count) rather than treated as an
+unremarkable no-op. Verified **zero** violations across every automated run
+in this pass (`"real_key_violations": 0` in every `--report` JSON produced,
+including the round-trip test in part C, which never touches the host's
+actual keyboard).
+
+### B. Report accuracy: `pf_count_import`
+
+The always-installed wrappers (`_beginthread`, `Sleep`,
+`QueryPerformanceCounter`, `timeGetTime`, `time`, `clock`, `malloc`/
+`calloc`/`realloc`/`free`, plus `ExitProcess`/`exit`/`_cexit`/`abort`/
+`GetModuleFileNameA`/`GetCommandLineA`) are wired **directly** into the
+guest IAT (`imports.cpp`'s `is_wrapped()`/`wrappers_lookup()`), bypassing
+`pf_import_common`'s counting trampoline entirely - so their calls were
+invisible to `--report`'s per-import counts, a pre-existing gap this
+`NOTES.md` already flagged.
+
+Fixed with the single-place design the task suggested: `trace.cpp` now
+exposes `pf_count_import(int id)` (declared in `trace.hpp`), doing exactly
+the increment + per-thread attribution `pf_on_import` already did, minus the
+text trace-line (no return-address/args frame exists at these call sites -
+they're reached by a normal C call, not the asm trampoline). `pf_on_import`
+itself now calls `pf_count_import` for that half of its own work, so there
+is exactly one counting implementation. Every always-installed wrapper in
+`wrappers.cpp`/`det.cpp` calls `pf_count_import(id)` at its own entry, where
+`id` is the import's `g_real[]`/report-JSON index, threaded through from
+`imports.cpp`'s resolve loop via `wrappers_bind_real(name, real_proc, id)` →
+`det_bind_real(name, real_proc, id)` (both signatures gained the `id`
+parameter; every call site updated).
+
+Verified: a `--det` run's `--report` JSON now has `{"id": 62, "name":
+"KERNEL32.dll!Sleep", "count": 10009}` (previously absent). Every other
+newly-counted name (`_beginthread`, QPC, `timeGetTime`, `time`, `clock`,
+`malloc`/`calloc`/`realloc`/`free`, `ExitProcess`, etc.) is counted the same
+way; not re-listed exhaustively here since the mechanism is uniform.
+
+### C. `--record-input` end-to-end, and `--inject-real-test`
+
+**Format.** `--record-input` now writes exactly what `--input-script` reads:
+`T press|release KEY_NAME` (reverse lookup against the same 7-entry
+`kKeyNames` table `resolve_key` uses; falls back to the raw scancode number
+for anything outside that table - `load_script`'s own fallback is `atoi()`,
+so a numeric line is still valid input either way), preceded by `#`
+header/comment lines `load_script` already skips: `# date:`, `#
+image_sha256:` (sha256 of the guest EXE, computed once via `pf::Sha256`
+reading the file named by `DetOptions::image_path`, same class the digest
+sensor uses), `# policy:`, `# pace:`.
+
+**The round trip - tested with a synthetic source, per the task's own
+fallback (no way to press real keys from this pass).** `--inject-real-test`
+(hidden diagnostic, `main.cpp`'s bare-flag parsing like `--det`) requires
+`--input=real` together with `--input-script` - the ONE place that
+combination is allowed, specifically to test the recording path.  Instead of
+calling `_handle_key_press`/`_handle_key_release` directly (the normal
+Script-mode delivery `deliver_due_input` always used before), each scripted
+event is fed through `key_dinput_handle_scancode` itself - the real
+DirectInput entry point - via a small `__declspec(naked)` shim
+(`call_key_dinput_handle_scancode`, `det.cpp`) that loads the two cdecl
+stack args into EAX/EDX (DWARF-confirmed prototype `void
+key_dinput_handle_scancode(int scancode, int pressed)`, wkeybd.c line 321;
+disasm at 0x46d5a8 confirms both arrive in registers, never on the stack,
+so a plain function-pointer cast - which would push cdecl stack args -
+cannot call it) and does a register-indirect `call`. Because `--input=real`
+leaves the neutralize breakpoint **uninstalled**, the real function actually
+runs (not short-circuited), which is what lets `--record-input`'s own
+breakpoints (at `_handle_key_press`/`_handle_key_release`, unchanged from
+Milestones 5-7) see the event exactly as a live human keystroke would
+produce it.
+
+**MEASURED, load-bearing finding (first attempt failed, documented per the
+project's own practice):** `key_dinput_handle_scancode`'s own `scancode`
+argument is **not** the Allegro internal code (`KEY_ENTER`=67 etc.) that
+`kKeyNames`/`g_script`/`_handle_key_press` use - it is the **raw DirectInput
+`DIK_*` hardware scancode**, translated through the game's own
+`_hw_to_mycode[256]` byte table (`wkeybd.c`) before it reaches
+`_handle_key_press`/`_handle_key_release` (confirmed by reading that table's
+actual bytes out of `assets/icytower15.exe` at its DWARF/COFF VA
+`0x4daf80`: `hw_to_mycode[0x01]==59`, `[0x1c]==67`, `[0x39]==75`,
+`[0xcb]==82`, `[0xcd]==83`, `[0xc8]==84`, `[0xd0]==85` - the standard PC/AT
+scancode-set-1 `DIK_*` values for these 7 keys, one for one against
+`kKeyNames`). First attempt fed the Allegro code directly as the
+"scancode" argument (double-translating through `_hw_to_mycode[67]` etc.,
+landing on an unrelated key) and **measurably** corrupted enough internal
+state to leak the 256 MiB deterministic heap arena empty within ~315 ticks
+of a ~700-tick script (`det: arena exhausted`), crashing inside
+`main_menu_callback` on the next allocation failure - a real, reproduced
+failure, not a hypothetical, and consistent with "if an approach fails
+after an honest attempt, document it and move to the fix" rather than
+silently patching around the symptom. Fixed with an explicit
+Allegro-code→DIK-code table (`kDikMap`/`allegro_to_dik`, `det.cpp`) built
+from the measured `_hw_to_mycode` values above.
+
+**Interesting, non-bug finding kept for the record:** once fixed, the
+recorded file (`replays via --record-replay`, or any `--record-input`
+output) shows the ENTER key re-firing `press` events roughly every 1-2
+ticks while held (an OS/Allegro auto-repeat behavior **internal to**
+`key_dinput_handle_scancode`'s real path) even though the synthetic script
+only issued ONE press event at T=20 and one release at T=620 - this is
+authentic real-path behavior the direct-injection Script-mode path does
+not (and structurally cannot, since it calls `_handle_key_press` exactly
+once per scripted line) reproduce. Not a bug: the round trip below proves
+the recorded (auto-repeated) event stream, replayed verbatim through Script
+mode, reproduces the original run's digests exactly - which is the actual
+contract, not "the recording is short."
+
+**Round-trip result:**
+
+```
+carrier.exe --det --pace=fast --input=real --inject-real-test \
+    --input-script scripts/newgame.txt \
+    --record-input ../artifacts/rt_record.txt \
+    --digest-out ../artifacts/rt_record_digest.txt \
+    --stop-at-tick 1000 --run-seconds 25
+carrier.exe --det --pace=fast --input=script \
+    --input-script ../artifacts/rt_record.txt \
+    --digest-out ../artifacts/rt_replay_digest.txt \
+    --stop-at-tick 1000 --run-seconds 25
+python carrier/scripts/compare_digests.py \
+    artifacts/rt_record_digest.txt artifacts/rt_replay_digest.txt
+```
+
+Result: **`EQUAL (876 ticks, ...)`** - the record run (real path, via
+`--inject-real-test`) and the replay run (direct Script-mode injection of
+the recorded file) produce byte-identical safepoint digests at every tick.
+Both runs' `--report` JSON show `"real_key_violations": 0`.  `--pace=real`
+was used for the record run specifically to verify the task's other
+requirement - "the game must run at normal speed for a human ... while the
+tick index still comes from the virtual clock" - by construction: `--pace`
+only controls whether `det_wrap_Sleep` also calls the real `::Sleep(ms)`;
+`T` is computed from `g_virtual_ms`, which accumulates the exact `ms`
+argument passed to `Sleep` either way, never real elapsed wall time. Not
+independently re-measured with a stopwatch in this pass (no human present);
+the code path is shared, unconditional, and already covered by the
+milestone-7 `--pace=real`/`--pace=fast` distinction being purely "sleep or
+don't", so this is architectural, not newly re-verified.
+
+**Window focus.** Task: "state in NOTES whether the carrier should call
+`SetForegroundWindow` on the guest window ... do it if cheap." It is cheap:
+`try_focus_guest_window_once` (`det.cpp`, called from `det_wrap_Sleep`) uses
+`EnumWindows` filtered by `GetCurrentProcessId()`/`GetWindowThreadProcessId`
+to find the guest's own top-level window - no need to hook
+`RegisterClassA`/`CreateWindowExA` to capture the HWND at creation time, since
+the guest is the only window owner in this process. Only takes effect when
+`input_policy==Real` (a live human is the point of focusing it); tried once
+per Sleep call until it succeeds (harmless no-op once the window exists and
+after; harmless if no window ever appears, e.g. a headless automated run).
+Confirmed working in the round-trip test above: `det: focused guest window
+hwnd=... (input_policy=real)` appears in stderr.
+
+### Proof rerun (this pass)
+
+Same commands as Milestones 5-7 §E, rerun after every change above:
+
+```
+carrier.exe --det --pace=fast --input-script scripts/newgame.txt --digest-out ../artifacts/final_run1.txt --stop-at-tick 1000 --run-seconds 25
+carrier.exe --det --pace=fast --input-script scripts/newgame.txt --digest-out ../artifacts/final_run2.txt --stop-at-tick 1000 --run-seconds 25
+python carrier/scripts/compare_digests.py artifacts/final_run1.txt artifacts/final_run2.txt
+```
+
+Result: **`EQUAL (876 ticks, ...)`** - unchanged from before this pass, as
+required. `assets/tower.cfg`, `assets/profiles/`, `assets/log.txt` were
+restored from `artifacts/assets_backup/` + `artifacts/log_original_
+baseline.txt` before each run, per the existing convention above.
+
+### `scripts/play.py` (repo root)
+
+A human-facing wrapper over `carrier.exe`, self-contained rather than
+importing `port_forge/scripts/player_runtime.py` - that module's
+declared-runtime contract (a `portforge.project.json` "player" capability
+declaration, `game.json` program identity, ArtifactV2 replay authority
+files) does not exist in this project and does not fit the carrier's
+execution model (one native Win32 process mapping one already-built guest
+EXE, not one of PortForge's DOS/Amiga/etc. interpreter runtimes); forcing it
+on would mean inventing a manifest with no real oracle/generated/port
+distinction to declare. See `scripts/play.py`'s own docstring for the full
+reasoning - flagged here in case a real contract is adopted for the carrier
+project later.
+
+Plain `python scripts/play.py` builds the carrier if missing, verifies
+`assets/icytower15.exe`'s sha256 against a fingerprint pinned in the script,
+then runs `--det --pace=real --input=real` (deterministic clock, real
+human input, real time). `--record-replay NAME` adds `--record-input
+replays/NAME.txt --digest-out replays/NAME.digest` (creates `replays/` at
+the repo root). `--play-replay NAME [--pace real|fast]` replays
+`replays/NAME.txt` with `--input=script --digest-out
+replays/NAME.replay.digest`, bounded by `--stop-at-tick` set to the exact
+last tick `replays/NAME.digest` reached (not "a bit past it" - matches the
+line count exactly for a clean `compare_digests.py` verdict instead of a
+spurious length mismatch), then runs `compare_digests.py` and reports
+EQUAL or the first differing tick. `--no-det` runs the raw oracle (no flags
+at all). `--keep-state` skips the assets restore. Every invocation prints
+its exact `carrier.exe` command line. Tested end-to-end in this pass with a
+staged replay pair (the round-trip recording above, copied into `replays/`)
+- `--play-replay` reproduced **`EQUAL`**.
+
 ## Known gap / not yet exercised
 
 - `--ddraw=system` (the real system `ddraw.dll` instead of cnc-ddraw's
@@ -553,3 +807,16 @@ Hardware breakpoints installed (not IAT wrappers): safepoint 0x4124f4
   run automatically at startup/menu, see the report's thread breakdown) but
   not driven deliberately, since the task scope stops at the main menu and
   the carrier has no input-injection capability.
+- **`--record-input`/`--input=real` still not exercised with an actual
+  live human keyboard** (see "Input policy and recording" above) - the
+  round trip was proven with `--inject-real-test`'s synthetic source
+  instead, per the task's own documented fallback for an automated pass.
+  The synthetic source exercises the real `key_dinput_handle_scancode` path
+  (not a shortcut around it), but a genuine human-typing session, and
+  `scripts/play.py`'s plain/`--record-replay` invocations specifically,
+  remain untested by this pass.
+- `kDikMap` (`det.cpp`, "Input policy and recording" part C) only covers
+  the 7 keys `kKeyNames` already knows about (ESC/ENTER/SPACE/arrows). A
+  future `--inject-real-test` script using any other key would need its
+  Allegro→DIK mapping added there first (the code detects and logs a
+  missing mapping rather than misbehaving, but still skips that event).

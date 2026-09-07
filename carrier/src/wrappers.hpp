@@ -10,8 +10,12 @@ void* wrappers_lookup(const char* name);
 
 // imports_init() calls this right after resolving each wrapped import's
 // real address, so the wrapper can forward to it (e.g. GetModuleFileNameA
-// with hModule != NULL).
-void wrappers_bind_real(const char* name, void* real_proc);
+// with hModule != NULL). `id` is the import's g_real[]/report.json index
+// (imports.cpp's loop index), forwarded to pf_count_import (trace.hpp) by
+// each wrap_* function itself - see wrappers.cpp/det.cpp for why (item 3:
+// these are wired directly into the guest IAT, bypassing the counting
+// trampoline).
+void wrappers_bind_real(const char* name, void* real_proc, int id);
 
 // The absolute path main.cpp resolved for the guest image, used by the
 // GetModuleFileNameA(NULL,...) and GetCommandLineA wrappers so the game's

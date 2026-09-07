@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""gen_bindings.py -- generate carrier/gen/pf_bindings.h and pf_bindings_types.h.
+
+Purpose (win32_pilot.md SS7a): let address-free clean C in src/ -- which
+declares game globals as ordinary externs (`extern int reward_scale;`,
+`extern Tplayer *ply[1000];`) and calls other game functions by their plain
+names -- compile INTO the carrier and operate on the ORIGINAL game memory at
+the ORIGINAL addresses, with zero address literals or carrier types in src/
+itself.
+
+This script does NOT re-parse DWARF. It is a second, small generator that
+sits on top of the *already-generated and already-MSVC-verified* output of
+gen_interop.py (`interop_index.json`, `it_globals.h`, `it_funcs.h`, see
+INTEROP_NOTES.md): interop_index.json is the enumeration of game-scope
+globals/functions (name, va, type/prototype, cu); it_globals.h / it_funcs.h
+already contain, per name, a correct C cast expression back to the original
+address (`(*(T*)VA)` for a global, `((PFN_name)VA)` for a function, PFN_name
+declared alongside). gen_bindings.py reuses those expressions verbatim under
+the PLAIN name instead of the IT_G_/IT_F_ prefixed one, which is exactly the
+address-binding macro clean C needs to compile in place. Re-deriving the
+cast expressions independently (re-parsing DWARF type strings) would risk
+silently diverging from the header pair that INTEROP_NOTES.md says was
+verified against real MSVC; reuse avoids that class of bug entirely.
+
+Outputs:
+  pf_bindings.h        GENERATED, DO-NOT-EDIT. One #define per game-scope
+                        global and (non-excluded) function, binding the
+                        plain name to its original address. Forced-included
+                        (`/FI`) only when src/ is compiled INTO the carrier.
+  pf_bindings_types.h  GENERATED, DO-NOT-EDIT. Carrier-side type provider:
+                        just `#include "it_types.h"` plus the DO-NOT-EDIT
+                        banner. src/ gets its own, hand-owned copy of the
+                        types later (SS7a); this header is only for code
+                        that compiles *into* the carrier today.
+
+Exclusion (`--exclude name[,name...]`): a function about to be compiled
+natively into the carrier from src/ must keep its own name -- redirecting
+`foo` to `((PFN_foo)0x...)` while src/foo.c also *defines* `foo` is a
+duplicate-definition / self-redirection bug, not a binding. Names passed to
+--exclude are simply omitted from pf_bindings.h; the carrier build passes
+the names of the functions currently promoted to NATIVE (win32_pilot.md
+SS3's binding table is the runtime side of the same idea, this is the
+compile-time side).
+
+CRT/Windows identifier collisions: INTEROP_NOTES.md's generator renames
+type names that collide with real CRT/UCRT types it must coexist with
+(`FILE`->`it_orig_FILE` etc, see CRT_RENAME there) because the *type name*
+is only used internally and can safely be renamed. A plain-name #define
+cannot be renamed the same way without breaking the reason it exists (src/
+must be able to write the literal identifier) -- so instead, any game
+global/function name colliding with a reserved CRT/Windows identifier is
+SKIPPED (no macro emitted) and reported, exactly as INTEROP_NOTES.md reports
+struct/typedef collisions instead of silently guessing. As of this run the
+game-scope name set has zero such collisions (see BINDINGS_NOTES.md).
+"""
+
+import argparse
+import datetime
+import json
+import re
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+GLOBAL_DEFINE_RE = re.compile(
+    r'^#define IT_G_([A-Za-z_][A-Za-z0-9_]*) (\(\*\(.*\)0x[0-9a-fA-F]+\))$')
+FUNC_DEFINE_RE = re.compile(
+    r'^#define IT_F_([A-Za-z_][A-Za-z0-9_]*) '
+    r'(\(\(PFN_[A-Za-z_][A-Za-z0-9_]*\)0x[0-9a-fA-F]+\))$')
+
+# Identifiers that must not be shadowed by an object-like macro because a
+# real CRT/UCRT header or windows.h either defines them as a macro itself
+# (redefinition warning/error, or silent breakage of *their* meaning in any
+# TU that includes both) or ships them as a well-known function whose
+# system-header declaration would be textually mangled by our macro. This
+# list is deliberately conservative (better to skip a name that is actually
+# safe than to emit one that breaks a system header two files away).
+RESERVED_CRT_WINDOWS_IDENTS = {
+    # stdio.h
+    'fopen', 'fclose', 'fread', 'fwrite', 'printf', 'sprintf', 'fprintf',
+    'fscanf', 'scanf', 'sscanf', 'fputs', 'fgets', 'fputc', 'fgetc', 'getc',
+    'putc', 'getchar', 'putchar', 'remove', 'rename', 'tmpfile', 'tmpnam',
+    'perror', 'ferror', 'feof', 'fflush', 'fseek', 'ftell', 'rewind',
+    'setvbuf', 'vprintf', 'vfprintf', 'vsprintf', 'stdin', 'stdout', 'stderr',
+    # stdlib.h
+    'malloc', 'calloc', 'realloc', 'free', 'abort', 'exit', '_exit',
+    'atexit', 'system', 'getenv', 'rand', 'srand', 'qsort', 'bsearch',
+    'abs', 'labs', 'div', 'ldiv', 'atoi', 'atol', 'atof', 'strtol',
+    'strtoul', 'strtod', 'mblen', 'mbtowc', 'wctomb', 'errno',
+    # string.h
+    'strcpy', 'strncpy', 'strcat', 'strncat', 'strcmp', 'strncmp', 'strchr',
+    'strrchr', 'strstr', 'strlen', 'strtok', 'strerror', 'strpbrk',
+    'strspn', 'strcspn', 'memcpy', 'memmove', 'memset', 'memcmp', 'memchr',
+    'index', 'rindex',
+    # math.h
+    'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'sinh', 'cosh',
+    'tanh', 'exp', 'log', 'log10', 'pow', 'sqrt', 'ceil', 'floor', 'fabs',
+    'fmod', 'frexp', 'ldexp', 'modf',
+    # time.h
+    'time', 'clock', 'difftime', 'mktime', 'asctime', 'ctime', 'gmtime',
+    'localtime', 'strftime',
+    # ctype.h
+    'isalpha', 'isdigit', 'isalnum', 'isspace', 'isupper', 'islower',
+    'ispunct', 'iscntrl', 'isprint', 'isgraph', 'isxdigit', 'toupper',
+    'tolower',
+    # windows.h macros/typedefs that are object-like and commonly break
+    # when shadowed by an unrelated object macro
+    'small', 'far', 'near', 'pascal', 'cdecl', 'interface', 'IN', 'OUT',
+    'OPTIONAL', 'CONST', 'VOID', 'TRUE', 'FALSE', 'NULL', 'ERROR', 'DELETE',
+    'IGNORE', 'min', 'max', 'byte', 'WORD', 'DWORD', 'LONG', 'SHORT',
+    'BOOL', 'BYTE', 'HANDLE', 'HWND', 'LPVOID',
+    # C keywords (never valid identifiers, listed defensively)
+    'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
+    'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
+    'inline', 'int', 'long', 'register', 'restrict', 'return', 'short',
+    'signed', 'sizeof', 'static', 'struct', 'switch', 'typedef', 'union',
+    'unsigned', 'void', 'volatile', 'while',
+}
+
+
+def parse_header_defines(path, pattern):
+    out = {}
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            m = pattern.match(line.rstrip('\n'))
+            if m:
+                out[m.group(1)] = m.group(2)
+    return out
+
+
+def load_index(path):
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--index', default=str(HERE / 'interop_index.json'))
+    ap.add_argument('--globals-header', default=str(HERE / 'it_globals.h'))
+    ap.add_argument('--funcs-header', default=str(HERE / 'it_funcs.h'))
+    ap.add_argument('--out', default=str(HERE / 'pf_bindings.h'))
+    ap.add_argument('--types-out', default=str(HERE / 'pf_bindings_types.h'))
+    ap.add_argument('--exclude', default='',
+                     help='comma-separated names to omit (functions being '
+                          'compiled natively into the carrier from src/)')
+    args = ap.parse_args()
+
+    exclude = set(n.strip() for n in args.exclude.split(',') if n.strip())
+
+    index = load_index(args.index)
+    idx_globals = index['globals']
+    idx_functions = index['functions']
+
+    global_bodies = parse_header_defines(args.globals_header, GLOBAL_DEFINE_RE)
+    func_bodies = parse_header_defines(args.funcs_header, FUNC_DEFINE_RE)
+
+    missing_globals = [g['name'] for g in idx_globals if g['name'] not in global_bodies]
+    missing_funcs = [f['name'] for f in idx_functions if f['name'] not in func_bodies]
+    if missing_globals or missing_funcs:
+        sys.stderr.write(
+            'gen_bindings.py: interop_index.json and the generated headers '
+            'disagree -- regenerate it_globals.h/it_funcs.h first.\n'
+            'missing from it_globals.h: %r\n'
+            'missing from it_funcs.h: %r\n' % (missing_globals, missing_funcs))
+        return 1
+
+    reserved_collisions = []  # (kind, name)
+    excluded_globals = []
+    excluded_functions = []
+    emitted_globals = []
+    emitted_functions = []
+
+    lines = []
+    lines.append('/* pf_bindings.h -- GENERATED FILE. DO NOT EDIT.')
+    lines.append(' * Produced by carrier/gen/gen_bindings.py from:')
+    lines.append(' *   %s' % Path(args.index).name)
+    lines.append(' *   %s (reused cast expressions)' % Path(args.globals_header).name)
+    lines.append(' *   %s (reused PFN_* typedefs + cast expressions)' % Path(args.funcs_header).name)
+    lines.append(' * Generated: %s UTC' % datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
+    if exclude:
+        lines.append(' * Excluded (compiled natively, name kept free): %s' %
+                      ', '.join(sorted(exclude)))
+    lines.append(' *')
+    lines.append(' * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY')
+    lines.append(' * when address-free clean C from src/ is compiled INTO the carrier.')
+    lines.append(' * It maps every game-scope global/function PLAIN name to its original')
+    lines.append(' * address, so `extern int reward_scale;` and a bare call to a game')
+    lines.append(' * function in src/ resolve to (*(T*)VA) / ((PFN)VA) at build time --')
+    lines.append(' * no address literal and no carrier type ever appears in src/ itself.')
+    lines.append(' * Re-run gen_bindings.py to regenerate; do not hand-edit.')
+    lines.append(' */')
+    lines.append('')
+    lines.append('#ifndef PF_BINDINGS_H')
+    lines.append('#define PF_BINDINGS_H')
+    lines.append('')
+    lines.append('#include "pf_bindings_types.h"  /* struct/enum/typedef layouts */')
+    lines.append('#include "it_funcs.h"           /* PFN_<name> typedefs, reused verbatim */')
+    lines.append('')
+    lines.append('/* ------------------------------------------------------------------ */')
+    lines.append('/* globals: <name> -> (*(T*)VA), identical to it_globals.h IT_G_<name> */')
+    lines.append('/* ------------------------------------------------------------------ */')
+    lines.append('')
+
+    for g in sorted(idx_globals, key=lambda x: x['name']):
+        name = g['name']
+        if name in RESERVED_CRT_WINDOWS_IDENTS:
+            reserved_collisions.append(('global', name))
+            lines.append('/* SKIPPED: "%s" collides with a reserved CRT/Windows identifier; '
+                          'see BINDINGS_NOTES.md */' % name)
+            continue
+        if name in exclude:
+            excluded_globals.append(name)
+            lines.append('/* excluded by --exclude: %s */' % name)
+            continue
+        lines.append('/* %s  VA=%s  type=%s  cu=%s */' %
+                      (name, g['va'], g['type'], g['cu']))
+        lines.append('#define %s %s' % (name, global_bodies[name]))
+        emitted_globals.append(name)
+    lines.append('')
+
+    lines.append('/* ------------------------------------------------------------------ */')
+    lines.append('/* functions: <name> -> ((PFN_<name>)VA), identical to it_funcs.h      */')
+    lines.append('/* IT_F_<name>. A name in --exclude is omitted so its own native       */')
+    lines.append('/* definition in src/ is not redirected to the original address.       */')
+    lines.append('/* ------------------------------------------------------------------ */')
+    lines.append('')
+
+    for f in sorted(idx_functions, key=lambda x: x['name']):
+        name = f['name']
+        if name in RESERVED_CRT_WINDOWS_IDENTS:
+            reserved_collisions.append(('function', name))
+            lines.append('/* SKIPPED: "%s" collides with a reserved CRT/Windows identifier; '
+                          'see BINDINGS_NOTES.md */' % name)
+            continue
+        if name in exclude:
+            excluded_functions.append(name)
+            lines.append('/* excluded by --exclude (compiled natively): %s */' % name)
+            continue
+        lines.append('/* %s  VA=%s  cu=%s */' % (name, f['va'], f['cu']))
+        lines.append('/* prototype: %s */' % f['prototype'])
+        lines.append('#define %s %s' % (name, func_bodies[name]))
+        emitted_functions.append(name)
+    lines.append('')
+    lines.append('#endif /* PF_BINDINGS_H */')
+    lines.append('')
+
+    Path(args.out).write_text('\n'.join(lines), encoding='utf-8')
+
+    types_lines = [
+        '/* pf_bindings_types.h -- GENERATED FILE. DO NOT EDIT.',
+        ' * Produced by carrier/gen/gen_bindings.py.',
+        ' * Generated: %s UTC' % datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+        ' *',
+        ' * Carrier-side type provider for pf_bindings.h: the struct/union/enum/',
+        ' * typedef layouts every game-scope global and function prototype needs,',
+        ' * recovered from DWARF by gen_interop.py into it_types.h. This header',
+        ' * exists so pf_bindings.h has one clearly-named type dependency; it is',
+        ' * only used by code compiled INTO the carrier (see win32_pilot.md SS7a).',
+        ' * src/ will get its OWN, hand-owned copy of these types later, at which',
+        ' * point src/ stops depending on this file.',
+        ' * Re-run gen_bindings.py to regenerate; do not hand-edit.',
+        ' */',
+        '',
+        '#ifndef PF_BINDINGS_TYPES_H',
+        '#define PF_BINDINGS_TYPES_H',
+        '',
+        '#include "it_types.h"',
+        '',
+        '#endif /* PF_BINDINGS_TYPES_H */',
+        '',
+    ]
+    Path(args.types_out).write_text('\n'.join(types_lines), encoding='utf-8')
+
+    summary = {
+        'globals_total': len(idx_globals),
+        'globals_emitted': len(emitted_globals),
+        'globals_excluded': excluded_globals,
+        'functions_total': len(idx_functions),
+        'functions_emitted': len(emitted_functions),
+        'functions_excluded': excluded_functions,
+        'reserved_collisions': reserved_collisions,
+        'out': args.out,
+        'types_out': args.types_out,
+    }
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

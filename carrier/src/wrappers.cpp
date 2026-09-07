@@ -8,11 +8,20 @@
 #include <cstring>
 #include "wrappers.hpp"
 #include "det.hpp"
+#include "trace.hpp" // pf_count_import - see wrappers.hpp/det.hpp (item 3)
 
 static char g_guest_path[MAX_PATH] = "icytower15.exe";
 static ShutdownFn g_shutdown = nullptr;
 static FARPROC g_real_GetModuleFileNameA = nullptr;
 static void* g_carrier_hmodule = nullptr;
+
+// import ids (imports.cpp's loop index == report.json's "id"), captured at
+// bind time so each wrap_* below can call pf_count_import(id) itself - these
+// wrappers are wired directly into the guest IAT (imports.cpp's
+// is_wrapped()/wrappers_lookup() path), bypassing pf_import_common's
+// counting trampoline entirely, which is exactly the gap item 3 fixes.
+static int g_id_ExitProcess = -1, g_id_exit = -1, g_id_cexit = -1, g_id_abort = -1,
+           g_id_GetModuleFileNameA = -1, g_id_GetCommandLineA = -1;
 
 void wrappers_set_guest_image_path(const char* path) {
     strncpy(g_guest_path, path, sizeof(g_guest_path) - 1);
@@ -23,9 +32,14 @@ void wrappers_set_carrier_hmodule(void* hmodule) { g_carrier_hmodule = hmodule; 
 
 void wrappers_set_shutdown_hook(ShutdownFn fn) { g_shutdown = fn; }
 
-void wrappers_bind_real(const char* name, void* real_proc) {
-    if (strcmp(name, "GetModuleFileNameA") == 0) g_real_GetModuleFileNameA = (FARPROC)real_proc;
-    det_bind_real(name, real_proc); // no-op unless name is one of det.cpp's wrapped imports
+void wrappers_bind_real(const char* name, void* real_proc, int id) {
+    if (strcmp(name, "GetModuleFileNameA") == 0) { g_real_GetModuleFileNameA = (FARPROC)real_proc; g_id_GetModuleFileNameA = id; }
+    else if (strcmp(name, "GetCommandLineA") == 0) g_id_GetCommandLineA = id;
+    else if (strcmp(name, "ExitProcess") == 0) g_id_ExitProcess = id;
+    else if (strcmp(name, "exit") == 0) g_id_exit = id;
+    else if (strcmp(name, "_cexit") == 0) g_id_cexit = id;
+    else if (strcmp(name, "abort") == 0) g_id_abort = id;
+    det_bind_real(name, real_proc, id); // no-op unless name is one of det.cpp's wrapped imports
 }
 
 // KNOWN need (notes/binary_recon.md item a: the MinGW entry point
@@ -34,14 +48,17 @@ void wrappers_bind_real(const char* name, void* real_proc) {
 // intercepting these the carrier process just vanishes and the counting
 // report + trace log are never flushed to disk.
 extern "C" void __stdcall wrap_ExitProcess(UINT code) {
+    pf_count_import(g_id_ExitProcess);
     if (g_shutdown) g_shutdown("guest ExitProcess");
     ::ExitProcess(code);
 }
 extern "C" void __cdecl wrap_exit(int code) {
+    pf_count_import(g_id_exit);
     if (g_shutdown) g_shutdown("guest exit");
     ::ExitProcess((UINT)code);
 }
 extern "C" void __cdecl wrap__cexit() {
+    pf_count_import(g_id_cexit);
     if (g_shutdown) g_shutdown("guest _cexit");
     // Real msvcrt _cexit() runs atexit/static-dtor cleanup and returns; it
     // does not itself terminate the process. But by the point mingw's CRT
@@ -54,6 +71,7 @@ extern "C" void __cdecl wrap__cexit() {
     ::ExitProcess(0);
 }
 extern "C" void __cdecl wrap_abort() {
+    pf_count_import(g_id_abort);
     if (g_shutdown) g_shutdown("guest abort");
     ::ExitProcess(3); // matches msvcrt abort()'s conventional exit code
 }
@@ -76,6 +94,7 @@ extern "C" void __cdecl wrap_abort() {
 // fail to find data\loading.dat. Treating hModule == carrier's own handle
 // the same as hModule == NULL fixes it.
 extern "C" DWORD __stdcall wrap_GetModuleFileNameA(HMODULE hModule, LPSTR buf, DWORD size) {
+    pf_count_import(g_id_GetModuleFileNameA);
     if (hModule == nullptr || (void*)hModule == g_carrier_hmodule) {
         DWORD len = (DWORD)strlen(g_guest_path);
         DWORD n = (len < size) ? len : (size > 0 ? size - 1 : 0);
@@ -102,6 +121,7 @@ extern "C" DWORD __stdcall wrap_GetModuleFileNameA(HMODULE hModule, LPSTR buf, D
 // _WinMain/__getmainargs would at best ignore and at worst try to parse as
 // game arguments.
 extern "C" LPSTR __stdcall wrap_GetCommandLineA() {
+    pf_count_import(g_id_GetCommandLineA);
     return g_guest_path;
 }
 

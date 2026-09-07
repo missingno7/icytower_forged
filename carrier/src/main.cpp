@@ -180,6 +180,11 @@ struct Options {
     char record_input[MAX_PATH];
     char digest_out[MAX_PATH];
     int stop_at_tick;
+    // Input policy (win32_pilot.md sec 5a / carrier/NOTES.md "Input policy
+    // and recording"): --input=real|script|none, resolved to a concrete
+    // InputPolicy (never left "unset") by the end of parse_args/options_from_env.
+    InputPolicy input_policy;
+    bool inject_real_test; // --inject-real-test: hidden diagnostic, see det.hpp
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -215,6 +220,59 @@ static void compute_default_image(char* buf, size_t n) {
     _snprintf(buf, n, "%s\\assets\\icytower15.exe", repo_root);
 }
 
+// win32_pilot.md sec 5a "Input source is an exclusive policy": exactly one
+// provider per run. `input_policy_str` is whatever --input=... gave (may be
+// empty - not given). Resolves o->input_policy, and errors out (exits the
+// process) on the one combination that cannot be made safe by construction:
+// --input=real together with a real --input-script (the injector would
+// otherwise compete with the real keyboard for the same key[] array). The
+// ONE sanctioned exception is --inject-real-test (item 2's diagnostic): it
+// exists specifically to feed a script through the REAL DirectInput entry
+// point under input=real, so it is allowed to keep the script in that one
+// case - see det.cpp's deliver_due_input/call_key_dinput_handle_scancode.
+static void resolve_input_policy(Options* o, const char* input_policy_str) {
+    bool explicit_policy = input_policy_str[0] != 0;
+    InputPolicy policy;
+    if (explicit_policy) {
+        if (_stricmp(input_policy_str, "real") == 0) policy = InputPolicy::Real;
+        else if (_stricmp(input_policy_str, "script") == 0) policy = InputPolicy::Script;
+        else if (_stricmp(input_policy_str, "none") == 0) policy = InputPolicy::None;
+        else {
+            fprintf(stderr, "error: --input='%s' is invalid (expected real|script|none)\n", input_policy_str);
+            exit(2);
+        }
+    } else {
+        // Default: Script when --input-script is given (preserves the old
+        // implicit behavior for existing scripts/tests), else Real.
+        policy = o->input_script[0] ? InputPolicy::Script : InputPolicy::Real;
+    }
+
+    bool real_plus_script = (policy == InputPolicy::Real) && o->input_script[0];
+    if (real_plus_script && !o->inject_real_test) {
+        fprintf(stderr,
+                "error: --input=real is incompatible with --input-script (real keyboard and "
+                "scripted input cannot be mixed - win32_pilot.md sec 5a). Pass --input=script "
+                "to replay the script, or add --inject-real-test if you specifically mean to "
+                "exercise the real-keyboard path with synthetic events (see carrier/NOTES.md "
+                "\"Input policy and recording\").\n");
+        exit(2);
+    }
+    if (o->inject_real_test && !real_plus_script) {
+        fprintf(stderr, "error: --inject-real-test requires --input=real together with --input-script\n");
+        exit(2);
+    }
+    if (policy != InputPolicy::Script && o->input_script[0] && !real_plus_script) {
+        // e.g. --input=none --input-script X, or --input=real --input-script
+        // X --inject-real-test already handled above by real_plus_script.
+        fprintf(stderr,
+                "warning: --input-script '%s' given but --input=%s - the script will NOT be "
+                "loaded (input policy is exclusive; see win32_pilot.md sec 5a)\n",
+                o->input_script, input_policy_name(policy));
+        o->input_script[0] = 0;
+    }
+    o->input_policy = policy;
+}
+
 static void parse_args(int argc, char** argv, Options* o) {
     compute_default_image(o->image, sizeof(o->image));
     o->cwd[0] = 0; // resolved after --image is known, unless overridden
@@ -231,6 +289,8 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->record_input[0] = 0;
     o->digest_out[0] = 0;
     o->stop_at_tick = 0;
+    o->inject_real_test = false;
+    char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
         const char* arg = argv[i];
@@ -248,8 +308,8 @@ static void parse_args(int argc, char** argv, Options* o) {
         } else {
             strncpy(name, arg + 2, sizeof(name) - 1);
             name[sizeof(name) - 1] = 0;
-            if (strcmp(name, "det") == 0) {
-                value = "1"; // bare flag: --det (no value) means --det=1
+            if (strcmp(name, "det") == 0 || strcmp(name, "inject-real-test") == 0) {
+                value = "1"; // bare flags: --det / --inject-real-test (no value) means =1
             } else if (i + 1 < argc) {
                 strncpy(valbuf, argv[++i], sizeof(valbuf) - 1);
                 valbuf[sizeof(valbuf) - 1] = 0;
@@ -274,10 +334,13 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "record-input") == 0) { strncpy(o->record_input, value, sizeof(o->record_input) - 1); }
         else if (strcmp(name, "digest-out") == 0) { strncpy(o->digest_out, value, sizeof(o->digest_out) - 1); }
         else if (strcmp(name, "stop-at-tick") == 0) { o->stop_at_tick = atoi(value); }
+        else if (strcmp(name, "input") == 0) { strncpy(input_policy_str, value, sizeof(input_policy_str) - 1); input_policy_str[sizeof(input_policy_str) - 1] = 0; }
+        else if (strcmp(name, "inject-real-test") == 0) { o->inject_real_test = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
         else { fprintf(stderr, "warning: unknown option --%s\n", name); }
     }
 
     if (o->cwd[0] == 0) dirname_of(o->image, o->cwd, sizeof(o->cwd));
+    resolve_input_policy(o, input_policy_str);
 }
 
 static void apply_trace_imports(const Options& o) {
@@ -326,6 +389,10 @@ static void options_to_env(const Options& o) {
     _snprintf(buf, sizeof(buf), "%d", o.stop_at_tick);
     buf[sizeof(buf) - 1] = 0;
     SetEnvironmentVariableA("PF_STOP_AT_TICK", buf);
+    // Already resolved + validated by resolve_input_policy in the parent -
+    // the child just carries the decision forward, no re-validation needed.
+    SetEnvironmentVariableA("PF_INPUT_POLICY", input_policy_name(o.input_policy));
+    SetEnvironmentVariableA("PF_INJECT_REAL_TEST", o.inject_real_test ? "1" : "0");
 }
 
 static bool is_child_process() {
@@ -376,6 +443,15 @@ static void options_from_env(Options* o) {
     char stop_buf[16];
     get_env_or("PF_STOP_AT_TICK", stop_buf, sizeof(stop_buf), "0");
     o->stop_at_tick = atoi(stop_buf);
+
+    char policy_buf[16];
+    get_env_or("PF_INPUT_POLICY", policy_buf, sizeof(policy_buf), "real");
+    if (_stricmp(policy_buf, "script") == 0) o->input_policy = InputPolicy::Script;
+    else if (_stricmp(policy_buf, "none") == 0) o->input_policy = InputPolicy::None;
+    else o->input_policy = InputPolicy::Real;
+    char inject_buf[8];
+    get_env_or("PF_INJECT_REAL_TEST", inject_buf, sizeof(inject_buf), "0");
+    o->inject_real_test = (strcmp(inject_buf, "0") != 0);
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -484,10 +560,13 @@ int main(int argc, char** argv) {
     DetOptions det_opt;
     det_opt.det_mode = o.det_mode;
     det_opt.pace_real = o.pace_real;
+    det_opt.input_policy = o.input_policy;
     det_opt.input_script = o.input_script[0] ? o.input_script : nullptr;
     det_opt.record_input = o.record_input[0] ? o.record_input : nullptr;
     det_opt.digest_out = o.digest_out[0] ? o.digest_out : nullptr;
     det_opt.stop_at_tick = o.stop_at_tick;
+    det_opt.image_path = o.image;
+    det_opt.inject_real_test = o.inject_real_test;
     det_init(det_opt, carrier_shutdown);
 
     fprintf(stderr, "carrier: image=%s\n", o.image);
@@ -495,6 +574,16 @@ int main(int argc, char** argv) {
     fprintf(stderr, "carrier: ddraw=%s count_imports=%d guest_stack=%s run_seconds=%d\n",
             o.ddraw == DDrawMode::Local ? "local" : "system", o.count_imports,
             o.guest_stack_fixed ? "fixed" : "host", o.run_seconds);
+    // Banner (item 1: "record the chosen policy in the run's stdout banner").
+    // The carrier's existing startup banner is all on stderr (every line
+    // above); this one line is duplicated to stdout too so it is visible
+    // even when stderr is redirected/discarded, matching the task's literal
+    // wording without moving the rest of the banner off stderr.
+    fprintf(stderr, "carrier: input_policy=%s%s\n", input_policy_name(o.input_policy),
+            o.inject_real_test ? " (--inject-real-test)" : "");
+    printf("carrier: input_policy=%s%s\n", input_policy_name(o.input_policy),
+           o.inject_real_test ? " (--inject-real-test)" : "");
+    fflush(stdout);
 
     PeImageInfo info;
     if (!pe_image_load(o.image, &info)) {
