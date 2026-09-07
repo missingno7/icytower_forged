@@ -16,7 +16,7 @@
 #include <string>
 #include "det.hpp"
 #include "snapshot.hpp" // milestones 8-9: safepoint snapshot / in-process rewind
-#include "trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
+#include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
 #include "../../port_forge/src/core/sha256.hpp"
 
 // KNOWN (artifacts/functions.json + disasm.txt): Allegro internals this

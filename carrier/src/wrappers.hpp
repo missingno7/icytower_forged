@@ -2,11 +2,15 @@
 // behavior changes, not just counting. See wrappers.cpp for the evidence
 // behind each one.
 #pragma once
+#include "../../port_forge/src/platform/win32/imports.hpp"
 
-// Returns the wrapper function pointer for `name` (matched by import name
-// only - all current wrapped imports are unambiguous by name alone), or
-// nullptr if `name` isn't wrapped.
-void* wrappers_lookup(const char* name);
+// The one table of wrapped imports: which names, and what each is replaced
+// with. Consumed by pf::win32::imports_init, which wires each entry
+// STRAIGHT into the guest IAT (bypassing the counting trampoline - that is
+// the point of a wrapper), so every wrapper below counts itself via
+// pf_count_import. Previously this was two lists that had to be kept in
+// step by hand: a name array in imports.cpp and a strcmp chain here.
+pf::win32::WrapPolicy wrappers_policy();
 
 // imports_init() calls this right after resolving each wrapped import's
 // real address, so the wrapper can forward to it (e.g. GetModuleFileNameA

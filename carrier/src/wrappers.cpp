@@ -8,7 +8,7 @@
 #include <cstring>
 #include "wrappers.hpp"
 #include "det.hpp"
-#include "trace.hpp" // pf_count_import - see wrappers.hpp/det.hpp (item 3)
+#include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see wrappers.hpp/det.hpp (item 3)
 
 static char g_guest_path[MAX_PATH] = "icytower15.exe";
 static ShutdownFn g_shutdown = nullptr;
@@ -125,39 +125,67 @@ extern "C" LPSTR __stdcall wrap_GetCommandLineA() {
     return g_guest_path;
 }
 
-void* wrappers_lookup(const char* name) {
-    if (strcmp(name, "ExitProcess") == 0) return (void*)wrap_ExitProcess;
-    if (strcmp(name, "exit") == 0) return (void*)wrap_exit;
-    if (strcmp(name, "_cexit") == 0) return (void*)wrap__cexit;
-    if (strcmp(name, "abort") == 0) return (void*)wrap_abort;
-    if (strcmp(name, "GetModuleFileNameA") == 0) return (void*)wrap_GetModuleFileNameA;
-    if (strcmp(name, "GetCommandLineA") == 0) return (void*)wrap_GetCommandLineA;
-    // Milestones 5-7 (det.cpp/det.hpp) - always installed; each wrapper
-    // forwards to the real function unless --det (or, for _beginthread, the
-    // specific virtualized entry point) asks for different behavior, so
-    // default (non-det) runs are unaffected. See carrier/NOTES.md.
-    if (strcmp(name, "Sleep") == 0) return (void*)det_wrap_Sleep;
-    if (strcmp(name, "QueryPerformanceCounter") == 0) return (void*)det_wrap_QueryPerformanceCounter;
-    if (strcmp(name, "timeGetTime") == 0) return (void*)det_wrap_timeGetTime;
-    if (strcmp(name, "time") == 0) return (void*)det_wrap_time;
-    if (strcmp(name, "clock") == 0) return (void*)det_wrap_clock;
-    if (strcmp(name, "_beginthread") == 0) return (void*)det_wrap_beginthread;
-    if (strcmp(name, "malloc") == 0) return (void*)det_wrap_malloc;
-    if (strcmp(name, "calloc") == 0) return (void*)det_wrap_calloc;
-    if (strcmp(name, "realloc") == 0) return (void*)det_wrap_realloc;
-    if (strcmp(name, "free") == 0) return (void*)det_wrap_free;
-    if (strcmp(name, "WaitForSingleObject") == 0) return (void*)det_wrap_WaitForSingleObject;
-    if (strcmp(name, "rand") == 0) return (void*)det_wrap_rand;
-    if (strcmp(name, "srand") == 0) return (void*)det_wrap_srand;
-    // "Environment isolation" pass (carrier/NOTES.md) - each forwards to the
-    // real function unless --det / a non-interactive run asks otherwise.
-    if (strcmp(name, "ShowWindow") == 0) return (void*)det_wrap_ShowWindow;
-    if (strcmp(name, "SetForegroundWindow") == 0) return (void*)det_wrap_SetForegroundWindow;
-    if (strcmp(name, "SetWindowPos") == 0) return (void*)det_wrap_SetWindowPos;
-    if (strcmp(name, "CreateWindowExA") == 0) return (void*)det_wrap_CreateWindowExA;
-    if (strcmp(name, "pthread_create") == 0) return (void*)det_wrap_pthread_create;
-    if (strcmp(name, "getenv") == 0) return (void*)det_wrap_getenv;
-    // Divergence 009: host device enumeration -> arena displacement -> digest.
-    if (strcmp(name, "DirectSoundEnumerateA") == 0) return (void*)det_wrap_DirectSoundEnumerateA;
-    return nullptr;
+// The wrapper table. Order is documentation, not semantics: the exit path,
+// then guest identity, then the deterministic-execution family that
+// det.cpp owns, then the environment-isolation family. Each entry's
+// evidence is at its own wrapper (this file, or det.cpp).
+static const pf::win32::WrapEntry kWrapTable[] = {
+    // KNOWN (notes/binary_recon.md item a): the MinGW entry point never
+    // returns - it always ends in ExitProcess, and the CRT exit chain also
+    // runs through msvcrt exit/_cexit/abort. Without these the carrier
+    // process just vanishes and the report is never flushed.
+    { "ExitProcess",          (void*)wrap_ExitProcess },
+    { "exit",                 (void*)wrap_exit },
+    { "_cexit",               (void*)wrap__cexit },
+    { "abort",                (void*)wrap_abort },
+    // Guest identity (notes/binary_recon.md item a).
+    { "GetModuleFileNameA",   (void*)wrap_GetModuleFileNameA },
+    { "GetCommandLineA",      (void*)wrap_GetCommandLineA },
+    // Milestones 5-7 (det.cpp) - always installed so --det/--digest-out/
+    // --record-input/--input-script work; each forwards to the real
+    // function when not asked to behave differently.
+    { "Sleep",                (void*)det_wrap_Sleep },
+    { "QueryPerformanceCounter", (void*)det_wrap_QueryPerformanceCounter },
+    { "timeGetTime",          (void*)det_wrap_timeGetTime },
+    { "time",                 (void*)det_wrap_time },
+    { "clock",                (void*)det_wrap_clock },
+    { "_beginthread",         (void*)det_wrap_beginthread },
+    { "malloc",               (void*)det_wrap_malloc },
+    { "calloc",               (void*)det_wrap_calloc },
+    { "realloc",              (void*)det_wrap_realloc },
+    { "free",                 (void*)det_wrap_free },
+    // Item 3 ("parked timer thread"): a parked thread's own
+    // WaitForSingleObject(stop_event, <finite>) is substituted to INFINITE;
+    // forwards unchanged for every other thread/caller.
+    { "WaitForSingleObject",  (void*)det_wrap_WaitForSingleObject },
+    // Milestone 8 (win32_pilot.md sec 5 "pin the LCG"): the RNG state must
+    // be carrier-owned to be snapshottable - msvcrt.dll's own per-thread
+    // seed is outside every snapshot component.
+    { "rand",                 (void*)det_wrap_rand },
+    { "srand",                (void*)det_wrap_srand },
+    // "Environment isolation" pass (carrier/NOTES.md): the guest's own
+    // window-management calls (an automated run must never take the
+    // operator's foreground), the ad-fetch thread (whose HTTP result
+    // reaches five globals inside the digest domain), and getenv
+    // (instrumentation only - the value is always forwarded).
+    { "ShowWindow",           (void*)det_wrap_ShowWindow },
+    { "SetForegroundWindow",  (void*)det_wrap_SetForegroundWindow },
+    { "SetWindowPos",         (void*)det_wrap_SetWindowPos },
+    { "CreateWindowExA",      (void*)det_wrap_CreateWindowExA },
+    { "pthread_create",       (void*)det_wrap_pthread_create },
+    { "getenv",               (void*)det_wrap_getenv },
+    // Divergence 009 (carrier/NOTES.md, notes/living_record.md): a host
+    // DEVICE ENUMERATION is a determinism channel even when none of its
+    // values is stored in a game global - the guest allocates once per
+    // enumerated device, from the shared deterministic arena, so every
+    // later arena pointer in the digest domain is displaced when the
+    // host's device list changes.
+    { "DirectSoundEnumerateA", (void*)det_wrap_DirectSoundEnumerateA },
+};
+
+pf::win32::WrapPolicy wrappers_policy() {
+    pf::win32::WrapPolicy p;
+    p.entries = kWrapTable;
+    p.count = (int)(sizeof(kWrapTable) / sizeof(kWrapTable[0]));
+    return p;
 }

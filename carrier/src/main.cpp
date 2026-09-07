@@ -10,11 +10,11 @@
 #include "../../port_forge/src/platform/win32/pe_image.hpp"
 #include "../../port_forge/src/platform/win32/bootstrap.hpp"
 #include "imports.hpp"
-#include "trace.hpp"
+#include "../../port_forge/src/platform/win32/trace.hpp"
+#include "report.hpp"
 #include "wrappers.hpp"
 #include "../../port_forge/src/platform/win32/symbols.hpp"
 #include "../../port_forge/src/platform/win32/diagnostics.hpp"
-#include "import_types.hpp"
 #include "det.hpp"
 #include "bind.hpp"
 #include "snapshot.hpp"
@@ -71,8 +71,8 @@ static void carrier_shutdown(const char* reason) {
     // still mapped in THIS process (true until real process termination),
     // evaluate and print every --print-globals expression.
     print_globals_run();
-    trace_write_report(g_report_path);
-    trace_close();
+    carrier_write_report(g_report_path);
+    pf::win32::trace_close();
     det_shutdown();
     bind_shutdown();
     snapshot_shutdown();
@@ -430,7 +430,7 @@ static bool resolve_headless(const Options& o) {
 
 static void apply_trace_imports(const Options& o) {
     if (_stricmp(o.trace_imports, "all") == 0) {
-        trace_enable_all();
+        pf::win32::trace_enable_all();
         return;
     }
     if (_stricmp(o.trace_imports, "none") == 0 || o.trace_imports[0] == 0) return;
@@ -441,7 +441,7 @@ static void apply_trace_imports(const Options& o) {
     char* tok = strtok(list, ",");
     while (tok) {
         for (int i = 0; i < kNumImports; ++i) {
-            if (strcmp(g_import_table[i].name, tok) == 0) trace_enable_id(i);
+            if (strcmp(g_import_table[i].name, tok) == 0) pf::win32::trace_enable_id(i);
         }
         tok = strtok(nullptr, ",");
     }
@@ -682,7 +682,7 @@ int main(int argc, char** argv) {
     _snprintf(functions_json, sizeof(functions_json), "%s\\artifacts\\functions.json", repo_root);
     pf::win32::symbols_load(functions_json);
 
-    trace_init(o.trace_out[0] ? o.trace_out : nullptr);
+    pf::win32::trace_init(o.trace_out[0] ? o.trace_out : nullptr);
     apply_trace_imports(o);
 
     pf::win32::diagnostics_install(carrier_shutdown);

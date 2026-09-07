@@ -60,4 +60,24 @@ inline constexpr pf::win32::GuestImagePolicy kGuestImage = {
 // carriers on one host cannot confuse each other's children.
 inline constexpr const char* kChildMarkerEnv = "PF_CHILD";
 
+// ---------------------------------------------------------------------
+// Sidecar DLLs: imports that are NOT on the system search path.
+//
+// KNOWN (notes/binary_recon.md): libpng3.dll and pthreadGC2.dll ship in
+// assets\ next to the game exe rather than anywhere on the system DLL
+// search path, so they need an explicit path. zlib1.dll also lives there
+// but is never a *direct* import of icytower15.exe (only a dependency of
+// libpng3.dll) - the SetDllDirectoryA the framework does with `assets_dir`
+// covers it, which is exactly why that field exists.
+//
+// DDRAW.dll is assets\ddraw.dll, cnc-ddraw's DirectDraw-compatibility
+// shim - the one the user installed to run the original on Windows 11.
+// src/imports.cpp flips this one row to System for --ddraw=system.
+inline constexpr int kSidecarCount = 3;
+inline constexpr pf::win32::SidecarDll kSidecars[kSidecarCount] = {
+    { "DDRAW.dll",      pf::win32::SidecarDll::AssetsDir, nullptr },
+    { "libpng3.dll",    pf::win32::SidecarDll::AssetsDir, nullptr },
+    { "pthreadGC2.dll", pf::win32::SidecarDll::AssetsDir, nullptr },
+};
+
 }  // namespace icytower
