@@ -1,3 +1,5 @@
+> CORRECTION 2026-09-08 (batch 11, src/icytower/handle_player_input.c, verified offline): the 0x80 key_flags bit is an idempotent END-OF-INPUT terminator written when ply->dead is set, stored at data[rec_pos+1..+2] without advancing the cursor; decoder and encoder use rec_pos with a one-record bias. The 'sentinel per frame' reading below is superseded.
+
 # Icy Tower 1.5.1 replay-recording system — decoded
 
 Scope: `assets/icytower15.exe`, game CU `replay.c` (+ shared struct defs also
