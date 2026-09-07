@@ -19,6 +19,8 @@
 #include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
 #include "../../port_forge/src/platform/win32/arena.hpp"
 #include "../../port_forge/src/platform/win32/breakpoints.hpp"
+#include "../../port_forge/src/platform/win32/focus_channel.hpp"
+#include "../../port_forge/src/platform/win32/input_channel.hpp"
 #include "../../port_forge/src/platform/win32/threads.hpp"
 #include "../../port_forge/src/platform/win32/virtual_clock.hpp"
 #include "../../port_forge/src/platform/win32/rng.hpp"
@@ -28,11 +30,7 @@
 // KNOWN (artifacts/functions.json + disasm.txt): Allegro internals this
 // module calls directly by address (they're outside the game's own 25 CUs,
 // so they're not in carrier/gen/it_funcs.h, which is game-scope only).
-#define VA_HANDLE_KEY_PRESS     0x43e2f8u  // keyboard.c: void _handle_key_press(int keycode, int scancode)
-#define VA_HANDLE_KEY_RELEASE   0x43d8d4u  // keyboard.c: void _handle_key_release(int scancode)
 #define VA_SAFEPOINT            0x4124f4u  // main.c play(): once per consumed game tick
-#define VA_KEY_DINPUT_SCANCODE  0x46d5a8u  // wkeybd.c: key_dinput_handle_scancode(al=scancode,edx=?) - reg-passed args, no stack args
-#define VA_HW_TO_MYCODE         0x4daf80u  // wkeybd.c: unsigned char hw_to_mycode[256] - DIK_* -> Allegro code (item 2)
 
 // --- "Environment isolation" pass (carrier/NOTES.md) ---------------------
 // KNOWN, all four read out of artifacts/disasm.txt + artifacts/functions.json
@@ -64,8 +62,6 @@
 // All three patched functions take no arguments and return void, so a plain
 // `ret` at their entry is a complete, convention-correct neutralization (the
 // two tail-jumped ones return straight to _win_switch_*'s own caller).
-#define VA_SWITCH_IN            0x4657e4u
-#define VA_SWITCH_OUT           0x465808u
 // wdispsw.c: the two functions directx_wnd_proc's WM_ACTIVATE arm calls
 // (0x4793bb/0x47941f -> _win_switch_in, 0x479678 -> _win_switch_out); each
 // ends in a tail `jmp` to _switch_in/_switch_out above. --inject-real-test
@@ -75,21 +71,15 @@
 // keys (carrier/NOTES.md "Input policy and recording" part C).
 #define VA_WIN_SWITCH_IN        0x47a47cu
 #define VA_WIN_SWITCH_OUT       0x47a3d4u
-#define VA_SWITCH_IN_CB         0x4ea080u  // void (*switch_in_cb[8])(void)
-#define VA_SWITCH_OUT_CB        0x4ea060u  // void (*switch_out_cb[8])(void)
 #define VA_HANDLE_MOUSE_INPUT   0x45f9bcu
 
 // The virtual epoch det_wrap_time returns when no recording supplies a value
 // (unchanged from milestones 5-7 - this is what keeps G1 byte-identical).
 #define DET_VIRTUAL_EPOCH 1700000000L
 
-// KNOWN (DWARF __allegro_KEY_* enum, artifacts/dwarf_info.txt), verified to
-// match the task brief exactly.
-struct KeyName { const char* name; int code; };
-static const KeyName kKeyNames[] = {
-    {"KEY_ESC", 59}, {"KEY_ENTER", 67}, {"KEY_SPACE", 75},
-    {"KEY_LEFT", 82}, {"KEY_RIGHT", 83}, {"KEY_UP", 84}, {"KEY_DOWN", 85},
-};
+// The Allegro KEY_* code table is icytower::kKeyNames
+// (carrier/win32_policy.hpp), reached through icytower::kInputBinding.
+using pf::win32::KeyName;
 
 // ---------------------------------------------------------------------
 // Shared state
@@ -426,117 +416,47 @@ static void sub_tick_advance() {
 // `time` events are NOT delivered at a tick boundary - they are CONSUMED by
 // det_wrap_time when the guest calls time(), in recorded order - so they live
 // in their own vector (g_time_values) instead of g_script.
-enum class EvKind { Press, Release, SwitchIn, SwitchOut };
-struct ScriptEvent { int tick; EvKind kind; int scancode; };
-static std::vector<ScriptEvent> g_script;
-static size_t g_script_cursor = 0;
-struct TimeEvent { int tick; long value; };
-static std::vector<TimeEvent> g_time_values;
-static size_t g_time_cursor = 0;
+// The script's own shape (one file, one line per owned channel), its
+// parser, the tick-ordered event vector, the key-name table lookups and the
+// two scancode spaces are all pf::win32::* (input_channel.hpp), driven by
+// icytower::kInputBinding. This file keeps only the two aliases the rest of
+// it reads through.
+using EvKind = pf::win32::InputEventKind;
+using ScriptEvent = pf::win32::InputEvent;
+#define g_script        (pf::win32::script_events())
+#define g_time_values   (pf::win32::time_events())
+static int resolve_key(const char* t)      { return pf::win32::resolve_key(t); }
+static const char* scancode_to_name(int c) { return pf::win32::scancode_to_name(c); }
+static int allegro_to_dik(int code)        { return pf::win32::internal_to_hw(code); }
+static int dik_to_allegro(int dik)         { return pf::win32::hw_to_internal(dik); }
 
-static int resolve_key(const char* tok) {
-    for (const KeyName& k : kKeyNames)
-        if (_stricmp(k.name, tok) == 0) return k.code;
-    return atoi(tok);
+static void load_script(const char* path) {
+    // A malformed recording is FATAL here rather than in the framework:
+    // whether a partially-understood script may still be replayed is the
+    // carrier's question, and this one answers no.
+    if (!pf::win32::load_input_script(path)) exit(2);
 }
 
-// item 2 diagnostic ONLY: key_dinput_handle_scancode's own "scancode"
-// argument is NOT the Allegro internal code kKeyNames/g_script use (that's
-// what _handle_key_press/_handle_key_release take) - it is the RAW
-// DirectInput DIK_* hardware scancode, translated through the game's own
-// `_hw_to_mycode[256]` table (wkeybd.c) before it reaches
-// _handle_key_press/_handle_key_release. MEASURED by reading
-// _hw_to_mycode's actual bytes out of assets/icytower15.exe at its DWARF/
-// COFF-confirmed VA (0x4daf80, see disasm around 0x46d660/0x46d71e which
-// index it with `movzbl 0x4daf80(%ebx),%ebx`): hw_to_mycode[0x01]==59,
-// [0x1c]==67, [0x39]==75, [0xcb]==82, [0xcd]==83, [0xc8]==84, [0xd0]==85 -
-// i.e. exactly the standard PC/AT scancode-set-1 DIK_* values for these 7
-// keys, confirmed against kKeyNames' Allegro codes one for one. First
-// attempt at --inject-real-test fed the Allegro code directly as
-// key_dinput_handle_scancode's scancode argument (wrong - it double-
-// translates through _hw_to_mycode[allegro_code], landing on an unrelated
-// key) and it corrupted enough internal state to leak the deterministic
-// heap arena empty within a few hundred ticks (a real, reproduced failure,
-// not a hypothetical) - fixed by translating to the DIK code here instead.
-// GENERATED at runtime (item 2, "tick-boundary real input" pass), not
-// hand-listed: read directly out of the mapped guest image's own
-// hw_to_mycode[256] table (VA_HW_TO_MYCODE) the first time it's needed -
-// safe any time after pe_image_load has mapped the guest (main.cpp: always
-// true by the time any tick is delivered). hw_to_mycode[dik] IS the
-// DIK->Allegro direction already, read directly, no table needed for that
-// side (see dik_to_allegro below); allegro_to_dik is built once as its
-// inverse, first occurrence wins for any Allegro code with more than one
-// DIK alias. Superset of the old 7-entry hand-written kDikMap (ESC/ENTER/
-// SPACE/arrows verified to match it exactly - see carrier/NOTES.md), so
-// every existing --inject-real-test script keeps working unchanged, and any
-// OTHER key used in a future script gets a mapping automatically instead of
-// needing kDikMap hand-edited (the old, now-removed limitation).
-static int g_allegro_to_dik[128];
-static bool g_dik_tables_built = false;
-
-static void build_dik_tables() {
-    if (g_dik_tables_built) return;
-    for (int i = 0; i < 128; ++i) g_allegro_to_dik[i] = -1;
-    const unsigned char* hw_to_mycode = (const unsigned char*)(uintptr_t)VA_HW_TO_MYCODE;
-    int mapped = 0;
-    for (int dik = 0; dik < 256; ++dik) {
-        int allegro = hw_to_mycode[dik];
-        if (allegro > 0 && allegro < 128 && g_allegro_to_dik[allegro] < 0) {
-            g_allegro_to_dik[allegro] = dik;
-            ++mapped;
-        }
-    }
-    g_dik_tables_built = true;
-    fprintf(stderr, "det: built Allegro->DIK table from the guest's own hw_to_mycode[256] "
-                     "(VA=0x%08x): %d of 128 possible Allegro codes have a DIK mapping\n",
-            VA_HW_TO_MYCODE, mapped);
-}
-
-static int allegro_to_dik(int allegro_code) {
-    build_dik_tables();
-    if (allegro_code < 0 || allegro_code >= 128) return -1;
-    return g_allegro_to_dik[allegro_code]; // -1 = no mapping - see deliver_due_input's inject_real_test branch
-}
-
-// Forward direction for item 2's real-input capture path below: the guest's
-// own table gives this directly, no inversion needed.
-static int dik_to_allegro(int dik_code) {
-    if (dik_code < 0 || dik_code > 255) return 0;
-    const unsigned char* hw_to_mycode = (const unsigned char*)(uintptr_t)VA_HW_TO_MYCODE;
-    return hw_to_mycode[dik_code];
-}
-
-// Reverse of resolve_key, for --record-input: emit the same KEY_NAME tokens
-// --input-script reads, not raw scancodes, so a recorded file is exactly the
-// format --input-script parses (falls back to the raw number for a scancode
-// outside the 7-name table - still valid input, since resolve_key's own
-// fallback is atoi()).
-static const char* scancode_to_name(int sc) {
-    for (const KeyName& k : kKeyNames)
-        if (k.code == sc) return k.name;
-    return nullptr;
-}
-
-// item 2 (win32_pilot.md / carrier/NOTES.md "Input policy and recording"):
-// DWARF-confirmed prototype (artifacts/dwarf_info.txt, wkeybd.c line 321):
-// void key_dinput_handle_scancode(int scancode, int pressed) - but KNOWN
-// (disasm at 0x46d5a8, carrier/NOTES.md) both args arrive in registers
-// (AL/EAX=scancode, EDX=pressed), never on the stack, so a plain C
-// function-pointer cast (which would push cdecl stack args) cannot call it
-// correctly. This naked shim loads the two cdecl stack args (how ITS OWN
-// caller, i.e. deliver_due_input below, passes them) into EAX/EDX and calls
-// the real function directly - `call ecx` with the absolute address in ecx
-// is a normal direct call, no memory indirection. Only reachable in
-// --inject-real-test (a diagnostic option; normal Script-mode delivery
-// bypasses key_dinput_handle_scancode entirely, calling
-// _handle_key_press/_handle_key_release directly, same as before).
-// A plain global (not a literal inside the __asm block - MASM inline asm
-// doesn't accept the C `0x...u` suffix VA_KEY_DINPUT_SCANCODE expands to) so
-// the naked function below can `mov ecx, kKeyDinputVA` (loads the stored
-// value, since MASM treats a bare identifier as a memory operand) and then
-// `call ecx` - a register-indirect call to that address, equivalent to a
-// direct call to the literal VA.
-static const DWORD kKeyDinputVA = VA_KEY_DINPUT_SCANCODE;
+// The ONE piece of the capture side that does not move: a naked shim that
+// calls key_dinput_handle_scancode with its arguments in the registers it
+// actually reads them from.
+//
+// DWARF says (artifacts/dwarf_info.txt, wkeybd.c line 321)
+// `void key_dinput_handle_scancode(int scancode, int pressed)`, but KNOWN
+// from the disassembly at 0x46d5a8 both arguments arrive in REGISTERS
+// (AL/EAX = scancode, EDX = pressed), never on the stack - a GCC
+// -mregparm-style entry - so an ordinary function-pointer cast, which would
+// push cdecl stack arguments, cannot call it. InputBindingPolicy could carry
+// a `capture_abi` field, but a naked shim cannot be parameterized by one
+// without a stub per ABI, and one ABI has been seen. It stays here, cited,
+// until a second target brings a second convention (notes/extraction_plan.md
+// section 4).
+//
+// kKeyDinputVA is a plain global rather than a literal inside the __asm
+// block: MASM inline assembly does not accept C's `0x...u` suffix, and it
+// treats a bare identifier as a memory operand - so `mov ecx, kKeyDinputVA`
+// loads the stored address and `call ecx` is a normal direct call to it.
+static const DWORD kKeyDinputVA = (DWORD)icytower::kInputBinding.capture_va;
 
 extern "C" void __declspec(naked) __cdecl call_key_dinput_handle_scancode(int scancode, int pressed) {
     __asm {
@@ -546,54 +466,6 @@ extern "C" void __declspec(naked) __cdecl call_key_dinput_handle_scancode(int sc
         call ecx
         ret
     }
-}
-
-static void load_script(const char* path) {
-    FILE* f = fopen(path, "r");
-    if (!f) { fprintf(stderr, "det: could not open --input-script '%s'\n", path); return; }
-    char line[256];
-    long bad = 0;
-    while (fgets(line, sizeof(line), f)) {
-        char* p = line;
-        while (*p == ' ' || *p == '\t') ++p;
-        if (*p == '#' || *p == '\n' || *p == 0 || *p == '\r') continue;
-        int tick; char verb[16]; char arg[32];
-        if (sscanf(p, "%d %15s %31s", &tick, verb, arg) != 3) continue;
-        if (_stricmp(verb, "time") == 0) {
-            TimeEvent t; t.tick = tick; t.value = atol(arg);
-            g_time_values.push_back(t);
-            continue;
-        }
-        ScriptEvent e;
-        e.tick = tick;
-        e.scancode = 0;
-        if (_stricmp(verb, "switch") == 0) {
-            if (_stricmp(arg, "in") == 0) e.kind = EvKind::SwitchIn;
-            else if (_stricmp(arg, "out") == 0) e.kind = EvKind::SwitchOut;
-            else { ++bad; continue; }
-        } else if (_stricmp(verb, "press") == 0) {
-            e.kind = EvKind::Press; e.scancode = resolve_key(arg);
-        } else if (_stricmp(verb, "release") == 0) {
-            e.kind = EvKind::Release; e.scancode = resolve_key(arg);
-        } else {
-            ++bad; continue;
-        }
-        g_script.push_back(e);
-    }
-    fclose(f);
-    // stable_sort, not sort: two events at the SAME tick must keep their file
-    // order (a `switch out` immediately followed by `switch in` at one tick is
-    // a real recording shape, and swapping them would invert the focus state).
-    std::stable_sort(g_script.begin(), g_script.end(),
-                     [](const ScriptEvent& a, const ScriptEvent& b) { return a.tick < b.tick; });
-    if (bad) {
-        fprintf(stderr, "det: FATAL - %ld unrecognized event line(s) in '%s' "
-                        "(expected `T press|release KEY`, `T switch in|out`, `T time <secs>`)\n",
-                bad, path);
-        exit(2); // fail loudly: a silently-skipped event is an unreplayable recording
-    }
-    fprintf(stderr, "det: loaded %zu input events and %zu recorded time value(s) from '%s'\n",
-            g_script.size(), g_time_values.size(), path);
 }
 
 // ---------------------------------------------------------------------
@@ -642,51 +514,13 @@ static void load_script(const char* path) {
 //                         are delivered at their tick through the same call.
 // ---------------------------------------------------------------------
 
-// Byte-for-byte what _switch_in/_switch_out do (their disassembly is quoted
-// in carrier/NOTES.md): call every non-null entry of the guest's own 8-slot
-// callback table, in index order. Used for DELIVERY in both modes, so the
-// patched originals are never re-entered.
-static void run_switch_callbacks(bool switch_in) {
-    typedef void(__cdecl * CbFn)(void);
-    CbFn* tab = (CbFn*)(uintptr_t)(switch_in ? VA_SWITCH_IN_CB : VA_SWITCH_OUT_CB);
-    for (int i = 0; i < 8; ++i)
-        if (tab[i]) tab[i]();
-}
-
-static const int kSwitchQueueCap = 64;
-static unsigned char g_switch_queue[kSwitchQueueCap];
-static int g_switch_head = 0, g_switch_tail = 0;
-static CRITICAL_SECTION g_switch_cs;
-static bool g_switch_cs_inited = false;
-
-static void switch_queue_init() {
-    if (!g_switch_cs_inited) { InitializeCriticalSection(&g_switch_cs); g_switch_cs_inited = true; }
-}
-static void switch_queue_push(bool switch_in) {
-    switch_queue_init();
-    EnterCriticalSection(&g_switch_cs);
-    int next = (g_switch_tail + 1) % kSwitchQueueCap;
-    if (next != g_switch_head) {
-        g_switch_queue[g_switch_tail] = switch_in ? 1 : 0;
-        g_switch_tail = next;
-    } else {
-        fprintf(stderr, "det: switch-event queue FULL, dropping a switch %s event\n",
-                switch_in ? "in" : "out");
-    }
-    LeaveCriticalSection(&g_switch_cs);
-}
-static bool switch_queue_pop(bool* switch_in) {
-    if (!g_switch_cs_inited) return false;
-    bool got = false;
-    EnterCriticalSection(&g_switch_cs);
-    if (g_switch_head != g_switch_tail) {
-        *switch_in = g_switch_queue[g_switch_head] != 0;
-        g_switch_head = (g_switch_head + 1) % kSwitchQueueCap;
-        got = true;
-    }
-    LeaveCriticalSection(&g_switch_cs);
-    return got;
-}
+// The queue, the guest-callback-table replay ("byte-for-byte what
+// _switch_in/_switch_out do", so the patched originals are never
+// re-entered) and the save/load of the pending queue are pf::win32::*
+// (focus_channel.hpp), driven by icytower::kFocusChannel.
+static void run_switch_callbacks(bool in) { pf::win32::run_switch_callbacks(in); }
+static void switch_queue_push(bool in)    { pf::win32::focus_queue_push(in); }
+static bool switch_queue_pop(bool* in)    { return pf::win32::focus_queue_pop(in); }
 
 // The two entry-patch stubs. Called (jumped to) from the guest's WINDOW
 // thread, with the guest stack and the caller's return address at [esp] -
@@ -799,8 +633,9 @@ static void deliver_due_input() {
     int T = det_current_tick();
     typedef void(__cdecl * PressFn)(int, int);
     typedef void(__cdecl * ReleaseFn)(int);
-    while (g_script_cursor < g_script.size() && g_script[g_script_cursor].tick <= T) {
-        const ScriptEvent& e = g_script[g_script_cursor];
+    while (pf::win32::script_cursor() < g_script.size() &&
+           g_script[pf::win32::script_cursor()].tick <= T) {
+        const ScriptEvent& e = g_script[pf::win32::script_cursor()];
         // "Environment isolation" item 2: a recorded window-activation event
         // is delivered here, at the same tick-boundary handover point keys
         // use, by running the guest's own switch callback table - never by
@@ -837,7 +672,7 @@ static void deliver_due_input() {
                         in ? "switch-in" : "switch-out", in ? 1 : 0,
                         g_inject_real_test ? "phase=deliver via=_win_switch_in/out"
                                            : "phase=deliver via=switch_cb_table");
-            ++g_script_cursor;
+            pf::win32::set_script_cursor(pf::win32::script_cursor() + 1);
             continue;
         }
         bool press = (e.kind == EvKind::Press);
@@ -857,7 +692,7 @@ static void deliver_due_input() {
                                  "scancode=%d, skipping (not present in the guest's own "
                                  "hw_to_mycode[256] table - see build_dik_tables)\n",
                         T, e.scancode);
-                ++g_script_cursor;
+                pf::win32::set_script_cursor(pf::win32::script_cursor() + 1);
                 continue;
             }
             g_in_delivery = true;
@@ -865,11 +700,11 @@ static void deliver_due_input() {
             g_in_delivery = false;
         } else if (press) {
             g_in_delivery = true;
-            ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(ascii_for_allegro_code(e.scancode), e.scancode);
+            ((PressFn)(void*)(uintptr_t)icytower::kInputBinding.deliver_press_va)(ascii_for_allegro_code(e.scancode), e.scancode);
             g_in_delivery = false;
         } else {
             g_in_delivery = true;
-            ((ReleaseFn)(void*)VA_HANDLE_KEY_RELEASE)(e.scancode);
+            ((ReleaseFn)(void*)(uintptr_t)icytower::kInputBinding.deliver_release_va)(e.scancode);
             g_in_delivery = false;
         }
         fprintf(stderr, "det: T=%d delivered %s scancode=%d%s\n", T, press ? "press" : "release", e.scancode,
@@ -877,7 +712,7 @@ static void deliver_due_input() {
         trace_input("deliver_due_input(Sleep,after _handle_timer_tick)",
                     press ? "press" : "release", e.scancode,
                     g_inject_real_test ? "via=key_dinput_handle_scancode" : "via=_handle_key_press/release");
-        ++g_script_cursor;
+        pf::win32::set_script_cursor(pf::win32::script_cursor() + 1);
     }
 }
 
@@ -935,7 +770,9 @@ static void deliver_due_input() {
 // det_shutdown. A single isolated event still prints its own detail, so the
 // diagnostic value of the message is not lost for the non-storm case.
 // ---------------------------------------------------------------------
-static const int kRealQueueCap = 256;   // capacity of the real-key capture ring buffer below
+// Capacity of the real-key capture ring (pf::win32, input_channel.hpp) -
+// restated here only for the storm summary's "queue full (%d events)" line.
+static const int kRealQueueCap = pf::win32::detail::kRealQueueCap;
 static CRITICAL_SECTION g_storm_cs;
 static bool g_storm_cs_inited = false;
 static int  g_storm_tick = -1;
@@ -999,45 +836,13 @@ static void storm_note(int T, int dik, int kind) {
     LeaveCriticalSection(&g_storm_cs);
 }
 
-struct RealKeyEvent { int allegro_code; bool press; };
-static RealKeyEvent g_real_queue[kRealQueueCap];
-static int g_real_queue_head = 0, g_real_queue_tail = 0; // ring buffer, mod kRealQueueCap
-static CRITICAL_SECTION g_real_queue_cs;
-static bool g_real_queue_cs_inited = false;
-
-static void real_queue_init() {
-    if (!g_real_queue_cs_inited) { InitializeCriticalSection(&g_real_queue_cs); g_real_queue_cs_inited = true; }
-}
-
-// Called from the VEH callback on whichever thread hit the breakpoint (the
-// real window thread, measured - carrier/NOTES.md "Milestones 5-7" part B).
-static bool real_queue_push(int allegro_code, bool press) {
-    real_queue_init();
-    bool ok;
-    EnterCriticalSection(&g_real_queue_cs);
-    int next = (g_real_queue_tail + 1) % kRealQueueCap;
-    ok = (next != g_real_queue_head);
-    if (ok) {
-        g_real_queue[g_real_queue_tail].allegro_code = allegro_code;
-        g_real_queue[g_real_queue_tail].press = press;
-        g_real_queue_tail = next;
-    }
-    LeaveCriticalSection(&g_real_queue_cs);
-    return ok; // item C: the caller aggregates the "queue full" report, see storm_note
-}
-
-// Called from the main thread only (drain_real_key_queue).
-static bool real_queue_pop(RealKeyEvent* out) {
-    if (!g_real_queue_cs_inited) return false;
-    bool got = false;
-    EnterCriticalSection(&g_real_queue_cs);
-    if (g_real_queue_head != g_real_queue_tail) {
-        *out = g_real_queue[g_real_queue_head];
-        g_real_queue_head = (g_real_queue_head + 1) % kRealQueueCap;
-        got = true;
-    }
-    LeaveCriticalSection(&g_real_queue_cs);
-    return got;
+// The capture ring is pf::win32::* (input_channel.hpp): capture runs on
+// whichever thread the guest's input handler runs on, delivery runs on the
+// main thread at a tick boundary, and a fixed-capacity ring is the handover
+// - fixed so a snapshot can carry it as POD.
+using RealKeyEvent = pf::win32::RealKeyEvent;
+static bool queue_real_key(int allegro_code, bool press) {
+    return pf::win32::real_queue_push(allegro_code, press);
 }
 
 // The breakpoint callback: key_dinput_handle_scancode(scancode, pressed) -
@@ -1055,7 +860,7 @@ static void real_key_capture_hit(CONTEXT* ctx) {
                 press ? "press" : "release", allegro_code, "phase=capture");
     if (allegro_code == 0) {
         storm_note(T, dik, 1);          // no Allegro mapping - item C aggregates the log line
-    } else if (!real_queue_push(allegro_code, press)) {
+    } else if (!queue_real_key(allegro_code, press)) {
         storm_note(T, dik, 2);          // capture queue full
     } else {
         storm_note(T, dik, 0);
@@ -1109,15 +914,15 @@ static void drain_real_key_queue() {
     RealKeyEvent e;
     typedef void(__cdecl * PressFn)(int, int);
     typedef void(__cdecl * ReleaseFn)(int);
-    while (real_queue_pop(&e)) {
+    while (pf::win32::real_queue_pop(&e)) {
         trace_input("drain_real_key_queue(Sleep,after _handle_timer_tick)",
-                    e.press ? "press" : "release", e.allegro_code, "phase=deliver");
+                    e.press ? "press" : "release", e.internal_code, "phase=deliver");
         g_in_delivery = true;
-        if (e.press) ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(0, e.allegro_code);
-        else ((ReleaseFn)(void*)VA_HANDLE_KEY_RELEASE)(e.allegro_code);
+        if (e.press) ((PressFn)(void*)(uintptr_t)icytower::kInputBinding.deliver_press_va)(0, e.internal_code);
+        else ((ReleaseFn)(void*)(uintptr_t)icytower::kInputBinding.deliver_release_va)(e.internal_code);
         g_in_delivery = false;
         fprintf(stderr, "det: T=%d delivered real %s scancode=%d (captured at tick boundary)\n",
-                T, e.press ? "press" : "release", e.allegro_code);
+                T, e.press ? "press" : "release", e.internal_code);
     }
     // "Environment isolation" item 2: window activation is handed over at the
     // SAME point, in the same tick, for exactly the reason divergence 005
@@ -1392,8 +1197,9 @@ extern "C" long __cdecl det_wrap_time(long* out) {
                         GetCurrentThreadId(), g_time_offthread);
             v = epoch;
         } else if (!g_time_values.empty()) {
-            if (g_time_cursor < g_time_values.size()) {
-                v = g_time_values[g_time_cursor++].value;
+            if (pf::win32::time_cursor() < g_time_values.size()) {
+                v = g_time_values[pf::win32::time_cursor()].value;
+                pf::win32::set_time_cursor(pf::win32::time_cursor() + 1);
                 ++g_time_replayed;
             } else {
                 ++g_time_underflow;
@@ -2032,6 +1838,13 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     g_main_tid = GetCurrentThreadId();
     pf::win32::virtual_clock_init(icytower::kTick, g_det_mode);
     pf::win32::threads_init(icytower::kThreads);
+    // BEFORE load_script, below: the script parser resolves KEY_* names
+    // through this policy's table, and an empty table makes every name
+    // atoi() to 0. Measured the hard way - the run then delivered
+    // scancode 0 for every event, never reached play(), and produced an
+    // EMPTY digest rather than a wrong one.
+    pf::win32::input_channel_init(icytower::kInputBinding);
+    pf::win32::focus_channel_init(icytower::kFocusChannel);
     // The bounded-instruction tracer is the second kind of single step the
     // shared VEH has to claim (trap flag, Dr6 bit 14 - not one of the four
     // hardware slots); snapshot.cpp owns it, so it is registered as a pair
@@ -2069,11 +1882,11 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     // see deliver_due_input's inject_real_test branch and carrier/NOTES.md
     // "Input policy and recording" part C, re-verified unchanged this pass.
     if (g_input_policy != InputPolicy::Real) {
-        register_breakpoint(VA_KEY_DINPUT_SCANCODE, neutralize_keyboard_hit);
+        register_breakpoint(icytower::kInputBinding.capture_va, neutralize_keyboard_hit);
         fprintf(stderr, "det: real keyboard PARKED (input=%s; key_dinput_handle_scancode short-circuited)\n",
                 input_policy_name(g_input_policy));
     } else if (!g_inject_real_test) {
-        register_breakpoint(VA_KEY_DINPUT_SCANCODE, real_key_capture_hit);
+        register_breakpoint(icytower::kInputBinding.capture_va, real_key_capture_hit);
         fprintf(stderr, "det: real keyboard CAPTURED at tick boundaries (input=real; events queued at "
                         "key_dinput_handle_scancode and delivered from the main thread's tick loop - "
                         "carrier/NOTES.md 'tick-boundary real input', fixes divergence 002)\n");
@@ -2103,8 +1916,8 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
             fprintf(g_record_file, "# pace: %s\n", g_pace_real ? "real" : "fast");
             fflush(g_record_file);
         }
-        register_breakpoint(VA_HANDLE_KEY_PRESS, keypress_record_hit);
-        register_breakpoint(VA_HANDLE_KEY_RELEASE, keyrelease_record_hit);
+        register_breakpoint(icytower::kInputBinding.deliver_press_va, keypress_record_hit);
+        register_breakpoint(icytower::kInputBinding.deliver_release_va, keyrelease_record_hit);
     }
     if (opt.input_script && opt.input_script[0]) load_script(opt.input_script);
 
@@ -2157,10 +1970,9 @@ void det_install_entry_patches() {
                         "window activation and the mouse reach the game exactly as they would standalone\n");
         return;
     }
-    switch_queue_init();
     if (!isolate_off("switch")) {
-        patch_entry_jmp(VA_SWITCH_IN, (void*)det_stub_switch_in, "_switch_in (dispsw.c)");
-        patch_entry_jmp(VA_SWITCH_OUT, (void*)det_stub_switch_out, "_switch_out (dispsw.c)");
+        patch_entry_jmp(icytower::kFocusChannel.switch_in_va, (void*)det_stub_switch_in, "_switch_in (dispsw.c)");
+        patch_entry_jmp(icytower::kFocusChannel.switch_out_va, (void*)det_stub_switch_out, "_switch_out (dispsw.c)");
         g_switch_patched = true;
     } else {
         fprintf(stderr, "det: DET_ISOLATE_OFF=switch - window activation left UNCONTROLLED (audit mode)\n");
@@ -2256,7 +2068,7 @@ void det_state_save(DetSavedState* s) {
     s->units_reported = pf::win32::units_reported();
     s->rng_state = pf::win32::rng_state();
     s->rng_calls = pf::win32::rng_calls();
-    s->script_cursor = (unsigned)g_script_cursor;
+    s->script_cursor = (unsigned)pf::win32::script_cursor();
     // "How many bytes of the arena are live" - now read out of the arena's
     // OWN control block (divergence 004 rewrite): the allocator's whole state
     // (top, free list, block headers/footers) lives inside [0, top), so the
@@ -2266,25 +2078,16 @@ void det_state_save(DetSavedState* s) {
     s->real_key_violations = g_real_key_violations;
     s->last_drain_tick = g_last_drain_tick;
     memcpy(s->key_held, g_key_held, sizeof(g_key_held));
-    if (g_real_queue_cs_inited) EnterCriticalSection(&g_real_queue_cs);
-    s->real_queue_head = g_real_queue_head;
-    s->real_queue_tail = g_real_queue_tail;
-    for (int i = 0; i < kRealQueueCap; ++i) {
-        s->real_queue_code[i] = g_real_queue[i].allegro_code;
-        s->real_queue_press[i] = g_real_queue[i].press ? 1 : 0;
-    }
-    if (g_real_queue_cs_inited) LeaveCriticalSection(&g_real_queue_cs);
+    pf::win32::real_queue_save(&s->real_queue_head, &s->real_queue_tail,
+                               s->real_queue_code, s->real_queue_press);
     // "Environment isolation": the two new carrier-owned cursors/queues, for
     // exactly the reason the script cursor and the key queue are already here
     // (win32_pilot.md sec 6) - a rewind that moved the game back but left the
     // recorded-clock cursor or a pending switch event running forward would
     // not line up.
-    s->time_cursor = (int)g_time_cursor;
-    if (g_switch_cs_inited) EnterCriticalSection(&g_switch_cs);
-    s->switch_queue_head = g_switch_head;
-    s->switch_queue_tail = g_switch_tail;
-    memcpy(s->switch_queue_dir, g_switch_queue, sizeof(g_switch_queue));
-    if (g_switch_cs_inited) LeaveCriticalSection(&g_switch_cs);
+    s->time_cursor = (int)pf::win32::time_cursor();
+    pf::win32::focus_queue_save(&s->switch_queue_head, &s->switch_queue_tail,
+                                s->switch_queue_dir);
 }
 
 void det_state_load(const DetSavedState* s) {
@@ -2292,7 +2095,7 @@ void det_state_load(const DetSavedState* s) {
     pf::win32::set_units_reported(s->units_reported);
     pf::win32::rng_set_state(s->rng_state);
     pf::win32::rng_set_calls((long)s->rng_calls);
-    g_script_cursor = (size_t)s->script_cursor;
+    pf::win32::set_script_cursor((size_t)s->script_cursor);
     // Nothing to do for the arena: snapshot.cpp has already memcpy'd
     // [0x20000000, +arena_offset) back, and that range CONTAINS the whole
     // allocator - control block (top/free_head/stats) at offset 0, block
@@ -2303,22 +2106,11 @@ void det_state_load(const DetSavedState* s) {
     g_real_key_violations = s->real_key_violations;
     g_last_drain_tick = s->last_drain_tick;
     memcpy(g_key_held, s->key_held, sizeof(g_key_held));
-    real_queue_init();
-    EnterCriticalSection(&g_real_queue_cs);
-    g_real_queue_head = s->real_queue_head;
-    g_real_queue_tail = s->real_queue_tail;
-    for (int i = 0; i < kRealQueueCap; ++i) {
-        g_real_queue[i].allegro_code = s->real_queue_code[i];
-        g_real_queue[i].press = s->real_queue_press[i] != 0;
-    }
-    LeaveCriticalSection(&g_real_queue_cs);
-    g_time_cursor = (size_t)s->time_cursor;
-    switch_queue_init();
-    EnterCriticalSection(&g_switch_cs);
-    g_switch_head = s->switch_queue_head;
-    g_switch_tail = s->switch_queue_tail;
-    memcpy(g_switch_queue, s->switch_queue_dir, sizeof(g_switch_queue));
-    LeaveCriticalSection(&g_switch_cs);
+    pf::win32::real_queue_load(s->real_queue_head, s->real_queue_tail,
+                               s->real_queue_code, s->real_queue_press);
+    pf::win32::set_time_cursor((size_t)s->time_cursor);
+    pf::win32::focus_queue_load(s->switch_queue_head, s->switch_queue_tail,
+                                s->switch_queue_dir);
 }
 
 void det_shutdown() {
@@ -2338,8 +2130,8 @@ void det_shutdown() {
     // notes/determinism_audit.md). Printed unconditionally at shutdown so
     // every archived stderr carries it.
     {
-        void** in_cb = (void**)(uintptr_t)VA_SWITCH_IN_CB;
-        void** out_cb = (void**)(uintptr_t)VA_SWITCH_OUT_CB;
+        void** in_cb = (void**)(uintptr_t)icytower::kFocusChannel.cb_table_in_va;
+        void** out_cb = (void**)(uintptr_t)icytower::kFocusChannel.cb_table_out_va;
         char line[256]; int n = 0;
         n += _snprintf(line + n, sizeof(line) - n, "det: switch_in_cb =");
         for (int i = 0; i < 8; ++i) n += _snprintf(line + n, sizeof(line) - n, " %p", in_cb[i]);

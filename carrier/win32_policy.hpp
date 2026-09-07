@@ -26,6 +26,10 @@
 #pragma once
 
 #include "../port_forge/src/platform/win32/arena.hpp"
+#include "../port_forge/src/platform/win32/arg_sensor.hpp"
+#include "../port_forge/src/platform/win32/focus_channel.hpp"
+#include "../port_forge/src/platform/win32/frame_oracle.hpp"
+#include "../port_forge/src/platform/win32/input_channel.hpp"
 #include "../port_forge/src/platform/win32/policy.hpp"
 #include "../port_forge/src/platform/win32/rng.hpp"
 #include "../port_forge/src/platform/win32/threads.hpp"
@@ -173,6 +177,159 @@ inline constexpr pf::win32::ThreadPolicy kThreads = {
     kThreadsParkReal,   2,
     kThreadsVirtualize, 1,
     kThreadsSuppress,   1,
+};
+
+// ---------------------------------------------------------------------
+// The keyboard channel.
+//
+// KNOWN (artifacts/functions.json + artifacts/dwarf_info.txt):
+//   0x43e2f8 keyboard.c  void _handle_key_press(int keycode, int scancode)
+//   0x43d8d4 keyboard.c  void _handle_key_release(int scancode)
+//   0x46d5a8 wkeybd.c    key_dinput_handle_scancode(int scancode, int pressed)
+//   0x4daf80 wkeybd.c    unsigned char hw_to_mycode[256]
+//
+// The last two are the capture side and the translation table between the
+// two scancode spaces. hw_to_mycode is READ OUT OF THE MAPPED IMAGE rather
+// than copied here (input_channel.hpp inverts it at first use): a
+// hand-written copy covers the keys someone thought of and silently
+// mistranslates the rest. MEASURED at 0x4daf80 (disasm around
+// 0x46d660/0x46d71e index it with `movzbl 0x4daf80(%ebx),%ebx`):
+// hw_to_mycode[0x01]==59, [0x1c]==67, [0x39]==75, [0xcb]==82, [0xcd]==83,
+// [0xc8]==84, [0xd0]==85 - the standard scancode-set-1 DIK_* values for
+// these seven keys, matching kKeyNames one for one.
+//
+// kKeyNames is the DWARF __allegro_KEY_* enum (artifacts/dwarf_info.txt),
+// restricted to the seven keys this game's scripts can name.
+inline constexpr pf::win32::KeyName kKeyNames[] = {
+    {"KEY_ESC", 59}, {"KEY_ENTER", 67}, {"KEY_SPACE", 75},
+    {"KEY_LEFT", 82}, {"KEY_RIGHT", 83}, {"KEY_UP", 84}, {"KEY_DOWN", 85},
+};
+
+inline constexpr pf::win32::InputBindingPolicy kInputBinding = {
+    /* deliver_press_va   */ 0x0043e2f8ul,
+    /* deliver_release_va */ 0x0043d8d4ul,
+    /* capture_va         */ 0x0046d5a8ul,
+    /* scancode_map_va    */ 0x004daf80ul,
+    /* key_names          */ kKeyNames,
+    /* key_name_count     */ 7,
+};
+
+// ---------------------------------------------------------------------
+// Window activation.
+//
+// MEASURED (carrier/NOTES.md "Environment isolation" item 2): a foreign
+// window taking the foreground makes Windows send WM_ACTIVATEAPP to the
+// guest's window thread; directx_wnd_proc (0x4791e0) calls
+// _win_switch_out/_win_switch_in (wdispsw.c, 0x47a3d4/0x47a47c), each of
+// which ends in a tail `jmp` to _switch_out/_switch_in (dispsw.c,
+// 0x465808/0x4657e4) - a bare loop over an 8-entry callback table
+// (0x4ea060/0x4ea080). Three entries are the game's own
+// switchedFromProgram/switchedToProgram, which write hasFocus (0x4bc020)
+// and lastFocus (0x4bc024) - both inside the 151-global digest domain, and
+// both compared by play() at 0x411c6b/0x411cd7, which restarts the game
+// music (checkMusicVoiceID @0x4bc174, also in the domain) when they differ.
+// So the operator's desktop CAN change the verdict, which is why this
+// channel is owned.
+//
+// RULED OUT BY EVIDENCE: set_display_switch_mode. _win_switch_out's
+// disassembly branches on get_display_switch_mode only to decide whether to
+// ALSO reset an event and drop the thread priority; BOTH arms end in the
+// same `jmp _switch_out`, so no switch mode stops the callbacks. The
+// dispatchers are the only real choke point.
+inline constexpr pf::win32::FocusChannelPolicy kFocusChannel = {
+    /* switch_in_va    */ 0x004657e4ul,
+    /* switch_out_va   */ 0x00465808ul,
+    /* cb_table_in_va  */ 0x004ea080ul,
+    /* cb_table_out_va */ 0x004ea060ul,
+    /* cb_table_len    */ 8,
+};
+
+// ---------------------------------------------------------------------
+// Argument sensors: --headless and --no-sound.
+//
+// KNOWN (carrier/gen/interop_index.json, DWARF-confirmed COFF symbols
+// _set_gfx_mode / _install_sound - notes/binary_recon.md items g/h):
+//   set_gfx_mode(int card, int w, int h, int v_w, int v_h)  graphics.c 0x450688
+//   install_sound(int digi, int midi, const char *cfg_path) sound.c    0x4417b0
+// Both cdecl, so at the sensor's hit (EIP == va, before the callee's own
+// prologue) the guest ESP is exactly [retaddr][arg0][arg1]..., unmodified
+// since the caller's `call`.
+//
+// 0x47444942 is GFX_GDI (carrier/gen/pf_lib_bindings.h:420, generated from
+// Allegro 4.4.1 DWARF - the FOURCC-style value <allegro/gfx.h> defines for
+// the GDI software driver). notes/binary_recon.md item g confirms _gfx_gdi
+// is one of the two gfx-driver families actually compiled into this binary.
+// 640x480 windowed is this project's headless size; v_w/v_h (slots 4 and 5)
+// are deliberately NOT overridden - GFX_GDI has no page-flipping or
+// virtual-screen concept and Allegro's own GDI driver ignores them.
+//
+// DIGI_NONE == MIDI_NONE == 0 (Allegro 4's public digi.h/midi.h, stable
+// across the whole 4.x series - not FOURCC-encoded like GFX_*, so not
+// re-derived from disassembly). notes/binary_recon.md item h confirms
+// _digi_none is compiled in alongside _digi_directsound.
+inline constexpr pf::win32::ArgOverride kGfxOverrides[] = {
+    { 1, 0x47444942u },  // card = GFX_GDI
+    { 2, 640u },         // w
+    { 3, 480u },         // h
+};
+inline constexpr pf::win32::ArgSensor kSensorSetGfxMode = {
+    /* va             */ 0x00450688ul,
+    /* overrides      */ kGfxOverrides,
+    /* override_count */ 3,
+    /* capture_count  */ 3,
+    /* label          */ "set_gfx_mode",
+};
+
+inline constexpr pf::win32::ArgOverride kSoundOverrides[] = {
+    { 1, 0u },  // digi = DIGI_NONE
+    { 2, 0u },  // midi = MIDI_NONE
+};
+inline constexpr pf::win32::ArgSensor kSensorInstallSound = {
+    /* va             */ 0x004417b0ul,
+    /* overrides      */ kSoundOverrides,
+    /* override_count */ 2,
+    /* capture_count  */ 2,
+    /* label          */ "install_sound",
+};
+
+// ---------------------------------------------------------------------
+// The frame oracle.
+//
+// KNOWN (notes/binary_recon.md item g + artifacts/disasm.txt): every one of
+// the ~20 call sites pushes a BITMAP* immediately before
+// `call 40b6bc <_blit_to_screen>`. The site inside play()'s own per-tick
+// path (0x413326, right after the frame-pacing wait, item l) is:
+//     41331e: mov eax, 0x4dd194   ; swap_screen (BITMAP*, main.c)
+//     413323: mov [esp], eax
+//     413326: call 40b6bc <_blit_to_screen>
+// draw_frame() (0x40929c) has just finished rendering into that same
+// bitmap, and blit_to_screen presents it to the driver's own `screen`
+// BITMAP (0x4dda8c, Allegro's own global, deliberately NOT the oracle).
+// Because the ARGUMENT is the source bitmap at every call site, the sensor
+// reads the argument rather than special-casing swap_screen by name - which
+// also makes it correct for the menu and other call sites for free.
+//
+// BITMAP layout (KNOWN, carrier/gen/it_types.h, DWARF-derived):
+//   int w,h,clip,cl,cr,ct,cb;   at 0,4,8,12,16,20,24
+//   GFX_VTABLE *vtable;         at 28
+//   void *write_bank,*read_bank,*dat; unsigned long id; void *extra;
+//   int x_ofs,y_ofs,seg;        at 32..60
+//   unsigned char *line[h];     at 64
+// GFX_VTABLE.color_depth is its first member (offset 0) - Allegro's public
+// bitmap_color_depth(bmp) macro is exactly (bmp)->vtable->color_depth.
+//
+// 0x44c47c is get_palette(RGB *pal) (carrier/gen/pf_lib_bindings.h:143),
+// used ONLY for the 8bpp case of --frame-dump-at's human-readable PPM; the
+// digest never needs palette interpretation because it hashes raw bytes.
+inline constexpr pf::win32::FrameOraclePolicy kFrameOracle = {
+    /* present_fn_va    */ 0x0040b6bcul,
+    /* bitmap_arg_index */ 0,
+    /* w_off            */ 0u,
+    /* h_off            */ 4u,
+    /* vtable_off       */ 28u,
+    /* line_array_off   */ 64u,
+    /* color_depth_off  */ 0u,
+    /* palette_fn_va    */ 0x0044c47cul,
 };
 
 }  // namespace icytower
