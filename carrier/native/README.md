@@ -1,5 +1,18 @@
 # NATIVE form — `update_frame` and `is_solid`
 
+**2026-09-07: the authoritative clean forms of these two functions now live
+in `src/icytower/update_frame.c` and `src/icytower/is_solid.c`** (address-free
+ordinary C, `src/README.md`, win32_pilot.md §7a), independently re-verified
+offline against the original bytes (`artifacts/src_equivalence.json`, 20 000
+vectors each, EQUAL, negative control catches an injected fault in both).
+This directory's `native_update_frame.c`/`native_is_solid.c` are kept only as
+the **address-bound transitional form** — they operate on `IT_G_*`/`PF_MEM()`
+directly and are what the carrier's entry-patch binding table can point at
+today — until the carrier can bind `src/` directly (a code-generation step,
+not a hand-written one, per win32_pilot.md §3's binding table). Everything
+below still describes that transitional form; nothing here should be taken
+as the port's own semantics anymore.
+
 Status: **working pilot**, 2026-09-07. Milestone 11b of `win32_pilot.md` §8
 for the two functions milestone 11a already lifted and verified
 (`carrier/lift/README.md`): *write readable C by hand* and *verify it

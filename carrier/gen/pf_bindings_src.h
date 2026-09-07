@@ -3,7 +3,9 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 11:00:59 UTC
+ * Generated: 2026-09-07 11:01:03 UTC
+ * Excluded (compiled natively, name kept free): is_solid, update_frame
+ * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
  * when address-free clean C from src/ is compiled INTO the carrier.
@@ -16,6 +18,8 @@
 
 #ifndef PF_BINDINGS_H
 #define PF_BINDINGS_H
+
+#define ICYTOWER_BINDINGS_ACTIVE 1  /* purity-safe "bindings are active" signal for src/ */
 
 #include "pf_bindings_types.h"  /* struct/enum/typedef layouts */
 #include "it_funcs.h"           /* PFN_<name> typedefs, reused verbatim */
@@ -739,9 +743,7 @@
 /* is_right  VA=0x401888  cu=F:\projects\icytower\trunk\source\control.c */
 /* prototype: int is_right(Tcontrol *) */
 #define is_right ((PFN_is_right)0x401888)
-/* is_solid  VA=0x4166dc  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: int is_solid(Tmap *, int, int) */
-#define is_solid ((PFN_is_solid)0x4166dc)
+/* excluded by --exclude (compiled natively): is_solid */
 /* is_up  VA=0x401844  cu=F:\projects\icytower\trunk\source\control.c */
 /* prototype: int is_up(Tcontrol *) */
 #define is_up ((PFN_is_up)0x401844)
@@ -1048,9 +1050,7 @@
 /* update_file_list  VA=0x41bda0  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: void update_file_list(char *) */
 #define update_file_list ((PFN_update_file_list)0x41bda0)
-/* update_frame  VA=0x406ac4  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void update_frame() */
-#define update_frame ((PFN_update_frame)0x406ac4)
+/* excluded by --exclude (compiled natively): update_frame */
 /* update_game_menu  VA=0x417adc  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: int update_game_menu(BITMAP *, Tmenu *, Tmenu_params *, Tcontrol *, int, int, void **) */
 #define update_game_menu ((PFN_update_game_menu)0x417adc)

@@ -119,6 +119,18 @@ RESERVED_CRT_WINDOWS_IDENTS = {
 }
 
 
+HEX_ADDR_IN_BODY_RE = re.compile(r'0x[0-9a-fA-F]+')
+
+
+def wrap_addresses(body, macro):
+    """Wrap every address literal in a reused cast-expression body with
+    macro(...), e.g. '(*(fixed *)0x4fac28)' -> '(*(fixed *)PF_MEM(0x4fac28))'.
+    Used by --mem-macro so an offline harness can redirect every binding at
+    an in-process copy of the image instead of the real address range,
+    without hand-editing a single cast (win32_pilot.md SS7a)."""
+    return HEX_ADDR_IN_BODY_RE.sub(lambda m: '%s(%s)' % (macro, m.group(0)), body)
+
+
 def parse_header_defines(path, pattern):
     out = {}
     with open(path, encoding='utf-8') as f:
@@ -145,9 +157,30 @@ def main():
     ap.add_argument('--exclude', default='',
                      help='comma-separated names to omit (functions being '
                           'compiled natively into the carrier from src/)')
+    ap.add_argument('--mem-macro', default=None,
+                     help='wrap every address literal in the emitted casts '
+                          'with MACRO(...), e.g. --mem-macro PF_MEM turns '
+                          '(*(fixed*)0x4fac28) into (*(fixed*)PF_MEM(0x4fac28)). '
+                          'For an offline harness that redirects PF_MEM at an '
+                          'in-process copy of the image instead of the real '
+                          'address range (win32_pilot.md SS7a); the real '
+                          'carrier build omits this (the image is mapped at '
+                          'its real address, so the cast is already correct).')
+    ap.add_argument('--guard-define', default=None,
+                     help='additionally #define NAME 1 right after this '
+                          "header's own include guard opens. Lets src/ "
+                          'headers (game_types.h, game_state.h) detect '
+                          '"a generated bindings header is force-included '
+                          'ahead of me" via #ifndef NAME without ever '
+                          'referencing a carrier-reserved identifier '
+                          'themselves (scripts/check_native_layer.py bans '
+                          'PF_/IT_G_/IT_F_/PFN_ prefixes in src/); NAME '
+                          'should therefore be an ordinary, non-reserved '
+                          'name, e.g. ICYTOWER_BINDINGS_ACTIVE.')
     args = ap.parse_args()
 
     exclude = set(n.strip() for n in args.exclude.split(',') if n.strip())
+    mem_macro = args.mem_macro
 
     index = load_index(args.index)
     idx_globals = index['globals']
@@ -182,6 +215,10 @@ def main():
     if exclude:
         lines.append(' * Excluded (compiled natively, name kept free): %s' %
                       ', '.join(sorted(exclude)))
+    if mem_macro:
+        lines.append(' * Addresses wrapped with --mem-macro: %s(...)' % mem_macro)
+    if args.guard_define:
+        lines.append(' * Also defines the purity-safe guard: %s' % args.guard_define)
     lines.append(' *')
     lines.append(' * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY')
     lines.append(' * when address-free clean C from src/ is compiled INTO the carrier.')
@@ -195,6 +232,10 @@ def main():
     lines.append('#ifndef PF_BINDINGS_H')
     lines.append('#define PF_BINDINGS_H')
     lines.append('')
+    if args.guard_define:
+        lines.append('#define %s 1  /* purity-safe "bindings are active" signal for src/ */' %
+                      args.guard_define)
+        lines.append('')
     lines.append('#include "pf_bindings_types.h"  /* struct/enum/typedef layouts */')
     lines.append('#include "it_funcs.h"           /* PFN_<name> typedefs, reused verbatim */')
     lines.append('')
@@ -216,7 +257,10 @@ def main():
             continue
         lines.append('/* %s  VA=%s  type=%s  cu=%s */' %
                       (name, g['va'], g['type'], g['cu']))
-        lines.append('#define %s %s' % (name, global_bodies[name]))
+        body = global_bodies[name]
+        if mem_macro:
+            body = wrap_addresses(body, mem_macro)
+        lines.append('#define %s %s' % (name, body))
         emitted_globals.append(name)
     lines.append('')
 
@@ -240,7 +284,10 @@ def main():
             continue
         lines.append('/* %s  VA=%s  cu=%s */' % (name, f['va'], f['cu']))
         lines.append('/* prototype: %s */' % f['prototype'])
-        lines.append('#define %s %s' % (name, func_bodies[name]))
+        body = func_bodies[name]
+        if mem_macro:
+            body = wrap_addresses(body, mem_macro)
+        lines.append('#define %s %s' % (name, body))
         emitted_functions.append(name)
     lines.append('')
     lines.append('#endif /* PF_BINDINGS_H */')
@@ -283,6 +330,8 @@ def main():
         'reserved_collisions': reserved_collisions,
         'out': args.out,
         'types_out': args.types_out,
+        'mem_macro': mem_macro,
+        'guard_define': args.guard_define,
     }
     print(json.dumps(summary, indent=2))
     return 0

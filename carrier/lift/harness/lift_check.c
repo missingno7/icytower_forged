@@ -29,6 +29,8 @@ void pf_trap(unsigned int va, const char *why)
 extern void __cdecl lifted_update_frame(void);
 extern int  __cdecl lifted_is_solid(Tmap *, int, int);
 extern int  __cdecl lifted_jump_player(Tplayer *, int);
+extern int  __cdecl lifted_line_intersect(int, int, int, int, int, int,
+                                          int, int, int *, int *);
 
 static unsigned int rd32(FILE *f)
 {
@@ -84,10 +86,10 @@ int main(int argc, char **argv)
     { unsigned int m = 0x53455250u; fwrite(&m, 4, 1, fo); fwrite(&nvec, 4, 1, fo); }
 
     for (i = 0; i < nvec; i++) {
-        unsigned int nargs, a[8], nwr, eax = 0;
+        unsigned int nargs, a[16], nwr, eax = 0;
         memcpy(pf_guest, pf_pristine, PF_GUEST_SIZE);
         nargs = rd32(fi);
-        if (nargs > 8) { fprintf(stderr, "too many args\n"); return 2; }
+        if (nargs > 16) { fprintf(stderr, "too many args\n"); return 2; }
         for (j = 0; j < nargs; j++) a[j] = rd32(fi);
         nwr = rd32(fi);
         for (j = 0; j < nwr; j++) {
@@ -107,6 +109,11 @@ int main(int argc, char **argv)
             eax = (unsigned int)lifted_is_solid((Tmap *)(size_t)a[0], (int)a[1], (int)a[2]);
         } else if (!strcmp(fn, "jump_player")) {
             eax = (unsigned int)lifted_jump_player((Tplayer *)(size_t)a[0], (int)a[1]);
+        } else if (!strcmp(fn, "line_intersect")) {
+            eax = (unsigned int)lifted_line_intersect(
+                      (int)a[0], (int)a[1], (int)a[2], (int)a[3], (int)a[4],
+                      (int)a[5], (int)a[6], (int)a[7],
+                      (int *)(size_t)a[8], (int *)(size_t)a[9]);
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);
             return 2;

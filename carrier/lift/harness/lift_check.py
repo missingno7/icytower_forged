@@ -39,6 +39,18 @@ RET_MAGIC = STACK_BASE + 0x10
 
 PLAYER_VA = 0x790000                   # past every PE section (last ends 0x78b6e0)
 MAP_VA = 0x792000
+OUT_X = 0x794000                       # int *px / int *py for line_intersect
+OUT_Y = 0x794004
+
+# The ORIGINAL side must enter the function with the SAME x87 control word the
+# game enters it with.  KNOWN: ___mingw_CRTStartup (0x401020) calls __fpreset
+# (0x4b2850) = a bare FNINIT, which leaves CW = 0x037F: PC = 11 (64-bit
+# significand, full extended precision) and RC = 00 (nearest-even).  unicorn
+# powers up with CW = 0x0000 (PC = 00 = SINGLE precision), which is not what
+# the game runs with, so the oracle executes FNINIT + FLDCW before every call.
+CW_INIT = 0x037F
+CW_SLOT = STACK_BASE + 0x20
+CW_STUB = STACK_BASE + 0x30
 
 G_REWARD_TIME = 0x4fec68
 G_REWARD_SCALE = 0x4fac28
@@ -172,6 +184,159 @@ def gen_jump_player(rng, k):
     return [PLAYER_VA, a2], writes
 
 
+# --------------------------------------------------------------------------
+# line_intersect (0x406b80) -- the x87 discriminator
+#
+#   D  = dx1*dy3 - dx3*dy1        (32-bit IMULs, wrapping)
+#   N1 = dx3*py  - dy3*px         ua = N1/D    px = x1-x3, py = y1-y3
+#   N2 = dx1*py  - dy1*px         ub = N2/D
+#   requires 0 <= ua <= 1 and 0 <= ub <= 1, then
+#     *px_out = x1 + (int)(ua*dx1 + 0.5f)      (fistp under RC = "toward zero")
+#     *py_out = y1 + (int)(ua*dy1 + 0.5f)
+#
+# EVERY x87 intermediate stays in the register stack; nothing is spilled to
+# memory as a double.  That is what makes this function able to tell an 80-bit
+# model apart from a 64-bit one, and it is why the vector families below aim
+# at the truncation boundary of ua*dx1 + 0.5.
+# --------------------------------------------------------------------------
+
+def _w32(v):
+    v &= 0xFFFFFFFF
+    return v - (1 << 32) if v >= (1 << 31) else v
+
+
+def _gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def _solve_lin(a, b, M):
+    """every x with a*x == b (mod M), as (x0, step); None if unsolvable."""
+    g = _gcd(a % M, M)
+    if b % g:
+        return None
+    M2 = M // g
+    return ((b // g) * pow(((a % M) // g) % M2, -1, M2) % M2, M2)
+
+
+def _solve_pow2(D, c):
+    """px such that w32(D*px + c) lands in [0, D].
+
+    D*px mod 2**32 covers exactly the multiples of 2**v2(D), so the reachable
+    target nearest zero is c mod 2**v2(D), which is below D and therefore a
+    legal ub numerator."""
+    v = 0
+    d = D
+    while d % 2 == 0:
+        d //= 2
+        v += 1
+    t = c % (1 << v)                       # the reachable target in [0, 2**v)
+    if t > D:
+        return None
+    mod = 1 << (32 - v)
+    delta = ((t - c) % (1 << 32)) >> v
+    return _w32((delta * pow(d % mod, -1, mod)) % mod)
+
+
+def _boundary(rng, want_y):
+    """Construct inputs for which ua*d + 0.5 is EXACTLY an integer, where d is
+    dx1 (want_y = False) or dy1 (want_y = True).  ua is then a rational with a
+    ~2^31 denominator that needs more than 53 significand bits, so the double
+    model and the 80-bit model land on opposite sides of the truncation
+    boundary about half the time."""
+    for _ in range(200):
+        k = rng.randrange(4, 22)
+        D = ((rng.randrange(1 << 26, 1 << 30) >> k) << k) * 2
+        M = ((rng.randrange(1 << 16, 1 << 30) >> k) << k)
+        if D <= 0 or D >= (1 << 31) or M == 0:
+            continue
+        sol = _solve_lin(M, D // 2, D)
+        if sol is None:
+            continue
+        n10, step = sol
+        n1 = (n10 + rng.randrange(max(1, D // step)) * step) % D
+        if n1 <= 0 or n1 >= D:
+            continue
+        if not want_y:
+            # segment 3-4 horizontal: dx3 = 1, dy3 = 0, x3 = y3 = 0, x4 = 1
+            # => D = -dy1, N1 = py, N2 = w32(py*dx1 + D*px)
+            dx1, py = M, n1
+            px = _solve_pow2(D, _w32(py * dx1))
+            if px is None:
+                continue
+            x1, y1 = px, py
+            return [x1, y1, _w32(x1 + dx1), _w32(y1 - D), 0, 0, 1, 0, OUT_X, OUT_Y]
+        # segment 3-4 vertical: dx3 = 0, dy3 = 1, x3 = y3 = 0, y4 = 1
+        # => D = dx1, N1 = -px, N2 = w32(dx1*py - dy1*px)
+        dy1, px = M, _w32(-n1)
+        dx1 = D
+        py = _solve_pow2(D, _w32(-dy1 * px))
+        if py is None:
+            continue
+        x1, y1 = px, py
+        return [x1, y1, _w32(x1 + dx1), _w32(y1 + dy1), 0, 0, 0, 1, OUT_X, OUT_Y]
+    return None
+
+
+def _half_exact(rng):
+    """dx1 == D makes ua*dx1 exactly N1, so the stored value is exactly N + 0.5
+    -- the +-0.5 truncation boundary itself."""
+    D = rng.randrange(1 << 20, 1 << 30) * 2
+    if D >= (1 << 31):
+        D = D >> 1
+    n1 = rng.randrange(1, D)
+    dx1 = D
+    px = _solve_pow2(D, _w32(n1 * dx1))
+    if px is None:
+        return None
+    return [px, n1, _w32(px + dx1), _w32(n1 - D), 0, 0, 1, 0, OUT_X, OUT_Y]
+
+
+def gen_line_intersect(rng, k):
+    v = None
+    fam = k % 10
+    if k < 400:                     # a solid block of constructed boundaries
+        v = _boundary(rng, (k % 2) == 1)
+    elif fam == 0:                  # game-like screen coordinates
+        v = [rng.randint(-800, 800) for _ in range(8)] + [OUT_X, OUT_Y]
+    elif fam == 1:                  # small, heavily degenerate (parallel, equal)
+        a = [rng.randint(-8, 8) for _ in range(8)]
+        if rng.random() < 0.5:
+            a[4], a[5] = a[0], a[1]
+            a[6], a[7] = a[2], a[3]          # identical segments -> D == 0
+        v = a + [OUT_X, OUT_Y]
+    elif fam == 2:                  # full-range int32: IMULs wrap, D is huge
+        v = [rng.randrange(-(1 << 31), 1 << 31) for _ in range(8)] + [OUT_X, OUT_Y]
+    elif fam == 3:                  # large but non-wrapping coordinates
+        v = [rng.randrange(-(1 << 15), 1 << 15) for _ in range(8)] + [OUT_X, OUT_Y]
+    elif fam == 4:                  # the exact +-0.5 truncation boundary
+        v = _half_exact(rng)
+    elif fam == 5:                  # |ua*dx1 + 0.5| pushed to the 2^31 edge
+        D = rng.randrange(1 << 28, 1 << 30) * 2
+        n1 = D - rng.randrange(0, 8)
+        dx1 = rng.choice([-(1 << 31), (1 << 31) - 1, -(1 << 31) + 1, 1 << 30])
+        px = _solve_pow2(D, _w32(n1 * dx1))
+        if px is not None:
+            v = [px, n1, _w32(px + dx1), _w32(n1 - D), 0, 0, 1, 0, OUT_X, OUT_Y]
+    elif fam == 6:                  # constructed boundary, x
+        v = _boundary(rng, False)
+    elif fam == 7:                  # constructed boundary, y
+        v = _boundary(rng, True)
+    elif fam == 8:                  # mixed magnitudes
+        v = [rng.choice([rng.randint(-50, 50),
+                         rng.randrange(-(1 << 20), 1 << 20),
+                         rng.randrange(-(1 << 30), 1 << 30)]) for _ in range(8)] \
+            + [OUT_X, OUT_Y]
+    else:                           # near-collinear: ua/ub close to 0 and 1
+        b = rng.randint(-(1 << 20), 1 << 20)
+        v = [0, 0, b, rng.randint(-(1 << 20), 1 << 20),
+             rng.randint(-3, 3), b, rng.randint(-(1 << 20), 1 << 20), -b,
+             OUT_X, OUT_Y]
+    if v is None:
+        v = [rng.randint(-800, 800) for _ in range(8)] + [OUT_X, OUT_Y]
+    return [x & 0xFFFFFFFF for x in v], []
+
 SPECS = {
     "update_frame": {"va": 0x406ac4, "gen": gen_update_frame, "cmp_eax": False,
                      "domain": [(G_REWARD_TIME, 4), (G_REWARD_SCALE, 4),
@@ -182,6 +347,9 @@ SPECS = {
                  "must_be_unchanged": [(MAP_VA, SZ_MAP)]},
     "jump_player": {"va": 0x418678, "gen": gen_jump_player, "cmp_eax": True,
                     "domain": [(PLAYER_VA, SZ_PLAYER)], "domain_names": ["Tplayer"]},
+    "line_intersect": {"va": 0x406b80, "gen": gen_line_intersect, "cmp_eax": True,
+                       "domain": [(OUT_X, 4), (OUT_Y, 4)],
+                       "domain_names": ["*px", "*py"]},
 }
 
 
@@ -197,6 +365,13 @@ class Oracle(object):
         self.mu.mem_write(GUEST_BASE, guest)
         self.mu.mem_map(STACK_BASE, STACK_SIZE)
         self.mu.mem_write(RET_MAGIC, b"\xF4")           # never executed
+        self.stub = bytes([0xDB, 0xE3, 0xD9, 0x2D]) + u32(CW_SLOT)  # fninit; fldcw
+        self.mu.mem_write(CW_SLOT, struct.pack("<H", CW_INIT))
+        self.mu.mem_write(CW_STUB, self.stub)
+
+    def fpu_reset(self):
+        """FNINIT + FLDCW 0x037F -- the x87 state ___mingw_CRTStartup leaves."""
+        self.mu.emu_start(CW_STUB, CW_STUB + len(self.stub))
 
     def restore(self, regions):
         for va, n in regions:
@@ -204,6 +379,7 @@ class Oracle(object):
             self.mu.mem_write(va, self.guest[off:off + n])
 
     def call(self, va, args, writes, domain):
+        self.fpu_reset()
         for wva, wb in writes:
             self.mu.mem_write(wva, wb)
         esp = STACK_BASE + STACK_SIZE - 0x1000
@@ -267,22 +443,27 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--image", default=os.path.join(HERE, "..", "..", "..",
                                                     "assets", "icytower15.exe"))
-    ap.add_argument("--form", default="lifted", choices=["lifted", "native"],
+    ap.add_argument("--form", default="lifted", choices=["lifted", "native", "src"],
                     help="which candidate form to check against ORIGINAL "
                          "(unicorn): 'lifted' runs harness/lift_check.exe "
                          "(generated lifted_<f> symbols), 'native' runs "
                          "harness/native_check.exe (hand-written native_<f> "
-                         "symbols from carrier/native). Only changes the "
-                         "--exe default and the report/print labels below;"
-                         " the vector generation, oracle and diff are "
-                         "identical for both forms (carrier/lift/README.md SS7).")
+                         "symbols from carrier/native), 'src' runs "
+                         "harness/src_check.exe (plain update_frame/is_solid "
+                         "symbols compiled straight from src/icytower/, "
+                         "win32_pilot.md SS7a). Only changes the --exe "
+                         "default and the report/print labels below; the "
+                         "vector generation, oracle and diff are identical "
+                         "for all three forms (carrier/lift/README.md SS7).")
     ap.add_argument("--exe", default=None,
-                    help="default: harness/lift_check.exe or "
-                         "harness/native_check.exe, per --form")
+                    help="default: harness/lift_check.exe, "
+                         "harness/native_check.exe or harness/src_check.exe, "
+                         "per --form")
     ap.add_argument("--funcs", default=None,
-                    help="default: update_frame,is_solid,jump_player for "
-                         "--form lifted; update_frame,is_solid for --form "
-                         "native (native_check.exe has no native_jump_player)")
+                    help="default: update_frame,is_solid,jump_player,"
+                         "line_intersect for --form lifted; "
+                         "update_frame,is_solid for --form native or src "
+                         "(neither check.exe has jump_player/line_intersect)")
     ap.add_argument("--vectors", type=int, default=0,
                     help="vectors per function (0 = per-function default)")
     ap.add_argument("--seed", type=int, default=20260907)
@@ -290,15 +471,19 @@ def main():
                     help="negative control: FUNC:VECTOR:BYTE -- flip one bit of "
                          "the candidate (LIFTED or NATIVE) result and require "
                          "the comparator to name it")
+    ap.add_argument("--census", action="store_true",
+                    help="do not stop at the first difference: keep going and "
+                         "report how many vectors differ (used to quantify the "
+                         "x87 double-vs-80-bit result, README SS6)")
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
 
     if args.exe is None:
-        args.exe = os.path.join(HERE, "native_check.exe" if args.form == "native"
-                                       else "lift_check.exe")
+        args.exe = os.path.join(HERE, {"native": "native_check.exe",
+                                        "src": "src_check.exe"}.get(args.form, "lift_check.exe"))
     if args.funcs is None:
-        args.funcs = ("update_frame,is_solid" if args.form == "native"
-                      else "update_frame,is_solid,jump_player")
+        args.funcs = ("update_frame,is_solid" if args.form in ("native", "src")
+                      else "update_frame,is_solid,jump_player,line_intersect")
     label = args.form.upper()
 
     guest = build_guest(args.image)
@@ -314,7 +499,7 @@ def main():
     rc = 0
     for name in args.funcs.split(","):
         spec = SPECS[name]
-        nvec = args.vectors or (4000 if name == "jump_player" else 1500)
+        nvec = args.vectors or {"jump_player": 4000, "line_intersect": 4000}.get(name, 1500)
         rng = random.Random(args.seed + sum(ord(c) for c in name))
         vectors = [spec["gen"](rng, k) for k in range(nvec)]
         vpath = os.path.join(HERE, "vectors_%s.bin" % name)
@@ -336,6 +521,7 @@ def main():
         restore = list(spec["domain"]) + [(va, len(b)) for _, w in vectors for va, b in w]
         restore = sorted(set(restore))
         first_diff = None
+        ndiff = 0
         unchanged_violation = None
         for k, (a, w) in enumerate(vectors):
             oracle.restore(restore)
@@ -354,21 +540,29 @@ def main():
                     if src is not None and bytes(odom[:un]) != src[:un]:
                         unchanged_violation = k
             if spec["cmp_eax"] and oeax != leax:
-                first_diff = {"vector": k, "kind": "return value",
-                              "original": "0x%08x" % oeax, "lifted": "0x%08x" % leax,
-                              "args": ["0x%08x" % x for x in a]}
-                break
+                ndiff += 1
+                if first_diff is None:
+                    first_diff = {"vector": k, "kind": "return value",
+                                  "original": "0x%08x" % oeax,
+                                  "lifted": "0x%08x" % leax,
+                                  "args": ["0x%08x" % x for x in a]}
+                if not args.census:
+                    break
+                continue
             if odom != ldom:
-                for bidx in range(len(odom)):
-                    if odom[bidx] != ldom[bidx]:
-                        first_diff = {"vector": k, "kind": "comparison domain",
-                                      "at": dom_locate(spec, bidx),
-                                      "byte_index": bidx,
-                                      "original": "0x%02x" % odom[bidx],
-                                      "lifted": "0x%02x" % ldom[bidx],
-                                      "args": ["0x%08x" % x for x in a]}
-                        break
-                break
+                ndiff += 1
+                if first_diff is None:
+                    for bidx in range(len(odom)):
+                        if odom[bidx] != ldom[bidx]:
+                            first_diff = {"vector": k, "kind": "comparison domain",
+                                          "at": dom_locate(spec, bidx),
+                                          "byte_index": bidx,
+                                          "original": "0x%02x" % odom[bidx],
+                                          "lifted": "0x%02x" % ldom[bidx],
+                                          "args": ["0x%08x" % x for x in a]}
+                            break
+                if not args.census:
+                    break
 
         if first_diff is None:
             print("[%s/%s] EQUAL over %d vectors (%d domain bytes + %s)"
@@ -377,8 +571,12 @@ def main():
                             "domain_bytes": domlen,
                             "compared_return_value": spec["cmp_eax"]}
         else:
-            print("[%s/%s] DIFFER at vector %d: %s" % (name, label, first_diff["vector"], first_diff))
+            print("[%s/%s] DIFFER at vector %d%s: %s"
+                  % (name, label, first_diff["vector"],
+                     (" (%d of %d vectors differ)" % (ndiff, nvec)) if args.census else "",
+                     first_diff))
             report[name] = {"result": "DIFFER", "form": args.form, "vectors": nvec,
+                            "differing_vectors": ndiff if args.census else None,
                             "first": first_diff}
             rc = 1
         if unchanged_violation is not None:
