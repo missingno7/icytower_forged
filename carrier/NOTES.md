@@ -2788,3 +2788,376 @@ at startup). See `notes/determinism_audit.md` "What remains STILL OPEN".
   the shutdown line reports the resulting wndproc so a subclass is never
   mistaken for the original.
 
+## Milestone 12 at scale
+
+Scaling proof (2026-09-07): every one of the **35** clean functions in
+`src/icytower/` (`src/icytower/PROMOTIONS.md`, batches 1-4) is now bound
+into the running carrier and compared against the original machine code
+over the operator's own recording (`replays/human_test.txt`, 2293 gameplay
+ticks, 100 floors, score 2386; baseline per-tick digest
+`replays/human_test.digest`). Milestones 11-12 above proved the mechanism
+for 3 functions; this pass is that mechanism applied to all 35, plus the
+infrastructure it needed that didn't exist yet: a 35-entry binding table
+(was 3, `kMaxFns=8`), a stub that can re-push up to 10 argument dwords (was
+hardcoded to 4), a build that compiles all 35 `src/` functions into the
+carrier (was 2), and a mixed MSVC/GCC toolchain link for the 5 functions
+with real x87 floating point. `carrier/scripts/bind_all.py` (new) automates
+the per-function A/B loop. **Ran under this task's serialized-access rule:
+no other process touched `carrier.exe` while any run below was in flight.**
+
+### A. Gate
+
+```
+carrier.exe --det --pace=fast --input=script --input-script ../replays/human_test.txt --stop-at-tick 2528 --digest-out ../artifacts_ms12/gate_unbound.txt
+python carrier/scripts/compare_digests.py artifacts_ms12/gate_unbound.txt replays/human_test.digest
+```
+
+Result: **`EQUAL (2293 ticks, ...)`** - the unbound carrier reproduces the
+operator's own recording bit-exactly before anything else in this pass
+touches it.
+
+### B. Binding-table capacity, widened (real bugs this pass's scale found)
+
+Two limits from Milestones 11-12 turned out to be too narrow for the full
+35, both found by literally trying to bind every function and having the
+stub corrupt a call rather than by inspection first:
+
+- **`kMaxFns` (8 stub slots) -> 35.** Mechanical: `BIND_STUB(8)` through
+  `BIND_STUB(34)` added, `kStubs[]` extended. No behavior change to the
+  existing 3.
+- **`kMaxArgs` (4 argument dwords, hardcoded into the stub's re-push) -> 10.**
+  MEASURED gap: `set_control` takes 6 cdecl dwords
+  (`Tcontrol*,int,int,int,int,int`) and `getFloorData` takes 5
+  (`Tmap*,int,int*,int*,int*`); `line_intersect` takes 10. The
+  milestone-11 stub's section (b) re-pushed exactly 4 dwords "regardless of
+  the real arity" (that comment's own words) - correct for <=4 args, but a
+  **silent argument-count bug** for anything wider: the 5th/6th argument
+  would never reach the callee, reading whatever garbage happened to be on
+  the stack past the 4 re-pushed dwords instead. Fixed by widening the
+  re-push to `kMaxArgs`(10) repeats of the same self-correcting
+  `push dword ptr [esp+48]` idiom (each `push` shifts `esp`, so the same
+  literal offset walks one more dword back through the caller's frame every
+  repeat - carrier/src/bind.cpp's own comment at the stub works out why no
+  offset arithmetic needed to change, only the repeat count and the
+  post-call `add esp, 40`) and bumping the post-call cleanup from 16 to 40.
+  `sense_entry` (ORIGINAL-form capture) needed no change - it already
+  looped `for i < kMaxArgs`, so raising the constant was enough. This is
+  exactly the class of bug the task's own DR-budget contract exists to let
+  the harness catch per-function rather than trusting the mechanism by
+  inspection; found before it produced a false EQUAL only because
+  `set_control`/`getFloorData` happened to be in this batch.
+
+### C. Mixed-toolchain x87 build (win32_pilot.md SS6a's rule, applied inside the carrier)
+
+`jump_player`, `line_intersect`, `new_rand`, `update_particle`,
+`create_particle` (the task's own "particles" = the latter two) have real
+x87 floating point. The carrier is MSVC-built; MSVC's `cl.exe` on this
+32-bit target has no `/arch` override and compiles `double` through
+plain-double/SSE codegen, which measurably DIFFERs from the original's
+genuine 80-bit x87 intermediates for `line_intersect`/`new_rand`/the two
+particle functions (PROMOTIONS.md's own MSVC-vs-GCC numbers: e.g.
+`new_rand` MSVC DIFFER 6079/20000, GCC `-mfpmath=387 -mno-sse2` EQUAL
+80000/80000). Handled properly rather than accepted, per the task:
+
+1. **Compiler**: 32-bit MinGW GCC 16.2.0 already on this host
+   (`C:\msys64\mingw32\bin\gcc.exe`) - the same compiler
+   `carrier/lift/harness/GCC_X87.md`'s offline proof already used, now
+   pointed at the carrier build instead of a standalone harness exe.
+2. **Flags**: `-m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables`
+   - the first three reproduce win32_pilot.md SS6a's rule (genuine x87
+   codegen, no SSE); `-fno-asynchronous-unwind-tables` drops GCC's
+   `.eh_frame`/CFI sections, which MSVC's linker does not consume and does
+   not need (no C++ exceptions cross these functions).
+3. **Headers**: the SAME `carrier/gen/pf_bindings_src.h` MSVC's own `src/`
+   compile step force-includes (`-include pf_bindings_src.h`) - it is
+   plain `#define`/`typedef` (BINDINGS_NOTES.md), no MSVC-only syntax, so
+   GCC accepts it unchanged. **Verified this pass**: `gcc.exe -m32
+   -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen
+   -include pf_bindings_src.h -c src/icytower/new_rand.c` compiles with 0
+   errors (1 harmless pre-existing `/*` -inside-a-comment warning in
+   `line_intersect.c`, unrelated to this pass).
+4. **Object format check**: `dumpbin /headers` on a GCC-produced `.o`
+   reports `14C machine (x86)`, 32-bit COFF - the same object format MSVC's
+   objects use.
+5. **Symbol decoration**: `nm` on the GCC objects shows `T _new_rand`,
+   `T _jump_player`, `T _line_intersect`, `T _create_particle`/
+   `T _update_particle`/`T _reset_particles` (all of `particle.c` compiled
+   as one GCC TU, since `reset_particles` has no FP of its own and there is
+   no reason to split the file) - a single leading underscore, exactly
+   MSVC's own `__cdecl` decoration for a C-linkage name on this target.
+   **No `_name@N` stdcall-style suffix on either side** (both are cdecl).
+6. **Link**: a standalone test first (`cl /c` an MSVC translation unit
+   declaring `extern int __cdecl new_rand(void);` etc., then
+   `link ... linktest.obj new_rand.o jump_player.o line_intersect.o
+   particle.o kernel32.lib`) produced a working `.exe` with **no
+   `lib.exe`/wrapping step** - MSVC's `link.exe` accepts a GCC-produced COFF
+   `.o` exactly like its own `.obj`. Only then wired into `build.cmd`'s real
+   link line (`obj_gcc\jump_player.o obj_gcc\line_intersect.o
+   obj_gcc\new_rand.o obj_gcc\particle.o`, alongside the existing MSVC
+   `.obj` files). `cl`'s own compile step for the mixed link prints
+   `Command line warning D9024 : unrecognized source file type
+   '...jump_player.o', object file assumed` for each - informational, not
+   an error; `cl` treats an unrecognized extension exactly as a linker
+   input, correctly.
+7. **CRT**: neither needed - every global these 4 files touch resolves to a
+   fixed guest address via `pf_bindings_src.h` macros (no `malloc`, no libc
+   calls), so no extra runtime library is linked for the GCC objects.
+8. **`build.cmd` cmd.exe trap, MEASURED and fixed**: the first wiring
+   attempt restored `%PATH%` from inside a parenthesized
+   `if errorlevel 1 ( ... )` block after each GCC invocation; this host's
+   `%PATH%` contains `...Program Files (x86)...` (an unescaped `)`), which
+   corrupts cmd.exe's block parser the moment that value is substituted
+   inside `(...)` - failed with the exact, textbook symptom `\Microsoft was
+   unexpected at this time.`. Fixed by never referencing a PATH-bearing
+   variable inside a parenthesized block: `gcc.exe`'s own directory is
+   prepended to `%PATH%` once (verified no collision - `mingw32\bin` ships
+   no `link.exe`/`cl.exe`) and left there for the rest of the script,
+   with each `if errorlevel 1 ...` written as two plain, unparenthesized
+   statements. **Separately MEASURED**: `gcc.exe` invoked by its full path
+   with `%PATH%` unmodified fails silently (exit 1, zero stderr, no object
+   produced) under the `vcvars32.bat` environment - it needs its own bin
+   directory ON `%PATH%` (presumably to resolve a sibling DLL/`cc1.exe`
+   dependency this MSYS2 build does not resolve purely by co-location).
+   Both traps are documented in `build.cmd`'s own comments at the point
+   they were fixed.
+
+Net: `jump_player.c`, `line_intersect.c`, `new_rand.c`, `particle.c` are
+compiled by GCC with genuine x87 codegen and linked straight into
+`carrier.exe`; every other `src/icytower/*.c` file compiles through the
+existing MSVC step, unchanged in kind from Milestones 11-12.
+
+### D. `carrier/scripts/bind_all.py` and the per-function results
+
+New script, run from `carrier/`: for each of the 35 functions, restores
+assets, runs `--bind <fn>=original --fn-digest-out A` (the one
+DR-sensed ORIGINAL-form function that run's DR budget allows), restores
+assets again, runs `--bind <fn>=src --fn-digest-out B --digest-out
+B_ticks`, then `compare_fn_digests.py A B` and `compare_digests.py B_ticks`
+against the baseline. A function with 0 records in both A and B is reported
+as **UNVERIFIED IN VIVO** rather than compared (`compare_fn_digests.py`
+itself refuses to call empty input EQUAL). Full per-function output:
+`artifacts_ms12/bind_all_summary.json`; per-function raw records:
+`artifacts_ms12/<fn>_{A_original,B_src,B_ticks}.txt`.
+
+```
+python carrier/scripts/bind_all.py
+```
+
+**27 of 35 EQUAL**, all with matching per-tick global digests:
+
+| function | invocations | function | invocations |
+|---|---:|---|---:|
+| update_frame | 2294 | init_control | 2 |
+| jump_player | 517 | get_level | 703 |
+| getFloorData | 3561 | reset_particles | 1 |
+| reset_map | 1 | scroll_scroller | 25 |
+| add_combo | 3 | cycle_counter | 2529 |
+| line_intersect | 2418 | fps_counter | 50 |
+| get_gamepad | 1 | get_demo | 1947 |
+| is_up | 38 | get_controls | 1 |
+| is_down | 38 | switchedToProgram | 1 |
+| is_left | 2331 | new_rand | 138255 |
+| is_right | 1480 | update_particle | 113730 |
+| is_fire | 2329 | create_particle | 446 |
+| is_pause | 2293 | | |
+| is_enter | 19 | | |
+| is_any | 48 | | |
+
+The 5 x87 functions (`jump_player`, `line_intersect`, `new_rand`,
+`update_particle`, `create_particle`) are in this EQUAL list **bit-exact,
+sha256, no epsilon** - the GCC x87 build (part C) closes the gap
+PROMOTIONS.md's own MSVC numbers document; `update_particle`/
+`create_particle`'s domain additionally covers the `seed` global (8 bytes
+@ 0x4ff108) since both mutate it as a side effect through up to 3
+`new_rand()` calls each, and that stayed EQUAL too across 113730 and 446
+real invocations respectively.
+
+**1 of 35 DIFFER: `add_jump_sequence`** (real, reproducible, not a harness
+bug):
+
+```
+FIRST DIFFERENCE fn=add_jump_sequence k=0 T=330 field=post
+  original: post=df3f6198... (== pre - ORIGINAL wrote nothing this call)
+  src:      post=4cbbd8ca... (!= pre - SRC wrote a new jump-sequence entry)
+```
+
+Identical arguments, identical pre-state, different result -
+`compare_fn_digests.py`'s own rule: this convicts the function, not
+upstream divergence. Root cause, confirmed against `artifacts/disasm.txt`
+0x4040f4-0x404146: the ORIGINAL has a guard `src/icytower/
+add_jump_sequence.c` is missing -
+
+```
+mov 0x8(%edx),%ecx     ; ecx = js->num  (Tgd_jump_sequence.num, offset 8)
+test %ecx,%ecx
+je 404148              ; if (js->num == 0) return;   <-- not in the recovered source
+mov 0xeaa4(%eax),%ebx  ; (then) ebx = gd->jumpPosts
+cmp $0x1387,%ebx       ; jumpPosts > 4999 guard (this one IS in the source)
+```
+
+`src/icytower/add_jump_sequence.c` checks only `jumpPosts > 4999`; the
+original ALSO returns early whenever `js->num == 0`, checked first. At
+T=330 (k=0) `js->num` was 0, so the ORIGINAL took the early return and
+wrote nothing while the recovered SRC form (lacking that guard)
+unconditionally appended. The per-tick global digest still came back EQUAL
+over the whole 2293-tick recording for this run (`add_jump_sequence.c`'s
+extra write is off the digest's own scope, or its effect was masked
+downstream this run) - **a real recovery bug that the per-tick gate alone
+would have missed**, exactly the class of defect per-function in-vivo
+verification exists to catch. Not fixed here (`src/` is out of scope for
+this pass, per the task); flagged as a background task
+(`task_8dd77dd1`, "Fix missing guard in add_jump_sequence.c") with the
+disassembly evidence above, and recorded as DIFFER in
+`src/icytower/INVIVO.md`.
+
+**7 of 35 UNVERIFIED IN VIVO** on `replays/human_test.txt` (0 invocations,
+both forms): `is_solid`, `set_control`, `check_control_key`,
+`restart_scroller`, `switchedFromProgram`, `clickedCloseButton`,
+`ok_to_play`. Alternative workloads tried (task's own suggestion), all
+cheap (existing scripts, no new recording needed):
+
+- **`restart_scroller`**: `carrier/scripts/menu_idle.txt` (idles at the
+  main menu 3600+ ticks) DOES reach it - **57 invocations**, bound
+  `original` vs `src`. All 57 common records EQUAL; the ORIGINAL run
+  produced one additional record after the last common one before its own
+  `--run-seconds` wall-clock budget elapsed (the two sensing mechanisms -
+  hardware breakpoints for ORIGINAL, the entry-patch stub for SRC - have
+  different per-call CPU overhead, so a fixed real-time budget under
+  `--pace=fast` does not tick the exact same number of times in each run;
+  this is a harness timing artifact, not a functional difference in
+  `restart_scroller` itself - every invocation both runs share is
+  bit-exact). Verdict: **EQUAL (57 common invocations)**, workload
+  `menu_idle.txt`.
+- **`is_solid`**: still 0 invocations on `menu_idle.txt` too - matches
+  Milestones 11-12's own finding (part E there) that `scripts/newgame.txt`
+  doesn't reach it either. Its only static callers are
+  `handle_player_collision_{original,old,combo}`
+  (notes/promotion_candidates.md SS2); no available recording takes that
+  branch. Genuinely unverified in vivo; the offline harness result stands
+  (PROMOTIONS.md: EQUAL, 20000 vectors).
+- **`set_control`, `check_control_key`, `ok_to_play`**: checked
+  `artifacts/disasm.txt` for ANY reference to their VAs (0x4017d4,
+  0x401808, 0x406a50) - direct call, indirect/data reference, anything.
+  **Zero hits beyond the function's own disassembly listing, for all
+  three.** These are not "the wrong workload" - they are **dead code in
+  this compiled binary**: nothing in the 253-function game-scope call
+  graph reaches them, directly or through a function pointer. (`PROMOTIONS.md`
+  already flagged this for `ok_to_play`'s negative control; this pass
+  confirms it's not reachable at all, not just hard to trigger.) No
+  in-vivo workload can verify a function the binary itself never calls;
+  the offline harness result is the only evidence that will ever exist for
+  these three (all EQUAL, 20000 vectors, PROMOTIONS.md).
+- **`switchedFromProgram`, `clickedCloseButton`**: DO have real callers -
+  confirmed as Allegro callback registrations (`movl $0x406a5c,...` /
+  `$0x406a7c,...` at 3 and 1 sites respectively, `artifacts/disasm.txt`),
+  the same mechanism the gate run's own stderr already shows
+  (`det: switch_in_cb = 00406A6C ... switch_out_cb= 00406A5C ...`) -
+  `switchedToProgram` (the sibling callback) WAS invoked once in the gate
+  run. These fire on real OS window events (focus lost / close-button
+  click), which `carrier/NOTES.md` "Environment isolation" part B's
+  window-activation controlled channel can reach in principle but no
+  existing input SCRIPT can (a script only injects keyboard events) -
+  not attempted this pass; flagged below.
+- **`.itr` replay-menu playback**: not attempted. Driving the replay menu
+  to play `profiles/MissingNO/replays/*.itr` needs the exact main-menu ->
+  replay-browser key sequence, which is not yet known and would need
+  trial-and-error menu navigation to discover - not cheap by this pass's
+  own bar, unlike `menu_idle.txt` (already existed, worked on the first
+  try). `carrier/scripts/play_itr.txt` was therefore **not created** this
+  pass; left for whichever future pass needs `is_solid` or the `.itr`
+  playback path specifically (`is_solid` is the one candidate here that
+  actually has real, if hard-to-reach, callers).
+
+### E. All 35 bound at once
+
+```
+carrier.exe --det --pace=fast --input=script --input-script ../replays/human_test.txt --stop-at-tick 2528 --run-seconds 180 --bind-file carrier/scripts/all35_src.bindfile --fn-digest-out ../artifacts_ms12/all35_fn.txt --digest-out ../artifacts_ms12/all35_ticks.txt --report ../artifacts_ms12/all35_report.json
+python carrier/scripts/compare_digests.py artifacts_ms12/all35_ticks.txt replays/human_test.digest
+```
+
+(`--bind-file` needs an ABSOLUTE path - MEASURED: a path relative to
+`carrier/`, e.g. `scripts\all35_src.bindfile`, fails with `bind: FATAL -
+--bind-file '...' could not be opened`, because `bind_init()` opens it
+AFTER the carrier's own startup `_chdir` into `assets\`
+(carrier/NOTES.md fix #6), unlike the CLI's other path options which are
+resolved before that chdir happens.)
+
+Result: **`EQUAL (2293 ticks, ...)`** against the baseline - all 35 clean
+functions running simultaneously, in place of the corresponding original
+machine code, for the entire 2293-tick human recording, reproduce it
+bit-exactly.
+
+**win32_pilot.md SS8a metrics, from `--report`'s `"binding"` object:**
+
+| metric | value |
+|---|---:|
+| functions bound (form=src) | 35 |
+| functions still ORIGINAL (253 game-scope total - 35) | 218 |
+| crossings ORIGINAL -> src | 137176 |
+| invocations sensed | 137176 |
+| domain read failures | 0 |
+| faults injected | 0 |
+| original `.text` bytes no longer executed (sum of the 35 function sizes, PROMOTIONS.md) | 2028 |
+| crossings src -> ORIGINAL (native_to_original) | not instrumented - 0 by construction (see below) |
+
+**In-vivo finding this run only, not visible from any single-function A/B
+test**: with all 35 bound, `new_rand`'s own entry-patch crossing count
+drops from 138255 (measured testing `new_rand` alone, part D) to **342**.
+Root cause: `update_particle`/`create_particle`'s `src/` forms call
+`new_rand()` as an ordinary C symbol (`pf_bindings_src.h` leaves a
+promoted function's own name free rather than redirecting it,
+BINDINGS_NOTES.md "Exclusion") - when `update_particle`/`create_particle`
+are ALSO bound to `src`, that call resolves directly to the linked-in
+`new_rand` function body at LINK time and **never touches new_rand's own
+patched guest VA (0x406984) at all**, so the entry-patch sensor there
+never sees it. The 342 that remain are whatever still-ORIGINAL game code
+calls `new_rand` directly through its guest address. `113730 +
+446*<=3 - 342` is NOT expected to reconcile the two numbers exactly (not
+every particle call rerolls `color`, and `create_particle` draws 3 `new_rand()`s
+only on the found-a-slot path), but the direction and the order of
+magnitude match: nearly all of the 138255 calls counted when `new_rand`
+was tested alone were actually `update_particle`/`create_particle`'s own
+calls, invisible to the guest-VA sensor the moment those two callers are
+also `src`-bound. `"crossings_native_to_original"` stays "not instrumented
+... 0 by construction" (`bind_report_json`'s own comment, updated this
+pass) - the src-to-src call above is the one case that could have looked
+like a crossing and provably is not one (it never reaches the guest VA in
+either direction).
+
+### Known gaps / open problems (Milestone 12 at scale)
+
+- **`add_jump_sequence` DIFFERs** - a genuine recovery bug (part D above),
+  flagged as a background task, not fixed by this pass.
+- **7 of 35 unverified in vivo** on any workload tried; 3 of those
+  (`set_control`, `check_control_key`, `ok_to_play`) are dead code in this
+  binary (0 references anywhere in `artifacts/disasm.txt` beyond their own
+  body) and can never be verified in vivo by construction, not just by
+  workload choice. `is_solid` has real but unreached callers; a play
+  script that forces the `handle_player_collision_{original,old,combo}`
+  branch is still needed (Milestones 11-12 already flagged this same gap).
+  `switchedFromProgram`/`clickedCloseButton` need a real OS window event
+  (focus loss / close-button click), reachable via the environment-
+  isolation controlled channel but not via any keyboard input script; not
+  attempted.
+- **`carrier/scripts/play_itr.txt` was not created** - the replay-menu key
+  sequence to drive `profiles/MissingNO/replays/*.itr` playback is not yet
+  known; would need exploratory menu navigation first. Left for a future
+  pass targeting `is_solid` specifically.
+- **`restart_scroller`'s A/B comparison used a different workload
+  (`menu_idle.txt`) than the other 34** (`replays/human_test.txt` never
+  reaches it) - its 57-invocation EQUAL result is not cross-checked against
+  the human recording's own per-tick digest the way the other 34 are,
+  because `menu_idle.txt` and `human_test.txt` are different recordings
+  with no shared baseline.
+- **The x87 GCC objects are not covered by any purity/regression gate of
+  their own** beyond compiling clean and linking clean - `scripts/
+  check_native_layer.py` (src/README.md) only scans `src/icytower/*.c`
+  source text, which is toolchain-agnostic and already passed before this
+  pass touched anything; there is no automated check that re-verifies
+  `-mfpmath=387 -mno-sse2` specifically stayed in `build.cmd`'s GCC
+  invocations if someone edits that file later.
+- **`kMaxArgs=10` is exactly the widest real arity among these 35
+  (`line_intersect`)**, not a safety margin - a future 36th function with
+  an 11th argument would need this raised again, the same way this pass
+  had to raise it from 4.
+

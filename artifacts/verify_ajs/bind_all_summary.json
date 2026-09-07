@@ -1,0 +1,13 @@
+[
+  {
+    "fn": "add_jump_sequence",
+    "rc_a": 0,
+    "rc_b": 0,
+    "n_a": 28,
+    "n_b": 28,
+    "x87": false,
+    "fn_compare": "EQUAL (28 invocations, D:/Games/DOS/dos_recosystem/icytower_forged/artifacts/verify_ajs\\add_jump_sequence_A_original.txt [original] vs D:/Games/DOS/dos_recosystem/icytower_forged/artifacts/verify_ajs\\add_jump_sequence_B_src.txt [src])",
+    "tick_compare": "EQUAL (2293 ticks, D:/Games/DOS/dos_recosystem/icytower_forged/artifacts/verify_ajs\\add_jump_sequence_B_ticks.txt vs D:/Games/DOS/dos_recosystem/icytower_forged/replays/human_test.digest)",
+    "verdict": "EQUAL (28 invocations)"
+  }
+]

@@ -333,7 +333,7 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->rng_selftest = false;
     o->trace_input[0] = 0;
     o->interactive = false;
-    o->window_mode = WindowMode::MinNoActive;
+    o->window_mode = WindowMode::Hidden;   // automated runs: no window at all (operator request 2026-09-07); --interactive or --window= overrides
     o->window_mode_explicit = false;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
@@ -567,7 +567,7 @@ static void options_from_env(Options* o) {
     get_env_or("PF_INTERACTIVE", it_buf, sizeof(it_buf), "0");
     o->interactive = (strcmp(it_buf, "0") != 0);
     char win_buf[16];
-    get_env_or("PF_WINDOW", win_buf, sizeof(win_buf), "minnoactive");
+    get_env_or("PF_WINDOW", win_buf, sizeof(win_buf), "hidden");
     if (_stricmp(win_buf, "normal") == 0) o->window_mode = WindowMode::Normal;
     else if (_stricmp(win_buf, "hidden") == 0) o->window_mode = WindowMode::Hidden;
     else o->window_mode = WindowMode::MinNoActive;

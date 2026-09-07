@@ -35,6 +35,18 @@ if "%SRC_EXCLUDES%"=="" (
   echo FAILED: scan_src_defs.py found no function definitions in src\icytower
   exit /b 1
 )
+rem scan_src_defs.py only scans FUNCTION definitions (its own docstring), so
+rem a plain data definition src\icytower gains (map.c's
+rem `static const int floor_size_modifiers[5]`, added alongside add_floor())
+rem is invisible to it and would otherwise be left free for
+rem pf_bindings_src.h's game-global macro to redirect - MEASURED this pass:
+rem without this, `static const int floor_size_modifiers[5] = {...}`
+rem macro-expands into `static const int (*(int(*)[5])0x...)[5] = {...}`,
+rem a syntax error (MSVC C2059), the moment map.c is compiled with
+rem pf_bindings_src.h force-included. Appended by hand until scan_src_defs.py
+rem (carrier/lift territory this pass, not touched here) grows a data-symbol
+rem scan of its own.
+set SRC_EXCLUDES=%SRC_EXCLUDES%,floor_size_modifiers
 echo src/ functions excluded from pf_bindings_src.h (compiled natively): %SRC_EXCLUDES%
 python gen\gen_bindings.py --exclude %SRC_EXCLUDES% --guard-define ICYTOWER_BINDINGS_ACTIVE ^
   --out gen\pf_bindings_src.h --types-out gen\pf_bindings_src_types.h
@@ -53,14 +65,79 @@ rem collision). src\icytower\*.c must also never see it_*.h/pf_*.h by name
 rem (src\README.md's purity gate), which force-include already respects: the
 rem macro substitution happens without any #include text appearing in the
 rem source files themselves.
+rem
+rem Milestone 12 at scale (carrier/NOTES.md): all 35 src/icytower functions
+rem are now bound, not just update_frame/is_solid. 30 of the 35 are pure
+rem integer (map.c/add_combo.c/add_jump_sequence.c/control.c/scroller.c/
+rem timer.c/main_state.c/ok_to_play.c, plus update_frame.c/is_solid.c) and
+rem compile straight through MSVC exactly like before. The remaining 5
+rem (jump_player, line_intersect, new_rand, update_particle, create_particle
+rem - jump_player.c, line_intersect.c, new_rand.c, particle.c) have real x87
+rem floating point: MSVC's cl.exe (no /arch override on this 32-bit target)
+rem compiles `double` through SSE/plain-double codegen, which measurably
+rem DIFFERs from the original's genuine 80-bit x87 intermediates
+rem (PROMOTIONS.md; win32_pilot.md SS6a). Those 4 files are instead compiled
+rem with the 32-bit MinGW GCC already used for the offline harness's own
+rem x87 proof (carrier/lift/harness/GCC_X87.md) at
+rem -m32 -mfpmath=387 -mno-sse2 -O2, force-including the SAME
+rem pf_bindings_src.h (plain #define macros + typedefs - no MSVC-only
+rem syntax, so GCC accepts it unchanged), and the resulting COFF .o files
+rem are linked directly into carrier.exe below alongside the MSVC .obj
+rem files: both are 32-bit cdecl COFF, GCC's `_name` decoration matches
+rem MSVC's exactly (verified: `nm` on new_rand.o shows `T _new_rand`), and
+rem MSVC's link.exe accepts a GCC .o with no wrapping/lib.exe step needed
+rem (verified with a standalone link test before this was wired in here).
+rem -fno-asynchronous-unwind-tables drops GCC's .eh_frame/CFI sections
+rem (unwind info MSVC's linker does not consume and does not need - these
+rem are leaf-ish functions with no C++ exceptions crossing them); neither
+rem object needs any CRT beyond what globals resolve to fixed addresses
+rem (pf_bindings_src.h macros), so no extra runtime library is linked.
 cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /FIpf_bindings_src.h ^
   /c ..\src\icytower\update_frame.c ..\src\icytower\is_solid.c ^
+     ..\src\icytower\map.c ..\src\icytower\add_combo.c ..\src\icytower\add_jump_sequence.c ^
+     ..\src\icytower\control.c ..\src\icytower\scroller.c ..\src\icytower\timer.c ^
+     ..\src\icytower\main_state.c ..\src\icytower\ok_to_play.c ^
   /Fo:obj\
 if errorlevel 1 (
   echo FAILED: src\icytower compile errors above
   exit /b 1
 )
+
+rem NOTE 1: gcc.exe DOES need its own bin directory on PATH (MEASURED: it
+rem fails to run at all, silently, exit 1, no stderr, if invoked by full
+rem path alone under the vcvars32 environment - presumably to find its
+rem sibling DLLs, e.g. cc1.exe's own libgcc/zlib1.dll, which this MSYS2
+rem build does not resolve purely via "look next to the .exe"). Prepending
+rem C:\msys64\mingw32\bin to PATH fixes it; verified no collision with the
+rem MSVC toolchain (no link.exe/cl.exe under mingw32\bin), so the prepend is
+rem left in place for the rest of this script rather than restored.
+rem
+rem NOTE 2: %PATH% on this machine contains "...Program Files (x86)..." -
+rem an unescaped ")" - so it must never be referenced INSIDE a parenthesized
+rem cmd block (classic cmd.exe parser trap: the ")" in the value closes the
+rem block early and corrupts everything after it, MEASURED this pass as
+rem "\Microsoft was unexpected at this time." on an earlier attempt that
+rem restored %OLDPATH% from inside `if errorlevel 1 ( ... )`). The
+rem errorlevel checks below are therefore two plain (unparenthesized)
+rem statements each, not one parenthesized block.
+if not exist obj_gcc mkdir obj_gcc
+set GCC_BIN=C:\msys64\mingw32\bin
+set PATH=%GCC_BIN%;%PATH%
+set GCC=gcc.exe
+%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\jump_player.c -o obj_gcc\jump_player.o
+if errorlevel 1 echo FAILED: GCC compile of jump_player.c
+if errorlevel 1 exit /b 1
+%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\line_intersect.c -o obj_gcc\line_intersect.o
+if errorlevel 1 echo FAILED: GCC compile of line_intersect.c
+if errorlevel 1 exit /b 1
+%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\new_rand.c -o obj_gcc\new_rand.o
+if errorlevel 1 echo FAILED: GCC compile of new_rand.c
+if errorlevel 1 exit /b 1
+%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\particle.c -o obj_gcc\particle.o
+if errorlevel 1 echo FAILED: GCC compile of particle.c
+if errorlevel 1 exit /b 1
+echo OK: 4 GCC x87 objects built (jump_player, line_intersect, new_rand, particle[update_particle+create_particle+reset_particles])
 
 cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /I lift\lifted ^
@@ -69,6 +146,8 @@ cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
   lift\lifted\lifted_update_frame.c lift\lifted\lifted_is_solid.c lift\lifted\lifted_jump_player.c ^
   native\native_update_frame.c native\native_is_solid.c ^
   obj\update_frame.obj obj\is_solid.obj ^
+  obj\map.obj obj\add_combo.obj obj\add_jump_sequence.obj obj\control.obj obj\scroller.obj obj\timer.obj obj\main_state.obj obj\ok_to_play.obj ^
+  obj_gcc\jump_player.o obj_gcc\line_intersect.o obj_gcc\new_rand.o obj_gcc\particle.o ^
   /Fe:carrier.exe /Fo:obj\ ^
   /link /DYNAMICBASE:NO /FIXED /BASE:0x10000000 /LARGEADDRESSAWARE:NO /SUBSYSTEM:CONSOLE /DEBUG /MAP:obj\carrier.map kernel32.lib user32.lib psapi.lib
 

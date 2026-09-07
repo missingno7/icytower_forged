@@ -317,6 +317,19 @@ Sources of nondeterminism that reach game state, from the evidence:
 | ad fetch | separate thread, results only feed ad display | stub in replay mode |
 | menu/profile/character choice | keyboard + files | covered by the input record and a fixed assets snapshot |
 
+**Audited and closed 2026-09-07** (`notes/determinism_audit.md`, carrier/NOTES.md
+"Environment isolation"): every row above plus window activation, the
+DirectInput mouse, window show/foreground policy, environment variables,
+joystick, real-time pace and unrestored files now has a measured verdict
+(DETERMINISTIC / RECORDED / SUPPRESSED / STILL OPEN) with a first-differing
+tick. Two corrections to this table: the **ad fetch reaches the verdict domain**
+(five `fld_adspot.c` globals are among the 151 hashed), so "stub in replay
+mode" is now mandatory rather than optional; and the **wall clock** is
+recorded/replayed per call (`T time <v>`) rather than pinned, while
+`clock`/QPC/`timeGetTime` are measured irrelevant. STILL OPEN: audio init
+result, `getenv` on a host that sets `ALLEGRO`/`SCREEN_GAMMA`, and the window
+thread's one `malloc`/`free` into the shared arena.
+
 The game's own replay system (`replay.c`) records 8 bytes per tick; if its
 record is exactly the control.c input state, it doubles as an independent
 oracle for our input recording (see `notes/replay_format.md`).
@@ -629,7 +642,7 @@ source-port-only plus drop-in, because of the art licence).
 | 10 | pick one small exercised game function | pending |
 | 11a | LIFTED form: generate C from its bytes, bind it, verify replay-equal | done — `update_frame` and `jump_player` bound at their original VAs and replay-equal to ORIGINAL (per-invocation and per-tick); `carrier/NOTES.md` "Milestones 11-12" |
 | 11b | NATIVE form: readable C, bind it, verify replay-equal | done — `update_frame` bound and replay-equal; `is_solid`'s NATIVE form binds but this workload never reaches it (gap recorded) |
-| 12 | automatic comparison of all three forms from equivalent state, with negative control | done — `carrier/src/bind.cpp` + `carrier/scripts/compare_fn_digests.py`: ORIGINAL/LIFTED/NATIVE all EQUAL (877 invocations, 876 ticks); `--fault-inject update_frame:k=300` is named as `k=300 field=post` and nothing earlier |
+| 12 | automatic comparison of all three forms from equivalent state, with negative control | done at scale — 35 clean functions bound over a human recording, 28 verified per invocation, whole replay EQUAL (carrier/NOTES.md 'Milestone 12 at scale') |
 
 ## 8a. Migration map (metrics reported by the carrier)
 

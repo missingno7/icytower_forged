@@ -1,0 +1,38 @@
+# all35_src.bindfile - Milestone 12 at scale (carrier/NOTES.md): every
+# clean function in src/icytower/ (src/icytower/PROMOTIONS.md, 35 functions)
+# bound to its src form at once, via --bind-file.
+update_frame=src
+is_solid=src
+jump_player=src
+getFloorData=src
+reset_map=src
+add_combo=src
+line_intersect=src
+get_gamepad=src
+is_up=src
+is_down=src
+is_left=src
+is_right=src
+is_fire=src
+is_pause=src
+is_enter=src
+is_any=src
+set_control=src
+init_control=src
+check_control_key=src
+get_level=src
+add_jump_sequence=src
+reset_particles=src
+scroll_scroller=src
+restart_scroller=src
+cycle_counter=src
+fps_counter=src
+get_demo=src
+get_controls=src
+switchedFromProgram=src
+switchedToProgram=src
+clickedCloseButton=src
+new_rand=src
+update_particle=src
+create_particle=src
+ok_to_play=src
