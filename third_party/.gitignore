@@ -1,0 +1,6 @@
+# Checkouts and build outputs are fetched/built by scripts/fetch_third_party.py
+# and third_party/BUILD.md, not committed. Only MANIFEST.json, .gitignore,
+# BUILD.md, patches/ and smoke/ are tracked.
+allegro-4.4.3.1/
+build-allegro-4.4.3.1/
+smoke/out/
