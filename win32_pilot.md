@@ -384,6 +384,39 @@ game overwrites before the next tick (pf/72, pf/89 in capsule §E). Negative
 control: inject a one-byte fault into one role and require the comparator to
 name it at that tick.
 
+## 7a. Where the clean code lives, and how it stays clean (2026-09-07)
+
+`src/` is the clean port, following the sibling projects' convention
+(aladdin_forged/src/README.md): recovered semantics only, **no PortForge
+type, no carrier header, no guest address**. The carrier, the lifter output
+and the generated interop never live there.
+
+```text
+src/icytower/*.c, *.h      readable C; globals declared as ordinary externs
+                           (`extern int reward_scale; extern Tplayer ply[];`),
+                           types in the port's own headers (initially
+                           recovered from DWARF, then owned by the port)
+
+carrier/gen/pf_bindings.h  GENERATED: maps each extern name the port uses to
+                           its original address (`#define reward_scale
+                           (*(int*)0x5069xx)`), forced-included (`/FI`) only
+                           when src/ is compiled INTO the carrier
+
+carrier binding table      original function address → native_<name>
+                           (5-byte entry patch); callers never change
+```
+
+The same source therefore compiles in two worlds: inside the carrier it
+operates on the original memory at the original addresses (state stays
+address-backed, code ownership migrates first); standalone, a `state.c`
+defines the globals and the bindings header is absent (state ownership
+migrates later, per function group, on its own evidence). A purity check
+(pattern: aladdin's `scripts/check_native_layer.py`) refuses any literal
+guest address or carrier include in `src/`, and is the tier-0 gate for
+promotion. The offline oracle (unicorn on the original bytes,
+`carrier/lift/harness`) verifies a `src/` function before it is bound in
+vivo; the replay comparison verifies it after.
+
 ## 8. Milestones and status
 
 | # | milestone | status |
