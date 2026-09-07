@@ -1,0 +1,20 @@
+{
+ "is_solid": {
+  "compared_return_value": true,
+  "domain_bytes": 772,
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "jump_player": {
+  "compared_return_value": true,
+  "domain_bytes": 184,
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "update_frame": {
+  "compared_return_value": false,
+  "domain_bytes": 192,
+  "result": "EQUAL",
+  "vectors": 20000
+ }
+}

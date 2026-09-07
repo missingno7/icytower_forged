@@ -1,0 +1,169 @@
+{
+ "arg_bytes": 8,
+ "blocks": [
+  "0x00418678",
+  "0x00418688",
+  "0x0041868f",
+  "0x00418694",
+  "0x004186b4",
+  "0x004186d4",
+  "0x004186d6",
+  "0x004186ef",
+  "0x004186f1",
+  "0x00418708",
+  "0x0041870f",
+  "0x00418720",
+  "0x00418726",
+  "0x00418734"
+ ],
+ "blocks_reachable": 14,
+ "blocks_total": 18,
+ "external_calls": [],
+ "frame_bytes": 8,
+ "function": "jump_player",
+ "generated_lines": 220,
+ "generator": "pf_lift.py",
+ "image_sha256": "7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
+ "instructions_decoded": 72,
+ "instructions_lifted": 68,
+ "memory_ranges": [
+  {
+   "address": null,
+   "at": "0x00418688",
+   "displacement": "0x34",
+   "expr": "(unsigned int)(r_edx + 0x34u)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00418694",
+   "displacement": "0x34",
+   "expr": "(unsigned int)(r_edx + 0x34u)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x004186a9",
+   "displacement": "0x18",
+   "expr": "(unsigned int)(r_edx + 0x18u)",
+   "kind": "register-relative",
+   "size": 8,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x004186b4",
+   "displacement": "0x34",
+   "expr": "(unsigned int)(r_edx + 0x34u)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x004186bb",
+   "displacement": "0x10",
+   "expr": "(unsigned int)(r_edx + 0x10u)",
+   "kind": "register-relative",
+   "size": 8,
+   "symbol": null
+  },
+  {
+   "address": "0x004dd140",
+   "at": "0x004186d6",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4dd140u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "collision_type"
+  },
+  {
+   "address": "0x004bdb80",
+   "at": "0x004186db",
+   "displacement": null,
+   "expr": "(unsigned int)(r_eax * 8u + 0x4bdb80u)",
+   "kind": "absolute",
+   "size": 8,
+   "symbol": "max_speed"
+  },
+  {
+   "address": null,
+   "at": "0x004186f1",
+   "displacement": "0x18",
+   "expr": "(unsigned int)(r_edx + 0x18u)",
+   "kind": "register-relative",
+   "size": 8,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x004186f6",
+   "displacement": "0x20",
+   "expr": "(unsigned int)(r_edx + 0x20u)",
+   "kind": "register-relative",
+   "size": 8,
+   "symbol": null
+  },
+  {
+   "address": "0x004d7134",
+   "at": "0x004186f9",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4d7134u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00418708",
+   "displacement": "0x50",
+   "expr": "(unsigned int)(r_edx + 0x50u)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x0041870f",
+   "displacement": "0x54",
+   "expr": "(unsigned int)(r_edx + 0x54u)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": "0x004d7130",
+   "at": "0x0041872a",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4d7130u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": "0x004d7130",
+   "at": "0x00418736",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4d7130u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": null
+  }
+ ],
+ "ok": true,
+ "prototype": "int __cdecl (Tplayer *, int)",
+ "refusals": [],
+ "size": 198,
+ "unreachable_padding": [
+  "0x00418693",
+  "0x004186b3",
+  "0x0041871d",
+  "0x00418732"
+ ],
+ "uses_x87": true,
+ "va": "0x00418678"
+}

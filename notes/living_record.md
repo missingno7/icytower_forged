@@ -39,7 +39,8 @@ artifacts/. Newest entries at the bottom of each section.
 ## Native-promotion progress
 - 2026-09-07: generated interop from DWARF (carrier/gen/gen_interop.py → it_types.h, it_globals.h, it_funcs.h, it_funcs_table.inc): game scope 156 globals, 242 functions, 70 structs, 801/801 layout checks pass under MSVC x86; scope=all also verified (2376/2376). This is the generated equivalent of OpenLoco's loco_global/Interop::call. Caveats in carrier/gen/INTEROP_NOTES.md (long double opaque, 6 cross-CU size conflicts in Allegro/DirectX types, no calling-convention DWARF → COFF decoration used).
 - 2026-09-07: candidates ranked statically (notes/promotion_candidates.md): update_frame 0x406ac4 (120 B, no x87, first pick), jump_player 0x418678 (198 B, 22 x87, fidelity test), is_solid 0x4166dc (pure predicate, negative control). 124/253 game functions statically reachable from the gameplay anchors.
-- 0 functions promoted. Lifter (LIFTED form) in progress under carrier/lift/.
+- 2026-09-07 LIFTED form offline (KNOWN by measurement, carrier/lift/README.md, artifacts/lift_equivalence.json): pf_lift.py (1561 lines) lifts update_frame (40 insns), is_solid (44), jump_player (68, x87) with zero refusals; generated C compiles under MSVC x86 with 0 warnings; offline oracle = ORIGINAL bytes executed in unicorn (real 80-bit x87) vs lifted C on a copy of the image: EQUAL over 20k/20k/80k random vectors; fault injection names the exact byte. A real lifter bug (x87 push ordering) was caught by the check before passing. x87 double-vs-80-bit HYPOTHESIS remains OPEN: jump_player's arithmetic is exact scaling and cannot discriminate; line_intersect (imul, fnstcw/fldcw, real mul/div) is the discriminating target once the lifter supports those. Call/import lowering has zero coverage (marked UNVERIFIED PATH). Not yet bound into the running carrier.
+- 0 functions promoted in vivo.
 
 ## Rejected approaches
 - see win32_pilot.md §10.

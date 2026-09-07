@@ -1,0 +1,146 @@
+{
+ "arg_bytes": 0,
+ "blocks": [
+  "0x00406ac4",
+  "0x00406ad1",
+  "0x00406ad6",
+  "0x00406adb",
+  "0x00406ae5",
+  "0x00406aeb",
+  "0x00406afe",
+  "0x00406b05",
+  "0x00406b0c",
+  "0x00406b0f",
+  "0x00406b22",
+  "0x00406b25",
+  "0x00406b28",
+  "0x00406b30"
+ ],
+ "blocks_reachable": 14,
+ "blocks_total": 14,
+ "external_calls": [],
+ "frame_bytes": 8,
+ "function": "update_frame",
+ "generated_lines": 165,
+ "generator": "pf_lift.py",
+ "image_sha256": "7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
+ "instructions_decoded": 40,
+ "instructions_lifted": 40,
+ "memory_ranges": [
+  {
+   "address": "0x004fec68",
+   "at": "0x00406ac8",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4fec68u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "reward_time"
+  },
+  {
+   "address": "0x004fac28",
+   "at": "0x00406adb",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4fac28u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "reward_scale"
+  },
+  {
+   "address": "0x004fec68",
+   "at": "0x00406ae6",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4fec68u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "reward_time"
+  },
+  {
+   "address": "0x004fe518",
+   "at": "0x00406aeb",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4fe518u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "player_id"
+  },
+  {
+   "address": "0x004ff128",
+   "at": "0x00406af0",
+   "displacement": null,
+   "expr": "(unsigned int)(r_eax * 4u + 0x4ff128u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "ply"
+  },
+  {
+   "address": null,
+   "at": "0x00406af7",
+   "displacement": "0x4c",
+   "expr": "(unsigned int)(r_ecx + 0x4cu)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00406b05",
+   "displacement": "0x58",
+   "expr": "(unsigned int)(r_ecx + 0x58u)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00406b0c",
+   "displacement": "0x5c",
+   "expr": "(unsigned int)(r_ecx + 0x5cu)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": "0x00506958",
+   "at": "0x00406b0f",
+   "displacement": null,
+   "expr": "(unsigned int)(0x506958u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "logic_count"
+  },
+  {
+   "address": null,
+   "at": "0x00406b22",
+   "displacement": "0x3c",
+   "expr": "(unsigned int)(r_ecx + 0x3cu)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00406b2b",
+   "displacement": "0x4c",
+   "expr": "(unsigned int)(r_ecx + 0x4cu)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": "0x004fac28",
+   "at": "0x00406b30",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4fac28u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": "reward_scale"
+  }
+ ],
+ "ok": true,
+ "prototype": "void __cdecl ()",
+ "refusals": [],
+ "size": 120,
+ "unreachable_padding": [],
+ "uses_x87": false,
+ "va": "0x00406ac4"
+}
