@@ -1,0 +1,112 @@
+{
+  "binary": "assets/icytower15.exe",
+  "libc_rng": {
+    "srand": {
+      "symbol": "_srand",
+      "target_va": "0x4badc8",
+      "call_sites": [
+        {
+          "va": "0x40ef53",
+          "function": "init_game",
+          "function_va": "0x40e7dc",
+          "arg_source": "time(NULL) result (time() call at 0x40ef4b)",
+          "when": "process startup, before any menu/game exists",
+          "affects_layout": false,
+          "note": "generic startup reseed; consumed only by the two init_game rand() calls at 0x40f1ed/0x40f61f before new_game ever runs"
+        },
+        {
+          "va": "0x40e0a0",
+          "function": "new_game",
+          "function_va": "0x40dc9c",
+          "arg_source": "time(NULL) result (time() call at 0x40e098)",
+          "when": "only executed when global demo (Treplay*, VA 0x4dd250) is NULL at new_game entry -- i.e. the first 'new game' of the process (no -replay/continue file loaded by init_game)",
+          "affects_layout": "indirectly: seeds the rand() at 0x40e0a5 whose result becomes the real seed"
+        },
+        {
+          "va": "0x40de24",
+          "function": "new_game",
+          "function_va": "0x40dc9c",
+          "arg_source": "eax, which holds EITHER the just-computed rand() result from 0x40e0a5 (demo==NULL / first-game path, reached via the jmp at 0x40e0bb back to 0x40de0c) OR the pre-existing demo->random_seed field (Treplay+0xa4) loaded at 0x40dddc (demo!=NULL path -- every subsequent new_game() call in the same process, and also whenever init_game/do_replay_menu/run_demo had already pointed demo at a loaded .itr)",
+          "when": "always executed exactly once per new_game() call, right before reset_map()+add_floor()x30; this IS the seed that drives gameplay RNG",
+          "affects_layout": true,
+          "note": "KNOWN correction to the simple 'new_game always time-seeds' model: only the very first new_game() of a process time-seeds; every later new_game() call in the same run reuses whatever random_seed is currently stored in the live Treplay (demo) struct -- i.e. it replays the SAME tower layout as the previous game/loaded replay unless a different .itr is loaded in between. Does not change the carrier conclusion (Treplay.random_seed is still the single authoritative value), but matters if a carrier ever needs to predict a seed rather than read it from a saved .itr."
+        }
+      ]
+    },
+    "rand": {
+      "symbol": "_rand",
+      "target_va": "0x4bad18",
+      "call_sites": [
+        {"va": "0x40150f", "function": "create_post", "function_va": "0x4014ec", "role": "beta-tester watermark generation (beta.c)", "reachable": false, "reason_unreachable": "callers load_garbled_data(0x40158c)/load_plain_data(0x4016c8) have zero call sites anywhere in the binary"},
+        {"va": "0x40151e", "function": "create_post", "function_va": "0x4014ec", "role": "same as above", "reachable": false},
+        {"va": "0x40153f", "function": "create_post", "function_va": "0x4014ec", "role": "same as above", "reachable": false},
+        {"va": "0x403b36", "function": "fldads_get_random_ad", "function_va": "0x403af8", "role": "ad-spot image selection", "reachable": true, "reachable_from": "load_new_ad_image(0x415eac) <- __mangled_main(0x415f10) at 0x4160ee", "runs_during_gameplay": false, "note": "called once when the app returns to the main menu (after init_game/run_demo, before the menu loop), never from inside play()"},
+        {"va": "0x40dcba", "function": "new_game", "function_va": "0x40dc9c", "role": "reseeds the SEPARATE custom PRNG (new_rand/new_srand, state global 0x4ff108) -- rand()%0x18ff8 stored as a double at 0x4ff108 via 0x40dccf", "reachable": true, "runs_during_gameplay": "no (runs once at new_game entry, before the libc srand(seed) reseed at 0x40de24)", "affects_layout": false, "note": "consumes from whatever libc rand() state existed BEFORE the per-game reseed; does not touch or get touched by add_floor's stream"},
+        {"va": "0x40e0a5", "function": "new_game", "function_va": "0x40dc9c", "role": "produces the actual game seed (stored to rec_seed global 0x4fe7a8 and to Treplay.random_seed at demo+0xa4)", "reachable": true, "runs_during_gameplay": false, "affects_layout": true, "note": "only executed on the demo==NULL (first game of process) path, immediately after srand(time()) at 0x40e0a0"},
+        {"va": "0x40f1ed", "function": "init_game", "function_va": "0x40e7dc", "role": "rand()%1000 stored to global 0x4fe518, used as an index into a 1000-slot pointer table at 0x4ff128 (one slot malloc'd, VA 0x4fe518 read at 100+ later sites throughout the binary as an indirection index)", "reachable": true, "runs_during_gameplay": false, "affects_layout": false, "note": "INFERRED: a randomized memory-location/table-slot selector (obfuscation of a fixed 'current character/session' pointer against memory scanning), not a game-parameter value -- consistently used only as an array index, never combined arithmetically into floor data"},
+        {"va": "0x40f61f", "function": "init_game", "function_va": "0x40e7dc", "role": "rand()%0x93f stored as a double to global 0x4ff108 (seeds the custom new_rand PRNG at process startup, near fadeOut/loading-screen code)", "reachable": true, "runs_during_gameplay": false, "affects_layout": false},
+        {"va": "0x416956", "function": "add_floor", "function_va": "0x4167dc", "role": "tower layout -- picks a jump-gap divisor for the new top floor", "reachable": true, "runs_during_gameplay": true, "affects_layout": true},
+        {"va": "0x4169bc", "function": "add_floor", "function_va": "0x4167dc", "role": "tower layout -- picks an alternate gap divisor when Treplay.floor_shrink==0", "reachable": true, "runs_during_gameplay": true, "affects_layout": true},
+        {"va": "0x4169d3", "function": "add_floor", "function_va": "0x4167dc", "role": "tower layout -- picks the floor's horizontal offset/x-range for floor numbers <=3000 when Treplay.floor_shrink!=0", "reachable": true, "runs_during_gameplay": true, "affects_layout": true},
+        {"va": "0x41f4aa", "function": "scroll_star_field", "function_va": "0x41f408", "role": "background star scroll (cosmetic)", "reachable": false, "reason_unreachable": "no call site anywhere in the binary, direct or indirect (address never referenced outside its own symbol label) -- confirmed dead code in this build; replaced by restart_scroller (0x41f0d0), which does not call rand"},
+        {"va": "0x41f4ce", "function": "scroll_star_field", "function_va": "0x41f408", "role": "same as above", "reachable": false},
+        {"va": "0x41f4fa", "function": "scroll_star_field", "function_va": "0x41f408", "role": "same as above", "reachable": false},
+        {"va": "0x41f519", "function": "scroll_star_field", "function_va": "0x41f408", "role": "same as above", "reachable": false},
+        {"va": "0x41f580", "function": "init_star_field", "function_va": "0x41f52c", "role": "background star init (cosmetic)", "reachable": false, "reason_unreachable": "no call site anywhere in the binary"},
+        {"va": "0x41f592", "function": "init_star_field", "function_va": "0x41f52c", "role": "same as above", "reachable": false},
+        {"va": "0x41f5a4", "function": "init_star_field", "function_va": "0x41f52c", "role": "same as above", "reachable": false}
+      ]
+    }
+  },
+  "custom_rng": {
+    "description": "A second, entirely separate PRNG exists: new_rand()/new_srand() (VA 0x406984/0x406a04), a floating-point multiplicative-congruential generator whose single state word is the double at global VA 0x4ff108. It is never explicitly seeded via new_srand() (zero call sites) -- its state is seeded only by the two libc rand()-derived writes at 0x40dccf (new_game) and 0x40f63a (init_game), both of which run before gameplay begins and draw from the libc stream's PRE-reseed state (not from Treplay.random_seed).",
+    "srand_target_va": "0x406a04",
+    "srand_call_sites": [],
+    "rand_target_va": "0x406984",
+    "rand_call_sites": [
+      {"va": "0x406e18", "function": "play_sound"},
+      {"va": "0x407d3e", "function": "start_reward"},
+      {"va": "0x407d76", "function": "start_reward"},
+      {"va": "0x4093df", "function": "draw_frame"},
+      {"va": "0x4093fc", "function": "draw_frame"},
+      {"va": "0x41010a", "function": "main_menu_callback"},
+      {"va": "0x4129c4", "function": "play", "note": "particle explosion x-position (idiv 0x1e0), used by create_particle at 0x4129e7 -- cosmetic (Tparticle.x)"},
+      {"va": "0x4129ee", "function": "play", "note": "particle velocity/color jitter (idiv 0xc8) -- cosmetic"},
+      {"va": "0x412a59", "function": "play", "note": "eax & 0x80000007 sign test, near the add_floor call site (0x4120e0) but does not touch Tfloor/Tmap fields -- appears to gate a cosmetic branch"},
+      {"va": "0x4147bf", "function": "play", "note": "near bitmap blit setup (0x4dd194), visual-effect randomization"},
+      {"va": "0x414bd6", "function": "play", "note": "near bitmap blit setup (0x4dd194), visual-effect randomization"},
+      {"va": "0x415bcd", "function": "play", "note": "idiv 0x2d (45) selecting a string pointer from table 0x4bc0c0 -- random death/taunt message text, cosmetic"},
+      {"va": "0x415c19", "function": "play", "note": "same table 0x4bc0c0 string-select path, alternate branch"},
+      {"va": "0x41845b", "function": "update_particle"},
+      {"va": "0x418474", "function": "update_particle"},
+      {"va": "0x4184c8", "function": "create_particle"},
+      {"va": "0x4184ef", "function": "create_particle"},
+      {"va": "0x418520", "function": "create_particle"}
+    ],
+    "conclusion": "All 18 new_rand() call sites reviewed are cosmetic/UI (particles, sounds, reward triggers, taunt-text selection, blit jitter, menu). None write into Tfloor/Tmap fields. Because new_rand() draws from an entirely separate state word (0x4ff108) rather than libc's internal rand() state, its calls during gameplay -- however timing-dependent -- CANNOT interleave with or perturb add_floor's libc rand() stream."
+  },
+  "add_floor": {
+    "va": "0x4167dc",
+    "end_va": "0x416a3c",
+    "signature": "void add_floor(Tmap *m)",
+    "callers": [
+      {"va": "0x40de4b", "function": "new_game", "context": "reset_map() then a fixed loop 'for(i=0;i<30;i++) add_floor(&map)' -- builds the initial 30 floors of a new game"},
+      {"va": "0x4120e0", "function": "play", "context": "gated by a comparison of the player's current climbed-height marker (0x4dd190-derived, masked 0x8000000f) against the highest-floor-generated marker (0x4f8e18); called on demand, once per tick at most, exactly when the player's progress crosses into unrevealed territory -- i.e. floor generation is event-driven by player progress, not by a fixed schedule or tick count"}
+    ],
+    "floor_index_source": "m->room[31].level (Tfloor.level, offset 0xc of the 24-byte Tfloor struct) -- an internal counter INSIDE the Tmap struct itself, incremented by exactly 1 on every add_floor() call (every code path that returns increments level exactly once first). This means 'floor index k' = number of add_floor() calls issued so far on this Tmap, independent of wall-clock time or frame count.",
+    "rand_calls_per_invocation": {
+      "possible_values": [0, 1, 2],
+      "determined_by": ["m->room[31].level (mod 5, mod 250, mod 2500 -- purely the running floor-index counter)", "Treplay.floor_shrink (demo+0x8c, fixed per-game difficulty setting)", "Treplay.floor_size (demo+0x90, fixed per-game difficulty setting, indexes the constant table floor_size_modifiers[5] at VA 0x4bdb60)"],
+      "not_determined_by": ["prior rand() output values (no branch after a rand() call inside add_floor feeds back into whether another rand() call happens)", "cycle_count/tick counter (0x506938) -- never read in add_floor", "QueryPerformanceCounter/clock/time -- never read in add_floor", "player position/state beyond the caller-side gating of WHEN add_floor runs"],
+      "case_breakdown": [
+        "level % 250 == 0 (level<=5004) or level % 2500 == 0: 0 rand() calls -- deterministic 'checkpoint' floor reset (empty=0, tiles preset)",
+        "level % 5 != 0 (and not a checkpoint floor): 0 rand() calls -- deterministic filler floor (tiles=-1)",
+        "level % 5 == 0, Treplay.floor_shrink == 0: 2 rand() calls (0x4169bc then 0x416956)",
+        "level % 5 == 0, Treplay.floor_shrink != 0, new level <= 3000: 2 rand() calls (0x4169d3 then 0x416956)",
+        "level % 5 == 0, Treplay.floor_shrink != 0, new level > 3000: 1 rand() call (0x416956 only)"
+      ]
+    },
+    "determinism_claim": "Given a fixed seed and fixed per-game difficulty settings (floor_shrink/floor_size/etc., which are constant for the whole game, saved once into Treplay at new_game()), floor k is a pure function of (seed, k): the branch structure that decides both the floor's field values AND how many rand() calls are consumed is itself a deterministic function of k (via the self-incrementing room[31].level counter) and the constant difficulty settings -- never of a prior rand() output, never of time/ticks/player state. Verified: no other live (reachable) rand() consumer executes between two add_floor() calls during gameplay (see libc_rng.rand.call_sites: create_post/scroll_star_field/init_star_field are dead code; fldads_get_random_ad only runs at the menu, before/after play(), never during it)."
+  },
+  "carrier_requirement": "Treplay.random_seed (Treplay+0xa4, saved in every .itr header) is the single value a carrier needs to reproduce tower/platform layout bit-for-bit, together with the fixed per-game difficulty fields already stored alongside it in the same header (floor_shrink+0x8c, floor_size+0x90, start_speed+0x94, speed_increase+0x98, gravity+0x9c) which select which branch/table row add_floor uses. No interleaving order needs to be recorded: the only live rand() consumer during gameplay is add_floor itself, and its own call count per floor is itself a deterministic function of the floor index, not of anything external."
+}
