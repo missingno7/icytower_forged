@@ -19,6 +19,8 @@
 #include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
 #include "../../port_forge/src/platform/win32/arena.hpp"
 #include "../../port_forge/src/platform/win32/breakpoints.hpp"
+#include "../../port_forge/src/platform/win32/threads.hpp"
+#include "../../port_forge/src/platform/win32/virtual_clock.hpp"
 #include "../../port_forge/src/platform/win32/rng.hpp"
 #include "../../port_forge/src/core/sha256.hpp"
 #include "../win32_policy.hpp"
@@ -26,10 +28,6 @@
 // KNOWN (artifacts/functions.json + disasm.txt): Allegro internals this
 // module calls directly by address (they're outside the game's own 25 CUs,
 // so they're not in carrier/gen/it_funcs.h, which is game-scope only).
-#define VA_TIM_HIGH_PERF_THREAD 0x478584u  // wtimer.c tim_win32_high_perf_thread
-#define VA_TIM_LOW_PERF_THREAD  0x4783bcu  // wtimer.c tim_win32_low_perf_thread
-#define VA_INPUT_THREAD_PROC    0x479a40u  // winput.c input_thread_proc
-#define VA_HANDLE_TIMER_TICK    0x45d6c8u  // timer.c: long _handle_timer_tick(int interval)
 #define VA_HANDLE_KEY_PRESS     0x43e2f8u  // keyboard.c: void _handle_key_press(int keycode, int scancode)
 #define VA_HANDLE_KEY_RELEASE   0x43d8d4u  // keyboard.c: void _handle_key_release(int scancode)
 #define VA_SAFEPOINT            0x4124f4u  // main.c play(): once per consumed game tick
@@ -80,17 +78,10 @@
 #define VA_SWITCH_IN_CB         0x4ea080u  // void (*switch_in_cb[8])(void)
 #define VA_SWITCH_OUT_CB        0x4ea060u  // void (*switch_out_cb[8])(void)
 #define VA_HANDLE_MOUSE_INPUT   0x45f9bcu
-#define VA_FLDADS_THREADMAIN    0x404014u
 
 // The virtual epoch det_wrap_time returns when no recording supplies a value
 // (unchanged from milestones 5-7 - this is what keeps G1 byte-identical).
 #define DET_VIRTUAL_EPOCH 1700000000L
-
-// KNOWN (task brief + Allegro 4.4 timer.h): timer units/second. Confirmed
-// against tim_win32_high_perf_thread's own disassembly, which multiplies
-// QPC-elapsed-time by the literal constant 0x1234dd == 1193181 before
-// calling _handle_timer_tick (see carrier/NOTES.md).
-#define TIMERS_PER_SECOND 1193181LL
 
 // KNOWN (DWARF __allegro_KEY_* enum, artifacts/dwarf_info.txt), verified to
 // match the task brief exactly.
@@ -168,13 +159,11 @@ static bool isolate_off(const char* channel) {
     return list[0] && strstr(list, channel) != nullptr;
 }
 
-static LONGLONG g_virtual_ms = 0;      // det mode only: accumulated Sleep(ms) on the main thread
-static LONGLONG g_units_reported = 0;  // running total already handed to _handle_timer_tick
-static ULONGLONG g_start_tick64 = 0;   // non-det mode: real elapsed time baseline (GetTickCount64)
+// The virtual clock, the tick pump's accumulator and the two determinism-
+// audit perturbation knobs are pf::win32::* (virtual_clock.hpp).
 
 static FILE* g_digest_file = nullptr;
 static FILE* g_record_file = nullptr;
-static HANDLE g_parked_event = nullptr; // never signaled - park() blocks on it forever
 
 // ---------------------------------------------------------------------
 // --trace-input (divergence 005 instrumentation, notes/living_record.md).
@@ -212,8 +201,7 @@ static void trace_input(const char* site, const char* what, int code, const char
     if (!g_trace_input_file) return;
     fprintf(g_trace_input_file,
             "ms=%lld T=%d sub=%lld sleepn=%lld cyc=%d pre=%d post=%d sp=%ld tid=%lu site=%s %s code=%d%s%s\n",
-            (long long)(g_det_mode ? g_virtual_ms : (LONGLONG)(GetTickCount64() - g_start_tick64)),
-            (int)((g_det_mode ? g_virtual_ms : (LONGLONG)(GetTickCount64() - g_start_tick64)) / 20),
+            pf::win32::clock_now_ms(), pf::win32::clock_tick(),
             g_sub_in_tick, g_sleep_calls, (int)IT_CYCLE_COUNT, g_cyc_pre, g_cyc_post,
             g_safepoint_count, GetCurrentThreadId(), site, what, code,
             extra ? " " : "", extra ? extra : "");
@@ -409,10 +397,8 @@ extern "C" void __cdecl det_wrap_free(void* p) {
 // our pinned arithmetic). det mode: T from the virtual clock. Non-det:
 // T from real elapsed wall time (GetTickCount64) - approximate, diagnostic
 // only, never claimed deterministic.
-static LONGLONG det_now_ms() {
-    return g_det_mode ? g_virtual_ms : (LONGLONG)(GetTickCount64() - g_start_tick64);
-}
-static int det_current_tick() { return (int)(det_now_ms() / 20); }
+static LONGLONG det_now_ms() { return pf::win32::clock_now_ms(); }
+static int det_current_tick() { return pf::win32::clock_tick(); }
 
 // Public alias (det.hpp) - bind.cpp keys its per-invocation records on the
 // same T the per-tick digest lines use.
@@ -1160,132 +1146,22 @@ static void drain_real_key_queue() {
 // ---------------------------------------------------------------------
 // A. Virtual clock + thread virtualization
 // ---------------------------------------------------------------------
-static DWORD WINAPI parked_thread_proc(LPVOID) {
-    WaitForSingleObject(g_parked_event, INFINITE); // never signaled: blocks forever, ~0% CPU
-    return 0;
-}
-// A fake-but-real thread handle for a virtualized Allegro thread: the guest
-// stores/CloseHandle's/WaitForSingleObject's this normally (all DIRECT,
-// unwrapped imports), so it must be a genuine kernel handle, just one that
-// never does anything. Still used for VA_INPUT_THREAD_PROC below (measured,
-// carrier/NOTES.md: never actually spawned in this build, so it is dead
-// code kept only as a guard - not worth the added real-thread machinery
-// item 3 below adds specifically to fix the two timer threads' exit hang).
-static uintptr_t make_parked_handle() {
-    HANDLE h = CreateThread(nullptr, 0, parked_thread_proc, nullptr, 0, nullptr);
-    return (uintptr_t)h;
-}
-
-// ---------------------------------------------------------------------
-// Item 3 ("parked timer thread" pass, carrier/NOTES.md; divergence 003,
-// notes/living_record.md): _tim_win32_exit (0x478488) does
-// SetEvent(stop_event@0x4ec050) then loops WaitForSingleObject(
-// timer_thread_handle@0x4ec054, 100) while it returns WAIT_TIMEOUT (0x102).
-// The OLD virtualized timer thread (make_parked_handle above) blocked
-// forever on OUR OWN never-signaled event, so that handle never became
-// signaled and the join spun forever - the exit hang.
-//
-// KNOWN (artifacts/disasm.txt, cited in det.hpp's declaration of
-// det_wrap_WaitForSingleObject): both _tim_win32_high_perf_thread (0x478584)
-// and _tim_win32_low_perf_thread (0x4783bc) loop on
-// WaitForSingleObject(stop_event@0x4ec050, <small ms>) and branch to
-// __win_thread_exit (a normal return) the FIRST time that call returns
-// anything other than WAIT_TIMEOUT - i.e. the original code already knows
-// how to exit cleanly the moment its wait is satisfied; it just needs an
-// actual signal to arrive, not a fake handle.
-//
-// Generic fix: run the ORIGINAL entry point on a REAL host thread (so it is
-// a genuine, joinable kernel object - CloseHandle/WaitForSingleObject from
-// guest code keep working exactly as before), but register that thread's id
-// as "parked". det_wrap_WaitForSingleObject (below) substitutes INFINITE
-// for any FINITE timeout a parked thread asks for, so its own
-// WaitForSingleObject(stop_event, 15-or-100) call never returns
-// WAIT_TIMEOUT and therefore never reaches the _handle_timer_tick call just
-// above it in either thread's loop (tick delivery is UNCHANGED: still only
-// from det_wrap_Sleep on the main thread, synchronous, milestone 5-7's
-// design) - the thread simply blocks in that one real wait until the guest
-// itself calls SetEvent(stop_event) at shutdown (_tim_win32_exit), at which
-// point WaitForSingleObject returns non-timeout, the guest's own code falls
-// through to __win_thread_exit, and the thread function returns for real -
-// satisfying _tim_win32_exit's join loop by construction, no carrier-side
-// polling or timeout needed.
-// ---------------------------------------------------------------------
-static const int kMaxParkedThreads = 8;
-static DWORD g_parked_thread_ids[kMaxParkedThreads];
-static int g_parked_thread_count = 0;
-static CRITICAL_SECTION g_parked_cs;
-static bool g_parked_cs_inited = false;
-
-static void ensure_parked_cs() {
-    if (!g_parked_cs_inited) { InitializeCriticalSection(&g_parked_cs); g_parked_cs_inited = true; }
-}
-
-static void register_parked_thread(DWORD tid) {
-    ensure_parked_cs();
-    EnterCriticalSection(&g_parked_cs);
-    if (g_parked_thread_count < kMaxParkedThreads) g_parked_thread_ids[g_parked_thread_count++] = tid;
-    else fprintf(stderr, "det: WARNING - parked-thread table full, thread %lu not tracked\n", tid);
-    LeaveCriticalSection(&g_parked_cs);
-}
-
-// Declared in det.hpp indirectly via det_wrap_WaitForSingleObject; kept
-// file-local since only that wrapper needs it.
-static bool det_is_parked_thread(DWORD tid) {
-    if (!g_parked_cs_inited) return false; // nothing registered yet - cheap common case
-    bool found = false;
-    EnterCriticalSection(&g_parked_cs);
-    for (int i = 0; i < g_parked_thread_count; ++i)
-        if (g_parked_thread_ids[i] == tid) { found = true; break; }
-    LeaveCriticalSection(&g_parked_cs);
-    return found;
-}
-
-struct ParkedRealThreadArgs { void (__cdecl* start)(void*); void* arglist; };
-
-static DWORD WINAPI parked_real_thread_proc(LPVOID pv) {
-    ParkedRealThreadArgs* a = (ParkedRealThreadArgs*)pv;
-    void (__cdecl* start)(void*) = a->start;
-    void* arglist = a->arglist;
-    free(a);
-    start(arglist); // the ORIGINAL guest entry point, called exactly as
-                     // _beginthread itself would (cdecl, one void* arg) -
-                     // real execution, real x87/CRT thread-local init via
-                     // its own __win_thread_init call, real wait loop.
-    return 0;        // reached only after the guest's own code returns
-                      // (i.e. after its WaitForSingleObject was satisfied).
-}
-
-// Creates the thread SUSPENDED, registers its id as parked, THEN resumes -
-// so det_wrap_WaitForSingleObject already knows about it before the thread
-// can possibly make its first (substitutable) wait call. Mirrors
-// make_parked_handle's "must be a genuine kernel handle" requirement above.
-static uintptr_t make_parked_real_handle(void(__cdecl* start)(void*), void* arglist) {
-    ParkedRealThreadArgs* a = (ParkedRealThreadArgs*)malloc(sizeof(ParkedRealThreadArgs));
-    if (!a) { fprintf(stderr, "det: make_parked_real_handle: out of memory\n"); return 0; }
-    a->start = start;
-    a->arglist = arglist;
-    DWORD tid = 0;
-    HANDLE h = CreateThread(nullptr, 0, parked_real_thread_proc, a, CREATE_SUSPENDED, &tid);
-    if (!h) {
-        fprintf(stderr, "det: make_parked_real_handle: CreateThread failed gle=%lu\n", GetLastError());
-        free(a);
-        return 0;
-    }
-    register_parked_thread(tid);
-    ResumeThread(h);
-    return (uintptr_t)h;
-}
+// The four thread dispositions (ParkReal / VirtualizeStub / Suppress /
+// Passthrough), the parked-thread registry, the real-thread-with-
+// unconditional-waits trick that fixes divergence 003's exit hang, and the
+// never-signaled stub handle all live in
+// port_forge/src/platform/win32/threads.hpp, with the reason ParkReal had
+// to replace VirtualizeStub written down beside them. WHICH entry VAs get
+// which disposition is icytower::kThreads (carrier/win32_policy.hpp).
 
 extern "C" DWORD __stdcall det_wrap_WaitForSingleObject(HANDLE h, DWORD ms) {
     pf_count_import(g_id_WaitForSingleObject);
-    if (ms != INFINITE && det_is_parked_thread(GetCurrentThreadId())) {
-        // See the big comment above make_parked_real_handle: a parked
-        // thread's own wait becomes unconditional, so it can only resume
-        // when the guest itself signals the object (real exit), never on a
-        // timeout (which would otherwise run a timer tick from the wrong
-        // thread and reintroduce exactly the race milestone 5-7 removed).
-        ms = INFINITE;
-    }
+    // A parked thread's own wait becomes unconditional, so it can only
+    // resume when the guest itself signals the object (real exit), never on
+    // a timeout - which would otherwise run a timer tick from the wrong
+    // thread and reintroduce exactly the race milestones 5-7 removed. See
+    // port_forge/src/platform/win32/threads.hpp.
+    ms = pf::win32::parked_wait_timeout(ms);
     if (g_real_WaitForSingleObject)
         return ((DWORD(__stdcall*)(HANDLE, DWORD))g_real_WaitForSingleObject)(h, ms);
     return WAIT_FAILED;
@@ -1296,17 +1172,28 @@ extern "C" uintptr_t __cdecl det_wrap_beginthread(void(__cdecl* start)(void*),
     pf_count_import(g_id_beginthread);
     uintptr_t start_va = (uintptr_t)(void*)start;
     fprintf(stderr, "det: _beginthread(start=0x%p, stack=%u)\n", (void*)start, stack_size);
-    if (g_det_mode && (start_va == VA_TIM_HIGH_PERF_THREAD || start_va == VA_TIM_LOW_PERF_THREAD)) {
-        fprintf(stderr, "det: timer thread PARKED (entry=0x%p): running the ORIGINAL entry point "
-                        "on a real thread whose WaitForSingleObject calls are substituted to "
-                        "INFINITE (carrier/NOTES.md 'parked timer thread' - fixes divergence 003, "
-                        "the _tim_win32_exit join hang, generically)\n", (void*)start);
-        return make_parked_real_handle(start, arglist);
-    }
-    if (g_det_mode && start_va == VA_INPUT_THREAD_PROC) {
-        fprintf(stderr, "det: input thread virtualized (entry=0x%p) - synthetic key events drive key[] instead\n",
-                (void*)start);
-        return make_parked_handle();
+    if (g_det_mode) {
+        // icytower::kThreads (carrier/win32_policy.hpp) says which entry VA
+        // gets which disposition; port_forge/src/platform/win32/threads.hpp
+        // says what each disposition means and why ParkReal had to replace
+        // VirtualizeStub for the timer threads.
+        switch (pf::win32::thread_disposition((unsigned long)start_va)) {
+        case pf::win32::ThreadDisposition::ParkReal:
+            fprintf(stderr, "det: timer thread PARKED (entry=0x%p): running the ORIGINAL entry point "
+                            "on a real thread whose WaitForSingleObject calls are substituted to "
+                            "INFINITE (carrier/NOTES.md 'parked timer thread' - fixes divergence 003, "
+                            "the _tim_win32_exit join hang, generically)\n", (void*)start);
+            return pf::win32::make_parked_real_handle(start, arglist);
+        case pf::win32::ThreadDisposition::VirtualizeStub:
+            fprintf(stderr, "det: input thread virtualized (entry=0x%p) - synthetic key events "
+                            "drive key[] instead\n", (void*)start);
+            return pf::win32::make_virtualized_handle();
+        case pf::win32::ThreadDisposition::Suppress:
+            fprintf(stderr, "det: thread SUPPRESSED (entry=0x%p)\n", (void*)start);
+            return 0;
+        case pf::win32::ThreadDisposition::Passthrough:
+            break;
+        }
     }
     uintptr_t h = 0;
     if (g_real_beginthread) {
@@ -1321,7 +1208,7 @@ extern "C" uintptr_t __cdecl det_wrap_beginthread(void(__cdecl* start)(void*),
     // dedicated input thread. Arming every spawned thread with the current
     // table is a no-op when g_bp_count==0 and otherwise makes this correct
     // regardless of which Allegro thread turns out to own DirectInput.
-    if (h != 0 && h != (uintptr_t)-1) det_arm_thread((HANDLE)h);
+    if (h != 0 && h != (uintptr_t)-1) pf::win32::arm_thread((HANDLE)h);
     return h;
 }
 
@@ -1400,16 +1287,15 @@ extern "C" void __stdcall det_wrap_Sleep(DWORD ms) {
         // running TOTAL (g_units_reported) and diffing on every call gives
         // the same full-precision "no drift" property without a separate
         // remainder variable.
-        g_virtual_ms += ms;
+        // ORDER MATTERS, and it is the divergence-005 order: the clock
+        // advances FIRST, then sub_tick_advance decides which sub-tick slot
+        // of the (possibly new) tick this Sleep call is, then the guest's
+        // tick function runs. virtual_clock.hpp keeps advance and pump
+        // separate for exactly this reason.
+        pf::win32::virtual_clock_advance_ms(ms);
         sub_tick_advance();
-        LONGLONG total_units = g_virtual_ms * TIMERS_PER_SECOND / 1000;
-        LONGLONG delta = total_units - g_units_reported;
-        g_units_reported = total_units;
         g_cyc_pre = IT_CYCLE_COUNT;
-        if (delta > 0) {
-            typedef long(__cdecl * TickFn)(int);
-            ((TickFn)(void*)VA_HANDLE_TIMER_TICK)((int)delta);
-        }
+        pf::win32::virtual_clock_pump();
         g_cyc_post = IT_CYCLE_COUNT;
         if (g_trace_input_file && g_cyc_post != g_cyc_pre)
             trace_input("sleep", "guest-tick-boundary", g_cyc_post, nullptr);
@@ -1444,21 +1330,10 @@ extern "C" void __stdcall det_wrap_Sleep(DWORD ms) {
 //                           recording it (item 4) is load-bearing.
 //                                                     (positive control)
 // ---------------------------------------------------------------------
-static long long perturb_clock_ms() {
-    static long long v = -1;
-    if (v < 0) { char b[24]; v = GetEnvironmentVariableA("DET_PERTURB_CLOCK", b, sizeof(b)) ? _atoi64(b) : 0; }
-    return v;
-}
-static long perturb_time_s() {
-    static long v = -1;
-    if (v < 0) { char b[24]; v = GetEnvironmentVariableA("DET_PERTURB_TIME", b, sizeof(b)) ? atol(b) : 0; }
-    return v;
-}
-
 extern "C" BOOL __stdcall det_wrap_QueryPerformanceCounter(LARGE_INTEGER* out) {
     pf_count_import(g_id_QPC);
     if (g_det_mode) {
-        if (out) out->QuadPart = g_virtual_ms + perturb_clock_ms(); // fake 1000 Hz counter tied to the virtual clock
+        if (out) out->QuadPart = pf::win32::clock_perturbed_ms(); // fake 1000 Hz counter tied to the virtual clock
         return TRUE;
     }
     if (g_real_QPC) return ((BOOL(__stdcall*)(LARGE_INTEGER*))g_real_QPC)(out);
@@ -1470,7 +1345,7 @@ extern "C" BOOL __stdcall det_wrap_QueryPerformanceCounter(LARGE_INTEGER* out) {
 // completeness/documentation and in case a future low-perf-timer path calls it.
 extern "C" DWORD __stdcall det_wrap_timeGetTime() {
     pf_count_import(g_id_timeGetTime);
-    if (g_det_mode) return (DWORD)(g_virtual_ms + perturb_clock_ms());
+    if (g_det_mode) return (DWORD)pf::win32::clock_perturbed_ms();
     if (g_real_timeGetTime) return ((DWORD(__stdcall*)())g_real_timeGetTime)();
     return 0;
 }
@@ -1506,7 +1381,7 @@ extern "C" long __cdecl det_wrap_time(long* out) {
     pf_count_import(g_id_time);
     long v;
     if (g_det_mode) {
-        long epoch = (long)(DET_VIRTUAL_EPOCH + g_virtual_ms / 1000) + perturb_time_s();
+        long epoch = (long)(DET_VIRTUAL_EPOCH + pf::win32::virtual_ms() / 1000) + pf::win32::clock_time_offset_s();
         bool main_thread = (GetCurrentThreadId() == g_main_tid);
         if (!main_thread && (!g_time_values.empty() || g_record_file)) {
             ++g_time_offthread;
@@ -1548,7 +1423,7 @@ extern "C" long __cdecl det_wrap_time(long* out) {
 // play()'s anti-cheat trio (qpc/clock/time), never gameplay.
 extern "C" long __cdecl det_wrap_clock() {
     pf_count_import(g_id_clock);
-    if (g_det_mode) return (long)(g_virtual_ms + perturb_clock_ms());
+    if (g_det_mode) return (long)pf::win32::clock_perturbed_ms();
     if (g_real_clock) return ((long(__cdecl*)())g_real_clock)();
     return 0;
 }
@@ -1688,11 +1563,14 @@ extern "C" HWND __stdcall det_wrap_CreateWindowExA(DWORD ex, LPCSTR cls, LPCSTR 
 extern "C" int __cdecl det_wrap_pthread_create(void* th, void* attr,
                                                void* (__cdecl* start)(void*), void* arg) {
     pf_count_import(g_id_pthread_create);
-    if (g_det_mode && (uintptr_t)(void*)start == VA_FLDADS_THREADMAIN && !isolate_off("ad")) {
+    if (g_det_mode && !isolate_off("ad") &&
+        pf::win32::thread_disposition((unsigned long)(uintptr_t)(void*)start) ==
+            pf::win32::ThreadDisposition::Suppress) {
         ++g_ad_thread_suppressed;
         fprintf(stderr, "det: ad-fetch thread SUPPRESSED (pthread_create(fldads_threadmain @0x%08x) "
                         "is a no-op in --det; the game observes the constant 'no ads' result - "
-                        "carrier/NOTES.md 'Environment isolation')\n", VA_FLDADS_THREADMAIN);
+                        "carrier/NOTES.md 'Environment isolation')\n",
+                (unsigned)(uintptr_t)(void*)start);
         return 0; // fldads_start ignores the return value (disasm 0x403aed: call, leave, ret)
     }
     if (g_real_pthread_create)
@@ -2152,8 +2030,8 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     strncpy(g_image_path, opt.image_path ? opt.image_path : "", sizeof(g_image_path) - 1);
     g_image_path[sizeof(g_image_path) - 1] = 0;
     g_main_tid = GetCurrentThreadId();
-    g_start_tick64 = GetTickCount64();
-    g_parked_event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    pf::win32::virtual_clock_init(icytower::kTick, g_det_mode);
+    pf::win32::threads_init(icytower::kThreads);
     // The bounded-instruction tracer is the second kind of single step the
     // shared VEH has to claim (trap flag, Dr6 bit 14 - not one of the four
     // hardware slots); snapshot.cpp owns it, so it is registered as a pair
@@ -2359,7 +2237,7 @@ void det_environment_json(char* buf, size_t n) {
               g_ad_thread_suppressed,
               g_time_recorded, g_time_replayed, g_time_values.size(),
               g_time_underflow, g_time_offthread,
-              perturb_clock_ms(), perturb_time_s(),
+              pf::win32::detail::perturb_clock_ms(), pf::win32::clock_time_offset_s(),
               g_ds_normalized ? "true" : "false", g_ds_host_count, g_ds_delivered, dsnames,
               g_env_calls, envs);
     buf[n - 1] = 0;
@@ -2374,8 +2252,8 @@ void det_environment_json(char* buf, size_t n) {
 // ---------------------------------------------------------------------
 void det_state_save(DetSavedState* s) {
     memset(s, 0, sizeof(*s));
-    s->virtual_ms = g_virtual_ms;
-    s->units_reported = g_units_reported;
+    s->virtual_ms = pf::win32::virtual_ms();
+    s->units_reported = pf::win32::units_reported();
     s->rng_state = pf::win32::rng_state();
     s->rng_calls = pf::win32::rng_calls();
     s->script_cursor = (unsigned)g_script_cursor;
@@ -2410,8 +2288,8 @@ void det_state_save(DetSavedState* s) {
 }
 
 void det_state_load(const DetSavedState* s) {
-    g_virtual_ms = s->virtual_ms;
-    g_units_reported = s->units_reported;
+    pf::win32::set_virtual_ms(s->virtual_ms);
+    pf::win32::set_units_reported(s->units_reported);
     pf::win32::rng_set_state(s->rng_state);
     pf::win32::rng_set_calls((long)s->rng_calls);
     g_script_cursor = (size_t)s->script_cursor;
@@ -2452,7 +2330,7 @@ void det_shutdown() {
     }
     fprintf(stderr, "det: shutdown at T=%d (virtual_ms=%lld, %lld main-thread Sleep calls, "
                     "%ld safepoints, guest cycle_count=%d)\n",
-            det_current_tick(), (long long)g_virtual_ms, g_sleep_calls, g_safepoint_count,
+            det_current_tick(), pf::win32::virtual_ms(), g_sleep_calls, g_safepoint_count,
             (int)IT_CYCLE_COUNT);
     // Audit evidence for the activation channel: WHO is registered in the
     // guest's own switch callback tables, and WHOSE window procedure the

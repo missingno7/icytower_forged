@@ -28,6 +28,8 @@
 #include "../port_forge/src/platform/win32/arena.hpp"
 #include "../port_forge/src/platform/win32/policy.hpp"
 #include "../port_forge/src/platform/win32/rng.hpp"
+#include "../port_forge/src/platform/win32/threads.hpp"
+#include "../port_forge/src/platform/win32/virtual_clock.hpp"
 
 namespace icytower {
 
@@ -110,6 +112,67 @@ inline constexpr pf::win32::ArenaPolicy kArena = {
 inline constexpr pf::win32::RngPolicy kRng = {
     pf::win32::RngPolicy::MsvcrtLcg,
     /* seed_default */ 1u,
+};
+
+// ---------------------------------------------------------------------
+// The tick pump.
+//
+// KNOWN (artifacts/functions.json + artifacts/disasm.txt, cited in
+// carrier/NOTES.md "Milestones 5-7"): 0x45d6c8 is Allegro 4.4's
+// timer.c:_handle_timer_tick(int interval) - it takes the DELTA in timer
+// units since the last call, which is exactly TickPolicy's
+// AccumulatedUnits.
+//
+// 1193181 is the PC interval-timer frequency Allegro's own timer.h fixes as
+// TIMERS_PER_SECOND. It is not inferred from the header: tim_win32_high_
+// perf_thread's disassembly multiplies QPC-elapsed time by the literal
+// 0x1234dd == 1193181 before calling _handle_timer_tick.
+//
+// 20 ms per carrier tick is this project's chosen coordinate granularity
+// (50 Hz), the unit every digest line, input event and snapshot anchor in
+// carrier/NOTES.md is keyed by.
+//
+// MainThreadSleep is the pump, and it is true HERE because Allegro's idle
+// loops call rest(1) - i.e. Sleep on the guest main thread. It is the only
+// implemented pump; see virtual_clock.hpp for why a second one waits for a
+// second target rather than being invented now.
+inline constexpr pf::win32::TickPolicy kTick = {
+    /* tick_fn_va        */ 0x0045d6c8ul,
+    /* tick_arg_kind     */ pf::win32::TickPolicy::AccumulatedUnits,
+    /* units_per_second  */ 1193181LL,
+    /* tick_divisor_ms   */ 20LL,
+    /* pump              */ pf::win32::TickPolicy::MainThreadSleep,
+};
+
+// ---------------------------------------------------------------------
+// Threads the guest starts, and what happens to each.
+//
+// KNOWN (artifacts/functions.json + artifacts/dwarf_info.txt):
+//   0x478584 wtimer.c tim_win32_high_perf_thread
+//   0x4783bc wtimer.c tim_win32_low_perf_thread
+// Both loop on WaitForSingleObject(stop_event@0x4ec050, <small ms>) and
+// exit on the first non-WAIT_TIMEOUT return, so ParkReal (run the original
+// entry on a real thread with unconditional waits) satisfies
+// _tim_win32_exit's join loop by construction - divergence 003
+// (notes/living_record.md), and the reason threads.hpp documents ParkReal
+// as replacing VirtualizeStub rather than complementing it.
+//
+//   0x479a40 winput.c input_thread_proc
+// MEASURED (carrier/NOTES.md): never actually spawned in this build - only
+// the timer and window threads are. VirtualizeStub is kept as a guard, not
+// because it fires.
+//
+//   0x404014 fld_adspot.c fldads_threadmain
+// The ONE pthread_create call site in the whole binary. Its live HTTP
+// result reaches five fld_adspot.c globals that are inside the 151-global
+// digest domain, so it is Suppressed outright in a carrier-owned run.
+inline constexpr unsigned long kThreadsParkReal[] = { 0x00478584ul, 0x004783bcul };
+inline constexpr unsigned long kThreadsVirtualize[] = { 0x00479a40ul };
+inline constexpr unsigned long kThreadsSuppress[] = { 0x00404014ul };
+inline constexpr pf::win32::ThreadPolicy kThreads = {
+    kThreadsParkReal,   2,
+    kThreadsVirtualize, 1,
+    kThreadsSuppress,   1,
 };
 
 }  // namespace icytower
