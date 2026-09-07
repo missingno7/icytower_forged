@@ -189,15 +189,10 @@ struct DetSavedState {
 void det_state_save(DetSavedState* s);
 void det_state_load(const DetSavedState* s);
 
-// Guest-memory regions the snapshot captures, exposed here so snapshot.cpp
-// does not re-derive them (KNOWN: carrier/NOTES.md, notes/binary_recon.md).
-#define PF_GUEST_DATA_VA   0x004bc000u
-#define PF_GUEST_DATA_SIZE 0x000176f4u
-#define PF_GUEST_BSS_VA    0x004dd000u
-#define PF_GUEST_BSS_SIZE  0x00036978u
-#define PF_GUEST_ARENA_VA  0x20000000u
-#define PF_GUEST_STACK_VA  0x0e000000u
-#define PF_GUEST_STACK_SZ  0x00200000u
+// The guest-memory regions a snapshot captures used to be seven #defines
+// here. They are icytower::kSnapshotRegions now (carrier/win32_policy.hpp),
+// with the evidence for each beside it, consumed through
+// pf::win32::SnapshotDomainPolicy.
 
 // Milestone 8: the pinned RNG state, as an externalized snapshot component
 // (snapshot.cpp), plus the --rng-selftest unit check against the real

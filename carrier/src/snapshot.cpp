@@ -41,6 +41,7 @@
 #include "bind.hpp"
 #include "../../port_forge/src/platform/win32/symbols.hpp"
 #include "../../port_forge/src/core/sha256.hpp"
+#include "../win32_policy.hpp"
 
 // ---------------------------------------------------------------------
 // The carrier-owned component. One POD, one version stamp; det.cpp and
@@ -86,12 +87,15 @@ static long  g_trace_index = 0;
 static CONTEXT g_trace_prev;
 static bool  g_trace_have_prev = false;
 
-static double now_ms() {
-    LARGE_INTEGER f, c;
-    ::QueryPerformanceFrequency(&f);
-    ::QueryPerformanceCounter(&c);
-    return f.QuadPart ? (1000.0 * (double)c.QuadPart / (double)f.QuadPart) : 0.0;
-}
+// The codec primitives (blob write/read with a hash, the manifest's
+// integrity lookup, other-thread quiescence, the x87 control word, the two
+// identity hashes) are pf::win32::snapshot_* in
+// port_forge/src/platform/win32/snapshot.hpp, together with the ordering
+// rule they depend on. What stays here is what is NOT generic: the manifest
+// DOCUMENT (a certification contract carrier/scripts' verdict tools read
+// field by field), CarrierState (whose two halves are det.cpp's and
+// bind.cpp's), and the region list - which is icytower::kSnapshotDomain.
+static double now_ms() { return pf::win32::snapshot_now_ms(); }
 
 static void die(const char* what) {
     fprintf(stderr, "snapshot: FATAL - %s\n", what);
@@ -104,106 +108,39 @@ static void join_path(char* out, size_t n, const char* dir, const char* leaf) {
     out[n - 1] = 0;
 }
 
-// ---------------------------------------------------------------------
-// Component I/O
-// ---------------------------------------------------------------------
+static bool write_blob(const char* dir, const char* leaf, const void* p, size_t n, std::string* sha) {
+    return pf::win32::snapshot_write_blob(dir, leaf, p, n, sha);
+}
+static bool read_blob(const char* dir, const char* leaf, std::vector<uint8_t>* out) {
+    return pf::win32::snapshot_read_blob(dir, leaf, out);
+}
+static bool manifest_find_sha(const std::string& text, const char* comp, std::string* out) {
+    return pf::win32::snapshot_manifest_sha(text, comp, out);
+}
+static int suspend_other_threads(HANDLE* handles, int cap) {
+    return pf::win32::snapshot_suspend_other_threads(handles, cap);
+}
+static void resume_threads(HANDLE* handles, int n) {
+    pf::win32::snapshot_resume_threads(handles, n);
+}
+static unsigned read_x87_cw() { return pf::win32::snapshot_read_x87_cw(); }
+
+// The four guest regions, by their policy index (icytower::kSnapshotDomain).
+static const unsigned long D_VA    = icytower::kSnapshotRegions[icytower::kRegionData].va;
+static const unsigned long D_SIZE  = icytower::kSnapshotRegions[icytower::kRegionData].size;
+static const unsigned long B_VA    = icytower::kSnapshotRegions[icytower::kRegionBss].va;
+static const unsigned long B_SIZE  = icytower::kSnapshotRegions[icytower::kRegionBss].size;
+static const unsigned long A_VA    = icytower::kSnapshotRegions[icytower::kRegionArena].va;
+static const unsigned long S_VA    = icytower::kSnapshotRegions[icytower::kRegionStack].va;
+static const unsigned long S_SIZE  = icytower::kSnapshotRegions[icytower::kRegionStack].size;
+
+// Component descriptor: manifest key AND file basename stem.
 struct Component {
-    const char* name;      // manifest key AND file basename stem
-    const void* addr;      // guest address (nullptr for carrier.bin/context.bin)
+    const char* name;
+    const void* addr;
     size_t      size;
     std::string sha;
 };
-
-static bool write_blob(const char* dir, const char* leaf, const void* p, size_t n, std::string* sha) {
-    char path[MAX_PATH];
-    join_path(path, sizeof(path), dir, leaf);
-    FILE* f = fopen(path, "wb");
-    if (!f) { fprintf(stderr, "snapshot: cannot write '%s'\n", path); return false; }
-    if (n && fwrite(p, 1, n, f) != n) { fclose(f); fprintf(stderr, "snapshot: short write '%s'\n", path); return false; }
-    fclose(f);
-    *sha = pf::Sha256::of(p, n);
-    return true;
-}
-
-static bool read_blob(const char* dir, const char* leaf, std::vector<uint8_t>* out) {
-    char path[MAX_PATH];
-    join_path(path, sizeof(path), dir, leaf);
-    FILE* f = fopen(path, "rb");
-    if (!f) { fprintf(stderr, "snapshot: cannot read '%s'\n", path); return false; }
-    fseek(f, 0, SEEK_END);
-    long n = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    out->resize((size_t)(n < 0 ? 0 : n));
-    if (n > 0 && fread(out->data(), 1, (size_t)n, f) != (size_t)n) {
-        fclose(f);
-        fprintf(stderr, "snapshot: short read '%s'\n", path);
-        return false;
-    }
-    fclose(f);
-    return true;
-}
-
-// Minimal manifest reader: the manifest is OUR OWN generated JSON with one
-// flat object per component and unique key names, so a forward substring
-// scan is enough - no JSON parser is pulled into the carrier for it. Used
-// only to verify integrity (per-component sha256 + tick), never to locate
-// data: the component addresses are fixed (det.hpp's PF_GUEST_* macros) and
-// the stack's start address comes from the restored CONTEXT's own ESP.
-static bool manifest_find_sha(const std::string& text, const char* comp, std::string* out) {
-    std::string key = std::string("\"") + comp + "\":";
-    size_t at = text.find(key);
-    if (at == std::string::npos) return false;
-    size_t s = text.find("\"sha256\": \"", at);
-    if (s == std::string::npos || s > at + 400) return false;
-    s += strlen("\"sha256\": \"");
-    if (s + 64 > text.size()) return false;
-    *out = text.substr(s, 64);
-    return true;
-}
-
-// ---------------------------------------------------------------------
-// Other-thread quiescence during the memory write-back.
-//
-// The snapshot is taken with the main thread stopped at the safepoint, but
-// the WINDOW thread (Allegro's message pump) is running the whole time and
-// reads/writes Allegro globals in the very .data/.bss ranges we are about
-// to overwrite. Suspending every other thread for the duration of the
-// memcpys removes the torn-write half of that hazard (it does NOT remove
-// the rewound-critical-section half - see carrier/NOTES.md "Milestones 8-9",
-// hazards). Everything that can allocate or touch a lock (reading the
-// snapshot files, hashing, verifying) happens BEFORE this, so the suspended
-// threads can never be holding a lock we then need.
-// ---------------------------------------------------------------------
-static int suspend_other_threads(HANDLE* handles, int cap) {
-    int n = 0;
-    DWORD me = GetCurrentThreadId(), pid = GetCurrentProcessId();
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-    if (snap == INVALID_HANDLE_VALUE) return 0;
-    THREADENTRY32 te;
-    te.dwSize = sizeof(te);
-    if (Thread32First(snap, &te)) {
-        do {
-            if (te.th32OwnerProcessID != pid || te.th32ThreadID == me) continue;
-            if (n >= cap) break;
-            HANDLE h = OpenThread(THREAD_SUSPEND_RESUME, FALSE, te.th32ThreadID);
-            if (!h) continue;
-            if (SuspendThread(h) == (DWORD)-1) { CloseHandle(h); continue; }
-            handles[n++] = h;
-        } while (Thread32Next(snap, &te));
-    }
-    CloseHandle(snap);
-    return n;
-}
-
-static void resume_threads(HANDLE* handles, int n) {
-    for (int i = 0; i < n; ++i) { ResumeThread(handles[i]); CloseHandle(handles[i]); }
-}
-
-static unsigned read_x87_cw() {
-    unsigned short cw = 0;
-    __asm { fnstcw word ptr [cw] }
-    return cw;
-}
 
 // ---------------------------------------------------------------------
 // Capture
@@ -219,9 +156,9 @@ static void do_capture(CONTEXT* ctx, int tick) {
     // The guest stack's LIVE range only: everything below ESP is dead, and
     // ESP is measured constant (0x0e1fef30) at every safepoint of this
     // workload (see carrier/NOTES.md), so this is ~4 KB, not 2 MB.
-    uintptr_t stack_top = (uintptr_t)PF_GUEST_STACK_VA + PF_GUEST_STACK_SZ;
+    uintptr_t stack_top = (uintptr_t)S_VA + S_SIZE;
     uintptr_t stack_lo = (uintptr_t)ctx->Esp;
-    if (stack_lo < (uintptr_t)PF_GUEST_STACK_VA || stack_lo >= stack_top)
+    if (stack_lo < (uintptr_t)S_VA || stack_lo >= stack_top)
         die("guest ESP is outside the fixed guest stack region (--guest-stack=host?)");
     size_t stack_size = (size_t)(stack_top - stack_lo);
 
@@ -236,9 +173,9 @@ static void do_capture(CONTEXT* ctx, int tick) {
 
     Component comps[6] = {
         { "context", ctx,                                   sizeof(CONTEXT),     std::string() },
-        { "data",    (const void*)(uintptr_t)PF_GUEST_DATA_VA, PF_GUEST_DATA_SIZE, std::string() },
-        { "bss",     (const void*)(uintptr_t)PF_GUEST_BSS_VA,  PF_GUEST_BSS_SIZE,  std::string() },
-        { "arena",   (const void*)(uintptr_t)PF_GUEST_ARENA_VA, cs.det.arena_offset, std::string() },
+        { "data",    (const void*)(uintptr_t)D_VA, D_SIZE, std::string() },
+        { "bss",     (const void*)(uintptr_t)B_VA,  B_SIZE,  std::string() },
+        { "arena",   (const void*)(uintptr_t)A_VA, cs.det.arena_offset, std::string() },
         { "stack",   (const void*)stack_lo,                  stack_size,          std::string() },
         { "carrier", &cs,                                    sizeof(cs),          std::string() },
     };
@@ -255,20 +192,8 @@ static void do_capture(CONTEXT* ctx, int tick) {
     // (headers + .text + .rdata, 0x400000 .. .data) plus, when the path is
     // known, the guest EXE file itself. A restore into a differently-built
     // image is nonsense and this is what a future loader would check.
-    std::string image_sha = pf::Sha256::of((const void*)(uintptr_t)0x400000u,
-                                            (size_t)(PF_GUEST_DATA_VA - 0x400000u));
-    std::string file_sha = "(not hashed)";
-    if (g_opt.image_path && g_opt.image_path[0]) {
-        FILE* f = fopen(g_opt.image_path, "rb");
-        if (f) {
-            pf::Sha256 s;
-            unsigned char buf[65536];
-            size_t n;
-            while ((n = fread(buf, 1, sizeof(buf), f)) > 0) s.update(buf, n);
-            fclose(f);
-            file_sha = s.hex();
-        }
-    }
+    std::string image_sha = pf::win32::snapshot_image_identity(icytower::kSnapshotDomain);
+    std::string file_sha = pf::win32::snapshot_file_sha(g_opt.image_path);
 
     char mpath[MAX_PATH];
     join_path(mpath, sizeof(mpath), dir, "manifest.json");
@@ -284,7 +209,7 @@ static void do_capture(CONTEXT* ctx, int tick) {
     // process assigns differently. The pid is recorded so a restore can SAY
     // so instead of crashing mysteriously.
     fprintf(m, "  \"capture_pid\": %lu,\n", GetCurrentProcessId());
-    fprintf(m, "  \"safepoint_va\": \"0x004124f4\",\n");
+    fprintf(m, "  \"safepoint_va\": \"0x%08lx\",\n", icytower::kSnapshotDomain.safepoint_va);
     fprintf(m, "  \"image_text_sha256\": \"%s\",\n", image_sha.c_str());
     fprintf(m, "  \"image_file_sha256\": \"%s\",\n", file_sha.c_str());
     fprintf(m, "  \"total_bytes\": %u,\n", (unsigned)total);
@@ -305,12 +230,12 @@ static void do_capture(CONTEXT* ctx, int tick) {
             (ctx->ContextFlags & CONTEXT_FLOATING_POINT) ? "true" : "false",
             (ctx->ContextFlags & CONTEXT_EXTENDED_REGISTERS) ? "true" : "false");
     fprintf(m, "  \"data\":  { \"file\": \"data.bin\",  \"va\": \"0x%08x\", \"size\": %u, \"sha256\": \"%s\" },\n",
-            PF_GUEST_DATA_VA, (unsigned)PF_GUEST_DATA_SIZE, comps[1].sha.c_str());
+            D_VA, (unsigned)D_SIZE, comps[1].sha.c_str());
     fprintf(m, "  \"bss\":   { \"file\": \"bss.bin\",   \"va\": \"0x%08x\", \"size\": %u, \"sha256\": \"%s\" },\n",
-            PF_GUEST_BSS_VA, (unsigned)PF_GUEST_BSS_SIZE, comps[2].sha.c_str());
+            B_VA, (unsigned)B_SIZE, comps[2].sha.c_str());
     fprintf(m, "  \"arena\": { \"file\": \"arena.bin\", \"va\": \"0x%08x\", \"size\": %u, \"sha256\": \"%s\", "
                "\"bump_pointer\": %u },\n",
-            PF_GUEST_ARENA_VA, (unsigned)comps[3].size, comps[3].sha.c_str(),
+            A_VA, (unsigned)comps[3].size, comps[3].sha.c_str(),
             (unsigned)cs.det.arena_offset);
     fprintf(m, "  \"stack\": { \"file\": \"stack.bin\", \"va\": \"0x%08x\", \"size\": %u, \"sha256\": \"%s\", "
                "\"top\": \"0x%08x\" },\n",
@@ -396,7 +321,7 @@ static void do_restore(CONTEXT* ctx) {
     }
 
     if (vctx.size() != sizeof(CONTEXT)) die("context.bin has the wrong size for this build's CONTEXT");
-    if (vdata.size() != PF_GUEST_DATA_SIZE || vbss.size() != PF_GUEST_BSS_SIZE)
+    if (vdata.size() != D_SIZE || vbss.size() != B_SIZE)
         die(".data/.bss component sizes do not match this image's sections");
     if (vcarrier.size() != sizeof(CarrierState)) die("carrier.bin has the wrong size for this build");
 
@@ -407,7 +332,7 @@ static void do_restore(CONTEXT* ctx) {
     if (cs.magic != PF_CARRIER_STATE_MAGIC || cs.version != PF_CARRIER_STATE_VERSION)
         die("carrier.bin magic/version mismatch");
 
-    uintptr_t stack_top = (uintptr_t)PF_GUEST_STACK_VA + PF_GUEST_STACK_SZ;
+    uintptr_t stack_top = (uintptr_t)S_VA + S_SIZE;
     uintptr_t stack_lo = (uintptr_t)saved.Esp;
     if (stack_lo + vstack.size() != stack_top)
         die("stack.bin does not end at the guest stack top");
@@ -431,9 +356,9 @@ static void do_restore(CONTEXT* ctx) {
 
     HANDLE suspended[32];
     int nsusp = suspend_other_threads(suspended, 32);
-    memcpy((void*)(uintptr_t)PF_GUEST_DATA_VA, vdata.data(), vdata.size());
-    memcpy((void*)(uintptr_t)PF_GUEST_BSS_VA, vbss.data(), vbss.size());
-    if (!varena.empty()) memcpy((void*)(uintptr_t)PF_GUEST_ARENA_VA, varena.data(), varena.size());
+    memcpy((void*)(uintptr_t)D_VA, vdata.data(), vdata.size());
+    memcpy((void*)(uintptr_t)B_VA, vbss.data(), vbss.size());
+    if (!varena.empty()) memcpy((void*)(uintptr_t)A_VA, varena.data(), varena.size());
     if (!vstack.empty()) memcpy((void*)stack_lo, vstack.data(), vstack.size());
     resume_threads(suspended, nsusp);
 
@@ -446,7 +371,8 @@ static void do_restore(CONTEXT* ctx) {
     // scope (carrier/gen/game_globals.inc), so the very first digest line
     // written after this restore must already differ.
     if (g_opt.restore_fault) {
-        volatile unsigned char* p = (volatile unsigned char*)(uintptr_t)0x4fac28u;
+        volatile unsigned char* p =
+            (volatile unsigned char*)(uintptr_t)icytower::kSnapshotDomain.fault_probe_va;
         *p ^= 1u;
         fprintf(stderr, "snapshot: --restore-fault fired: flipped bit0 of [0x004fac28] "
                         "(reward_scale, restored .bss) - the first difference must be named "

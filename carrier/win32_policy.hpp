@@ -32,6 +32,7 @@
 #include "../port_forge/src/platform/win32/input_channel.hpp"
 #include "../port_forge/src/platform/win32/policy.hpp"
 #include "../port_forge/src/platform/win32/rng.hpp"
+#include "../port_forge/src/platform/win32/snapshot.hpp"
 #include "../port_forge/src/platform/win32/threads.hpp"
 #include "../port_forge/src/platform/win32/virtual_clock.hpp"
 
@@ -330,6 +331,46 @@ inline constexpr pf::win32::FrameOraclePolicy kFrameOracle = {
     /* line_array_off   */ 64u,
     /* color_depth_off  */ 0u,
     /* palette_fn_va    */ 0x0044c47cul,
+};
+
+// ---------------------------------------------------------------------
+// The snapshot domain.
+//
+// KNOWN (notes/binary_recon.md, carrier/NOTES.md "Milestones 8-9"):
+//   .data  0x004bc000 + 0x000176f4
+//   .bss   0x004dd000 + 0x00036978
+// plus the two carrier-owned regions: the deterministic arena (kArena,
+// captured only up to its live `top`, because the allocator's whole state
+// lives inside that prefix) and the fixed guest stack (kGuestImage's
+// stack_va/stack_size, captured as a LIVE RANGE from ESP upward - below ESP
+// is dead, and ESP is the measured constant 0x0e1fef30 at all 876
+// safepoints of the G1 workload, so this is ~4 KB rather than 2 MB).
+//
+// image_identity is [0x400000, .data): headers + .text + .rdata, the
+// read-only half. Restoring into a differently-built image is nonsense.
+//
+// safepoint_va 0x4124f4 is main.c play(), once per consumed game tick.
+//
+// fault_probe_va 0x4fac28 is reward_scale, chosen because it is inside .bss
+// AND inside the 151-global digest domain (carrier/gen/game_globals.inc),
+// so --restore-fault's flipped bit must make the very first post-restore
+// digest line differ - which is what makes it a real negative control
+// rather than a gesture.
+inline constexpr pf::win32::SnapshotRegion kSnapshotRegions[] = {
+    { "data",  0x004bc000ul, 0x000176f4ul, pf::win32::SnapshotRegion::Full },
+    { "bss",   0x004dd000ul, 0x00036978ul, pf::win32::SnapshotRegion::Full },
+    { "arena", 0x20000000ul, 0ul,          pf::win32::SnapshotRegion::LiveRange },
+    { "stack", 0x0e000000ul, 0x00200000ul, pf::win32::SnapshotRegion::LiveRange },
+};
+enum { kRegionData = 0, kRegionBss = 1, kRegionArena = 2, kRegionStack = 3 };
+
+inline constexpr pf::win32::SnapshotDomainPolicy kSnapshotDomain = {
+    /* regions             */ kSnapshotRegions,
+    /* region_count        */ 4,
+    /* image_identity_va   */ 0x00400000ul,
+    /* image_identity_size */ 0x004bc000ul - 0x00400000ul,
+    /* safepoint_va        */ 0x004124f4ul,
+    /* fault_probe_va      */ 0x004fac28ul,
 };
 
 }  // namespace icytower
