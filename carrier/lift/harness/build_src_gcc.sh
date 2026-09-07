@@ -57,5 +57,6 @@ mkdir -p obj_gcc
     ../../../src/icytower/handle_player_collision_original.c \
     ../../../src/icytower/is_solid.c \
     ../../../src/icytower/draw_scroller.c \
+    ../../../src/icytower/collision.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"

@@ -158,3 +158,40 @@ void harness_trace_textout_centre_ex(BITMAP *bmp, const FONT *f, const char *s,
     }
     slot[0] += 1;
 }
+
+/* batch 9 (2026-09-07): the compiled-candidate halves of the two call
+ * traces src/icytower/collision.c's three line-sweep variants need. See
+ * pf_harness_calltrace.h's own batch-9 comment for why `line` has no
+ * #define redirect and is instead installed into a scratch GFX_VTABLE by
+ * the dispatch.
+ *
+ * harness_trace_makecol() returns 0 because that is what the ORIGINAL
+ * side's stubbed callee returns (pf_win32_offline_oracle.py's
+ * _make_call_trace_hook writes EAX = 0 for every traced callee) -- the two
+ * colours are only ever passed on to the vtable `line` calls, whose own
+ * trace compares them. */
+int harness_trace_makecol(int r, int g, int b)
+{
+    unsigned int *slot = (unsigned int *)PF_MEM(CALLTRACE_MAKECOL_VA);
+    if (slot[0] == 0) {
+        slot[1] = (unsigned int)r;
+        slot[2] = (unsigned int)g;
+        slot[3] = (unsigned int)b;
+    }
+    slot[0] += 1;
+    return 0;
+}
+
+void harness_trace_line(BITMAP *bmp, int x1, int y1, int x2, int y2, int color)
+{
+    unsigned int *slot = (unsigned int *)PF_MEM(CALLTRACE_LINE_VA);
+    if (slot[0] == 0) {
+        slot[1] = pf_untranslate(bmp);
+        slot[2] = (unsigned int)x1;
+        slot[3] = (unsigned int)y1;
+        slot[4] = (unsigned int)x2;
+        slot[5] = (unsigned int)y2;
+        slot[6] = (unsigned int)color;
+    }
+    slot[0] += 1;
+}

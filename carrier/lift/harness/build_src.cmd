@@ -39,6 +39,7 @@ cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\..\gen /I. /I..\..\..\src\icyt
    ..\..\..\src\icytower\reset_player.c ..\..\..\src\icytower\update_player.c ^
    ..\..\..\src\icytower\play_jump_sound.c ..\..\..\src\icytower\handle_player_collision_original.c ^
    ..\..\..\src\icytower\start_reward.c ^
+   ..\..\..\src\icytower\collision.c ^
    /Fe:src_check.exe /Fo:obj_src\
 if errorlevel 1 ( echo FAILED & exit /b 1 )
 echo OK: harness\src_check.exe

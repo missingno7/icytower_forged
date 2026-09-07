@@ -84,6 +84,52 @@ void harness_trace_textout_centre_ex(BITMAP *bmp, const FONT *f, const char *s,
 #define textout_ex harness_trace_textout_ex
 #define textout_centre_ex harness_trace_textout_centre_ex
 
+/* batch 9 (2026-09-07): two more callees, both needed by src/icytower/
+ * collision.c's three line-sweep variants.
+ *
+ * `makecol` (0x450c98) is an ordinary named Allegro import, so it joins
+ * set_clip_rect/textout_ex above unchanged -- same first-call-capture
+ * rule, same {count, arg0..arg2} shape. The ORIGINAL-side hook writes
+ * EAX = 0 for every stubbed callee, so this stub returns 0 too; the
+ * returned colour is only ever handed straight back to the vtable `line`
+ * call below, whose own trace then compares it.
+ *
+ * `line` is NOT a named call at all: Allegro 4's line() is an AL_INLINE
+ * whose whole body is `bmp->vtable->line(bmp, ...)` (third_party/
+ * allegro-4.4.3.1/include/allegro/inline/draw.inl:72), and that is exactly
+ * what the original bytes do -- `call *0x34(%ecx)` off BITMAP.vtable
+ * (offset 0x1c). There is therefore no name to #define: instead the
+ * vector generator points the guest `screen` global at a scratch BITMAP
+ * whose scratch GFX_VTABLE has VTABLE_LINE_VA in its +0x34 slot (a VA the
+ * Oracle hooks like any other traced callee), and the GCC dispatch writes
+ * the HOST address of harness_trace_line() into that same slot in its own
+ * copy of the guest image before the call. Both sides then log the same
+ * {count, bmp, x1, y1, x2, y2, color} shape into CALLTRACE_LINE_VA. `bmp`
+ * is reverse-translated by the stub for the reason call_trace_stubs.c's
+ * pf_untranslate() comment already documents for every BITMAP* argument. */
+#define CALLTRACE_MAKECOL_VA 0x7c1400u
+#define CALLTRACE_LINE_VA 0x7c1500u
+
+int harness_trace_makecol(int r, int g, int b);
+void harness_trace_line(BITMAP *bmp, int x1, int y1, int x2, int y2, int color);
+
+#define makecol harness_trace_makecol
+
+/* `line` itself. collision.c calls plain `line(screen, ...)`, which
+ * carrier/gen/pf_lib_bindings.h supplies in the CARRIER world (one of its
+ * 23 generated "AL_INLINE vtable-dispatch macros") and real <allegro.h>
+ * supplies in the UPSTREAM world. The generated, no-bindings
+ * src/icytower/allegro_api.h -- the world this GCC harness builds in --
+ * supplies neither the macro nor a declaration: that generator emits the
+ * AL_INLINE family only into its bindings half. That is a real gap in
+ * port_forge/tools/pf_win32_gen_lib_bindings.py, reported (PROMOTIONS.md
+ * batch 9) rather than fixed here; this line is the harness-only
+ * workaround, textually identical to pf_lib_bindings.h's own, so the
+ * source under test is the same in every world. */
+#ifndef line
+#define line(a0, a1, a2, a3, a4, a5) ((a0)->vtable->line((a0), (a1), (a2), (a3), (a4), (a5)))
+#endif
+
 /* start_reward.c's own asset_bitmap(ASSET_DATA_REWARD_000 + tier) call
  * (src/icytower/ASSETS.md's "5-function API" seam, used exactly as
  * documented there): assets.h only declares the 5-function API when

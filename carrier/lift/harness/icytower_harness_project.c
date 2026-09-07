@@ -86,6 +86,9 @@
 #define G_PLAYER_ID 0x4fe518u
 #define G_PLY       0x4ff128u
 #define G_DEMO      0x4dd250u
+/* batch 9 (src/icytower/collision.c) */
+#define G_SCREEN    0x4dda8cu      /* Allegro BITMAP *screen */
+#define SCREEN_VTABLE_VA 0x7c3100u /* scratch GFX_VTABLE (icytower_specs.py) */
 #define RAND_SEED_VA 0x794020u
 
 extern void update_frame(void);
@@ -129,6 +132,10 @@ extern void reset_player(Tplayer *);
 extern void update_player(Tplayer *);
 extern void play_jump_sound(Tplayer *);
 extern void handle_player_collision_original(int, int);
+extern void handle_player_collision_old(int, int);
+extern void handle_player_collision_vector(int, int);
+extern void handle_player_collision_vector_2(int, int);
+extern void handle_player_collision_combo(int, int);
 extern int  start_reward(int);
 
 unsigned int pf_harness_dispatch_src(const char *fn, unsigned int *a, unsigned int nargs)
@@ -293,6 +300,49 @@ unsigned int pf_harness_dispatch_src(const char *fn, unsigned int *a, unsigned i
         eax = 0;
     } else if (!strcmp(fn, "start_reward")) {
         eax = (unsigned int)start_reward((int)a[0]);
+    } else if (!strcmp(fn, "handle_player_collision_old") ||
+               !strcmp(fn, "handle_player_collision_vector") ||
+               !strcmp(fn, "handle_player_collision_vector_2") ||
+               !strcmp(fn, "handle_player_collision_combo")) {
+        /* batch 9 (src/icytower/collision.c). In THIS world every global
+         * these four read -- map/any11../sounds/debug/key/screen -- is
+         * already PF_MEM-bound by the generated pf_bindings_harness.h, so
+         * unlike the GCC dispatch's collision_pre() there is nothing to
+         * sync by hand. Two pointer VALUES stored INSIDE guest memory
+         * still need the usual second translation:
+         *   ply[player_id]  same as handle_player_collision_original above;
+         *   screen -> BITMAP.vtable, two levels deep, so that the vtable's
+         *             +0x34 `line` slot (which the vector generator filled
+         *             with the SYNTHETIC guest VA the ORIGINAL side's
+         *             Oracle hooks) can be replaced by the host address of
+         *             harness_trace_line(). Neither the BITMAP nor the
+         *             vtable is in the comparison domain, so rewriting
+         *             them here is invisible to the diff.
+         * NOTE: unverified by execution -- this sandbox has no MSVC cl.exe,
+         * so src_check.exe could not be rebuilt or run this pass (see
+         * PROMOTIONS.md batch 8/9's own sandbox notes). Written so the
+         * specs module's DEFAULT_FUNCS["src"] list stays coherent; every
+         * EQUAL claim for these four is from the GCC/x87 build. */
+        int pid = *(int *)PF_MEM(G_PLAYER_ID);
+        unsigned int *slot = (unsigned int *)PF_MEM((unsigned int)(G_PLY + 4u * (unsigned int)pid));
+        unsigned int *screen_slot = (unsigned int *)PF_MEM(G_SCREEN);
+        if (*slot >= PF_GUEST_BASE && *slot < PF_GUEST_BASE + PF_GUEST_SIZE)
+            *slot = (unsigned int)(size_t)PF_MEM(*slot);
+        if (*screen_slot >= PF_GUEST_BASE && *screen_slot < PF_GUEST_BASE + PF_GUEST_SIZE) {
+            BITMAP *bmp = (BITMAP *)PF_MEM(*screen_slot);
+            bmp->vtable = (GFX_VTABLE *)PF_MEM(SCREEN_VTABLE_VA);
+            bmp->vtable->line = harness_trace_line;
+            *screen_slot = (unsigned int)(size_t)bmp;
+        }
+        if (!strcmp(fn, "handle_player_collision_old"))
+            handle_player_collision_old((int)a[0], (int)a[1]);
+        else if (!strcmp(fn, "handle_player_collision_vector"))
+            handle_player_collision_vector((int)a[0], (int)a[1]);
+        else if (!strcmp(fn, "handle_player_collision_vector_2"))
+            handle_player_collision_vector_2((int)a[0], (int)a[1]);
+        else
+            handle_player_collision_combo((int)a[0], (int)a[1]);
+        eax = 0;
     } else {
         fprintf(stderr, "unknown function '%s'\n", fn);
         exit(2);

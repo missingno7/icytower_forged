@@ -111,6 +111,11 @@
 #define G_ANY22          0x4dd180u
 #define G_ANY23          0x4dd184u
 #define G_SOUNDS         0x4dd2e0u
+/* -- batch 9: src/icytower/collision.c's four variants -- */
+#define G_DEBUG          0x4dd160u      /* int debug (no store anywhere in the image) */
+#define G_KEY            0x506988u      /* Allegro volatile char key[127] */
+#define G_SCREEN         0x4dda8cu      /* Allegro BITMAP *screen */
+#define SCREEN_VTABLE_VA 0x7c3100u      /* scratch GFX_VTABLE (icytower_specs.py) */
 
 /* storage for game_state.h's extern decls -- the STANDALONE world's
  * contract (a project's own state.c defines the globals in every OTHER
@@ -148,6 +153,12 @@ int player_id;
 Tplayer *ply[1000];
 int any11, any12, any13, any21, any22, any23;
 SAMPLE *sounds[9];
+/* batch 9: collision.c's debug-overlay gate and its draw target. `key` and
+ * `screen` are Allegro's own globals (allegro_api.h declares them in this
+ * standalone world); `debug` is the game's. */
+int debug;
+volatile char key[127];
+BITMAP *screen;
 
 extern int jump_player(Tplayer *, int);
 extern int line_intersect(int, int, int, int, int, int, int, int, int *, int *);
@@ -162,6 +173,56 @@ extern void play_jump_sound(Tplayer *);
 extern int  start_reward(int);
 extern void handle_player_collision_original(int, int);
 extern int  draw_scroller(Tscroller *, BITMAP *, int, int, int);
+extern void handle_player_collision_old(int, int);
+extern void handle_player_collision_vector(int, int);
+extern void handle_player_collision_vector_2(int, int);
+extern void handle_player_collision_combo(int, int);
+
+/* batch 9: the shared pre/post sync for src/icytower/collision.c's four
+ * variants. All four read ply[player_id] and `map` internally (never as a
+ * parameter), write the any11..any23 globals (two of them do), read
+ * sounds[8], and -- inside their `debug && key[KEY_F2]` overlay gate --
+ * `screen`. The one thing that is NOT a plain sync: the vtable `line`
+ * slot. The vector generator puts a SYNTHETIC guest VA (VTABLE_LINE_VA)
+ * there so the ORIGINAL side's Oracle can hook it; the compiled side needs
+ * a real host function pointer in the same slot instead, so this dispatch
+ * overwrites it with harness_trace_line() after translating both the
+ * BITMAP and the GFX_VTABLE pointer VALUES -- the same "second
+ * translation, driver-side" pattern ply[player_id]/demo/data already
+ * needed, one level deeper. Neither the BITMAP nor the vtable is part of
+ * the comparison domain, so rewriting them here is invisible to the diff. */
+static void collision_pre(void)
+{
+    unsigned int pid;
+    player_id = *(int *)(pf_guest + (G_PLAYER_ID - PF_GUEST_BASE));
+    pid = (unsigned int)player_id;
+    ply[pid] = (Tplayer *)pf_tr(*(unsigned int *)(pf_guest + (G_PLY + 4u * pid - PF_GUEST_BASE)));
+    memcpy(&map, pf_guest + (G_MAP - PF_GUEST_BASE), sizeof(map));
+    any11 = *(int *)(pf_guest + (G_ANY11 - PF_GUEST_BASE));
+    any12 = *(int *)(pf_guest + (G_ANY12 - PF_GUEST_BASE));
+    any21 = *(int *)(pf_guest + (G_ANY21 - PF_GUEST_BASE));
+    any22 = *(int *)(pf_guest + (G_ANY22 - PF_GUEST_BASE));
+    any23 = *(int *)(pf_guest + (G_ANY23 - PF_GUEST_BASE));
+    memcpy(sounds, pf_guest + (G_SOUNDS - PF_GUEST_BASE), sizeof(sounds));
+    debug = *(int *)(pf_guest + (G_DEBUG - PF_GUEST_BASE));
+    memcpy((void *)key, pf_guest + (G_KEY - PF_GUEST_BASE), sizeof(key));
+    screen = (BITMAP *)pf_tr(*(unsigned int *)(pf_guest + (G_SCREEN - PF_GUEST_BASE)));
+    if (screen != 0) {
+        screen->vtable = (GFX_VTABLE *)pf_tr(SCREEN_VTABLE_VA);
+        screen->vtable->line = harness_trace_line;
+    }
+}
+
+static void collision_post(void)
+{
+    /* ply[pid] points INTO pf_guest, so the Tplayer writes already landed
+     * there; only the plain-int globals need writing back. */
+    *(int *)(pf_guest + (G_ANY11 - PF_GUEST_BASE)) = any11;
+    *(int *)(pf_guest + (G_ANY12 - PF_GUEST_BASE)) = any12;
+    *(int *)(pf_guest + (G_ANY21 - PF_GUEST_BASE)) = any21;
+    *(int *)(pf_guest + (G_ANY22 - PF_GUEST_BASE)) = any22;
+    *(int *)(pf_guest + (G_ANY23 - PF_GUEST_BASE)) = any23;
+}
 
 unsigned int pf_harness_dispatch_gcc(const char *fn, unsigned int *a, unsigned int nargs)
 {
@@ -284,12 +345,33 @@ unsigned int pf_harness_dispatch_gcc(const char *fn, unsigned int *a, unsigned i
         *(int *)(pf_guest + (G_ANY21 - PF_GUEST_BASE)) = any21;
         *(int *)(pf_guest + (G_ANY22 - PF_GUEST_BASE)) = any22;
         *(int *)(pf_guest + (G_ANY23 - PF_GUEST_BASE)) = any23;
+    } else if (!strcmp(fn, "handle_player_collision_old")) {
+        collision_pre();
+        handle_player_collision_old((int)a[0], (int)a[1]);
+        collision_post();
+        eax = 0;
+    } else if (!strcmp(fn, "handle_player_collision_vector")) {
+        collision_pre();
+        handle_player_collision_vector((int)a[0], (int)a[1]);
+        collision_post();
+        eax = 0;
+    } else if (!strcmp(fn, "handle_player_collision_vector_2")) {
+        collision_pre();
+        handle_player_collision_vector_2((int)a[0], (int)a[1]);
+        collision_post();
+        eax = 0;
+    } else if (!strcmp(fn, "handle_player_collision_combo")) {
+        collision_pre();
+        handle_player_collision_combo((int)a[0], (int)a[1]);
+        collision_post();
+        eax = 0;
     } else {
         fprintf(stderr, "gcc dispatch only wires up line_intersect/jump_player/"
                         "new_rand/update_particle/create_particle/ok_to_play/"
                         "add_floor/reset_player/update_player/play_jump_sound/"
                         "start_reward/handle_player_collision_original/"
-                        "draw_scroller; got '%s'\n", fn);
+                        "draw_scroller/handle_player_collision_{old,vector,"
+                        "vector_2,combo}; got '%s'\n", fn);
         exit(2);
     }
     return eax;
