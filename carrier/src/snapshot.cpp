@@ -39,7 +39,7 @@
 #include "snapshot.hpp"
 #include "det.hpp"
 #include "bind.hpp"
-#include "symbols.hpp"
+#include "../../port_forge/src/platform/win32/symbols.hpp"
 #include "../../port_forge/src/core/sha256.hpp"
 
 // ---------------------------------------------------------------------
@@ -580,7 +580,7 @@ bool snapshot_trace_active() { return g_trace_remaining > 0 && g_trace_file != n
 void snapshot_trace_step(CONTEXT* ctx) {
     if (!snapshot_trace_active()) return;
     char where[192];
-    symbols_describe((unsigned long)ctx->Eip, where, sizeof(where));
+    pf::win32::symbols_describe((unsigned long)ctx->Eip, where, sizeof(where));
     fprintf(g_trace_file, "%6ld %08lx %s", g_trace_index, (unsigned long)ctx->Eip, where);
     if (g_trace_have_prev) {
         struct { const char* n; DWORD a, b; } r[] = {

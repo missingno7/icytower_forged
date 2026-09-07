@@ -12,7 +12,8 @@
 #include "imports.hpp"
 #include "trace.hpp"
 #include "wrappers.hpp"
-#include "symbols.hpp"
+#include "../../port_forge/src/platform/win32/symbols.hpp"
+#include "../../port_forge/src/platform/win32/diagnostics.hpp"
 #include "import_types.hpp"
 #include "det.hpp"
 #include "bind.hpp"
@@ -89,46 +90,10 @@ static DWORD WINAPI watchdog_proc(LPVOID) {
 
 // ---------------------------------------------------------------------
 // Vectored exception handler: the primary "where did it die" diagnostic.
+// The handler, the register dump and the EBP-chain stack walk moved to
+// port_forge/src/platform/win32/diagnostics.hpp; it is installed below
+// (in main) with carrier_shutdown as its flush hook.
 // ---------------------------------------------------------------------
-static LONG WINAPI veh_handler(EXCEPTION_POINTERS* ep) {
-    EXCEPTION_RECORD* er = ep->ExceptionRecord;
-    CONTEXT* ctx = ep->ContextRecord;
-    char where[192];
-    symbols_describe((unsigned long)(uintptr_t)er->ExceptionAddress, where, sizeof(where));
-
-    fprintf(stderr, "\n=== UNHANDLED EXCEPTION ===\n");
-    fprintf(stderr, "code=0x%08lx addr=0x%08lx (%s)\n",
-            er->ExceptionCode, (unsigned long)(uintptr_t)er->ExceptionAddress, where);
-    fprintf(stderr,
-        "EIP=0x%08lx EAX=0x%08lx EBX=0x%08lx ECX=0x%08lx EDX=0x%08lx "
-        "ESI=0x%08lx EDI=0x%08lx EBP=0x%08lx ESP=0x%08lx EFLAGS=0x%08lx\n",
-        ctx->Eip, ctx->Eax, ctx->Ebx, ctx->Ecx, ctx->Edx,
-        ctx->Esi, ctx->Edi, ctx->Ebp, ctx->Esp, ctx->EFlags);
-
-    // Best-effort EBP-chain stack walk (mingw gcc 4.4.1 keeps frame pointers
-    // by default at this optimization level per notes/binary_recon.md - not
-    // guaranteed, hence the readability guard on every hop).
-    fprintf(stderr, "stack walk (EBP chain):\n");
-    unsigned long* ebp = (unsigned long*)(uintptr_t)ctx->Ebp;
-    for (int i = 0; i < 32 && ebp; ++i) {
-        if (IsBadReadPtr(ebp, 8)) {
-            fprintf(stderr, "  #%d ebp=0x%08lx <unreadable, stopping>\n", i, (unsigned long)(uintptr_t)ebp);
-            break;
-        }
-        unsigned long ret = ebp[1];
-        char d[192];
-        symbols_describe(ret, d, sizeof(d));
-        fprintf(stderr, "  #%d ebp=0x%08lx ret=0x%08lx (%s)\n", i, (unsigned long)(uintptr_t)ebp, ret, d);
-        unsigned long* next = (unsigned long*)(uintptr_t)ebp[0];
-        if (next <= ebp) break; // guards against a corrupt/cyclic chain
-        ebp = next;
-    }
-    fflush(stderr);
-
-    carrier_shutdown("unhandled exception");
-    TerminateProcess(GetCurrentProcess(), 1);
-    return EXCEPTION_CONTINUE_SEARCH; // unreachable
-}
 
 // ---------------------------------------------------------------------
 // Guest stack switch (--guest-stack=fixed, the default) and the "guest
@@ -715,16 +680,16 @@ int main(int argc, char** argv) {
     get_exe_dir(exe_dir, sizeof(exe_dir));
     get_parent_dir(exe_dir, repo_root, sizeof(repo_root));
     _snprintf(functions_json, sizeof(functions_json), "%s\\artifacts\\functions.json", repo_root);
-    symbols_load(functions_json);
+    pf::win32::symbols_load(functions_json);
 
     trace_init(o.trace_out[0] ? o.trace_out : nullptr);
     apply_trace_imports(o);
 
-    AddVectoredExceptionHandler(1, veh_handler);
-    // Registered AFTER veh_handler so it runs FIRST (AddVectoredExceptionHandler
+    pf::win32::diagnostics_install(carrier_shutdown);
+    // Registered AFTER diagnostics_install so it runs FIRST (AddVectoredExceptionHandler
     // prepends when FirstHandler=1): det_veh_handler claims our own hardware
     // breakpoints (EXCEPTION_SINGLE_STEP) and returns CONTINUE_SEARCH for
-    // everything else, falling through to veh_handler's fatal-crash diagnostics
+    // everything else, falling through to diagnostics.hpp's fatal-crash dump
     // unchanged. See det.hpp.
     AddVectoredExceptionHandler(1, det_veh_handler);
 

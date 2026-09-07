@@ -5,7 +5,7 @@
 #include <cstring>
 #include "trace.hpp"
 #include "import_types.hpp"
-#include "symbols.hpp"
+#include "../../port_forge/src/platform/win32/symbols.hpp"
 #include "det.hpp" // report.json: input_policy / real_key_violations (see det_input_policy_name/det_real_key_violations)
 #include "bind.hpp" // report.json: the milestone 11-12 migration map (bind_report_json)
 #include "snapshot.hpp" // report.json: milestone 8-9 snapshot sizes/timings
@@ -101,7 +101,7 @@ extern "C" void __cdecl pf_on_import(int id, void* frame) {
             unsigned long* args = (unsigned long*)frame; // [0]=retaddr, [1..]=args
             unsigned long retaddr = args[0];
             char where[192];
-            symbols_describe(retaddr, where, sizeof(where));
+            pf::win32::symbols_describe(retaddr, where, sizeof(where));
             const char* name = (id < kNumImports) ? g_import_names[id] : "<bad-id>";
             fprintf(g_trace_file,
                 "%lu tid=%lu %s ret=0x%08lx (%s) args=[0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx]\n",
