@@ -35,6 +35,8 @@ artifacts/. Newest entries at the bottom of each section.
 - .text ownership: Allegro 61.5 %, vorbis/ogg 17.0 %, game 16.5 % (125641 B, 253 functions), CRT 3.6 %.
 
 ## First-divergence investigations
+- 002 (2026-09-07) human recording replays/first_human (829 events, 1187 gameplay ticks, recorded with --pace=real --input=real): replay starts gameplay at T=309 vs recorded T=310; with every event shifted +1 tick the first 11 ticks match and the first difference moves to T=321. KNOWN cause: real key events reach Allegro from the DirectInput thread at arbitrary sub-tick times, while replay injects at tick boundaries; the recorded tick coordinate is therefore ±1 per event. Fix (pending, carrier): capture real events and deliver them at the next tick boundary from the main thread through the injection path, so record == replay by construction.
+- 003 (2026-09-07) exit hang at 'Exiting Allegro' in --det: _tim_win32_exit (0x478488) does SetEvent(stop) then loops WaitForSingleObject(timer_thread_handle,100)==WAIT_TIMEOUT; the virtualized timer thread's fake handle never signals. Fix (pending): park a real thread in its own wait (INFINITE timeout for that thread) so it exits on the stop event and the join succeeds.
 - 001 (2026-09-07) RESOLVED, not a carrier defect: the line after 'Malformed HTTP response:' is the raw HTTP body from www.icytower.com printed through a single %s; the site returned different bytes in run1. Reproduced: original and carrier run back-to-back both print an empty line. Channel = live network on the ad-fetch thread (DIRECT WSOCK32). Det mode must suppress or record it. notes/divergence_001_log_format.md.
 
 ## Native-promotion progress
