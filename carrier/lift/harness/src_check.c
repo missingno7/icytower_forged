@@ -97,6 +97,22 @@ extern int  is_fire(Tcontrol *);
 extern int  is_pause(Tcontrol *);
 extern int  is_enter(Tcontrol *);
 extern int  is_any(Tcontrol *);
+/* batch 3 (2026-09-07) */
+extern void set_control(Tcontrol *, int, int, int, int, int);
+extern void init_control(Tcontrol *);
+extern int  check_control_key(Tcontrol *, int);
+extern int  get_level(Tmap *, int);
+extern void add_jump_sequence(Tgame_data *, Tgd_jump_sequence *);
+extern void reset_particles(Tparticle *);
+extern void scroll_scroller(Tscroller *, int);
+extern void restart_scroller(Tscroller *);
+extern void cycle_counter(void);
+extern void fps_counter(void);
+extern Treplay *get_demo(void);
+extern Tcontrol *get_controls(void);
+extern void switchedFromProgram(void);
+extern void switchedToProgram(void);
+extern void clickedCloseButton(void);
 
 static unsigned int rd32(FILE *f)
 {
@@ -244,6 +260,58 @@ int main(int argc, char **argv)
             eax = (unsigned int)is_enter((Tcontrol *)tr(a[0]));
         } else if (!strcmp(fn, "is_any")) {
             eax = (unsigned int)is_any((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "set_control")) {
+            Tcontrol *c = (Tcontrol *)tr(a[0]);
+            set_control(c, (int)a[1], (int)a[2], (int)a[3], (int)a[4], (int)a[5]);
+            eax = 0;
+        } else if (!strcmp(fn, "init_control")) {
+            Tcontrol *c = (Tcontrol *)tr(a[0]);
+            init_control(c);
+            eax = 0;
+        } else if (!strcmp(fn, "check_control_key")) {
+            Tcontrol *c = (Tcontrol *)tr(a[0]);
+            eax = (unsigned int)check_control_key(c, (int)a[1]);
+        } else if (!strcmp(fn, "get_level")) {
+            Tmap *m = (Tmap *)tr(a[0]);
+            eax = (unsigned int)get_level(m, (int)a[1]);
+        } else if (!strcmp(fn, "add_jump_sequence")) {
+            Tgame_data *gd = (Tgame_data *)tr(a[0]);
+            Tgd_jump_sequence *js = (Tgd_jump_sequence *)tr(a[1]);
+            add_jump_sequence(gd, js);
+            eax = 0;
+        } else if (!strcmp(fn, "reset_particles")) {
+            Tparticle *p = (Tparticle *)tr(a[0]);
+            reset_particles(p);
+            eax = 0;
+        } else if (!strcmp(fn, "scroll_scroller")) {
+            Tscroller *sc = (Tscroller *)tr(a[0]);
+            scroll_scroller(sc, (int)a[1]);
+            eax = 0;
+        } else if (!strcmp(fn, "restart_scroller")) {
+            Tscroller *sc = (Tscroller *)tr(a[0]);
+            restart_scroller(sc);
+            eax = 0;
+        } else if (!strcmp(fn, "cycle_counter")) {
+            cycle_counter();
+            eax = 0;
+        } else if (!strcmp(fn, "fps_counter")) {
+            fps_counter();
+            eax = 0;
+        } else if (!strcmp(fn, "get_demo")) {
+            /* raw pointer VALUE relayed verbatim, never dereferenced by
+             * get_demo() itself -- no host/guest translation needed. */
+            eax = (unsigned int)(size_t)get_demo();
+        } else if (!strcmp(fn, "get_controls")) {
+            eax = untr(get_controls());
+        } else if (!strcmp(fn, "switchedFromProgram")) {
+            switchedFromProgram();
+            eax = 0;
+        } else if (!strcmp(fn, "switchedToProgram")) {
+            switchedToProgram();
+            eax = 0;
+        } else if (!strcmp(fn, "clickedCloseButton")) {
+            clickedCloseButton();
+            eax = 0;
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);
             return 2;

@@ -61,6 +61,128 @@ offline check.
 | clean source lines (`wc -l` of the .c files) | 341 | 468 |
 | original bytes recovered | 903 | 1130 |
 
+## Batch 3 (2026-09-07 — this pass)
+
+15 functions, grouped by CU, all pure integer (0 x87 instructions in any of
+them — confirmed reading `artifacts/disasm.txt` instruction by instruction
+for every one) and either leaf or calling only plain globals already bound
+through `pf_bindings_src.h`/`pf_bindings_harness.h`. Picked in the task
+brief's stated order of preference: category (1) (gameplay-reachable —
+`cycle_counter`/`fps_counter` directly drive `logic_count`, the same global
+`update_frame.c` already depends on; `control.c`'s three additions complete
+the per-tick input CU batch 2 started) first, falling back to category (3)
+(remaining leaf functions) for the rest, since no tractable category-(2)
+candidate (an Allegro- or asset-calling function) survived triage this pass
+without either needing the not-yet-built call-trace domain or depending on
+an unpromoted function — see "Skipped this pass" below.
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `set_control` | 0x4017d4 | 38 | control.c | EQUAL (20000) | DWARF-named via `DW_AT_abstract_origin` resolution (see control.c's header comment) — `gen_interop.py`'s name pass never follows that back, so this function had no name anywhere in the generated pipeline (`it_funcs.h`, `functions.json`) despite DWARF actually carrying one; `--exclude set_control` on `gen_bindings.py` is therefore a documented no-op (nothing was ever bound under that name to redirect). Binds the 5 remappable keys at once. | pending |
+| `init_control` | 0x401790 | 67 | control.c | EQUAL (20000) | Recovered as a literal inlined call to `set_control()` (5 defaults) plus 4 more field stores — the original source's own structure, not a hand re-inlining. | pending |
+| `check_control_key` | 0x401808 | 58 | control.c | EQUAL (20000) | Same -1/0 idiom as `is_up`..`is_any`; true if `key` matches any of the 7 bindable fields (not `use_joy`/`flags`). | pending |
+| `get_level` | 0x416748 | 40 | map.c | EQUAL (20000) | Third `y = 29-((cy+1)>>4)` row-lookup consumer alongside `is_solid`/`getFloorData`; unlike those two, does not gate on `room[y].empty`. | pending |
+| `add_jump_sequence` | 0x4040f4 | 87 | game_data.c | EQUAL (20000) | `add_combo`'s sibling in the same CU: same bounded-append-then-increment shape, `Tgd_jump_sequence` (3 plain ints, no padding) written as one struct assignment for the same bit-identical reason `add_combo.c` already established for `Tgd_combo`. `jumpPosts` offset (0xeaa4) and `jumps[]` base (0xeaa8) cross-checked against `artifacts/dwarf_info.txt`'s `DW_AT_data_member_location` directly (60068/60072 bytes), not just against the disassembly. | pending |
+| `reset_particles` | 0x418420 | 27 | particle.c | EQUAL (20000) | Zeroes only `intensity` (the "free slot" marker) across all 512 elements of the array `p` points at, not a single particle and not the whole struct. | pending |
+| `scroll_scroller` | 0x41f0c0 | 14 | scroller.c | EQUAL (20000) | Single field add (`offset += step`). | pending |
+| `restart_scroller` | 0x41f0d0 | 28 | scroller.c | EQUAL (20000) | Snaps `offset` to `height` (vertical) or `width` (horizontal). | pending |
+| `cycle_counter` | 0x41fed4 | 16 | timer.c | EQUAL (20000) | `cycle_count++` — the free-running tick counter driving the game's own pacing. | pending |
+| `fps_counter` | 0x41fea4 | 45 | timer.c | EQUAL (20000) | Once-per-second sample-and-reset of `frame_count`/`logic_count` into `fps`/`lps`; `logic_count` is the same global `update_frame.c`/`is_solid.c` already depend on (`src/README.md`'s five-global list). | pending |
+| `get_demo` | 0x40696c | 10 | main.c | EQUAL (20000) | `return demo;` — a raw pointer VALUE relayed verbatim, never dereferenced, so (unlike `get_gamepad`/`get_controls`) no host/guest translation is needed anywhere. | pending |
+| `get_controls` | 0x406978 | 10 | main.c | EQUAL (20000) | `return &ctrl;` — same "compiler computes the address" idiom as `get_gamepad`, address-free. | pending |
+| `switchedFromProgram` | 0x406a5c | 15 | main.c | EQUAL (20000) | Allegro window-focus-lost callback: `hasFocus = 0`. | pending |
+| `switchedToProgram` | 0x406a6c | 15 | main.c | EQUAL (20000) | Allegro window-focus-gained callback: `hasFocus = 1`. | pending |
+| `clickedCloseButton` | 0x406a7c | 15 | main.c | EQUAL (20000) | Allegro window-close-button callback: `closeButtonClicked = 1`. | pending |
+
+Every row's negative control: one bit of the SRC side's vector-5 result
+flipped by the harness (`--fault <fn>:5:0`, 200 vectors), comparator names
+the exact byte (e.g. `Tcontrol+0x0 (VA 0x00796000)`, `jumpPosts+0x0 (VA
+0x007aeaa4)`, `frame_count+0x0 (VA 0x00506978)`) and reports "1 of 200
+vectors differ" — full detail in `artifacts/src_equivalence.json`.
+
+### Skipped this pass
+
+| function | VA | size | CU | why skipped |
+|---|---|---:|---|---|
+| `update_particle` | 0x41843c | 83 | particle.c | Calls `new_rand()` (0x406984, main.c, not yet promoted) twice — an x87 float LCG with its own control-word save/restore, structurally similar in difficulty to `line_intersect`'s x87 escalation. Promoting it would mean either (a) executing a copy of `new_rand`'s original bytes from inside `harness/src_check.exe`, which the offline harness's `pf_guest` buffer cannot do (it is a plain `malloc` region, deliberately not `VirtualAlloc`'d executable — `src_check.c`'s own header comment explains why a fixed-address executable mapping was ruled out), or (b) promoting `new_rand` itself first. Neither is attempted this pass; left for a future batch once `new_rand` is recovered. |
+| `create_particle` | 0x418490 | 192 | particle.c | Same reason as `update_particle`: calls `new_rand()` twice (to seed `sx`/`sy`) and depends on it for its interesting behavior. |
+| `destroy_game_data` | 0x40418c | 12 | game_data.c | Tail-jumps straight into `free()` (`jmp _free`, no `call`) — semantically a one-line `free(gd)` wrapper, but its only observable effect is heap-allocator-internal state with no comparison domain the offline harness can express (unlike a memory write, freeing a block leaves no game-owned bytes to diff), so a 20000-vector offline pass would only ever prove "did not crash", not "matches". Deferred, not attempted. |
+| `get_version_str` | 0x406960 | 10 | main.c | Returns a literal `.rdata` string address (0x4d4b20), not a named global — recovering it cleanly needs the actual string bytes extracted from the image, which this pass did not do (no existing artifact carries them). Deferred. |
+| `ok_to_play` | 0x406a50 | 10 | main.c | `return 1;` unconditionally, no globals, no domain worth a dedicated harness entry beyond EAX alone; left out of this batch's 15 for headroom, not for any recovery difficulty (trivially `int ok_to_play(void) { return 1; }` whenever picked up). |
+
+### Call-trace domain
+
+**Not implemented this pass.** None of the 15 functions promoted calls
+Allegro or an asset accessor (the task brief's category (2)); the two
+functions that do call something interesting (`update_particle`,
+`create_particle`) call a *game* function (`new_rand`), not a library
+import, and are deferred above for that reason rather than triggering the
+call-trace-domain work. `carrier/lift/harness/lift_check.py`/`src_check.c`
+still only support the memory-domain comparison this pass builds on
+additively; a future pass that actually reaches an Allegro-calling
+candidate (e.g. `draw_star_field`, `init_scroller`, `load_control`/
+`save_control` calling `fread`/`fwrite`) is where that machinery would
+first be needed.
+
+### Totals (updated)
+
+| | batch 3 (this pass) | cumulative (3 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 15 | 31 |
+| functions skipped (documented, all passes) | 6 | 7 |
+| clean source lines (git-diff insertions for this pass's touched files) | 316 | 784 |
+| original bytes recovered | 485 | 1615 |
+
+`git diff --stat`-style file list this pass: `control.c` (+73 lines: 3 new
+functions — `set_control`, `init_control`, `check_control_key` — plus header
+comment), `map.c` (+35 lines: `get_level` plus header comment),
+`add_jump_sequence.c` (31 lines, new file), `particle.c` (33 lines, new
+file), `scroller.c` (33 lines, new file), `timer.c` (44 lines, new file),
+`main_state.c` (67 lines, new file).
+
+`draw_buffer` (`src/icytower/ASSETS.md`, compile-only, pixel-output domain
+not memory-diffable) stays outside this table's counts, unchanged from
+that document.
+
+## Purity gate (updated)
+
+```
+python scripts/check_native_layer.py
+check_native_layer: scanned 23 file(s) under .../src, 0 violation(s)
+```
+
+## Compile (both worlds, batch 3)
+
+```
+standalone: cl /nologo /c /W3 /TC /Isrc\icytower
+            src\icytower\update_frame.c src\icytower\is_solid.c
+            src\icytower\jump_player.c src\icytower\map.c src\icytower\add_combo.c
+            src\icytower\add_jump_sequence.c src\icytower\line_intersect.c
+            src\icytower\control.c src\icytower\particle.c src\icytower\scroller.c
+            src\icytower\timer.c src\icytower\main_state.c src\icytower\state.c
+            -- 0 errors, 0 warnings
+
+carrier:    python carrier\gen\scan_src_defs.py --src-dir src\icytower   (35 names,
+            auto-scanned -- carrier\gen\SCAN_SRC_DEFS.py's whole purpose)
+            python carrier\gen\gen_bindings.py --exclude <scanned 35 names> ^
+                --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+                --out carrier\gen\pf_bindings_src.h --types-out carrier\gen\pf_bindings_src_types.h
+            -- 0 reserved_collisions, functions_excluded: 31 of 242 (4 of the 35
+               scanned names are not in the 242-function game-scope set --
+               see the "harness_changes" note in artifacts/src_equivalence.json's
+               "pass_2026-09-07_batch3" entry)
+
+            cl /nologo /c /W3 /TC /Icarrier\gen /FIpf_bindings_src.h
+               src\icytower\update_frame.c src\icytower\is_solid.c src\icytower\jump_player.c
+               src\icytower\map.c src\icytower\add_combo.c src\icytower\add_jump_sequence.c
+               src\icytower\line_intersect.c src\icytower\control.c src\icytower\particle.c
+               src\icytower\scroller.c src\icytower\timer.c src\icytower\main_state.c
+            -- 0 errors, 0 warnings (carrier world)
+```
+
+No function promoted this pass calls an Allegro import, so — as in batch
+2 — the `/FIcarrier\gen\pf_lib_bindings.h` question did not arise.
+
 `git diff --stat`-style file list this pass: `jump_player.c` (81 lines, 198
 original bytes), `map.c` (68 lines, 160 original bytes for 2 functions),
 `add_combo.c` (27 lines, 62 original bytes), `line_intersect.c` (117 lines

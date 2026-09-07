@@ -50,6 +50,28 @@ GD_COMBO_VA = 0x7a0040                 #   == GD_VA + 0x40 (comboPosts field)
 GD_COMBOS_VA = 0x7a0044                #   == GD_VA + 0x44 (combos[] array base)
 C_VA = 0x7bf000                        # source Tgd_combo for add_combo
 
+# -- batch 3 (2026-09-07) additions --
+JS_VA = 0x7bf100                       # source Tgd_jump_sequence for add_jump_sequence
+PART_VA = 0x7a4000                     # Tparticle[512] for reset_particles
+SCROLLER_VA = 0x7a8000                 # Tscroller for scroll_scroller/restart_scroller
+SZ_JUMPSEQ = 12                        # Tgd_jump_sequence: start, dist, num (3 ints)
+SZ_PARTICLE = 24                       # Tparticle: intensity, x, y, sx, sy, color (6 ints)
+# DWARF-confirmed (artifacts/dwarf_info.txt DW_AT_data_member_location):
+# Tgame_data.jumpPosts @ +60068 (0xeaa4), jumps[] array base @ +60072 (0xeaa8) --
+# same derivation as GD_COMBO_VA/GD_COMBOS_VA above, one field later (jumpPosts
+# follows combos[5000] the way comboPosts precedes it).
+GD_JS_VA = GD_VA + 0xeaa4              # jumpPosts field
+GD_JUMPS_VA = GD_VA + 0xeaa8           # jumps[] array base
+
+G_DEMO = 0x4dd250                      # Treplay *demo
+G_CTRL = 0x5000c8                      # Tcontrol ctrl (player-1 control state)
+G_HASFOCUS = 0x4bc020                  # int hasFocus
+G_CLOSEBTN = 0x4dd264                  # int closeButtonClicked
+G_CYCLE_COUNT = 0x506938               # volatile int cycle_count
+G_FPS = 0x506948                       # volatile int fps
+G_FRAME_COUNT = 0x506978               # volatile int frame_count
+G_LPS = 0x506968                       # volatile int lps
+
 # The ORIGINAL side must enter the function with the SAME x87 control word the
 # game enters it with.  KNOWN: ___mingw_CRTStartup (0x401020) calls __fpreset
 # (0x4b2850) = a bare FNINIT, which leaves CW = 0x037F: PC = 11 (64-bit
@@ -263,6 +285,137 @@ def gen_get_gamepad(rng, k):
 
 
 # --------------------------------------------------------------------------
+# batch 3 (2026-09-07) -- 15 leaf/near-leaf functions, all pure integer (no
+# x87 in any of them), reusing the same struct-layout knowledge (SZ_MAP,
+# SZ_CONTROL, SZ_COMBO's sibling SZ_JUMPSEQ) already validated by the
+# is_solid/getFloorData/add_combo generators above.
+# --------------------------------------------------------------------------
+
+def gen_set_control(rng, k):
+    c = bytearray(rng.getrandbits(8) for _ in range(SZ_CONTROL))
+    up, down, left, right, fire = (rng.randint(-(1 << 31), (1 << 31) - 1) for _ in range(5))
+    return [CTRL_VA, up, down, left, right, fire], [(CTRL_VA, bytes(c))]
+
+
+def gen_init_control(rng, k):
+    c = bytearray(rng.getrandbits(8) for _ in range(SZ_CONTROL))
+    return [CTRL_VA], [(CTRL_VA, bytes(c))]
+
+
+def gen_check_control_key(rng, k):
+    """Populate the 7 fields check_control_key compares (key_left..key_pause,
+    everything but use_joy/flags) with small values, then pool `key` so it
+    matches one of them about half the time and misses entirely the rest."""
+    c = bytearray(SZ_CONTROL)
+    vals = [rng.randint(-1000, 1000) for _ in range(7)]
+    offs = [4, 8, 0xc, 0x10, 0x14, 0x18, 0x1c]
+    for off, v in zip(offs, vals):
+        struct.pack_into("<i", c, off, v)
+    key = rng.choice(vals) if k % 2 == 0 else rng.randint(-1000, 1000)
+    return [CTRL_VA, key], [(CTRL_VA, bytes(c))]
+
+
+def gen_get_level(rng, k):
+    """Same Tmap.room[32] row layout as gen_is_solid/gen_getFloorData; get_level
+    reads `level` (offset +12) but does not gate on `empty`, unlike those two."""
+    m = bytearray(SZ_MAP)
+    for r in range(32):
+        b = r * 24
+        struct.pack_into("<i", m, b + 0, rng.choice([0, 0, 0, 1, rng.randint(-3, 3)]))
+        struct.pack_into("<i", m, b + 4, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 8, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 12, rng.getrandbits(31) * rng.choice([1, -1]))
+        struct.pack_into("<i", m, b + 16, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 20, rng.getrandbits(31))
+    off_pool = [0, 1, 7, 15, 16, 17, -1, -9, -16, -17, 0x40000000, -0x40000000]
+    off = off_pool[k % len(off_pool)] if k < 48 else rng.randint(-100000, 100000)
+    struct.pack_into("<i", m, 768, off)
+    if k % 4 == 0:
+        cy = rng.randint(-40, 500)
+    elif k % 4 == 1:
+        cy = rng.choice([-34, -33, -32, -17, -16, -1, 0, 1, 15, 16, 479, 480, 481])
+    else:
+        cy = rng.randint(-20000, 20000)
+    return [MAP_VA, cy], [(MAP_VA, bytes(m))]
+
+
+def gen_add_jump_sequence(rng, k):
+    """Same low/high-window bound-testing shape as gen_add_combo: jumpPosts
+    pooled near 0 (ordinary insert) and near 4999/5000 (the reject branch)."""
+    low_pool = [0, 1, 2, 5, 10, 19, 25]
+    high_pool = [4990, 4995, 4998, 4999, 5000, 5001, 5005, 5100]
+    if k % 3 == 0:
+        jp = low_pool[k % len(low_pool)] if k < 400 else rng.randint(0, GD_LOW_WINDOW - 1)
+    else:
+        jp = high_pool[k % len(high_pool)]
+    js = bytearray(SZ_JUMPSEQ)
+    struct.pack_into("<i", js, 0, rng.randint(-100000, 100000))   # start
+    struct.pack_into("<i", js, 4, rng.randint(-100000, 100000))   # dist
+    struct.pack_into("<i", js, 8, rng.randint(-100000, 100000))   # num
+    writes = [(GD_JS_VA, si32(jp)), (JS_VA, bytes(js)),
+              (GD_JUMPS_VA, b"\x00" * (GD_LOW_WINDOW * SZ_JUMPSEQ)),
+              (GD_JUMPS_VA + GD_HIGH_BASE * SZ_JUMPSEQ, b"\x00" * (10 * SZ_JUMPSEQ))]
+    return [GD_VA, JS_VA], writes
+
+
+def gen_reset_particles(rng, k):
+    buf = bytearray(rng.getrandbits(8) for _ in range(512 * SZ_PARTICLE))
+    return [PART_VA], [(PART_VA, bytes(buf))]
+
+
+def gen_scroll_scroller(rng, k):
+    off = rng.randint(-(1 << 31), (1 << 31) - 1)
+    step = rng.randint(-(1 << 31), (1 << 31) - 1)
+    return [SCROLLER_VA, step], [(SCROLLER_VA + 0x18, si32(off))]
+
+
+def gen_restart_scroller(rng, k):
+    horiz = 0 if k % 2 == 0 else rng.choice([1, -1, 2, 7])
+    width = rng.randint(-100000, 100000)
+    height = rng.randint(-100000, 100000)
+    off = rng.randint(-(1 << 31), (1 << 31) - 1)
+    writes = [(SCROLLER_VA + 0x0, si32(horiz)), (SCROLLER_VA + 0x10, si32(width)),
+              (SCROLLER_VA + 0x14, si32(height)), (SCROLLER_VA + 0x18, si32(off))]
+    return [SCROLLER_VA], writes
+
+
+def gen_cycle_counter(rng, k):
+    pool = [0, 1, -1, 0x7fffffff, -0x80000000, 100]
+    val = pool[k % len(pool)] if k < 100 else rng.randint(-(1 << 31), (1 << 31) - 1)
+    return [], [(G_CYCLE_COUNT, si32(val))]
+
+
+def gen_fps_counter(rng, k):
+    fc = rng.randint(-(1 << 31), (1 << 31) - 1)
+    lc = rng.randint(-(1 << 31), (1 << 31) - 1)
+    old_fps = rng.randint(-(1 << 31), (1 << 31) - 1)
+    old_lps = rng.randint(-(1 << 31), (1 << 31) - 1)
+    return [], [(G_FRAME_COUNT, si32(fc)), (G_FPS, si32(old_fps)),
+                (G_LOGIC_COUNT, si32(lc)), (G_LPS, si32(old_lps))]
+
+
+def gen_get_demo(rng, k):
+    pool = [0, 0x790000, 0x7fffffff, -1, -0x80000000]
+    val = pool[k % len(pool)] if k < 20 else rng.randint(-(1 << 31), (1 << 31) - 1)
+    return [], [(G_DEMO, si32(val))]
+
+
+def gen_get_controls(rng, k):
+    payload = bytes(rng.getrandbits(8) for _ in range(4))
+    return [], [(G_CTRL, payload)]
+
+
+def gen_switched_focus(rng, k):
+    val = rng.randint(-(1 << 31), (1 << 31) - 1)
+    return [], [(G_HASFOCUS, si32(val))]
+
+
+def gen_clicked_close_button(rng, k):
+    val = rng.randint(-(1 << 31), (1 << 31) - 1)
+    return [], [(G_CLOSEBTN, si32(val))]
+
+
+# --------------------------------------------------------------------------
 # line_intersect (0x406b80) -- the x87 discriminator
 #
 #   D  = dx1*dy3 - dx3*dy1        (32-bit IMULs, wrapping)
@@ -465,7 +618,54 @@ SPECS = {
     "is_any": {"va": 0x4018e8, "gen": gen_control(0xbf), "cmp_eax": True,
               "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
               "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    # -- batch 3 (2026-09-07) --
+    "set_control": {"va": 0x4017d4, "gen": gen_set_control, "cmp_eax": False,
+                    "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"]},
+    "init_control": {"va": 0x401790, "gen": gen_init_control, "cmp_eax": False,
+                     "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"]},
+    "check_control_key": {"va": 0x401808, "gen": gen_check_control_key, "cmp_eax": True,
+                          "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+                          "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "get_level": {"va": 0x416748, "gen": gen_get_level, "cmp_eax": True,
+                 "domain": [(MAP_VA, SZ_MAP)], "domain_names": ["Tmap"],
+                 "must_be_unchanged": [(MAP_VA, SZ_MAP)]},
+    "add_jump_sequence": {"va": 0x4040f4, "gen": gen_add_jump_sequence, "cmp_eax": False,
+                          "domain": [(GD_JS_VA, 4),
+                                     (GD_JUMPS_VA, GD_LOW_WINDOW * SZ_JUMPSEQ),
+                                     (GD_JUMPS_VA + GD_HIGH_BASE * SZ_JUMPSEQ, 10 * SZ_JUMPSEQ)],
+                          "domain_names": ["jumpPosts", "jumps[0..25]", "jumps[4990..4999]"]},
+    "reset_particles": {"va": 0x418420, "gen": gen_reset_particles, "cmp_eax": False,
+                        "domain": [(PART_VA, 512 * SZ_PARTICLE)],
+                        "domain_names": ["Tparticle[512]"]},
+    "scroll_scroller": {"va": 0x41f0c0, "gen": gen_scroll_scroller, "cmp_eax": False,
+                        "domain": [(SCROLLER_VA + 0x18, 4)], "domain_names": ["offset"]},
+    "restart_scroller": {"va": 0x41f0d0, "gen": gen_restart_scroller, "cmp_eax": False,
+                         "domain": [(SCROLLER_VA + 0x18, 4)], "domain_names": ["offset"]},
+    "cycle_counter": {"va": 0x41fed4, "gen": gen_cycle_counter, "cmp_eax": False,
+                      "domain": [(G_CYCLE_COUNT, 4)], "domain_names": ["cycle_count"]},
+    "fps_counter": {"va": 0x41fea4, "gen": gen_fps_counter, "cmp_eax": False,
+                    "domain": [(G_FRAME_COUNT, 4), (G_FPS, 4),
+                               (G_LOGIC_COUNT, 4), (G_LPS, 4)],
+                    "domain_names": ["frame_count", "fps", "logic_count", "lps"]},
+    "get_demo": {"va": 0x40696c, "gen": gen_get_demo, "cmp_eax": True,
+                "domain": [(G_DEMO, 4)], "domain_names": ["demo"],
+                "must_be_unchanged": [(G_DEMO, 4)]},
+    "get_controls": {"va": 0x406978, "gen": gen_get_controls, "cmp_eax": True,
+                     "domain": [(G_CTRL, 4)], "domain_names": ["ctrl+0x0"],
+                     "must_be_unchanged": [(G_CTRL, 4)]},
+    "switchedFromProgram": {"va": 0x406a5c, "gen": gen_switched_focus, "cmp_eax": False,
+                            "domain": [(G_HASFOCUS, 4)], "domain_names": ["hasFocus"]},
+    "switchedToProgram": {"va": 0x406a6c, "gen": gen_switched_focus, "cmp_eax": False,
+                          "domain": [(G_HASFOCUS, 4)], "domain_names": ["hasFocus"]},
+    "clickedCloseButton": {"va": 0x406a7c, "gen": gen_clicked_close_button, "cmp_eax": False,
+                           "domain": [(G_CLOSEBTN, 4)], "domain_names": ["closeButtonClicked"]},
 }
+
+SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
+                    "add_jump_sequence,reset_particles,scroll_scroller,"
+                    "restart_scroller,cycle_counter,fps_counter,get_demo,"
+                    "get_controls,switchedFromProgram,switchedToProgram,"
+                    "clickedCloseButton")
 
 
 # --------------------------------------------------------------------------
@@ -630,7 +830,7 @@ def main():
         elif args.form == "src":
             args.funcs = ("update_frame,is_solid,jump_player,getFloorData,reset_map,"
                          "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
-                         "is_right,is_fire,is_pause,is_enter,is_any")
+                         "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS)
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")

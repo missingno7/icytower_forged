@@ -3,8 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 12:04:42 UTC
- * Excluded (compiled natively, name kept free): add_combo, getFloorData, get_gamepad, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, reset_map, update_frame
+ * Generated: 2026-09-07 13:05:55 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, cycle_counter, draw_buffer, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame
  * Addresses wrapped with --mem-macro: PF_MEM(...)
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
@@ -379,9 +379,7 @@
 /* add_itr_file  VA=0x41e740  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int add_itr_file(const char *, int, void *) */
 #define add_itr_file ((PFN_add_itr_file)PF_MEM(0x41e740))
-/* add_jump_sequence  VA=0x4040f4  cu=F:\projects\icytower\trunk\source\game_data.c */
-/* prototype: void add_jump_sequence(Tgame_data *, Tgd_jump_sequence *) */
-#define add_jump_sequence ((PFN_add_jump_sequence)PF_MEM(0x4040f4))
+/* excluded by --exclude (compiled natively): add_jump_sequence */
 /* add_profile  VA=0x40c8c0  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int add_profile(const char *, int, void *) */
 #define add_profile ((PFN_add_profile)PF_MEM(0x40c8c0))
@@ -409,18 +407,14 @@
 /* check_characters  VA=0x40e680  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int check_characters() */
 #define check_characters ((PFN_check_characters)PF_MEM(0x40e680))
-/* check_control_key  VA=0x401808  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int check_control_key(Tcontrol *, int) */
-#define check_control_key ((PFN_check_control_key)PF_MEM(0x401808))
+/* excluded by --exclude (compiled natively): check_control_key */
 /* check_dir  VA=0x40ffc4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int check_dir(const char *, int, void *) */
 #define check_dir ((PFN_check_dir)PF_MEM(0x40ffc4))
 /* clear_trailing_whitespace  VA=0x402078  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: void clear_trailing_whitespace(char *) */
 #define clear_trailing_whitespace ((PFN_clear_trailing_whitespace)PF_MEM(0x402078))
-/* clickedCloseButton  VA=0x406a7c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void clickedCloseButton() */
-#define clickedCloseButton ((PFN_clickedCloseButton)PF_MEM(0x406a7c))
+/* excluded by --exclude (compiled natively): clickedCloseButton */
 /* color_map_callback  VA=0x407c20  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void color_map_callback(int) */
 #define color_map_callback ((PFN_color_map_callback)PF_MEM(0x407c20))
@@ -460,9 +454,7 @@
 /* custom_alert  VA=0x4027f0  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: void custom_alert(char *, char *) */
 #define custom_alert ((PFN_custom_alert)PF_MEM(0x4027f0))
-/* cycle_counter  VA=0x41fed4  cu=F:\projects\icytower\trunk\source\timer.c */
-/* prototype: void cycle_counter() */
-#define cycle_counter ((PFN_cycle_counter)PF_MEM(0x41fed4))
+/* excluded by --exclude (compiled natively): cycle_counter */
 /* datafile_callback  VA=0x407c14  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void datafile_callback(DATAFILE *) */
 #define datafile_callback ((PFN_datafile_callback)PF_MEM(0x407c14))
@@ -499,9 +491,7 @@
 /* drawSlot  VA=0x406fb4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void drawSlot(BITMAP *, int, int, char *, char *, int) */
 #define drawSlot ((PFN_drawSlot)PF_MEM(0x406fb4))
-/* draw_buffer  VA=0x4191c8  cu=F:\projects\icytower\trunk\source\profile.c */
-/* prototype: int draw_buffer(BITMAP *, char *, int, int) */
-#define draw_buffer ((PFN_draw_buffer)PF_MEM(0x4191c8))
+/* excluded by --exclude (compiled natively): draw_buffer */
 /* draw_frame  VA=0x40929c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void draw_frame(BITMAP *) */
 #define draw_frame ((PFN_draw_frame)PF_MEM(0x40929c))
@@ -595,9 +585,7 @@
 /* force_create_profile  VA=0x40d454  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void force_create_profile() */
 #define force_create_profile ((PFN_force_create_profile)PF_MEM(0x40d454))
-/* fps_counter  VA=0x41fea4  cu=F:\projects\icytower\trunk\source\timer.c */
-/* prototype: void fps_counter() */
-#define fps_counter ((PFN_fps_counter)PF_MEM(0x41fea4))
+/* excluded by --exclude (compiled natively): fps_counter */
 /* garble_string  VA=0x401318  cu=F:\projects\icytower\trunk\source\beta.c */
 /* prototype: void garble_string(char *, int) */
 #define garble_string ((PFN_garble_string)PF_MEM(0x401318))
@@ -626,22 +614,16 @@
 /* get_configfile_path  VA=0x4039cc  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_configfile_path(char *, it_orig_size_t) */
 #define get_configfile_path ((PFN_get_configfile_path)PF_MEM(0x4039cc))
-/* get_controls  VA=0x406978  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: Tcontrol * get_controls() */
-#define get_controls ((PFN_get_controls)PF_MEM(0x406978))
+/* excluded by --exclude (compiled natively): get_controls */
 /* get_custom_characters_dir  VA=0x403994  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_custom_characters_dir(char *, it_orig_size_t) */
 #define get_custom_characters_dir ((PFN_get_custom_characters_dir)PF_MEM(0x403994))
-/* get_demo  VA=0x40696c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: Treplay * get_demo() */
-#define get_demo ((PFN_get_demo)PF_MEM(0x40696c))
+/* excluded by --exclude (compiled natively): get_demo */
 /* excluded by --exclude (compiled natively): get_gamepad */
 /* get_gamepad_value  VA=0x40c984  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int get_gamepad_value(char *) */
 #define get_gamepad_value ((PFN_get_gamepad_value)PF_MEM(0x40c984))
-/* get_level  VA=0x416748  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: int get_level(Tmap *, int) */
-#define get_level ((PFN_get_level)PF_MEM(0x416748))
+/* excluded by --exclude (compiled natively): get_level */
 /* get_logfile_path  VA=0x4039f4  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_logfile_path(char *, it_orig_size_t) */
 #define get_logfile_path ((PFN_get_logfile_path)PF_MEM(0x4039f4))
@@ -699,9 +681,7 @@
 /* httpGetLastModified  VA=0x405890  cu=F:\projects\icytower\trunk\source\httpget.c */
 /* prototype: it_orig_time_t httpGetLastModified(HTTPResponse *) */
 #define httpGetLastModified ((PFN_httpGetLastModified)PF_MEM(0x405890))
-/* init_control  VA=0x401790  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: void init_control(Tcontrol *) */
-#define init_control ((PFN_init_control)PF_MEM(0x401790))
+/* excluded by --exclude (compiled natively): init_control */
 /* init_custom  VA=0x401d28  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: int init_custom(Tcustom *, const char *, int) */
 #define init_custom ((PFN_init_custom)PF_MEM(0x401d28))
@@ -909,15 +889,11 @@
 /* reset_options  VA=0x4182cc  cu=F:\projects\icytower\trunk\source\options.c */
 /* prototype: void reset_options(Toptions *) */
 #define reset_options ((PFN_reset_options)PF_MEM(0x4182cc))
-/* reset_particles  VA=0x418420  cu=F:\projects\icytower\trunk\source\particle.c */
-/* prototype: void reset_particles(Tparticle *) */
-#define reset_particles ((PFN_reset_particles)PF_MEM(0x418420))
+/* excluded by --exclude (compiled natively): reset_particles */
 /* reset_player  VA=0x418550  cu=F:\projects\icytower\trunk\source\player.c */
 /* prototype: void reset_player(Tplayer *) */
 #define reset_player ((PFN_reset_player)PF_MEM(0x418550))
-/* restart_scroller  VA=0x41f0d0  cu=F:\projects\icytower\trunk\source\scroller.c */
-/* prototype: void restart_scroller(Tscroller *) */
-#define restart_scroller ((PFN_restart_scroller)PF_MEM(0x41f0d0))
+/* excluded by --exclude (compiled natively): restart_scroller */
 /* run_demo  VA=0x415e0c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void run_demo(char *) */
 #define run_demo ((PFN_run_demo)PF_MEM(0x415e0c))
@@ -945,9 +921,7 @@
 /* save_replay  VA=0x41dd78  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int save_replay(const char *, const char *, Treplay *, int, int) */
 #define save_replay ((PFN_save_replay)PF_MEM(0x41dd78))
-/* scroll_scroller  VA=0x41f0c0  cu=F:\projects\icytower\trunk\source\scroller.c */
-/* prototype: void scroll_scroller(Tscroller *, int) */
-#define scroll_scroller ((PFN_scroll_scroller)PF_MEM(0x41f0c0))
+/* excluded by --exclude (compiled natively): scroll_scroller */
 /* scroll_star_field  VA=0x41f408  cu=F:\projects\icytower\trunk\source\stars.c */
 /* prototype: void scroll_star_field(Tstar_field *, double, double) */
 #define scroll_star_field ((PFN_scroll_star_field)PF_MEM(0x41f408))
@@ -999,12 +973,8 @@
 /* strptime  VA=0x41fe2c  cu=F:\projects\icytower\trunk\source\strptime.c */
 /* prototype: char * strptime(const char *, const char *, struct it_orig_tm *) */
 #define strptime ((PFN_strptime)PF_MEM(0x41fe2c))
-/* switchedFromProgram  VA=0x406a5c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void switchedFromProgram() */
-#define switchedFromProgram ((PFN_switchedFromProgram)PF_MEM(0x406a5c))
-/* switchedToProgram  VA=0x406a6c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void switchedToProgram() */
-#define switchedToProgram ((PFN_switchedToProgram)PF_MEM(0x406a6c))
+/* excluded by --exclude (compiled natively): switchedFromProgram */
+/* excluded by --exclude (compiled natively): switchedToProgram */
 /* syncOptionsFromProfile  VA=0x40c820  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void syncOptionsFromProfile() */
 #define syncOptionsFromProfile ((PFN_syncOptionsFromProfile)PF_MEM(0x40c820))

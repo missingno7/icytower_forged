@@ -1,7 +1,10 @@
-/* map.c -- Tmap producer/consumer pair from F:\projects\icytower\trunk\source\map.c,
- * grouped in one file per that shared CU (is_solid.c, the other map.c
- * consumer, was recovered earlier and keeps its own file -- see
- * src/icytower/is_solid.c and notes/promotion_candidates.md #2/#3/#6).
+/* map.c -- Tmap producer/consumer functions from
+ * F:\projects\icytower\trunk\source\map.c, grouped in one file per that
+ * shared CU (is_solid.c, the other map.c consumer, was recovered earlier
+ * and keeps its own file -- see src/icytower/is_solid.c and
+ * notes/promotion_candidates.md #2/#3/#6). Batch 3 adds get_level(), the
+ * third consumer sharing the same row-lookup idiom; add_floor() (the
+ * producer's write side, 608 bytes) is not attempted this pass.
  */
 #include "game_types.h"
 
@@ -65,4 +68,28 @@ void reset_map(Tmap *m)
         m->room[i].sign = 0;
     }
     m->offset = 0;
+}
+
+/* get_level -- report the `level` tag of the floor at pixel row `cy`,
+ * using the same `y = 29 - ((cy+1)>>4)` row lookup as is_solid()/
+ * getFloorData() (out-of-range rows -- the same `(unsigned)y > 31` bounds
+ * test -- return 0, not the row's stale/empty data).
+ *
+ * Unlike is_solid()/getFloorData(), this one does not gate on
+ * `room[y].empty`: `level` is read even for an empty row (empty rows are
+ * left with stale `level` by reset_map() only at map-reset time, so a
+ * caller checking `level` on a still-unpopulated row already knows to
+ * ignore it by other means -- recovered faithfully, not "fixed").
+ *
+ * Original source: F:\projects\icytower\trunk\source\map.c, decl_line 139
+ * (artifacts/dwarf_info.txt), which names the parameters m and cy.
+ * Recovered from artifacts/disasm.txt (0x416748..0x41676f). No FPU.
+ */
+int get_level(Tmap *m, int cy)
+{
+    int y = 29 - ((cy + 1) >> 4);
+    if (y < 0 || y > 31)
+        return 0;
+
+    return m->room[y].level;
 }
