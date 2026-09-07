@@ -1,0 +1,30 @@
+{
+ "is_solid": {
+  "compared_return_value": true,
+  "domain_bytes": 772,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "jump_player": {
+  "compared_return_value": true,
+  "domain_bytes": 184,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "line_intersect": {
+  "compared_return_value": true,
+  "domain_bytes": 8,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "update_frame": {
+  "compared_return_value": false,
+  "domain_bytes": 192,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ }
+}

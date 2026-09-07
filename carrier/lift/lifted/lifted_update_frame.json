@@ -142,5 +142,8 @@
  "size": 120,
  "unreachable_padding": [],
  "uses_x87": false,
- "va": "0x00406ac4"
+ "va": "0x00406ac4",
+ "x87_arith_ops": 0,
+ "x87_control_word_used": false,
+ "x87_fistp_ops": 0
 }

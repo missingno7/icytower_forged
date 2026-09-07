@@ -1,0 +1,49 @@
+{
+ "is_solid": {
+  "compared_return_value": true,
+  "domain_bytes": 772,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "jump_player": {
+  "compared_return_value": true,
+  "domain_bytes": 184,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "line_intersect": {
+  "differing_vectors": 107,
+  "first": {
+   "args": [
+    "0xe31dacd7",
+    "0x0036cd0c",
+    "0x16f788d7",
+    "0x2bbf2f0c",
+    "0x00000000",
+    "0x00000000",
+    "0x00000000",
+    "0x00000001",
+    "0x00794000",
+    "0x00794004"
+   ],
+   "at": "*py+0x0 (VA 0x00794004)",
+   "byte_index": 4,
+   "kind": "comparison domain",
+   "lifted": "0xa4",
+   "original": "0xa3",
+   "vector": 227
+  },
+  "form": "lifted",
+  "result": "DIFFER",
+  "vectors": 50000
+ },
+ "update_frame": {
+  "compared_return_value": false,
+  "domain_bytes": 192,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ }
+}

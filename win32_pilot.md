@@ -398,6 +398,22 @@ game overwrites before the next tick (pf/72, pf/89 in capsule §E). Negative
 control: inject a one-byte fault into one role and require the comparator to
 name it at that tick.
 
+## 6a. Floating-point fidelity (resolved 2026-09-07)
+
+KNOWN: the game runs with the x87 control word at 0x037F (FNINIT in the
+MinGW startup), so every intermediate is 64-bit-precision extended. A
+`double` model of the FPU diverges (line_intersect: 443 of 200 000 vectors,
+whole-pixel errors); a software 80-bit type is bit-equal. Rules that follow:
+
+- LIFTED form: x87 through the soft 80-bit backend when the function keeps
+  intermediates in the FPU stack; `double` only where proven equal.
+- NATIVE form and the standalone port: compile float code with real x87
+  80-bit arithmetic (GCC `-mfpmath=387`, the original toolchain family) to
+  stay bit-equal; MSVC/SSE builds are acceptable only for integer code or
+  where the oracle proves equality.
+- Every offline oracle must set the FPU control word explicitly (unicorn
+  powers up at PC=24 bits).
+
 ## 7a. Where the clean code lives, and how it stays clean (2026-09-07)
 
 `src/` is the clean port, following the sibling projects' convention

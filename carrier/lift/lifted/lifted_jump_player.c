@@ -24,12 +24,13 @@ int __cdecl lifted_jump_player(Tplayer * a0, int a1)
     unsigned int r_edx = 0u;
     unsigned int pf_ea = 0u;
     unsigned int pf_fres = 0u;
-    pf_x87_t pf_fr[8] = {0,0,0,0,0,0,0,0};
+    pf_x87_t pf_fr[8];
     unsigned int pf_ftop = 0u;
     unsigned int pf_fsw = 0u;
     union { double d[1]; unsigned char b[8]; } pf_stk;
     union { double d[1]; unsigned char b[8]; } pf_arg;
 
+    memset(pf_fr, 0, sizeof pf_fr);
     memset(pf_stk.b, 0, sizeof pf_stk.b);
     PF_CT_ASSERT(sizeof(a0) == 4);
     memcpy(pf_arg.b + 0, &a0, 4);
@@ -84,10 +85,10 @@ L_00418694:
     /* 004186a3  8945fc                 mov dword ptr [ebp - 4], eax */
     PF_SW32(0, r_eax);
     /* 004186a6  db45fc                 fild dword ptr [ebp - 4] */
-    PF_PUSH((pf_x87_t)(int)PF_S32(0));
+    PF_PUSH(PF_FI32(PF_S32(0)));
     /* 004186a9  dd5a18                 fstp qword ptr [edx + 0x18] */
     pf_ea = (unsigned int)(r_edx + 0x18u);
-    PF_WF64(pf_ea, (double)PF_ST(0));
+    PF_WB64(pf_ea, PF_ST(0));
     PF_POP();
     /* 004186ac  b8ffffffff             mov eax, 0xffffffff */
     r_eax = 0xffffffffu;
@@ -102,13 +103,13 @@ L_004186b4:
     PF_W32(pf_ea, 0x1u);
     /* 004186bb  dd4210                 fld qword ptr [edx + 0x10] */
     pf_ea = (unsigned int)(r_edx + 0x10u);
-    PF_PUSH((pf_x87_t)PF_RF64(pf_ea));
+    PF_PUSH(PF_FF64(PF_RF64(pf_ea)));
     /* 004186be  d9c0                   fld st(0) */
     PF_PUSH(PF_ST(0));
     /* 004186c0  d8c1                   fadd st(1) */
-    PF_ST(0) = PF_ST(0) + PF_ST(1);
+    PF_ST(0) = PF_ADD(PF_ST(0), PF_ST(1));
     /* 004186c2  d9ee                   fldz  */
-    PF_PUSH((pf_x87_t)0.0);
+    PF_PUSH(PF_ZERO);
     /* 004186c4  d9c9                   fxch st(1) */
     { pf_x87_t pf_t = PF_ST(0); PF_ST(0) = PF_ST(1); PF_ST(1) = pf_t; }
     /* 004186c6  dde1                   fucom st(1) */
@@ -137,9 +138,9 @@ L_004186d6:
     r_eax = PF_R32(pf_ea);
     /* 004186db  dd04c580db4b00         fld qword ptr [eax*8 + 0x4bdb80] */
     pf_ea = (unsigned int)(r_eax * 8u + 0x4bdb80u);
-    PF_PUSH((pf_x87_t)PF_RF64(pf_ea));
+    PF_PUSH(PF_FF64(PF_RF64(pf_ea)));
     /* 004186e2  d9e0                   fchs  */
-    PF_ST(0) = -PF_ST(0);
+    PF_ST(0) = PF_NEG(PF_ST(0));
     /* 004186e4  dde1                   fucom st(1) */
     pf_fsw = pf_fcmp(PF_ST(0), PF_ST(1));
     /* 004186e6  dfe0                   fnstsw ax */
@@ -162,16 +163,16 @@ L_004186f1:
     ;
     /* 004186f1  dd5218                 fst qword ptr [edx + 0x18] */
     pf_ea = (unsigned int)(r_edx + 0x18u);
-    PF_WF64(pf_ea, (double)PF_ST(0));
+    PF_WB64(pf_ea, PF_ST(0));
     /* 004186f4  d9c9                   fxch st(1) */
     { pf_x87_t pf_t = PF_ST(0); PF_ST(0) = PF_ST(1); PF_ST(1) = pf_t; }
     /* 004186f6  dd5a20                 fstp qword ptr [edx + 0x20] */
     pf_ea = (unsigned int)(r_edx + 0x20u);
-    PF_WF64(pf_ea, (double)PF_ST(0));
+    PF_WB64(pf_ea, PF_ST(0));
     PF_POP();
     /* 004186f9  d90534714d00           fld dword ptr [0x4d7134] */
     pf_ea = (unsigned int)(0x4d7134u);
-    PF_PUSH((pf_x87_t)PF_RF32(pf_ea));
+    PF_PUSH(PF_FF32(PF_RF32(pf_ea)));
     /* 004186ff  dae9                   fucompp  */
     pf_fsw = pf_fcmp(PF_ST(0), PF_ST(1));
     PF_POP(); PF_POP();
@@ -218,7 +219,7 @@ L_00418726:
     PF_PUSH(PF_ST(0));
     /* 0041872a  d80d30714d00           fmul dword ptr [0x4d7130] */
     pf_ea = (unsigned int)(0x4d7130u);
-    PF_ST(0) = PF_ST(0) * (pf_x87_t)PF_RF32(pf_ea);
+    PF_ST(0) = PF_MUL(PF_ST(0), PF_FF32(PF_RF32(pf_ea)));
     /* 00418730  ebbf                   jmp 0x4186f1 */
     goto L_004186f1;
 L_00418734:
@@ -227,7 +228,7 @@ L_00418734:
     PF_PUSH(PF_ST(1));
     /* 00418736  d80d30714d00           fmul dword ptr [0x4d7130] */
     pf_ea = (unsigned int)(0x4d7130u);
-    PF_ST(0) = PF_ST(0) * (pf_x87_t)PF_RF32(pf_ea);
+    PF_ST(0) = PF_MUL(PF_ST(0), PF_FF32(PF_RF32(pf_ea)));
     /* 0041873c  eb98                   jmp 0x4186d6 */
     goto L_004186d6;
 }

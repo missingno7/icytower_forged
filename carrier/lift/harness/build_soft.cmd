@@ -1,5 +1,6 @@
 @echo off
-rem Builds the SOFTFLOAT-x87 variant of the LIFTED side (32-bit MSVC).
+rem Builds the SOFTFLOAT-x87 variant of the LIFTED side (32-bit MSVC), plus the
+rem backend's own differential self-test.
 rem Identical to build.cmd except for -DPF_X87_SOFT, which swaps pf_x87_t from
 rem `double` to the software 80-bit extended type in lifted\pf_x87_soft.h.
 rem The generated .c files are byte-identical in both builds.
@@ -14,4 +15,8 @@ cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /DPF_X87_SOFT /I..\..\gen /I. /I..\
    /Fe:lift_check_soft.exe /Fo:obj_soft\
 if errorlevel 1 ( echo FAILED & exit /b 1 )
 echo OK: harness\lift_check_soft.exe
+cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\lifted ^
+   x87_soft_selftest.c /Fe:x87_soft_selftest.exe /Fo:obj_soft\
+if errorlevel 1 ( echo FAILED & exit /b 1 )
+echo OK: harness\x87_soft_selftest.exe
 endlocal

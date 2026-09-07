@@ -1,6 +1,7 @@
 # build / run artifacts of the offline equivalence check
 harness/obj/
+harness/obj_soft/
 harness/__pycache__/
 harness/*.bin
-harness/lift_check.exe
+harness/*.exe
 lifted/*.obj

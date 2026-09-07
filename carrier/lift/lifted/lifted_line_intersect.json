@@ -1,0 +1,67 @@
+{
+ "arg_bytes": 40,
+ "blocks": [
+  "0x00406b80",
+  "0x00406bef",
+  "0x00406c11",
+  "0x00406c1e",
+  "0x00406c29",
+  "0x00406c88",
+  "0x00406c90",
+  "0x00406c98",
+  "0x00406ca0",
+  "0x00406ca4"
+ ],
+ "blocks_reachable": 10,
+ "blocks_total": 12,
+ "external_calls": [],
+ "frame_bytes": 40,
+ "function": "line_intersect",
+ "generated_lines": 341,
+ "generator": "pf_lift.py",
+ "image_sha256": "7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
+ "instructions_decoded": 126,
+ "instructions_lifted": 124,
+ "memory_ranges": [
+  {
+   "address": "0x004d6cb4",
+   "at": "0x00406c32",
+   "displacement": null,
+   "expr": "(unsigned int)(0x4d6cb4u)",
+   "kind": "absolute",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00406c5d",
+   "displacement": null,
+   "expr": "(unsigned int)(r_eax)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  },
+  {
+   "address": null,
+   "at": "0x00406c76",
+   "displacement": null,
+   "expr": "(unsigned int)(r_eax)",
+   "kind": "register-relative",
+   "size": 4,
+   "symbol": null
+  }
+ ],
+ "ok": true,
+ "prototype": "int __cdecl (int, int, int, int, int, int, int, int, int *, int *)",
+ "refusals": [],
+ "size": 302,
+ "unreachable_padding": [
+  "0x00406c85",
+  "0x00406c96"
+ ],
+ "uses_x87": true,
+ "va": "0x00406b80",
+ "x87_arith_ops": 6,
+ "x87_control_word_used": true,
+ "x87_fistp_ops": 2
+}

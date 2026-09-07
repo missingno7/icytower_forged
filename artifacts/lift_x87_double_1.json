@@ -1,0 +1,49 @@
+{
+ "is_solid": {
+  "compared_return_value": true,
+  "domain_bytes": 772,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "jump_player": {
+  "compared_return_value": true,
+  "domain_bytes": 184,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ },
+ "line_intersect": {
+  "differing_vectors": 103,
+  "first": {
+   "args": [
+    "0x00029c7c",
+    "0x35b5ded0",
+    "0x34dd597c",
+    "0xd571fed0",
+    "0x00000000",
+    "0x00000000",
+    "0x00000001",
+    "0x00000000",
+    "0x00794000",
+    "0x00794004"
+   ],
+   "at": "*px+0x0 (VA 0x00794000)",
+   "byte_index": 0,
+   "kind": "comparison domain",
+   "lifted": "0xf0",
+   "original": "0xef",
+   "vector": 176
+  },
+  "form": "lifted",
+  "result": "DIFFER",
+  "vectors": 50000
+ },
+ "update_frame": {
+  "compared_return_value": false,
+  "domain_bytes": 192,
+  "form": "lifted",
+  "result": "EQUAL",
+  "vectors": 50000
+ }
+}

@@ -1,9 +1,13 @@
 # `pf_lift` — the LIFTED form generator
 
 Status: **working pilot**, 2026-09-07. This is milestone 11a of
-`win32_pilot.md` §8 for three functions: *generate C from the original bytes*
+`win32_pilot.md` §8 for four functions: *generate C from the original bytes*
 and *verify it offline against the original bytes*. Binding it into the running
 carrier (the 5-byte entry patch) is still pending and is not claimed here.
+
+The fourth function, `line_intersect` (0x406b80), was added to answer the x87
+question of `win32_pilot.md` §3, and it does: **`pf_x87_t = double` is not
+enough** — see §6b and `artifacts/lift_x87_finding.md`.
 
 Labels as in `win32_pilot.md`: KNOWN = read from the binary or observed in a
 run; INFERRED = reasoned; HYPOTHESIS = a design bet awaiting evidence.
@@ -11,13 +15,22 @@ run; INFERRED = reasoned; HYPOTHESIS = a design bet awaiting evidence.
 ```
 pf_lift.py                 the lifter (CLI)
 lifted/pf_rt.h             generated runtime header (the only shared code)
+lifted/pf_x87_soft.h       generated software 80-bit x87 backend (-DPF_X87_SOFT)
 lifted/lifted_<f>.c        generated C, one per function
 lifted/lifted_<f>.json     metadata: blocks, instructions, refusals,
                            external calls, memory ranges + symbolic names
 harness/lift_check.py      offline equivalence check (unicorn = ORIGINAL side)
 harness/lift_check.c       the LIFTED side of the same check
 harness/pf_harness_mem.h   the one macro that differs between carrier and check
-build_check.cmd            `cl /c /W3` of the three generated files
+harness/build.cmd          builds harness/lift_check.exe      (pf_x87_t = double)
+harness/build_soft.cmd     builds harness/lift_check_soft.exe (software 80-bit)
+                           plus harness/x87_soft_selftest.exe
+harness/x87_soft_selftest.c/.py
+                           differential self-test of the software backend
+                           against exact rational arithmetic (no oracle)
+harness/x87_cw_probe.py    standalone: why the x87 answer depends on the FPU
+                           control word (artifacts/lift_x87_finding.md §2)
+build_check.cmd            `cl /c /W3` of the four generated files
 ```
 
 ## 1. Usage
@@ -36,7 +49,12 @@ Compile check (produces the numbers in §7):
 ```
 build_check.cmd                     rem cl /c /W3 /TC /I..\..\gen
 harness\build.cmd                   rem builds harness\lift_check.exe
+harness\build_soft.cmd              rem the same sources, -DPF_X87_SOFT
 python harness\lift_check.py        rem runs the offline equivalence check
+python harness\lift_check.py --exe harness\lift_check_soft.exe \
+       --vectors 50000 --seed 1 --census      rem the 80-bit backend
+python harness\x87_soft_selftest.py          rem the softfloat vs exact maths
+python harness\x87_cw_probe.py               rem the control-word experiment
 ```
 
 ## 2. What is generated
@@ -57,6 +75,11 @@ instruction/block counts actually lifted.
   through `PF_GET8L/PF_GET8H/PF_GET16` and `PF_SET*`.
 - **Only the locals actually used are declared**, so `/W3` stays silent.
 
+The `.json` also records the three facts the carrier needs to choose an x87
+backend for that function (§6b): `x87_arith_ops`, `x87_fistp_ops` and
+`x87_control_word_used`. Today: `update_frame` 0/0/false, `is_solid` 0/0/false,
+`jump_player` 3/0/false, `line_intersect` 6/2/**true**.
+
 ## 3. Frame model (ESP/EBP are symbolic, never values)
 
 `push ebp; mov ebp,esp; sub esp,N` is recognised and ESP/EBP are then tracked
@@ -75,7 +98,11 @@ GCC's callee-save prologue round-trips without being special-cased; only
 triple is propagated over the CFG and **any disagreement at a block merge, any
 use of ESP/EBP as a value or index, and any `ret` with a non-zero ESP offset is
 a refusal.** The scratch array is sized from the deepest offset reached
-(16 bytes for `is_solid`, 8 for the other two) and zeroed on entry.
+(40 bytes for `line_intersect`, 16 for `is_solid`, 8 for the other two) and
+zeroed on entry. "Deepest offset reached" now means *inside* a block too: the
+`push edi` / `fidivr [esp]` / `add esp,4` idiom in `line_intersect` dips 4 bytes
+below every block-entry ESP, and sizing the frame from block entries alone made
+that push a spurious refusal.
 
 Writing to an incoming argument slot is a **refusal**: `pf_arg` is a copy, so
 the caller's slot would not be updated, and pf_lift will not lie about that.
@@ -109,7 +136,7 @@ entry (GCC's inter-block `nop` / `lea esi,[esi]` padding — 2 blocks in
 `is_solid`, 4 in `jump_player`) are listed in the JSON and not emitted. Every
 fall-through becomes an explicit `goto`, so the emitted control flow does not
 depend on block layout, and a label is only emitted where something jumps to it.
-**Indirect `jmp` (switch tables) is a refusal** — none of the three candidates
+**Indirect `jmp` (switch tables) is a refusal** — none of the four candidates
 has one, matching `notes/promotion_candidates.md` §1.
 
 Calls are real C calls, because the guest and the lifted code share the process:
@@ -123,27 +150,29 @@ Calls are real C calls, because the guest and the lifted code share the process:
   `ceil`, `fabs`, `memset`, `memcpy`, `strlen`); the IAT slot → name map comes
   from pefile. An import that is not in the table is a refusal.
 
-> **Honesty note.** *None of the three pilot candidates contains a single
+> **Honesty note.** *None of the four pilot candidates contains a single
 > `call`* (`imports_used = []`, `indirect_calls = 0`, per
 > `notes/promotion_candidates.md` §2). The call-lowering path above therefore
 > has **zero test coverage**; every call site it emits is preceded by a
 > `/* UNVERIFIED PATH */` comment, and it must be exercised (e.g. on
 > `play_jump_sound`, which calls `play_sound`) before it is trusted.
 
-## 6. x87 and the HYPOTHESIS
+## 6. x87, the control word, and the HYPOTHESIS (now decided)
 
-The FPU is an 8-entry array plus a top index, both ordinary function locals
-(`pf_x87_t pf_fr[8]; unsigned pf_ftop, pf_fsw;`), so a lifted function stays
-re-entrant without a CPU struct. Register-form x87 opcodes are decoded from the
-**instruction bytes**, not from capstone's operand list, because capstone
-renders `D8 C1` (`ST0 = ST0+ST1`) and `DC C1` (`ST1 = ST1+ST0`) with the same
-single-operand text.
+The FPU is an 8-entry array plus a top index and a control word, all ordinary
+function locals (`pf_x87_t pf_fr[8]; unsigned pf_ftop, pf_fsw, pf_fcw;`), so a
+lifted function stays re-entrant without a CPU struct. Register-form x87 opcodes
+are decoded from the **instruction bytes**, not from capstone's operand list,
+because capstone renders `D8 C1` (`ST0 = ST0+ST1`) and `DC C1`
+(`ST1 = ST1+ST0`) with the same single-operand text.
 
 Modelled: `fld`/`fst`/`fstp` (m32fp, m64fp, `st(i)`), `fild` (m16/m32/m64),
 `fist`/`fistp` (m16/m32), `fadd/fmul/fsub/fsubr/fdiv/fdivr` in the D8/DC memory
-and register forms and the DE popping forms, `fcom(p)`, `fcompp`, `fucom(p)`,
-`fucompp`, `fcomi/fucomi/fcomip/fucomip`, `fchs`, `fabs`, `fldz`, `fld1`,
-`fsqrt`, `ftst`, `fxch`, `ffree`, `fninit`, `fnstsw ax`.
+and register forms and the DE popping forms, the **integer** memory forms
+`fiadd/fimul/fisub/fisubr/fidiv/fidivr/ficom/ficomp` (DA = m32int,
+DE = m16int), `fcom(p)`, `fcompp`, `fucom(p)`, `fucompp`, `fcomi/fucomi/
+fcomip/fucomip`, `fchs`, `fabs`, `fldz`, `fld1`, `ftst`, `fxch`, `ffree`,
+`fninit`, `fnstsw ax`, and **`fnstcw`/`fldcw`**.
 
 The GCC 4.4 float-compare idiom is modelled exactly. `pf_fcmp` returns the
 status-word condition bits the hardware sets (`ST0>src`→0, `<`→C0=0x0100,
@@ -152,48 +181,86 @@ into AX; `test ah,0x45` is then `ZF ⇔ ST0 > src` and `test ah,5` is
 `ZF ⇔ ST0 ≥ src and ordered`. `sahf` and the FCOMI EFLAGS form are modelled
 too (with SF/OF left undefined, so a signed condition after them is a refusal).
 
-`FIST`/`FISTP` use round-to-nearest-even; **`fnstcw`/`fldcw` are refused**, so a
-function that switches the rounding mode (e.g. `line_intersect`) cannot reach
-that code path silently.
+### 6a. The control word (KNOWN)
 
-### The bet
+`pf_fcw` starts at `PF_CW_INIT = 0x037F` and is a real modelled value:
 
-`pf_x87_t` is a single `typedef double` in `lifted/pf_rt.h`. That typedef *is*
-the HYPOTHESIS of `win32_pilot.md` §3; swapping it for a software 80-bit type
-needs no change to any generated file.
+- **KNOWN**: `___mingw_CRTStartup` (0x401020) calls `__fpreset` (0x4b2850),
+  which is a bare `FNINIT`. `FNINIT` leaves `CW = 0x037F` — **PC = 11, a 64-bit
+  significand** (full extended precision), RC = 00 (nearest-even). That is *not*
+  the MSVC/CRT `0x027F` (53-bit significand).
+- GCC 4.4 casts a float to int with
+  `fnstcw save; ax=save; ah=0x0C; fldcw trunc; fistp; fldcw save`. `pf_lift`
+  models `fnstcw`/`fldcw` as reads and writes of `pf_fcw`, and `PF_TOI32/
+  PF_TOI16` consult its RC field, so `fistp` really truncates inside that idiom
+  and really rounds-to-nearest outside it. All four rounding modes are
+  implemented; NaN and out-of-range sources give the integer indefinite
+  (`0x80000000` / `0x8000`), as masked hardware does.
+- Arithmetic under a *non-default* PC/RC is **not** modelled. In any function
+  containing an `FLDCW`, pf_lift emits `PF_CW_ARITH(va, pf_fcw)` before every
+  rounding x87 operation; it is a hard `PF_TRAP` if PC/RC are not the FNINIT
+  defaults. `line_intersect` never fires it (the truncating word is live only
+  across the `fistp` itself), so this is a guard, not a modelled path.
 
-### Result for `jump_player` (KNOWN)
+### 6b. The bet, and its result (KNOWN — the hypothesis is settled)
 
-**No divergence in 80 000 vectors, and none is possible for this function.**
+`pf_x87_t` and every operation on it go through one macro API
+(`PF_ADD/PF_SUB/PF_MUL/PF_DIV/PF_FI32/PF_FF64/PF_TOI32/PF_TOF64/pf_fcmp/…`).
+Two implementations sit behind it, chosen at compile time, and **no generated
+`.c` file changes between them**:
 
-The oracle is unicorn, i.e. QEMU's x87, which carries real 80-bit `floatx80`
-intermediates — that is what makes the question answerable offline at all.
-Over 20 000 vectors on each of four seeds, comparing EAX and all 184
-bytes of `Tplayer` bit-for-bit, the `double` model matched the 80-bit oracle on
-every vector, including NaNs, ±inf, denormals, `DBL_MAX`, `DBL_MAX/2` and
-random 64-bit patterns for `sx`.
+| backend | selected by | `pf_x87_t` |
+|---|---|---|
+| the original HYPOTHESIS | default | `double` |
+| the fallback of `win32_pilot.md` §3 | `-DPF_X87_SOFT` | software 80-bit extended (`pf_x87_soft.h`, 434 lines, 370 of them code) |
 
-Why (KNOWN, from the constants in the image): the only FP *arithmetic* in
-`jump_player` is `fadd st(1)` (`sx+sx`) and `fmul dword ptr [0x4d7130]` where
-`0x4d7130` is exactly `-2.0f`. Both are scalings by a power of two, i.e. exact
-in binary floating point, in both 64- and 80-bit. Everything else is a load, a
-compare against exact values (`max_speed[]` doubles 12.0/12.2, the `-22.0f` at
-`0x4d7134`), a store, or an integer path (`fild`/`fstp` for the forced-jump
-branch). The only place where the two could part is `sx+sx` overflowing the
-double range while staying inside the 80-bit range — and the result is stored
-back with `fst qword`, which rounds `±3.59e308` to `±inf` anyway, so the stored
-bits agree. The 8 covered paths (forced jump 1200, early return 934,
-`sx≥0`/`sx<0` × clamp/no-clamp × rotate, 213–388 each in the default 4 000-vector
-run) all match.
+**`jump_player` cannot decide the bet** (unchanged from the previous version of
+this file): its only FP arithmetic is `sx+sx` and `×(-2.0f)`, both exact powers
+of two, and every result is stored back as a `double`. 200 000 vectors on each
+backend, EQUAL, and no divergence is *possible*.
 
-**Conclusion for the pilot: `double` is sufficient for `jump_player`, so this
-function does *not* discriminate the hypothesis.** The bet is still open. The
-escalation target named by `notes/promotion_candidates.md` §6 —
-`line_intersect` (0x406b80, 37 x87 instructions, a real `fnstcw`/`fldcw`-guarded
-`fistpl`, and genuine multiplies/divides whose intermediates are *not* powers of
-two) — is where the hypothesis can actually fail. pf_lift currently refuses it
-(see §8), so testing the hypothesis properly needs `imul`, `fnstcw`/`fldcw` and
-a control-word-aware `pf_rint` first.
+**`line_intersect` (0x406b80) decides it, against `double`.** It divides
+(`fidivr` twice), multiplies by non-powers of two (`fimul`), and keeps **every
+intermediate in the x87 register stack** — nothing is spilled to memory as a
+`float` or a `double` — before truncating with `fistp` into a screen coordinate.
+
+```
+50 000 vectors/seed, 4 seeds, EAX + *px + *py compared bit-for-bit
+  pf_x87_t = double     DIFFER  107 / 103 / 105 / 128 vectors of 50 000
+  software 80-bit       EQUAL   on all four seeds (200 000 vectors)
+```
+
+First difference of the default seed, named exactly by the comparator:
+
+```
+[line_intersect/LIFTED] DIFFER at vector 227 (107 of 50000 vectors differ):
+  at '*py+0x0 (VA 0x00794004)'  original 0xa3  lifted 0xa4
+  line_intersect(-484594473, 3591436, 385321175, 733949708, 0, 0, 0, 1, ...)
+  ua = N1/D = 3993/7168;  exact ua*dy1 + 0.5 = 406852760 exactly
+  80-bit quotient is 2.32e-20 BELOW exact  -> fistp truncates to 406852759
+  double quotient is 1.59e-17 ABOVE exact  -> fistp truncates to 406852760
+```
+
+The intermediate that loses the precision is the **quotient held in ST**, not a
+double-rounding on a store; the `fimul` by `dy1 ≈ 7.3e8` and the truncation are
+what make a 10⁻¹⁷ relative error visible as a whole-pixel difference. Full
+write-up, including the second-order finding that **unicorn powers up with
+`FPCW = 0x0000` (PC = *single* precision)** and therefore must be given
+`FNINIT; FLDCW 0x037F` before every call, is in
+`artifacts/lift_x87_finding.md`; `harness/x87_cw_probe.py` reproduces the
+control-word sensitivity in six vectors.
+
+The software backend is also checked **without** the oracle:
+`harness/x87_soft_selftest.py` runs 40 000 random `add`/`sub`/`mul`/`div` pairs
+(int32-valued doubles, huge x small, and arbitrary finite doubles) through it and
+requires the packed (sign, biased exponent, 64-bit significand) triple to equal
+the exact rational result rounded to nearest-even at 64 bits. **39 966
+operations checked, 0 mismatches.** That separates "the softfloat is right" from
+"the softfloat agrees with unicorn".
+
+Consequence: **`double` is not the default any lifted game function should be
+trusted with** unless its x87 arithmetic is provably exact or immediately
+rounded to `double` by a store.
 
 ## 7. Offline equivalence check (no game, no carrier)
 
@@ -202,8 +269,8 @@ built once from the PE image:
 
 | side | executor | memory |
 |---|---|---|
-| ORIGINAL | the original bytes in **unicorn** (real 80-bit x87) | the image mapped at 0x400000 |
-| LIFTED | the generated C compiled by 32-bit MSVC into `harness/lift_check.exe` | the same image bytes in an in-process copy, reached through `PF_MEM` |
+| ORIGINAL | the original bytes in **unicorn**, entered with `FNINIT; FLDCW 0x037F` (real 80-bit x87 — see §6a; unicorn otherwise powers up at PC = *single*) | the image mapped at 0x400000 |
+| LIFTED | the generated C compiled by 32-bit MSVC into `harness/lift_check.exe` (or `lift_check_soft.exe`, the same sources with `-DPF_X87_SOFT`) | the same image bytes in an in-process copy, reached through `PF_MEM` |
 
 The chosen route is the cheap one named in the task: `harness/pf_harness_mem.h`
 is force-included (`cl /FIpf_harness_mem.h`) and redefines `PF_MEM(a)` to
@@ -217,24 +284,62 @@ Per vector we compare the return value and the raw bytes of the comparison
 domain from `notes/promotion_candidates.md` §4 and report `EQUAL` or the first
 differing byte, named as *(vector, field+offset, VA, original byte, lifted byte)*.
 
-| function | vectors | domain compared | result |
-|---|---:|---|---|
-| `update_frame` | 20 000 | `reward_time` 4B + `reward_scale` 4B + `Tplayer` 184B (no return value) | **EQUAL** |
-| `is_solid` | 20 000 | EAX + `Tmap` 772B (must be unchanged — negative control) | **EQUAL** |
-| `jump_player` | 20 000 (+3 more seeds × 20 000) | EAX + `Tplayer` 184B, bit-exact | **EQUAL** |
+`--census` keeps going instead of stopping at the first difference and reports
+how many vectors differ; `--exe` selects which build of the LIFTED side to run.
+
+| function | vectors | domain compared | `pf_x87_t = double` | software 80-bit |
+|---|---:|---|---|---|
+| `update_frame` | 4 seeds × 50 000 | `reward_time` 4B + `reward_scale` 4B + `Tplayer` 184B (no return value) | **EQUAL** | **EQUAL** |
+| `is_solid` | 4 seeds × 50 000 | EAX + `Tmap` 772B (must be unchanged — negative control) | **EQUAL** | **EQUAL** |
+| `jump_player` | 4 seeds × 50 000 | EAX + `Tplayer` 184B, bit-exact | **EQUAL** | **EQUAL** |
+| `line_intersect` | 4 seeds × 50 000 | EAX + `*px` 4B + `*py` 4B, bit-exact | **DIFFER** 107/103/105/128 per seed | **EQUAL** |
+
+`line_intersect`'s vectors are not uniform noise. About 20 % are constructed so
+that `ua*d + 0.5` is *exactly* an integer (`_boundary` in `lift_check.py`, which
+solves a linear congruence for it), which puts `fistp` exactly on its truncation
+boundary; the rest are game-scale coordinates, full-range `int32` (so the
+`imul`s wrap), degenerate/parallel segments (`D == 0`, i.e. `x/0` → ±inf and
+`0/0` → indefinite), the exact ±0.5 boundary (`dx1 == D`, so `ua*dx1` is an
+integer), and `|ua*dx1|` pushed to the 2³¹ edge. Measured on the default seed:
+of 50 000 vectors, 24 310 pass the `0 ≤ ua, ub ≤ 1` guard and reach the `fistp`,
+10 339 of those sit exactly on a truncation boundary, 1 531 of those also have an
+`ua` that is not binary-finite (the only ones where the two models *can* differ),
+and **107** actually do.
+
+Denormals are unreachable through this function (all ten parameters are `int`,
+and `|ua| ≥ 2⁻³¹`); the subnormal, NaN and ±inf coverage lives in `jump_player`,
+whose `sx` is a `double` read straight from `Tplayer`.
 
 Negative control (`--fault FUNC:VECTOR:BYTE` flips one bit of the lifted result):
 the comparator names it exactly, e.g.
-`DIFFER at vector 11 … Tplayer+0x20 (VA 0x00790020) original 0xff lifted 0xfe`.
+`DIFFER at vector 11 … Tplayer+0x20 (VA 0x00790020) original 0xff lifted 0xfe`,
+and for the new function, on both backends,
+`DIFFER at vector 5 … *px+0x2 (VA 0x00794002) original 0x00 lifted 0x01`.
 
-The check found one real bug in the lifter before it passed: `PF_PUSH(v)` moved
-the top index before evaluating `v`, so `fld st(0)` pushed the wrong register.
-`jump_player` vector 13 (`sx = -11.0`) named it at `Tplayer+0x1e`: `sy` was
-`-12.0` instead of `-22.0`.
+`line_intersect`'s comparison domain is provably complete: the function contains
+exactly two stores outside its own frame, `mov [eax], edx` at 0x406c5d and
+`mov [eax], ecx` at 0x406c76, i.e. the two `int *` out-parameters.
+
+The check has now found four real bugs before the code passed:
+
+1. `PF_PUSH(v)` moved the top index before evaluating `v`, so `fld st(0)` pushed
+   the wrong register. `jump_player` vector 13 (`sx = -11.0`) named it at
+   `Tplayer+0x1e`: `sy` was `-12.0` instead of `-22.0`.
+2. The softfloat's `pf_mul` exponent was one too low (every product came out
+   halved) — caught by a direct unit test of the backend, not by the oracle.
+3. The softfloat's division produced 64 quotient bits with **nothing below
+   them**, so it truncated where the hardware rounds; `line_intersect` vector 2
+   of seed 20260907 gave a quotient one ulp low and a screen coordinate one
+   pixel off.
+4. The 32-bit cdecl ABI returns a `double` in `ST(0)`, and `FLD` of a signalling
+   NaN quiets it — so `pf_to_f64`, a pure bit-shuffling routine, silently set the
+   quiet bit. `jump_player` vector 37732 of seed 1 (`sx = 0xfff028e75c6699e9`)
+   stored `0xfff828e75c6699e9`. FST now moves raw bit patterns
+   (`pf_bits32`/`pf_bits64` return integers, never a float).
 
 Caveat, stated rather than hidden: the oracle restores only the union of the
 comparison domain and the per-vector write regions between vectors. That is
-sufficient because these three functions provably write nowhere else (verified
+sufficient because these four functions provably write nowhere else (verified
 by reading every store in the disassembly), and it is *not* a general property —
 a function with wider writes needs a full image restore on the oracle side too
 (the lifted side already does a full restore per vector).
@@ -248,10 +353,28 @@ There is no silent fallback anywhere.
 **Decoding / layout**: capstone cannot decode; an instruction crosses the end of
 the function; a branch target outside `[va, va+size)`.
 
-**Instructions**: anything not listed in §5/§6 — notably `imul`, `mul`, `adc`,
-`sbb`, `cmov*`, `loop*`, `jecxz`, string operations, `xchg`, `bswap`, all SSE,
-`fnstcw`/`fldcw`/`fnsave`/`frstor`, x87 with a prefix, and `hlt`. Observed:
-`line_intersect` (0x406b80) refuses at `0x00406ba5 (imul esi, ebx)`.
+**Instructions**: anything not listed in §5/§6. Now *supported* (added for
+`line_intersect`): `imul` in all three forms, `mul`, `adc`/`sbb` (value only —
+see below), `fnstcw`/`fldcw`, the integer x87 memory forms (`fidivr`, `fimul`,
+`fiadd`, `fisub(r)`, `fidiv`, `ficom(p)`), and `fistp` under a modelled rounding
+mode. Still **refused**: `cmov*`, `loop*`, `jecxz`, `rol`/`ror`, `shld`/`shrd`,
+`bt`/`bts`, `xadd`, `cmpxchg`, string operations, `xchg`, `bswap`, all SSE/MMX,
+`hlt`, and any x87 with a prefix.
+
+Still-refused x87 in particular, since it is the surface that blocks other
+gameplay functions: `fld`/`fstp` **m80** (`DB /5`, `DB /7`), `fistp` **m64**
+(`DF /7`), `fbld`/`fbstp`, `frndint`, `fprem`/`fprem1`, `fscale`, `fxtract`,
+`fsqrt` (neither backend has a correctly rounded square root — refused rather
+than approximated), the transcendentals `fsin`/`fcos`/`fptan`/`fpatan`/`f2xm1`/
+`fyl2x`/`fyl2xp1`, the constant loads other than `fldz`/`fld1`
+(`fldpi`/`fldl2e`/`fldl2t`/`fldlg2`/`fldln2`), and the environment instructions
+`fnstenv`/`fldenv`/`fnsave`/`frstor`/`fnclex`.
+
+`adc`/`sbb` are an **UNVERIFIED PATH**: the value is modelled exactly (the
+carry-in comes from the resolved reaching flag definition) but the flags they
+*produce* are marked undefined, so consuming them is a refusal. No lifted
+function so far contains either instruction, and every emitted site carries an
+`/* UNVERIFIED PATH */` comment.
 
 **Control flow**: indirect `jmp` (switch table) or indirect `jcc`; falling off
 the end of the function.
@@ -275,9 +398,52 @@ proven); a return type that is not void/int-like/pointer/`long long`/floating.
 header; an indirect call that is not an IAT slot; an IAT import missing from
 `IMPORT_PROTOS`; a call argument that is not a 4-byte slot.
 
-**Run time** (the generated code, not the lifter): `PF_TRAP(va, why)` on `#DE` —
-division by zero or a quotient that does not fit in 32 bits. The carrier must
-provide `void pf_trap(unsigned, const char*)`; the harness does.
+**Run time** (the generated code, not the lifter), all `PF_TRAP(va, why)`, all
+loud: `#DE` on integer division by zero or a quotient that does not fit in 32
+bits; `PF_CW_ARITH` when a rounding x87 operation is reached with a non-default
+PC/RC (§6a); and, in the software backend only, an extended denormal operand or
+an extended-range underflow (both unreachable from `int`/`float`/`double`
+inputs). The carrier must provide `void pf_trap(unsigned, const char*)`; the
+harness does.
+
+### 8a. What the refusals actually block (KNOWN, measured)
+
+Running the lifter over **all 253 game functions** of `artifacts/functions.json`
+(`--out` to a scratch directory, then reading the `refusals` field of each
+`lifted_<name>.json`) gives the exact blocker census:
+
+```
+game functions: 253   lift cleanly: 65
+   85  call lowering        e.g. save_garbled_data @0x401344:
+                            "call 0x004bad28 has no prototype in the interop header"
+   29  frame model          e.g. read_line @0x401460: "lea of a frame address"
+   28  types / ABI          e.g. an unnamed function @0x4017d4: "no PFN_ typedef"
+    8  indirect jmp (switch table)      e.g. blit_to_screen @0x40b6bc
+   22  branch target outside the function (tail jumps into Allegro/CRT helpers)
+   10  rep / repe / repne string operations
+    1  fistp m64 (DF /7)    calc_replay_checksum @0x41bac4
+    1  flags of a shift are consumed    draw_reward @0x4070fc
+```
+
+Reading that as a work list, in order of what it would unblock:
+
+1. **Call lowering (85 functions).** Not a missing *instruction* — the direct
+   call path exists but refuses because `it_funcs.h` only declares *game*
+   functions, so a call into Allegro or the CRT has no typed prototype. This is
+   also the path with zero test coverage (§5). Fixing it means extending the
+   interop generator to the library boundary, and then actually exercising it.
+2. **`lea` of a frame address (29).** Taking the address of a local is
+   ordinary C; the frame model refuses it because `pf_stk` is not at the
+   original address. This needs the frame to become a real, addressable region
+   rather than a scratch array — a design change, not a decoding one.
+3. **Unnamed functions (28)** are a DWARF/interop gap, not a lifter gap.
+4. **Switch tables (8)** and **string operations (10)** are ordinary missing
+   features.
+5. **`fistp m64`** blocks exactly one function, and it is a relevant one:
+   `calc_replay_checksum`. Three lines of decoder plus `PF_TOI64`.
+
+Note what is *no longer* on this list: `imul`, `mul`, `fnstcw`/`fldcw` and the
+integer x87 forms, which were the top of it before `line_intersect`.
 
 ## 9. Known dependencies and non-claims
 
@@ -285,38 +451,60 @@ provide `void pf_trap(unsigned, const char*)`; the harness does.
   documents an arithmetic shift, and the equivalence check confirms it for these
   functions on this compiler. A different compiler needs re-verification.
 - `pf_fcmp` writes only the C0/C2/C3 bits plus TOP into the status word. No
-  other status-word bit (exception flags, C1) is modelled; nothing in these
-  three functions reads one.
+  other status-word bit (exception flags, C1) is modelled; nothing in these four
+  functions reads one.
 - The x87 **tag word** is not modelled (`ffree` is a comment); stack
-  overflow/underflow does not fault the way hardware would.
+  overflow/underflow does not fault the way hardware would. Nor are the
+  exception flags or unmasked exceptions: every trap the model can hit is a
+  `PF_TRAP`, not an x87 exception.
+- **SNaN quieting on `FLD` is not modelled.** Real hardware signals `#IA` on
+  `FLD m32/m64` of a signalling NaN and (masked) loads the quieted NaN; the
+  unicorn oracle used here does not, and both backends match unicorn. No game
+  path produces an SNaN — they only appear because `jump_player`'s vector set
+  feeds random 64-bit patterns as `sx` — but this is an oracle-fidelity gap, not
+  a verified equivalence. See `artifacts/lift_x87_finding.md` §6.
+- **The control word at entry is an assumption about the caller.** The lifted
+  code starts from `PF_CW_INIT = 0x037F` because the game's `__fpreset`/`FNINIT`
+  leaves that (KNOWN, §6a). Inside the carrier — an MSVC process whose own CRT
+  sets `0x027F` — this becomes a *precondition the entry stub should assert*,
+  not something the lifted code can check for itself.
+- `adc`/`sbb` and the whole call-lowering path are generated but exercised by
+  nothing (§5, §8).
+- The flag dataflow used **identity** semantics for its reaching-definition
+  sets, which meant it never converged on a function with a back edge: the
+  lifter *hung* instead of refusing. None of the four lifted functions has a
+  loop, so this only appeared when scanning all 253 game functions (§8a).
+  `FlagDef` now compares by (address, kind, width), and the four generated
+  files are byte-identical before and after the fix.
 - The lifted objects have **not** been bound into the running carrier yet. This
   deliverable is milestone 11a's *generation* and *offline verification* only;
   replay-equality inside the carrier (`win32_pilot.md` §7) is the next step.
-- FPU control-word fidelity is untested, by construction: any function that
-  touches it is refused.
 
 ## 10. Line counts
 
 | file | lines | kind |
 |---|---:|---|
-| `pf_lift.py` | 1561 | hand-written lifter (incl. the 135-line `pf_rt.h` template it emits) |
-| `harness/lift_check.py` | 370 | hand-written harness (ORIGINAL side + diff) |
-| `harness/lift_check.c` | 123 | hand-written harness (LIFTED side) |
+| `pf_lift.py` | 2261 | hand-written lifter (incl. the 230-line `pf_rt.h` and 434-line `pf_x87_soft.h` templates it emits) |
+| `harness/lift_check.py` | 593 | hand-written harness (ORIGINAL side + diff; shared with the NATIVE form) |
+| `harness/lift_check.c` | 130 | hand-written harness (LIFTED side) |
+| `harness/x87_cw_probe.py` | 104 | hand-written (the control-word experiment) |
 | `harness/pf_harness_mem.h` | 24 | hand-written |
-| **hand-written total** | **2078** | |
-| `lifted/pf_rt.h` | 135 | generated |
+| `lifted/pf_rt.h` | 227 | generated (runtime + the `double` backend) |
+| `lifted/pf_x87_soft.h` | 434 | generated (370 non-comment lines: the software 80-bit backend) |
 | `lifted/lifted_update_frame.c` | 179 | generated (40 instructions, 14 blocks) |
 | `lifted/lifted_is_solid.c` | 162 | generated (44 instructions, 8 of 10 blocks) |
-| `lifted/lifted_jump_player.c` | 234 | generated (68 instructions, 14 of 18 blocks) |
-| **generated total** | **710** | for 425 bytes of original x86 |
+| `lifted/lifted_jump_player.c` | 235 | generated (68 instructions, 14 of 18 blocks) |
+| `lifted/lifted_line_intersect.c` | 355 | generated (124 instructions, 10 of 12 blocks) |
+| **generated total** | **1592** | for 727 bytes of original x86 |
 
 Roughly 40 % of each generated file is the original disassembly reproduced as
 comments, one instruction per lifted statement group, which is what makes the
 output reviewable against `artifacts/disasm.txt` by eye.
 
-`pf_lift.py` is over the 1200-line target the task set. The overage is
-concentrated in three places that were not optional: the byte-level x87 decoder
-(~190 lines, needed because capstone's operand list is ambiguous for D8/DC), the
-ESP/EBP frame propagation with its refusals (~120 lines), and the emitted
-runtime template (135 lines). The call-lowering path (~60 lines) is the one part
-that could be deleted today without losing anything the pilot verifies.
+`pf_lift.py` is well over the 1200-line target the task set, and 664 of its
+2261 lines are the two runtime templates it emits verbatim. The rest of the
+overage is concentrated where it was not optional: the byte-level x87 decoder
+(~230 lines, needed because capstone's operand list is ambiguous for D8/DC), the
+ESP/EBP frame propagation with its refusals (~130 lines), and the flag dataflow
+(~120 lines). The call-lowering path (~60 lines) and `adc`/`sbb` remain the two
+parts that could be deleted today without losing anything that is verified.

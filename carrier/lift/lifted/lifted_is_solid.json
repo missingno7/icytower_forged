@@ -67,5 +67,8 @@
   "0x0041673e"
  ],
  "uses_x87": false,
- "va": "0x004166dc"
+ "va": "0x004166dc",
+ "x87_arith_ops": 0,
+ "x87_control_word_used": false,
+ "x87_fistp_ops": 0
 }

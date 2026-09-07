@@ -213,6 +213,24 @@ class FlagDef(object):
     def key(self):
         return (self.kind, self.w, self.nocf)
 
+    # Value semantics are REQUIRED, not a nicety: flag_def_of() builds a fresh
+    # object every time an instruction is visited, so with identity hashing the
+    # reaching-definition sets never stop growing and prop_flags spins forever
+    # on any function with a back edge.  (None of the four lifted functions has
+    # one, which is why this only showed up when scanning all 253 game
+    # functions.)  A definition is identified by its instruction address.
+    def _id(self):
+        return (self.addr, self.kind, self.w, self.nocf)
+
+    def __eq__(self, other):
+        return isinstance(other, FlagDef) and self._id() == other._id()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self._id())
+
 
 CC_NEEDS = {
     "e": "Z", "z": "Z", "ne": "Z", "nz": "Z",
@@ -243,6 +261,10 @@ def flag_exprs(fd, ins):
     elif fd.kind == "fcomi":
         return {"Z": "((pf_fa >> 6) & 1u)", "S": None,
                 "C": "(pf_fa & 1u)", "O": None}
+    elif fd.kind == "muls":
+        # IMUL/MUL set CF = OF = "the upper half is not a sign/zero extension
+        # of the lower half"; SF/ZF are architecturally undefined.
+        return {"Z": None, "S": None, "C": "(pf_fa & 1u)", "O": "(pf_fa & 1u)"}
     else:
         return {"Z": None, "S": None, "C": None, "O": None}
     if fd.nocf:
@@ -308,6 +330,9 @@ class Lifter(object):
         self.mem_hits = []
         self.ext_calls = []
         self.x87 = False
+        self.has_fldcw = False
+        self.x87_arith_count = 0
+        self.x87_fistp_count = 0
         self.frame_lo = 0
         self.argbytes = 0
 
@@ -327,6 +352,12 @@ class Lifter(object):
             self.ins[i.address] = i
             self.order.append(i.address)
             cur += i.size
+        # A function that reloads the FPU control word can reach a rounding x87
+        # operation with a non-default PC/RC; pf_lift then guards every such
+        # operation at run time (see cw_guard).
+        self.has_fldcw = any(
+            len(x.bytes) >= 2 and x.bytes[0] == 0xD9 and x.bytes[1] < 0xC0
+            and ((x.bytes[1] >> 3) & 7) == 5 for x in self.ins.values())
 
     # -- control flow ------------------------------------------------------
 
@@ -401,6 +432,7 @@ class Lifter(object):
         state = {entry: (0, None, None)}      # esp_off, ebp_off, saved_ebp_off
         work = [entry]
         self.blk_state = {}
+        esp_min = 0
         while work:
             b = work.pop()
             st = state[b]
@@ -408,6 +440,10 @@ class Lifter(object):
             cur = st
             for a in self.blocks[b]:
                 cur = self.frame_step(self.ins[a], cur)
+                # the deepest point may be reached INSIDE a block (an outgoing
+                # `push` between two calls), not only at a block entry.
+                if cur[0] < esp_min:
+                    esp_min = cur[0]
             for s in self.succ[b]:
                 if s in state:
                     if state[s] != cur:
@@ -417,7 +453,7 @@ class Lifter(object):
                 else:
                     state[s] = cur
                     work.append(s)
-        self.frame_lo = min(0, *(v[0] for v in state.values())) if state else 0
+        self.frame_lo = min([0, esp_min] + [v[0] for v in state.values()])
 
     def frame_step(self, i, st):
         """Advance (esp_off, ebp_off, saved_ebp_off) over instruction i."""
@@ -467,10 +503,15 @@ class Lifter(object):
     def flag_def_of(self, i):
         m = i.mnemonic
         w = (i.operands[0].size * 8) if i.operands else 32
-        if m in ("add", "adc"):
+        if m == "add":
             return FlagDef(i.address, "add", w)
-        if m in ("sub", "cmp", "sbb"):
+        if m in ("sub", "cmp"):
             return FlagDef(i.address, "sub", w)
+        if m in ("adc", "sbb"):
+            # the VALUE is modelled exactly (carry-in comes from the reaching
+            # definition); the flags ADC/SBB produce are not, so consuming them
+            # is a refusal rather than an approximation.
+            return FlagDef(i.address, "undef", w)
         if m == "neg":
             return FlagDef(i.address, "sub", w)
         if m in ("and", "or", "xor", "test"):
@@ -483,15 +524,19 @@ class Lifter(object):
             return FlagDef(i.address, "sahf", 32)
         if m in ("fcomi", "fcomip", "fucomi", "fucomip"):
             return FlagDef(i.address, "fcomi", 32)
+        if m in ("imul", "mul"):
+            return FlagDef(i.address, "muls", w)
         # NOT does not touch EFLAGS; everything below leaves at least one
         # consumed flag undefined, so consuming them is a refusal.
-        if m in ("shl", "sal", "shr", "sar", "rol", "ror", "imul", "mul",
+        if m in ("shl", "sal", "shr", "sar", "rol", "ror",
                  "idiv", "div", "bt", "bts"):
             return FlagDef(i.address, "undef", w)
         return None
 
     def flag_use_of(self, i):
         m = i.mnemonic
+        if m in ("adc", "sbb"):
+            return "c"                      # consumes CF only
         if m.startswith("j") and m not in ("jmp",):
             return m[1:]
         if m.startswith("set"):
@@ -660,7 +705,9 @@ class Lifter(object):
     def mem_write(self, i, acc, size, expr, fp=False):
         kind, k = acc
         sfx = {1: "8", 2: "16", 4: "32", 8: "64"}[size]
-        if fp:
+        if fp == "bits":
+            sfx = {4: "B32", 8: "B64"}[size]
+        elif fp:
             sfx = {4: "F32", 8: "F64"}[size]
         if kind == "arg":
             refuse(i, "write to an incoming argument slot -- refused (the caller's "
@@ -752,8 +799,10 @@ class Lifter(object):
             return self.emit_movx(i, st)
         if m == "lea":
             return self.emit_lea(i, st)
-        if m in ("add", "sub", "and", "or", "xor", "cmp", "test"):
+        if m in ("add", "sub", "and", "or", "xor", "cmp", "test", "adc", "sbb"):
             return self.emit_alu(i, st)
+        if m in ("imul", "mul"):
+            return self.emit_mul(i, st)
         if m in ("inc", "dec", "neg", "not"):
             return self.emit_un(i, st)
         if m in ("shl", "sal", "shr", "sar"):
@@ -833,7 +882,7 @@ class Lifter(object):
             self.body.append("    return (%s)(((unsigned long long)%s << 32) | %s);"
                              % (self.rtype, self.U("r_edx"), self.U("r_eax")))
         elif rk == "fp":
-            self.body.append("    return (%s)PF_ST(0);" % self.rtype)
+            self.body.append("    return (%s)PF_TOF64(PF_ST(0));" % self.rtype)
         else:
             refuse(i, "return type '%s' not supported" % self.rtype)
 
@@ -869,8 +918,12 @@ class Lifter(object):
         w = ops[0].size * 8
         msk = self.mask(w)
         cop = {"add": "+", "sub": "-", "and": "&", "or": "|", "xor": "^",
-               "cmp": "-", "test": "&"}[m]
+               "cmp": "-", "test": "&", "adc": "+", "sbb": "-"}[m]
         kind = self.flag_def_of(i).kind
+        cin = None
+        if m in ("adc", "sbb"):
+            # UNVERIFIED PATH: no lifted function so far contains ADC/SBB.
+            cin = cond_expr(self.reaching[i.address], "c", i)
         # source first (immediates / registers are side-effect free either way;
         # a memory operand may only appear on one side)
         if ops[1].type == X86_OP_MEM:
@@ -887,7 +940,12 @@ class Lifter(object):
             a = self.reg_read(i, i.reg_name(ops[0].reg))
             b = self.src_read(i, ops[1], st)
             dst = ("reg", i.reg_name(ops[0].reg))
-        res = "((%s %s %s)%s)" % (a, cop, b, msk)
+        if cin is not None:
+            res = "((%s %s %s %s ((%s) ? 1u : 0u))%s)" % (a, cop, b, cop, cin, msk)
+            self.body.append("    /* UNVERIFIED PATH: %s value model has no test "
+                             "coverage; its flags are a refusal */" % m)
+        else:
+            res = "((%s %s %s)%s)" % (a, cop, b, msk)
         res = self.emit_flagdef(i, kind, a, b, res, w)
         if m in ("cmp", "test"):
             if i.address not in self.needed:
@@ -897,6 +955,60 @@ class Lifter(object):
             self.body.append("    " + self.reg_write(i, dst[1], res))
         else:
             self.body.append("    " + self.mem_write(i, dst[1], ops[0].size, res))
+
+    def emit_mul(self, i, st):
+        """IMUL (1-, 2- and 3-operand) and MUL (1-operand).
+
+        The low half is computed in UNSIGNED arithmetic -- it is bit-identical
+        to the signed product and C's signed overflow is undefined.  The 64-bit
+        product is materialised only when CF/OF are actually consumed, or when
+        the one-operand form needs the upper half in EDX."""
+        m, ops = i.mnemonic, i.operands
+        E = self.body.append
+        need = i.address in self.needed
+        if ops[0].size != 4:
+            refuse(i, "%s with a %d-bit operand -- only the dword forms are proven"
+                   % (m, ops[0].size * 8))
+        if len(ops) == 1:                              # EDX:EAX = EAX * r/m32
+            src = self.src_read(i, ops[0], st)
+            self.U("r_eax"); self.U("r_edx")
+            if m == "imul":
+                E("    %s = (long long)(int)r_eax * (long long)(int)(%s);"
+                  % (self.U("pf_prod"), src))
+                E("    r_eax = (unsigned int)((unsigned long long)pf_prod & 0xFFFFFFFFu);")
+                E("    r_edx = (unsigned int)((unsigned long long)pf_prod >> 32);")
+                if need:
+                    E("    %s = (pf_prod != (long long)(int)r_eax) ? 1u : 0u;"
+                      % self.U("pf_fa"))
+            else:
+                E("    %s = (unsigned long long)r_eax * (unsigned long long)(%s);"
+                  % (self.U("pf_uprod"), src))
+                E("    r_eax = (unsigned int)(pf_uprod & 0xFFFFFFFFull);")
+                E("    r_edx = (unsigned int)(pf_uprod >> 32);")
+                if need:
+                    E("    %s = (r_edx != 0u) ? 1u : 0u;" % self.U("pf_fa"))
+            return
+        if m == "mul":
+            refuse(i, "MUL with more than one operand does not exist")
+        if ops[0].type != X86_OP_REG:
+            refuse(i, "imul with a memory destination")
+        if len(ops) == 2:
+            a = self.reg_read(i, i.reg_name(ops[0].reg))
+            b = self.src_read(i, ops[1], st)
+        else:                                          # imul r32, r/m32, imm
+            a = self.src_read(i, ops[1], st)
+            b = self.src_read(i, ops[2], st)
+        if need:
+            E("    %s = (long long)(int)(%s) * (long long)(int)(%s);"
+              % (self.U("pf_prod"), a, b))
+            E("    %s = (pf_prod != (long long)(int)(unsigned int)(unsigned long long)"
+              "pf_prod) ? 1u : 0u;" % self.U("pf_fa"))
+            E("    " + self.reg_write(i, i.reg_name(ops[0].reg),
+                                      "(unsigned int)((unsigned long long)pf_prod "
+                                      "& 0xFFFFFFFFull)"))
+        else:
+            E("    " + self.reg_write(i, i.reg_name(ops[0].reg),
+                                      "((%s) * (%s))" % (a, b)))
 
     def emit_un(self, i, st):
         m, ops = i.mnemonic, i.operands
@@ -1037,7 +1149,7 @@ class Lifter(object):
             self.body.append("    %s = (unsigned int)%s;" % (self.U("r_eax"), expr))
         elif rk == "fp":
             self.x87 = True
-            self.body.append("    PF_PUSH((pf_x87_t)%s);" % expr)
+            self.body.append("    PF_PUSH(PF_FF64(%s));" % expr)
         else:
             refuse(i, "call return type '%s' not supported" % proto["ret"])
 
@@ -1062,43 +1174,70 @@ class Lifter(object):
             o = ops[0]
             acc = self.mem_setup(i, o, st)
             if esc == 0xD9 and reg == 0:                       # fld m32fp
-                E("    PF_PUSH((pf_x87_t)%s);" % self.mem_read(acc, 4, fp=True)); return
+                E("    PF_PUSH(PF_FF32(%s));" % self.mem_read(acc, 4, fp=True)); return
             if esc == 0xDD and reg == 0:                       # fld m64fp
-                E("    PF_PUSH((pf_x87_t)%s);" % self.mem_read(acc, 8, fp=True)); return
+                E("    PF_PUSH(PF_FF64(%s));" % self.mem_read(acc, 8, fp=True)); return
             if esc == 0xD9 and reg in (2, 3):                  # fst/fstp m32fp
-                E("    " + self.mem_write(i, acc, 4, "(float)PF_ST(0)", fp=True))
+                self.cw_guard(i)
+                E("    " + self.mem_write(i, acc, 4, "PF_ST(0)", fp="bits"))
                 if reg == 3:
                     E("    PF_POP();")
                 return
             if esc == 0xDD and reg in (2, 3):                  # fst/fstp m64fp
-                E("    " + self.mem_write(i, acc, 8, "(double)PF_ST(0)", fp=True))
+                self.cw_guard(i)
+                E("    " + self.mem_write(i, acc, 8, "PF_ST(0)", fp="bits"))
                 if reg == 3:
                     E("    PF_POP();")
                 return
+            if esc == 0xD9 and reg == 5:                       # fldcw m16
+                E("    %s = %s;" % (self.U("pf_fcw"), self.mem_read(acc, 2))); return
+            if esc == 0xD9 and reg == 7:                       # fnstcw m16
+                E("    " + self.mem_write(i, acc, 2, self.U("pf_fcw"))); return
             if esc == 0xDB and reg == 0:                       # fild m32int
-                E("    PF_PUSH((pf_x87_t)(int)%s);" % self.mem_read(acc, 4)); return
+                E("    PF_PUSH(PF_FI32(%s));" % self.mem_read(acc, 4)); return
             if esc == 0xDF and reg == 0:                       # fild m16int
-                E("    PF_PUSH((pf_x87_t)(short)%s);" % self.mem_read(acc, 2)); return
+                E("    PF_PUSH(PF_FI16(%s));" % self.mem_read(acc, 2)); return
             if esc == 0xDF and reg == 5:                       # fild m64int
-                E("    PF_PUSH((pf_x87_t)(long long)%s);" % self.mem_read(acc, 8)); return
+                E("    PF_PUSH(PF_FI64(%s));" % self.mem_read(acc, 8)); return
+            if esc in (0xDB, 0xDF) and reg in (2, 3):          # fist/fistp
+                self.x87_fistp_count += 1
             if esc == 0xDB and reg in (2, 3):                  # fist/fistp m32int
-                E("    " + self.mem_write(i, acc, 4, "(unsigned int)(int)pf_rint(PF_ST(0))"))
+                E("    " + self.mem_write(i, acc, 4,
+                                          "PF_TOI32(PF_ST(0), %s)" % self.U("pf_fcw")))
                 if reg == 3:
                     E("    PF_POP();")
                 return
             if esc == 0xDF and reg in (2, 3):                  # fist/fistp m16int
-                E("    " + self.mem_write(i, acc, 2, "(unsigned int)(int)pf_rint(PF_ST(0))"))
+                E("    " + self.mem_write(i, acc, 2,
+                                          "PF_TOI16(PF_ST(0), %s)" % self.U("pf_fcw")))
                 if reg == 3:
                     E("    PF_POP();")
                 return
             if esc in (0xD8, 0xDC) and reg in (0, 1, 4, 5, 6, 7):
                 sz = 4 if esc == 0xD8 else 8
-                src = "(pf_x87_t)%s" % self.mem_read(acc, sz, fp=True)
+                src = "%s(%s)" % ("PF_FF32" if sz == 4 else "PF_FF64",
+                                  self.mem_read(acc, sz, fp=True))
                 return self.x87_arith(i, reg, "PF_ST(0)", src, "PF_ST(0)")
             if esc in (0xD8, 0xDC) and reg in (2, 3):          # fcom/fcomp mem
                 sz = 4 if esc == 0xD8 else 8
-                E("    %s = pf_fcmp(PF_ST(0), (pf_x87_t)%s);"
-                  % (self.U("pf_fsw"), self.mem_read(acc, sz, fp=True)))
+                E("    %s = pf_fcmp(PF_ST(0), %s(%s));"
+                  % (self.U("pf_fsw"), "PF_FF32" if sz == 4 else "PF_FF64",
+                     self.mem_read(acc, sz, fp=True)))
+                if reg == 3:
+                    E("    PF_POP();")
+                return
+            if esc in (0xDA, 0xDE) and reg in (0, 1, 4, 5, 6, 7):
+                # FIADD/FIMUL/FISUB/FISUBR/FIDIV/FIDIVR: DA = m32int, DE = m16int.
+                # ST(0) is the destination, so /5 and /7 are the reversed forms.
+                sz = 4 if esc == 0xDA else 2
+                src = "%s(%s)" % ("PF_FI32" if sz == 4 else "PF_FI16",
+                                  self.mem_read(acc, sz))
+                return self.x87_arith(i, reg, "PF_ST(0)", src, "PF_ST(0)")
+            if esc in (0xDA, 0xDE) and reg in (2, 3):          # ficom/ficomp mem
+                sz = 4 if esc == 0xDA else 2
+                E("    %s = pf_fcmp(PF_ST(0), %s(%s));"
+                  % (self.U("pf_fsw"), "PF_FI32" if sz == 4 else "PF_FI16",
+                     self.mem_read(acc, sz)))
                 if reg == 3:
                     E("    PF_POP();")
                 return
@@ -1112,17 +1251,18 @@ class Lifter(object):
                 E("    { pf_x87_t pf_t = PF_ST(0); PF_ST(0) = PF_ST(%d); PF_ST(%d) = pf_t; }"
                   % (rm, rm)); return
             if modrm == 0xE0:
-                E("    PF_ST(0) = -PF_ST(0);"); return          # fchs
+                E("    PF_ST(0) = PF_NEG(PF_ST(0));"); return   # fchs
             if modrm == 0xE1:
-                E("    PF_ST(0) = pf_fabs(PF_ST(0));"); return  # fabs
+                E("    PF_ST(0) = PF_ABS(PF_ST(0));"); return   # fabs
             if modrm == 0xE8:
-                E("    PF_PUSH((pf_x87_t)1.0);"); return        # fld1
+                E("    PF_PUSH(PF_ONE);"); return               # fld1
             if modrm == 0xEE:
-                E("    PF_PUSH((pf_x87_t)0.0);"); return        # fldz
+                E("    PF_PUSH(PF_ZERO);"); return              # fldz
             if modrm == 0xFA:
-                E("    PF_ST(0) = pf_sqrt(PF_ST(0));"); return  # fsqrt
+                refuse(i, "fsqrt: neither x87 backend implements a correctly "
+                          "rounded square root -- refused rather than approximated")
             if modrm == 0xE4:                                   # ftst
-                E("    %s = pf_fcmp(PF_ST(0), (pf_x87_t)0.0);" % self.U("pf_fsw")); return
+                E("    %s = pf_fcmp(PF_ST(0), PF_ZERO);" % self.U("pf_fsw")); return
             refuse(i, "x87 D9 %02X not supported" % modrm)
         if esc == 0xD8:
             if 0xD0 <= modrm <= 0xDF:                          # fcom/fcomp st(i)
@@ -1178,18 +1318,30 @@ class Lifter(object):
             refuse(i, "x87 DF %02X not supported" % modrm)
         refuse(i, "x87 escape %02X %02X not supported" % (esc, modrm))
 
+    def cw_guard(self, i):
+        """A function that reloads the control word may reach a rounding x87
+        operation with a non-default PC/RC.  Neither backend models that, so
+        emit an explicit run-time trap rather than approximating silently."""
+        if self.has_fldcw:
+            self.body.append("    PF_CW_ARITH(0x%08xu, %s);"
+                             % (i.address, self.U("pf_fcw")))
+
     def x87_arith(self, i, sub, a, b, dst, reversed_dc=False):
-        ops = {0: "+", 1: "*", 4: "-", 5: "-", 6: "/", 7: "/"}
+        ops = {0: "PF_ADD", 1: "PF_MUL", 4: "PF_SUB", 5: "PF_SUB",
+               6: "PF_DIV", 7: "PF_DIV"}
         if sub not in ops:
             refuse(i, "x87 arithmetic sub-opcode %d not supported" % sub)
-        # /4 = SUB, /5 = SUBR, /6 = DIV, /7 = DIVR for the D8/D9 (ST0-dest) forms;
-        # the DC/DE (STi-dest) forms swap the meaning of /4 vs /5 and /6 vs /7.
+        # /4 = SUB, /5 = SUBR, /6 = DIV, /7 = DIVR for the D8/DA/DE-memory
+        # (ST0-dest) forms; the DC/DE register (STi-dest) forms swap the
+        # meaning of /4 vs /5 and /6 vs /7.
         rev = sub in (5, 7)
         if reversed_dc:
             rev = sub in (4, 6)
         op = ops[sub]
         x, y = (b, a) if rev else (a, b)
-        self.body.append("    %s = %s %s %s;" % (dst, x, op, y))
+        self.x87_arith_count += 1
+        self.cw_guard(i)
+        self.body.append("    %s = %s(%s, %s);" % (dst, op, x, y))
 
     # -- file assembly -----------------------------------------------------
 
@@ -1236,10 +1388,16 @@ class Lifter(object):
                 decls.append("    unsigned int %s = 0u;" % v)
         if "pf_num" in self.used:
             decls.append("    long long pf_num = 0, pf_den = 0, pf_quo = 0;")
+        if "pf_prod" in self.used:
+            decls.append("    long long pf_prod = 0;")
+        if "pf_uprod" in self.used:
+            decls.append("    unsigned long long pf_uprod = 0;")
         if self.x87:
-            decls.append("    pf_x87_t pf_fr[8] = {0,0,0,0,0,0,0,0};")
+            decls.append("    pf_x87_t pf_fr[8];")
             decls.append("    unsigned int pf_ftop = 0u;")
             decls.append("    unsigned int pf_fsw = 0u;")
+        if "pf_fcw" in self.used:
+            decls.append("    unsigned int pf_fcw = PF_CW_INIT;")
         if framebytes:
             decls.append("    union { double d[%d]; unsigned char b[%d]; } pf_stk;"
                          % (max(1, framebytes // 8), framebytes))
@@ -1248,6 +1406,8 @@ class Lifter(object):
                          % (max(1, (self.argbytes + 7) // 8), self.argbytes))
 
         pre = []
+        if self.x87:
+            pre.append("    memset(pf_fr, 0, sizeof pf_fr);")
         if framebytes:
             pre.append("    memset(pf_stk.b, 0, sizeof pf_stk.b);")
         for (ty, nm, o, sz) in self.params:
@@ -1292,6 +1452,13 @@ class Lifter(object):
             "frame_bytes": framebytes,
             "arg_bytes": self.argbytes,
             "uses_x87": self.x87,
+            # Facts the carrier needs to pick an x87 backend (README SS6b):
+            # a function whose only FP arithmetic is exact (a power-of-two
+            # scaling) can run on `double`; one that divides or multiplies
+            # non-powers-of-two and then truncates cannot.
+            "x87_arith_ops": self.x87_arith_count,
+            "x87_fistp_ops": self.x87_fistp_count,
+            "x87_control_word_used": self.has_fldcw,
             "external_calls": self.ext_calls,
             "memory_ranges": self.mem_hits,
             "refusals": [],
@@ -1322,13 +1489,21 @@ class Lifter(object):
 # runtime header
 # --------------------------------------------------------------------------
 
-PF_RT_H = r'''/* GENERATED FILE -- DO NOT EDIT.  Produced by %s.
+PF_RT_H = r'''/* GENERATED FILE -- DO NOT EDIT.  Produced by @GEN@.
  *
  * Runtime support for the LIFTED form (win32_pilot.md SS3).  Deliberately
  * tiny: no CPU struct, no memory abstraction.  PF_MEM() is the ONE seam --
  * it is the identity in the carrier (the original image is mapped at its
  * original base) and can be redefined by an offline harness to point at an
  * in-process copy of the image.
+ *
+ * The x87 model has TWO interchangeable backends behind one macro API
+ * (PF_ADD/PF_MUL/PF_TOI32/...), selected at COMPILE TIME:
+ *
+ *   default        pf_x87_t = double          (the original HYPOTHESIS)
+ *   -DPF_X87_SOFT  pf_x87_t = software 80-bit extended (pf_x87_soft.h)
+ *
+ * No generated .c file changes between the two.
  */
 #ifndef PF_RT_H
 #define PF_RT_H
@@ -1349,6 +1524,7 @@ PF_RT_H = r'''/* GENERATED FILE -- DO NOT EDIT.  Produced by %s.
 #define PF_W8(a,v)   (PF_R8(a)   = (unsigned char )(v))
 #define PF_W16(a,v)  (PF_R16(a)  = (unsigned short)(v))
 #define PF_W32(a,v)  (PF_R32(a)  = (unsigned int  )(v))
+#define PF_W64(a,v)  (PF_R64(a)  = (unsigned long long)(v))
 #define PF_WF32(a,v) (PF_RF32(a) = (float )(v))
 #define PF_WF64(a,v) (PF_RF64(a) = (double)(v))
 
@@ -1370,31 +1546,122 @@ extern void pf_trap(unsigned int va, const char *why);
 #define PF_TRAP(va, why) pf_trap((va), (why))
 #endif
 
-/* ---- x87 ----------------------------------------------------------------
- * HYPOTHESIS under test (win32_pilot.md SS3): `double` is enough for the
- * 80-bit intermediates GCC 4.4 keeps in the x87 register stack.  Every lifted
- * FPU value has this ONE type so it can be swapped for a software 80-bit type
- * without touching any generated file.
+/* ---- x87 control word ---------------------------------------------------
+ * KNOWN: Icy Tower's ___mingw_CRTStartup (0x401020) calls __fpreset
+ * (0x4b2850), which is a bare FNINIT.  FNINIT leaves CW = 0x037F, i.e.
+ * PC = 11 (64-bit significand = full extended precision) and RC = 00
+ * (round to nearest even).  That is the control word a lifted function
+ * inherits, so PF_CW_INIT is 0x037F and NOT the MSVC/CRT 0x027F.
+ *
+ * GCC 4.4 casts a floating value to int with the classic idiom
+ *     fnstcw save ; ax = save ; ah = 0x0C ; fldcw trunc ; fistp ; fldcw save
+ * (0x0C in the high byte = RC 11 "toward zero", PC 00).  pf_lift models the
+ * control word explicitly, so FISTP really truncates there.
  */
+#define PF_CW_INIT  0x037Fu
+
+/* Rounding-mode field, 2 bits: 00 nearest-even, 01 -inf, 10 +inf, 11 zero. */
+#define PF_CW_RC(cw) (((cw) >> 10) & 3u)
+
+/* pf_lift emits this before every rounding x87 operation in a function that
+ * contains an FLDCW.  Neither backend models a non-default PC/RC for
+ * ARITHMETIC (only FIST/FISTP consult RC), so reaching one is a hard trap
+ * rather than a silent approximation. */
+#define PF_CW_ARITH(va, cw) do { if (((cw) & 0x0F00u) != 0x0300u) \
+        PF_TRAP((va), "x87 arithmetic under a non-default control word"); \
+    } while (0)
+
+/* ---- x87 backend -------------------------------------------------------- */
+#if defined(PF_X87_SOFT)
+#include "pf_x87_soft.h"
+#else
+
+/* HYPOTHESIS backend (win32_pilot.md SS3): the 80-bit x87 register stack is
+ * modelled with `double`.  Every generated file goes through the macros
+ * below, so -DPF_X87_SOFT swaps the whole model without regenerating. */
 typedef double pf_x87_t;
 
-/* FPU status-word condition bits, exactly as FUCOM/FCOM set them:
- *   ST0 > src  -> 0
- *   ST0 < src  -> C0                      (0x0100)
- *   ST0 = src  -> C3                      (0x4000)
- *   unordered  -> C3|C2|C0                (0x4500)
- * `test ah, 0x45` is therefore ZF <=> ST0 > src, and `test ah, 5` is
- * ZF <=> ST0 >= src and ordered.  That is the GCC 4.4 float-compare idiom.
- */
+#define PF_FI16(x)  ((pf_x87_t)(short)(x))
+#define PF_FI32(x)  ((pf_x87_t)(int)(x))
+#define PF_FI64(x)  ((pf_x87_t)(long long)(x))
+#define PF_FF32(x)  ((pf_x87_t)(float)(x))
+#define PF_FF64(x)  ((pf_x87_t)(double)(x))
+#define PF_ZERO     ((pf_x87_t)0.0)
+#define PF_ONE      ((pf_x87_t)1.0)
+#define PF_ADD(a,b) ((pf_x87_t)((a) + (b)))
+#define PF_SUB(a,b) ((pf_x87_t)((a) - (b)))
+#define PF_MUL(a,b) ((pf_x87_t)((a) * (b)))
+#define PF_DIV(a,b) ((pf_x87_t)((a) / (b)))
+#define PF_NEG(a)   ((pf_x87_t)(-(a)))
+#define PF_TOF32(v) ((float )(v))
+#define PF_TOF64(v) ((double)(v))
+
+/* Raw bit patterns for FST/FSTP.  These return an INTEGER, never a double:
+ * the 32-bit cdecl ABI returns a double in ST(0), and FLD of a signalling NaN
+ * quiets it, so a `double`-returning conversion helper would mangle an SNaN
+ * that the original code merely copies from memory to memory. */
+static unsigned long long pf_bits64(pf_x87_t v)
+{ union { double d; unsigned long long u; } c; c.d = (double)v; return c.u; }
+static unsigned int pf_bits32(pf_x87_t v)
+{ union { float f; unsigned int u; } c; c.f = (float)v; return c.u; }
+
+static pf_x87_t pf_abs(pf_x87_t v) { return v < (pf_x87_t)0 ? -v : v; }
+#define PF_ABS(v) pf_abs(v)
+
+/* FPU status-word condition bits, exactly as FCOM/FUCOM set them:
+ *   ST0 > src -> 0, < -> C0 (0x0100), = -> C3 (0x4000), unordered -> 0x4500. */
 static unsigned int pf_fcmp(pf_x87_t a, pf_x87_t b)
 {
     if (a > b)  return 0x0000u;
     if (a < b)  return 0x0100u;
     if (a == b) return 0x4000u;
-    return 0x4500u;                 /* unordered */
+    return 0x4500u;
 }
 
-/* FCOMI-family: the same comparison, delivered in EFLAGS (ZF=bit6, PF=bit2,
+/* Round to an integral value in the CURRENT rounding mode. */
+static double pf_round_rc(double v, unsigned int cw)
+{
+    double f, d;
+    unsigned int rc = PF_CW_RC(cw);
+    if (v != v) return v;                                  /* NaN */
+    if (v >= 9.2233720368547758e18 || v <= -9.2233720368547758e18)
+        return v;                                          /* already integral / inf */
+    f = (double)(long long)v;                              /* toward zero */
+    if (f == v) return v;
+    if (rc == 0u) {
+        d = v - f;
+        if (d >  0.5) return f + 1.0;
+        if (d < -0.5) return f - 1.0;
+        if (d ==  0.5) return (((long long)f) & 1) ? f + 1.0 : f;
+        if (d == -0.5) return (((long long)f) & 1) ? f - 1.0 : f;
+        return f;
+    }
+    if (rc == 1u) return (v < 0.0) ? f - 1.0 : f;           /* toward -inf */
+    if (rc == 2u) return (v > 0.0) ? f + 1.0 : f;           /* toward +inf */
+    return f;                                               /* toward zero */
+}
+
+/* FIST/FISTP.  An out-of-range or NaN source yields the x87 "integer
+ * indefinite" 0x80000000 / 0x8000 with the invalid exception masked, which is
+ * what the hardware (and the unicorn oracle) stores. */
+static unsigned int pf_toi32(pf_x87_t v, unsigned int cw)
+{
+    double r = pf_round_rc((double)v, cw);
+    if (!(r >= -2147483648.0 && r <= 2147483647.0)) return 0x80000000u;
+    return (unsigned int)(int)r;
+}
+static unsigned int pf_toi16(pf_x87_t v, unsigned int cw)
+{
+    double r = pf_round_rc((double)v, cw);
+    if (!(r >= -32768.0 && r <= 32767.0)) return 0x8000u;
+    return (unsigned int)(int)r & 0xFFFFu;
+}
+#define PF_TOI32(v, cw) pf_toi32((v), (cw))
+#define PF_TOI16(v, cw) pf_toi16((v), (cw))
+
+#endif /* backend */
+
+/* FCOMI-family: the same comparison delivered in EFLAGS (ZF=bit6, PF=bit2,
  * CF=bit0) instead of the status word. */
 static unsigned int pf_fcmp2eflags(unsigned int sw)
 {
@@ -1406,26 +1673,11 @@ static unsigned int pf_fcmp2eflags(unsigned int sw)
     }
 }
 
-static pf_x87_t pf_fabs(pf_x87_t v) { return v < (pf_x87_t)0 ? -v : v; }
-
-/* FIST/FISTP with the default (round-to-nearest-even) control word.  A lifted
- * function that changes the control word is refused by pf_lift, so this is the
- * only rounding mode that can be reached here. */
-static pf_x87_t pf_rint(pf_x87_t v)
-{
-    pf_x87_t f = (pf_x87_t)(long long)v;        /* truncate */
-    pf_x87_t d = v - f;
-    if (d > (pf_x87_t)0.5)  return f + (pf_x87_t)1;
-    if (d < (pf_x87_t)-0.5) return f - (pf_x87_t)1;
-    if (d == (pf_x87_t)0.5)  return ((long long)f & 1) ? f + (pf_x87_t)1 : f;
-    if (d == (pf_x87_t)-0.5) return ((long long)f & 1) ? f - (pf_x87_t)1 : f;
-    return f;
-}
-
 /* ---- lifted-function-local macros ---------------------------------------
  * These expand INSIDE a lifted function and name its locals (pf_fr, pf_ftop,
- * pf_fsw, pf_stk, pf_arg) directly.  That is what keeps a lifted function
- * re-entrant without a CPU struct: the "machine state" is ordinary C locals.
+ * pf_fsw, pf_fcw, pf_stk, pf_arg) directly.  That is what keeps a lifted
+ * function re-entrant without a CPU struct: the "machine state" is ordinary
+ * C locals.
  */
 #define PF_ST(i)   pf_fr[(pf_ftop + (unsigned int)(i)) & 7u]
 /* PF_PUSH must evaluate its argument BEFORE moving the top index: `fld st(0)`
@@ -1434,6 +1686,12 @@ static pf_x87_t pf_rint(pf_x87_t v)
                         pf_fr[pf_ftop] = pf_pv_; } while (0)
 #define PF_POP()   do { pf_ftop = (pf_ftop + 1u) & 7u; } while (0)
 #define PF_FSW()   ((pf_fsw & 0x4500u) | ((pf_ftop & 7u) << 11))
+
+/* FST/FSTP m32fp / m64fp: store the raw bit pattern (see pf_bits64 above). */
+#define PF_WB32(a,v)  (PF_R32(a) = pf_bits32(v))
+#define PF_WB64(a,v)  (PF_R64(a) = pf_bits64(v))
+#define PF_SWB32(k,v) (PF_S32(k) = pf_bits32(v))
+#define PF_SWB64(k,v) (PF_S64(k) = pf_bits64(v))
 
 /* incoming arguments: a byte-exact copy of the cdecl argument block */
 #define PF_A8(k)   (*(unsigned char      *)(pf_arg.b + (k)))
@@ -1453,11 +1711,450 @@ static pf_x87_t pf_rint(pf_x87_t v)
 #define PF_SW8(k,v)   (PF_S8(k)   = (unsigned char )(v))
 #define PF_SW16(k,v)  (PF_S16(k)  = (unsigned short)(v))
 #define PF_SW32(k,v)  (PF_S32(k)  = (unsigned int  )(v))
+#define PF_SW64(k,v)  (PF_S64(k)  = (unsigned long long)(v))
 #define PF_SWF32(k,v) (PF_SF32(k) = (float )(v))
 #define PF_SWF64(k,v) (PF_SF64(k) = (double)(v))
 
 #endif /* PF_RT_H */
-''' % GEN
+'''.replace("@GEN@", GEN)
+
+
+PF_X87_SOFT_H = r'''/* GENERATED FILE -- DO NOT EDIT.  Produced by @GEN@.
+ *
+ * Software 80-bit x87 extended type -- the FALLBACK named in win32_pilot.md
+ * SS3 ("softfloat x87 is the fallback").  Selected with -DPF_X87_SOFT; not one
+ * generated .c file changes between the two backends.
+ *
+ * Layout: sign, 15-bit biased exponent (bias 16383) and a 64-bit significand
+ * with an EXPLICIT integer bit -- the real 80-bit register format.
+ * Arithmetic: add / sub / mul / div, all round-to-nearest-even at 64 bits,
+ * which is exactly what CW = 0x037F (PC = 11, RC = 00) selects on hardware.
+ * FIST/FISTP honour the current RC field of the modelled control word.
+ *
+ * Deliberately NOT modelled, as hard traps rather than silent approximations:
+ * extended denormals and extended-range underflow (unreachable -- an extended
+ * denormal needs |x| < 2^-16382 and every value entering these functions comes
+ * from a 32-bit int, a float or a double), FSQRT, and the exception flags.
+ */
+#ifndef PF_X87_SOFT_H
+#define PF_X87_SOFT_H
+
+typedef struct pf_x87_s {
+    unsigned long long m;      /* significand, bit63 = explicit integer bit */
+    unsigned short     se;     /* bit15 = sign, bits 0..14 = biased exponent */
+    unsigned short     pad;
+} pf_x87_t;
+
+#define PF_XBIAS 16383
+#define PF_XTOP  0x8000000000000000ull
+
+static pf_x87_t pf_mk(unsigned int s, int be, unsigned long long m)
+{
+    pf_x87_t r;
+    r.m = m;
+    r.se = (unsigned short)((s ? 0x8000u : 0u) | ((unsigned int)be & 0x7FFFu));
+    r.pad = 0;
+    return r;
+}
+static unsigned int pf_sgn(pf_x87_t v)  { return (unsigned int)(v.se >> 15) & 1u; }
+static int          pf_bex(pf_x87_t v)  { return (int)(v.se & 0x7FFFu); }
+static int pf_is_nan (pf_x87_t v) { return pf_bex(v) == 0x7FFF && (v.m << 1) != 0ull; }
+static int pf_is_inf (pf_x87_t v) { return pf_bex(v) == 0x7FFF && (v.m << 1) == 0ull; }
+static int pf_is_zero(pf_x87_t v) { return pf_bex(v) == 0 && v.m == 0ull; }
+
+static pf_x87_t pf_inf (unsigned int s) { return pf_mk(s, 0x7FFF, PF_XTOP); }
+static pf_x87_t pf_zero(unsigned int s) { return pf_mk(s, 0, 0ull); }
+/* the x87 "real indefinite": -QNaN, significand 0xC000000000000000 */
+static pf_x87_t pf_indef(void) { return pf_mk(1u, 0x7FFF, 0xC000000000000000ull); }
+
+static void pf_unpack(pf_x87_t v, unsigned int *s, int *be, unsigned long long *m)
+{
+    *s = pf_sgn(v);
+    *be = pf_bex(v);
+    *m = v.m;
+    if (*be == 0 && v.m != 0ull)
+        PF_TRAP(0u, "software x87: extended denormal operand is not modelled");
+}
+
+/* ---- 128-bit helpers ---------------------------------------------------- */
+typedef struct { unsigned long long hi, lo; } pf_u128;
+
+static pf_u128 pf_mul64(unsigned long long a, unsigned long long b)
+{
+    unsigned long long a0 = a & 0xFFFFFFFFull, a1 = a >> 32;
+    unsigned long long b0 = b & 0xFFFFFFFFull, b1 = b >> 32;
+    unsigned long long p00 = a0 * b0, p01 = a0 * b1, p10 = a1 * b0, p11 = a1 * b1;
+    unsigned long long mid = (p00 >> 32) + (p01 & 0xFFFFFFFFull) + (p10 & 0xFFFFFFFFull);
+    pf_u128 r;
+    r.lo = (p00 & 0xFFFFFFFFull) | (mid << 32);
+    r.hi = p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
+    return r;
+}
+
+/* right shift with a sticky OR of every bit shifted out */
+static pf_u128 pf_shr(pf_u128 v, int n, int *sticky)
+{
+    pf_u128 r;
+    if (n <= 0) return v;
+    if (n >= 128) {
+        if (v.hi || v.lo) *sticky = 1;
+        r.hi = 0ull; r.lo = 0ull;
+        return r;
+    }
+    if (n >= 64) {
+        if (v.lo) *sticky = 1;
+        r.hi = 0ull; r.lo = v.hi;
+        n -= 64;
+        if (n) {
+            if (r.lo & ((1ull << n) - 1ull)) *sticky = 1;
+            r.lo >>= n;
+        }
+        return r;
+    }
+    if (v.lo & ((1ull << n) - 1ull)) *sticky = 1;
+    r.lo = (v.lo >> n) | (v.hi << (64 - n));
+    r.hi = v.hi >> n;
+    return r;
+}
+
+/* Normalise (hi:lo) so bit127 is set, round to 64 bits (nearest, ties to
+ * even) and pack.  Value = (hi:lo) * 2^(be - PF_XBIAS - 127); `sticky` says
+ * that nonzero bits exist below bit 0 of the 128-bit window. */
+static pf_x87_t pf_round128(unsigned int s, int be, pf_u128 v, int sticky)
+{
+    unsigned long long m;
+    int rbit;
+    if (v.hi == 0ull && v.lo == 0ull) return pf_zero(s);
+    while ((v.hi & PF_XTOP) == 0ull) {
+        v.hi = (v.hi << 1) | (v.lo >> 63);
+        v.lo <<= 1;
+        be--;
+    }
+    m = v.hi;
+    rbit = (int)((v.lo >> 63) & 1ull);
+    if ((v.lo << 1) != 0ull) sticky = 1;
+    if (rbit && (sticky || (m & 1ull))) {
+        m++;
+        if (m == 0ull) { m = PF_XTOP; be++; }
+    }
+    if (be >= 0x7FFF) return pf_inf(s);
+    if (be <= 0) PF_TRAP(0u, "software x87: extended-range underflow is not modelled");
+    return pf_mk(s, be, m);
+}
+
+/* ---- conversions in ----------------------------------------------------- */
+static pf_x87_t pf_from_u64(unsigned int s, unsigned long long u)
+{
+    int be = PF_XBIAS + 63;
+    if (u == 0ull) return pf_zero(0u);
+    while ((u & PF_XTOP) == 0ull) { u <<= 1; be--; }
+    return pf_mk(s, be, u);
+}
+static pf_x87_t pf_from_i64(long long v)
+{
+    unsigned long long u = (v < 0) ? (unsigned long long)(-(v + 1)) + 1ull
+                                   : (unsigned long long)v;
+    return pf_from_u64((v < 0) ? 1u : 0u, u);
+}
+static pf_x87_t pf_from_i32(int v)   { return pf_from_i64((long long)v); }
+static pf_x87_t pf_from_i16(short v) { return pf_from_i64((long long)v); }
+
+static pf_x87_t pf_from_f64(double d)
+{
+    union { double d; unsigned long long u; } cv;
+    unsigned int s;
+    int de;
+    unsigned long long mf;
+    cv.d = d;
+    s  = (unsigned int)(cv.u >> 63) & 1u;
+    de = (int)((cv.u >> 52) & 0x7FFull);
+    mf = cv.u & 0xFFFFFFFFFFFFFull;
+    if (de == 0x7FF) {
+        if (mf == 0ull) return pf_inf(s);
+        return pf_mk(s, 0x7FFF, PF_XTOP | (mf << 11));       /* NaN payload kept */
+    }
+    if (de == 0) {
+        pf_x87_t t;
+        if (mf == 0ull) return pf_zero(s);
+        t = pf_from_u64(s, mf);                              /* value == mf */
+        return pf_mk(s, pf_bex(t) - 1074, t.m);              /* * 2^-1074 */
+    }
+    return pf_mk(s, de - 1023 + PF_XBIAS, PF_XTOP | (mf << 11));
+}
+static pf_x87_t pf_from_f32(float f) { return pf_from_f64((double)f); }
+
+/* ---- conversions out ---------------------------------------------------- */
+/* Pack the extended value into an IEEE format with `ew` exponent bits and
+ * `mw` significand bits, round-to-nearest-even -- the one routine behind both
+ * FST m64fp (11, 52) and FST m32fp (8, 23).  Returns the BIT PATTERN, never a
+ * float: the 32-bit cdecl ABI returns floating point in ST(0), and FLD of a
+ * signalling NaN quiets it, which would silently mangle an SNaN that the
+ * original code only copies from memory to memory. */
+static unsigned long long pf_pack(pf_x87_t v, int ew, int mw)
+{
+    unsigned long long s = (unsigned long long)pf_sgn(v), dm, mmask, mtop;
+    int be = pf_bex(v), de, sh, rbit, sticky;
+    int bias = (1 << (ew - 1)) - 1, emax = (1 << ew) - 1;
+    unsigned long long m = v.m;
+    mmask = (1ull << mw) - 1ull;
+    mtop = 1ull << mw;
+    if (be == 0x7FFF) {
+        if ((m << 1) == 0ull)
+            return (s << (ew + mw)) | ((unsigned long long)emax << mw);
+        dm = (m >> (63 - mw)) & mmask;
+        if (dm == 0ull) dm = mtop >> 1;
+        return (s << (ew + mw)) | ((unsigned long long)emax << mw) | dm;
+    }
+    if (be == 0) {
+        if (m != 0ull) PF_TRAP(0u, "software x87: extended denormal to IEEE");
+        return s << (ew + mw);
+    }
+    de = be - PF_XBIAS + bias;
+    sh = 63 - mw;
+    if (de <= 0) {                                  /* IEEE subnormal */
+        sh = (63 - mw) + (1 - de);
+        de = 0;
+        if (sh > 64) return s << (ew + mw);         /* below half the smallest */
+    }
+    if (sh >= 64) {
+        dm = 0ull;
+        rbit = (int)((m >> 63) & 1ull);
+        sticky = ((m << 1) != 0ull);
+    } else {
+        dm = m >> sh;
+        rbit = (int)((m >> (sh - 1)) & 1ull);
+        sticky = ((m & ((1ull << (sh - 1)) - 1ull)) != 0ull);
+    }
+    if (rbit && (sticky || (dm & 1ull))) dm++;
+    if (de == 0) {
+        if (dm & mtop) { de = 1; dm &= mmask; }
+        return (s << (ew + mw)) | ((unsigned long long)de << mw) | dm;
+    }
+    if (dm & (mtop << 1)) { dm >>= 1; de++; }
+    if (de >= emax) return (s << (ew + mw)) | ((unsigned long long)emax << mw);
+    return (s << (ew + mw)) | ((unsigned long long)de << mw) | (dm & mmask);
+}
+static unsigned long long pf_bits64(pf_x87_t v) { return pf_pack(v, 11, 52); }
+static unsigned int pf_bits32(pf_x87_t v) { return (unsigned int)pf_pack(v, 8, 23); }
+static double pf_to_f64(pf_x87_t v)
+{ union { double d; unsigned long long u; } c; c.u = pf_bits64(v); return c.d; }
+static float pf_to_f32(pf_x87_t v)
+{ union { float f; unsigned int u; } c; c.u = pf_bits32(v); return c.f; }
+
+/* FIST/FISTP in the current RC.  Out of range or NaN -> integer indefinite,
+ * which is what the hardware stores with the invalid exception masked. */
+static long long pf_to_i64_rc(pf_x87_t v, unsigned int cw, int *bad)
+{
+    unsigned int s = pf_sgn(v), rc = PF_CW_RC(cw);
+    int be = pf_bex(v), E, sh;
+    unsigned long long m = v.m, ip, frac;
+    *bad = 0;
+    if (be == 0x7FFF) { *bad = 1; return 0; }
+    if (be == 0) {
+        if (m != 0ull) PF_TRAP(0u, "software x87: extended denormal to integer");
+        return 0;
+    }
+    E = be - PF_XBIAS;
+    if (E >= 64) { *bad = 1; return 0; }
+    if (E < 0) {                                   /* |v| < 1 */
+        ip = 0ull;
+        if (E == -1) frac = ((m << 1) == 0ull) ? PF_XTOP : (PF_XTOP + 1ull);
+        else         frac = 1ull;                  /* 0 < |v| < 1/2 */
+    } else {
+        sh = 63 - E;                               /* 0 .. 63 */
+        ip = m >> sh;
+        frac = (sh == 0) ? 0ull : (m << (64 - sh));
+    }
+    if (rc == 0u) {
+        if (frac > PF_XTOP || (frac == PF_XTOP && (ip & 1ull))) ip++;
+    } else if (rc == 1u) {
+        if (s && frac) ip++;                       /* toward -inf */
+    } else if (rc == 2u) {
+        if (!s && frac) ip++;                      /* toward +inf */
+    }                                              /* rc == 3: toward zero */
+    if (ip >= PF_XTOP) { *bad = 1; return 0; }
+    return s ? -(long long)ip : (long long)ip;
+}
+static unsigned int pf_toi32(pf_x87_t v, unsigned int cw)
+{
+    int bad;
+    long long r = pf_to_i64_rc(v, cw, &bad);
+    if (bad || r < -2147483648LL || r > 2147483647LL) return 0x80000000u;
+    return (unsigned int)(int)r;
+}
+static unsigned int pf_toi16(pf_x87_t v, unsigned int cw)
+{
+    int bad;
+    long long r = pf_to_i64_rc(v, cw, &bad);
+    if (bad || r < -32768LL || r > 32767LL) return 0x8000u;
+    return (unsigned int)(int)r & 0xFFFFu;
+}
+
+/* ---- arithmetic --------------------------------------------------------- */
+static pf_x87_t pf_neg(pf_x87_t v) { v.se = (unsigned short)(v.se ^ 0x8000u); return v; }
+static pf_x87_t pf_abs(pf_x87_t v) { v.se = (unsigned short)(v.se & 0x7FFFu); return v; }
+
+static pf_x87_t pf_add(pf_x87_t a, pf_x87_t b)
+{
+    unsigned int sa, sb;
+    int ea, eb, sticky = 0, d;
+    unsigned long long ma, mb;
+    pf_u128 A, B, S;
+    if (pf_is_nan(a)) return a;
+    if (pf_is_nan(b)) return b;
+    if (pf_is_inf(a)) {
+        if (pf_is_inf(b) && pf_sgn(a) != pf_sgn(b)) return pf_indef();
+        return a;
+    }
+    if (pf_is_inf(b)) return b;
+    if (pf_is_zero(a) && pf_is_zero(b))
+        return pf_zero((pf_sgn(a) && pf_sgn(b)) ? 1u : 0u);
+    if (pf_is_zero(a)) return b;
+    if (pf_is_zero(b)) return a;
+    pf_unpack(a, &sa, &ea, &ma);
+    pf_unpack(b, &sb, &eb, &mb);
+    if (eb > ea) {
+        unsigned int ts = sa; int te = ea; unsigned long long tm = ma;
+        sa = sb; ea = eb; ma = mb;
+        sb = ts; eb = te; mb = tm;
+    }
+    A.hi = ma; A.lo = 0ull;
+    B.hi = mb; B.lo = 0ull;
+    d = ea - eb;
+    B = pf_shr(B, d, &sticky);
+    if (sa == sb) {
+        unsigned long long lo, t, hi;
+        int ovf;
+        lo = A.lo + B.lo;
+        t = B.hi + ((lo < A.lo) ? 1ull : 0ull);
+        ovf = (t < B.hi);
+        hi = A.hi + t;
+        if (hi < A.hi) ovf = 1;
+        S.hi = hi; S.lo = lo;
+        if (ovf) {
+            if (S.lo & 1ull) sticky = 1;
+            S.lo = (S.lo >> 1) | (S.hi << 63);
+            S.hi = (S.hi >> 1) | PF_XTOP;
+            ea++;
+        }
+        return pf_round128(sa, ea, S, sticky);
+    }
+    /* opposite signs.  d >= 1 implies |A| > |B| because bit127 of A is set
+     * and B has been shifted right; d == 0 implies no sticky bits. */
+    if (A.hi > B.hi || (A.hi == B.hi && A.lo >= B.lo)) {
+        S.lo = A.lo - B.lo;
+        S.hi = A.hi - B.hi - ((A.lo < B.lo) ? 1ull : 0ull);
+        if (sticky) {                 /* true B is a hair larger than B */
+            if (S.lo == 0ull) { S.hi--; S.lo = ~0ull; } else { S.lo--; }
+        }
+        if (S.hi == 0ull && S.lo == 0ull) return pf_zero(0u);
+        return pf_round128(sa, ea, S, sticky);
+    }
+    S.lo = B.lo - A.lo;
+    S.hi = B.hi - A.hi - ((B.lo < A.lo) ? 1ull : 0ull);
+    if (S.hi == 0ull && S.lo == 0ull) return pf_zero(0u);
+    return pf_round128(sb, ea, S, 0);
+}
+static pf_x87_t pf_sub(pf_x87_t a, pf_x87_t b) { return pf_add(a, pf_neg(b)); }
+
+static pf_x87_t pf_mul(pf_x87_t a, pf_x87_t b)
+{
+    unsigned int sa, sb, s;
+    int ea, eb;
+    unsigned long long ma, mb;
+    pf_u128 p;
+    if (pf_is_nan(a)) return a;
+    if (pf_is_nan(b)) return b;
+    s = pf_sgn(a) ^ pf_sgn(b);
+    if (pf_is_inf(a)) return pf_is_zero(b) ? pf_indef() : pf_inf(s);
+    if (pf_is_inf(b)) return pf_is_zero(a) ? pf_indef() : pf_inf(s);
+    if (pf_is_zero(a) || pf_is_zero(b)) return pf_zero(s);
+    pf_unpack(a, &sa, &ea, &ma);
+    pf_unpack(b, &sb, &eb, &mb);
+    p = pf_mul64(ma, mb);
+    return pf_round128(s, ea + eb - PF_XBIAS + 1, p, 0);
+}
+
+static pf_x87_t pf_div(pf_x87_t a, pf_x87_t b)
+{
+    unsigned int sa, sb, s;
+    int ea, eb, i, extra = 0, rbit = 0;
+    unsigned long long ma, mb, q = 0ull, rem, carry;
+    pf_u128 v;
+    if (pf_is_nan(a)) return a;
+    if (pf_is_nan(b)) return b;
+    s = pf_sgn(a) ^ pf_sgn(b);
+    if (pf_is_inf(a)) return pf_is_inf(b) ? pf_indef() : pf_inf(s);
+    if (pf_is_inf(b)) return pf_zero(s);
+    if (pf_is_zero(b)) return pf_is_zero(a) ? pf_indef() : pf_inf(s);  /* #Z masked */
+    if (pf_is_zero(a)) return pf_zero(s);
+    pf_unpack(a, &sa, &ea, &ma);
+    pf_unpack(b, &sb, &eb, &mb);
+    /* restoring division: ma/mb is in [1,2) when `extra`, else in [0.5,1).
+     * 64 quotient bits are not enough -- pf_round128 needs a round bit BELOW
+     * the 64-bit significand, so one extra bit is produced and `rem` supplies
+     * the sticky. */
+    rem = ma;
+    if (rem >= mb) { extra = 1; rem -= mb; }
+    for (i = 0; i < 65; i++) {
+        if (i == 64) { rbit = 0; }
+        carry = rem >> 63;
+        rem <<= 1;
+        if (i < 64) q <<= 1;
+        if (carry || rem >= mb) {
+            rem -= mb;
+            if (i < 64) q |= 1ull; else rbit = 1;
+        }
+    }
+    if (extra) {
+        v.hi = PF_XTOP | (q >> 1);
+        v.lo = ((q & 1ull) ? PF_XTOP : 0ull) | (rbit ? (1ull << 62) : 0ull);
+        return pf_round128(s, ea - eb + PF_XBIAS, v, rem != 0ull);
+    }
+    v.hi = q;
+    v.lo = rbit ? PF_XTOP : 0ull;
+    return pf_round128(s, ea - eb + PF_XBIAS - 1, v, rem != 0ull);
+}
+
+static unsigned int pf_fcmp(pf_x87_t a, pf_x87_t b)
+{
+    unsigned int sa, sb;
+    int ea, eb, r;
+    if (pf_is_nan(a) || pf_is_nan(b)) return 0x4500u;
+    if (pf_is_zero(a) && pf_is_zero(b)) return 0x4000u;
+    sa = pf_sgn(a); sb = pf_sgn(b);
+    if (sa != sb) return sa ? 0x0100u : 0x0000u;
+    ea = pf_bex(a); eb = pf_bex(b);
+    if (ea != eb) r = (ea < eb) ? -1 : 1;
+    else if (a.m != b.m) r = (a.m < b.m) ? -1 : 1;
+    else r = 0;
+    if (sa) r = -r;
+    if (r > 0) return 0x0000u;
+    if (r < 0) return 0x0100u;
+    return 0x4000u;
+}
+
+#define PF_FI16(x)  pf_from_i16((short)(x))
+#define PF_FI32(x)  pf_from_i32((int)(x))
+#define PF_FI64(x)  pf_from_i64((long long)(x))
+#define PF_FF32(x)  pf_from_f32((float)(x))
+#define PF_FF64(x)  pf_from_f64((double)(x))
+#define PF_ZERO     pf_zero(0u)
+#define PF_ONE      pf_from_i32(1)
+#define PF_ADD(a,b) pf_add((a), (b))
+#define PF_SUB(a,b) pf_sub((a), (b))
+#define PF_MUL(a,b) pf_mul((a), (b))
+#define PF_DIV(a,b) pf_div((a), (b))
+#define PF_NEG(a)   pf_neg(a)
+#define PF_ABS(a)   pf_abs(a)
+#define PF_TOF32(v) pf_to_f32(v)
+#define PF_TOF64(v) pf_to_f64(v)
+#define PF_TOI32(v, cw) pf_toi32((v), (cw))
+#define PF_TOI16(v, cw) pf_toi16((v), (cw))
+
+#endif /* PF_X87_SOFT_H */
+'''.replace("@GEN@", GEN)
+
 
 
 # --------------------------------------------------------------------------
@@ -1533,6 +2230,9 @@ def main():
     rt = os.path.join(args.out, "pf_rt.h")
     if not os.path.exists(rt) or open(rt).read() != PF_RT_H:
         open(rt, "w").write(PF_RT_H)
+    sf = os.path.join(args.out, "pf_x87_soft.h")
+    if not os.path.exists(sf) or open(sf).read() != PF_X87_SOFT_H:
+        open(sf, "w").write(PF_X87_SOFT_H)
 
     lf = Lifter(image, base, func, protos, iat, gidx, sha)
     try:

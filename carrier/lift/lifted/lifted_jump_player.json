@@ -21,7 +21,7 @@
  "external_calls": [],
  "frame_bytes": 8,
  "function": "jump_player",
- "generated_lines": 220,
+ "generated_lines": 221,
  "generator": "pf_lift.py",
  "image_sha256": "7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
  "instructions_decoded": 72,
@@ -165,5 +165,8 @@
   "0x00418732"
  ],
  "uses_x87": true,
- "va": "0x00418678"
+ "va": "0x00418678",
+ "x87_arith_ops": 3,
+ "x87_control_word_used": false,
+ "x87_fistp_ops": 0
 }
