@@ -3,8 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 12:26:50 UTC
- * Excluded (compiled natively, name kept free): add_combo, getFloorData, get_gamepad, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, reset_map, update_frame
+ * Generated: 2026-09-07 12:38:31 UTC
+ * Excluded (compiled natively, name kept free): add_combo, asset_sample, assets_standalone_family, assets_standalone_raw, draw_buffer, getFloorData, get_gamepad, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, reset_map, update_frame
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -498,9 +498,7 @@
 /* drawSlot  VA=0x406fb4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void drawSlot(BITMAP *, int, int, char *, char *, int) */
 #define drawSlot ((PFN_drawSlot)0x406fb4)
-/* draw_buffer  VA=0x4191c8  cu=F:\projects\icytower\trunk\source\profile.c */
-/* prototype: int draw_buffer(BITMAP *, char *, int, int) */
-#define draw_buffer ((PFN_draw_buffer)0x4191c8)
+/* excluded by --exclude (compiled natively): draw_buffer */
 /* draw_frame  VA=0x40929c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void draw_frame(BITMAP *) */
 #define draw_frame ((PFN_draw_frame)0x40929c)

@@ -148,14 +148,42 @@ def sanitize_token(name):
     return s
 
 
-def object_part(stem, index, object_name):
+def display_name(stem, index, object_name):
+    """The name assets_table.inc's object_name column stores for this
+    object: for a character datafile, the CHAR_SLOT game-visible slot
+    name (not the raw, meaningless grabber name like "000_PAL" --
+    CHAR_SLOT is itself derived from the disassembly, notes/
+    asset_census.md SS3, not invented here); otherwise the datafile
+    object's own NAME property, UNCHANGED (so this column always matches
+    what a reader would find by opening the real file with
+    tools_recon/assets_datafile.py -- carrier/gen/check_assets.py's
+    real-file-order check cross-references this exact value).
+    """
     if stem.startswith("char."):
-        slot = AM.CHAR_SLOT.get(index)
-        assert slot is not None, "no CHAR_SLOT entry for %s index %d" % (stem, index)
-        return sanitize_token(slot)
-    if stem == "sfx15" and object_name and object_name.startswith("S_"):
-        return sanitize_token(object_name[2:])
-    return sanitize_token(object_name or ("OBJ_%d" % index))
+        # CHAR_SLOT (tools_recon/assets_manifest.py) only names the 24
+        # game-visible slots (palette, 15 frames, 8 sounds -- the indices
+        # load_frames/load_sounds actually walk, notes/asset_census.md
+        # SS3). 3 of the 4 character datafiles carry one extra trailing
+        # object, grabber bookkeeping named "GrabberInfo" (type "info",
+        # same runtime-irrelevant kind as data/GrabberInfo and
+        # loading/GrabberInfo -- notes/asset_census.md SS4's "info"
+        # row), outside that range; fall back to its own object name.
+        slot = AM.CHAR_SLOT.get(index) or object_name
+        assert slot is not None, "no name for %s index %d" % (stem, index)
+        return slot
+    return object_name or ("OBJ_%d" % index)
+
+
+def object_part(stem, index, object_name):
+    # The id's OBJECT token additionally strips sfx15's redundant "S_"
+    # prefix (the FAMILY token already says SFX -- ASSET_SFX_AIGHT reads
+    # better than ASSET_SFX_S_AIGHT); this is purely an id-readability
+    # choice and must NOT leak into display_name()'s table column, which
+    # stays traceable to the real file's own NAME property verbatim.
+    name = display_name(stem, index, object_name)
+    if stem == "sfx15" and name.startswith("S_"):
+        name = name[2:]
+    return sanitize_token(name)
 
 
 class Asset:
@@ -191,8 +219,9 @@ def build_assets(manifest):
                 n += 1
             id_name = "%s_%d" % (id_name, n)
         seen[id_name] = True
+        dname = display_name(stem, origin["index"], origin["object_name"])
         assets.append(Asset(id_name, family, origin["index"],
-                             origin["object_name"], origin["type_fourcc"]))
+                             dname, origin["type_fourcc"]))
     return assets
 
 
@@ -391,16 +420,15 @@ def write_pf_asset_bindings_h(path, date):
     lines.append('#include "assets.h"')
     lines.append('#include "assets_table.inc"')
     lines.append("")
-    lines.append("/* one static cache slot per lazily-loaded family, in")
-    lines.append(" * asset_datafile_family[] order (data/sfx are never looked up here --")
-    lines.append(" * they resolve straight to the persistent `data`/`sfx` globals) */")
-    lines.append("static DATAFILE *pf_asset_lazy_loading = (DATAFILE *)0;")
-    lines.append("static DATAFILE *pf_asset_lazy_char[4] = { (DATAFILE *)0, (DATAFILE *)0, (DATAFILE *)0, (DATAFILE *)0 };")
+    lines.append("/* one cache slot per asset_datafile_family[] row, same index -- only")
+    lines.append(" * the \"loading\" and \"char:*\" rows ever populate theirs, since")
+    lines.append(" * \"data\"/\"sfx\" are special-cased below to the persistent globals and")
+    lines.append(" * never reach this array at all. */")
+    lines.append("static DATAFILE *pf_asset_cache[ASSET_DATAFILE_FAMILY_COUNT];")
     lines.append("")
-    lines.append("static DATAFILE *pf_asset_load_family(const char *family)")
+    lines.append("static DATAFILE *pf_asset_family(const char *family)")
     lines.append("{")
     lines.append("    unsigned i;")
-    lines.append("    unsigned char_slot = 0;")
     lines.append("")
     lines.append('    if (!strcmp(family, "data"))')
     lines.append("        return data;   /* persistent global, plain name via pf_bindings_src.h */")
@@ -410,31 +438,14 @@ def write_pf_asset_bindings_h(path, date):
     lines.append("    for (i = 0; i < ASSET_DATAFILE_FAMILY_COUNT; i++) {")
     lines.append("        if (strcmp(asset_datafile_family[i].name, family) != 0)")
     lines.append("            continue;")
-    lines.append('        if (!strcmp(family, "loading")) {')
-    lines.append("            if (!pf_asset_lazy_loading) {")
-    lines.append("                packfile_password(asset_datafile_family[i].password);")
-    lines.append("                pf_asset_lazy_loading = load_datafile(asset_datafile_family[i].path);")
-    lines.append("                packfile_password((const char *)0);")
-    lines.append("            }")
-    lines.append("            return pf_asset_lazy_loading;")
-    lines.append("        }")
-    lines.append("        /* one of the four \"char:<name>\" families -- slot by table position */")
-    lines.append("        if (!pf_asset_lazy_char[char_slot]) {")
+    lines.append("        if (!pf_asset_cache[i]) {")
     lines.append("            packfile_password(asset_datafile_family[i].password);   /* (const char *)0 -- unencrypted */")
-    lines.append("            pf_asset_lazy_char[char_slot] = load_datafile(asset_datafile_family[i].path);")
+    lines.append("            pf_asset_cache[i] = load_datafile(asset_datafile_family[i].path);")
     lines.append("            packfile_password((const char *)0);")
     lines.append("        }")
-    lines.append("        return pf_asset_lazy_char[char_slot];")
+    lines.append("        return pf_asset_cache[i];")
     lines.append("    }")
     lines.append("    return (DATAFILE *)0;")
-    lines.append("}")
-    lines.append("")
-    lines.append("/* char_slot only increments on \"char:*\" table rows -- recompute it")
-    lines.append(" * from the row's position among asset_datafile_family[] instead of")
-    lines.append(" * threading extra state through pf_asset_load_family() above. */")
-    lines.append("static DATAFILE *pf_asset_family(const char *family)")
-    lines.append("{")
-    lines.append("    return pf_asset_load_family(family);")
     lines.append("}")
     lines.append("")
     lines.append("static const struct asset_table_row *pf_asset_row(asset_id id)")
@@ -449,12 +460,19 @@ def write_pf_asset_bindings_h(path, date):
     lines.append("    return base[row->index].dat;")
     lines.append("}")
     lines.append("")
-    lines.append("BITMAP *asset_bitmap(asset_id id) { return (BITMAP *)pf_asset_raw(id); }")
-    lines.append("FONT *asset_font(asset_id id) { return (FONT *)pf_asset_raw(id); }")
-    lines.append("PALETTE *asset_palette(asset_id id) { return (PALETTE *)pf_asset_raw(id); }")
-    lines.append("void *asset_object(asset_id id) { return pf_asset_raw(id); }")
+    lines.append("/* static, like every other name pf_bindings_src.h/pf_lib_bindings.h")
+    lines.append(" * introduce: this header may be force-included ahead of more than one")
+    lines.append(" * native .c file's compile, and each gets its own internal-linkage")
+    lines.append(" * copy instead of colliding at link time (the same reason")
+    lines.append(" * it_globals.h emits a `static X *g_name_p` per name). assets.h never")
+    lines.append(" * declares these with external linkage in this world (guarded by")
+    lines.append(" * ICYTOWER_BINDINGS_ACTIVE), so there is no extern/static clash. */")
+    lines.append("static BITMAP *asset_bitmap(asset_id id) { return (BITMAP *)pf_asset_raw(id); }")
+    lines.append("static FONT *asset_font(asset_id id) { return (FONT *)pf_asset_raw(id); }")
+    lines.append("static PALETTE *asset_palette(asset_id id) { return (PALETTE *)pf_asset_raw(id); }")
+    lines.append("static void *asset_object(asset_id id) { return pf_asset_raw(id); }")
     lines.append("")
-    lines.append("SAMPLE *asset_sample(asset_id id)")
+    lines.append("static SAMPLE *asset_sample(asset_id id)")
     lines.append("{")
     lines.append("    const struct asset_table_row *row = pf_asset_row(id);")
     lines.append("    DATAFILE *base = pf_asset_family(row->datafile);")
