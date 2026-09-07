@@ -140,6 +140,20 @@ x87 must be represented faithfully enough that physics bits match the oracle
 (HYPOTHESIS: `double` is not enough where GCC kept 80-bit intermediates; the
 oracle comparison decides, and softfloat x87 is the fallback).
 
+**Resolved 2026-09-07 — the HYPOTHESIS is now KNOWN, and it was right.**
+`line_intersect` (0x406b80) keeps every x87 intermediate in the register stack
+and then truncates with `fistp`; with `pf_x87_t = double` the LIFTED form
+differs from the ORIGINAL bytes on 107/103/105/128 of 50 000 vectors across four
+seeds, and with a software 80-bit extended type it is bit-exact over 200 000.
+The deciding fact is the control word: `___mingw_CRTStartup` (0x401020) calls
+`__fpreset` (0x4b2850) = a bare `FNINIT`, so the game runs at `CW = 0x037F`,
+**PC = 11 = a 64-bit significand** — not the MSVC/CRT `0x027F`. At 0x027F the
+hardware and the `double` model agree exactly; at 0x037F they do not. Softfloat
+x87 (`carrier/lift/lifted/pf_x87_soft.h`, `-DPF_X87_SOFT`) is therefore no
+longer a fallback but the default for any lifted function whose FP arithmetic is
+not provably exact. Evidence and numbers: `artifacts/lift_x87_finding.md`,
+`carrier/lift/README.md` §6.
+
 What native execution gives up, and how it is recovered when needed:
 
 | lost by not lifting | recovered by |
@@ -416,6 +430,51 @@ guest address or carrier include in `src/`, and is the tier-0 gate for
 promotion. The offline oracle (unicorn on the original bytes,
 `carrier/lift/harness`) verifies a `src/` function before it is bound in
 vivo; the replay comparison verifies it after.
+
+## 7b. Recovery target and the library ownership boundary (2026-09-07)
+
+Icy Tower is an ordinary game on top of open-source libraries (Allegro 4,
+libogg/libvorbis, libpng/zlib, the MinGW runtime), not a monolithic engine.
+The recovery target is **only the code that is genuinely lost**: the
+game-owned CUs (gameplay, physics, map generation, scoring, menus, replay,
+game state). Third-party code is **not** part of the recovery workload
+unless strong evidence shows it cannot be replaced by an existing compatible
+library.
+
+Semantic ownership is separated from physical linking:
+
+```text
+NOW (carrier)                          LATER (standalone, same clean source)
+clean src/                             complete src/
+  ├─ unrecovered game functions          ├─ existing compatible Allegro DLL,
+  │  (ORIGINAL form, in the carrier)     │  or source-built Allegro
+  └─ original embedded Allegro/          ├─ existing Ogg/Vorbis DLLs or source
+     Vorbis (via generated bindings)     └─ libpng/zlib, normal CRT
+```
+
+Rules:
+- Order of preference for each library: existing prebuilt 32-bit DLL →
+  upstream source build → (only if both fail) recovery of internals. An
+  exact historical build is not required; a version is acceptable if it
+  provides the complete interface the game actually uses with compatible
+  ABI and behaviour on that surface.
+- "Compatible" is checked per symbol against the exact boundary census
+  (`notes/library_boundary.md`, `artifacts/lib_boundary.json`): exported
+  functions used by game code, calling conventions, parameter/return types,
+  struct layouts, shared globals, callbacks into game code, function-pointer
+  tables, ownership/lifetime, library state the game inspects directly, and
+  timing/input/render/audio semantics. Each required symbol is classified
+  PUBLIC + AVAILABLE / PUBLIC BUT ABI-DIFFERENT / INTERNAL / GLOBAL-SHARED
+  STATE / CALLBACK EDGE / UNKNOWN; a candidate that covers most of the
+  surface plus a small adapter for the rest is the expected outcome, never
+  "recover the whole library".
+- The boundary is replaced atomically per stateful library: never half the
+  calls into the embedded copy and half into an external DLL with its own
+  globals and driver state.
+- Every replacement is validated by the oracle: `game src + embedded
+  library` vs `game src + candidate library` under the same deterministic
+  replay, comparing game-state digests and the relevant render/audio/event
+  digests. The clean game source does not change between the two.
 
 ## 8. Milestones and status
 
