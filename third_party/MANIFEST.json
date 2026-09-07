@@ -8,6 +8,117 @@
       "licence": "Giftware License (zlib/libpng-like; see the checkout's LICENSE.txt / allegro/base.h)",
       "dest": "third_party/allegro-4.4.3.1",
       "note": "upstream liballeg/allegro5 used"
+    },
+    {
+      "name": "tdm-gcc-4.4.1-tdm-1",
+      "url": "https://sourceforge.net/projects/tdm-gcc/files/TDM-GCC%20Old%20Releases/TDM-GCC%204.4%20series/Previous%20Releases/4.4.1-tdm-1%20SJLJ",
+      "installer_url": "https://sourceforge.net/projects/tdm-gcc/files/TDM-GCC%20Installer/Previous/1.908.0/Superceded/tdm-mingw-1.908.0-4.4.1.exe",
+      "tag": "4.4.1-tdm-1 SJLJ",
+      "licence": "GPL/LGPL (GCC/binutils/mingwrt/w32api); see COPYING* in the checkout",
+      "dest": "third_party/tdm-gcc-4.4.1-tdm-1",
+      "gcc_version": "gcc.exe (TDM-1 mingw32) 4.4.1",
+      "files": [
+        {
+          "name": "gcc-4.4.1-tdm-1-core.tar.gz",
+          "sha256": "f9de30fdc4cf00887e27b38461f3d4ff0f1f1cb3a720acb2f6835381e8933de3",
+          "size": 8194639
+        },
+        {
+          "name": "gcc-4.4.1-tdm-1-g++.tar.gz",
+          "sha256": "acd5fe4168cb08fdbd3c5bd0db206f34e232fe4845bdb0e2445773b9343a8a5b",
+          "size": 5260569
+        },
+        {
+          "name": "tdm-mingw-1.908.0-4.4.1.exe",
+          "sha256": "b5ee3197de9e1f71bcfc5e99d2360dd73296be250424863a6f8bf8f1fa06a219",
+          "size": 27455304,
+          "note": "NSIS bundle installer; extracted with 7-Zip for binutils/mingwrt/w32api only, never executed"
+        },
+        {
+          "name": "binutils-2.19.1-mingw32-bin.tar.gz",
+          "sha256": "42427d4e7adaacacddb4e58ec3a03f3724aa46db884c7a37635bec98ac80fb0c",
+          "size": 8925501,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1.exe"
+        },
+        {
+          "name": "mingwrt-3.16-mingw32-dev.tar.gz",
+          "sha256": "917dbecaa3f2e6de95e63763b615f142c73da975605269747e0849bde9b917f7",
+          "size": 562289,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1.exe"
+        },
+        {
+          "name": "mingwrt-3.16-mingw32-dll.tar.gz",
+          "sha256": "627be0854993e71cfda35f9b9c579688fff2d0473e17d64c594f8103e15f59d1",
+          "size": 6406,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1.exe"
+        },
+        {
+          "name": "w32api-3.13-mingw32-dev.tar.gz",
+          "sha256": "7dbf01a06a0e21bd405fc397789bdbfdd21e69acb59383568a3d96ea1b1455a6",
+          "size": 1634605,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1.exe"
+        }
+      ]
+    },
+    {
+      "name": "tdm-gcc-4.4.1-tdm-2",
+      "url": "https://sourceforge.net/projects/tdm-gcc/files/TDM-GCC%20Old%20Releases/TDM-GCC%204.4%20series/4.4.1-tdm-2%20SJLJ",
+      "installer_url": "https://sourceforge.net/projects/tdm-gcc/files/TDM-GCC%20Installer/Previous/1.908.0/tdm-mingw-1.908.0-4.4.1-2.exe",
+      "tag": "4.4.1-tdm-2 SJLJ",
+      "licence": "GPL/LGPL (GCC/binutils/mingwrt/w32api); see COPYING* in the checkout",
+      "dest": "third_party/tdm-gcc-4.4.1-tdm-2",
+      "gcc_version": "gcc.exe (TDM-2 mingw32) 4.4.1",
+      "files": [
+        {
+          "name": "gcc-4.4.1-tdm-2-core.tar.gz",
+          "sha256": "aad57f3fb2a5e78c6ba1809c04cbd599857ec36d0d0e03ae46113442d38a50ca",
+          "size": 8199847
+        },
+        {
+          "name": "gcc-4.4.1-tdm-2-g++.tar.gz",
+          "sha256": "565e3b22f5493e80200bbf117f3299e3c04e70160d7d9c25e2ef9dc02062c93d",
+          "size": 5261268
+        },
+        {
+          "name": "tdm-mingw-1.908.0-4.4.1-2.exe",
+          "sha256": "8748bfc3a5600ea5739fb00c1d282bb5b97793d026af3bb34e37d943bc209173",
+          "size": 27414487,
+          "note": "NSIS bundle installer; extracted with 7-Zip for binutils/mingwrt/w32api only, never executed"
+        },
+        {
+          "name": "binutils-2.19.1-mingw32-bin.tar.gz",
+          "sha256": "42427d4e7adaacacddb4e58ec3a03f3724aa46db884c7a37635bec98ac80fb0c",
+          "size": 8925501,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1-2.exe"
+        },
+        {
+          "name": "mingwrt-3.16-mingw32-dev.tar.gz",
+          "sha256": "917dbecaa3f2e6de95e63763b615f142c73da975605269747e0849bde9b917f7",
+          "size": 562289,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1-2.exe"
+        },
+        {
+          "name": "mingwrt-3.16-mingw32-dll.tar.gz",
+          "sha256": "627be0854993e71cfda35f9b9c579688fff2d0473e17d64c594f8103e15f59d1",
+          "size": 6406,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1-2.exe"
+        },
+        {
+          "name": "w32api-3.13-mingw32-dev.tar.gz",
+          "sha256": "7dbf01a06a0e21bd405fc397789bdbfdd21e69acb59383568a3d96ea1b1455a6",
+          "size": 1634605,
+          "note": "extracted from tdm-mingw-1.908.0-4.4.1-2.exe"
+        }
+      ]
+    },
+    {
+      "name": "allegro-4.4.1",
+      "url": "https://github.com/liballeg/allegro5",
+      "tag": "4.4.1",
+      "commit": "38624f977d957c32fd7a7ade31ee308a740f4022",
+      "licence": "Giftware License (zlib/libpng-like; see the checkout's LICENSE.txt / allegro/base.h)",
+      "dest": "third_party/allegro-4.4.1",
+      "note": "git worktree of third_party/allegro-4.4.3.1 at tag 4.4.1"
     }
   ]
 }
