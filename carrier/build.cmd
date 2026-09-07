@@ -60,6 +60,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem --- "binding table generated" pass (carrier/NOTES.md): carrier\src\bind.cpp
+rem no longer hand-carries the per-function binding table (name/VA/argc/
+rem comparison domain) as a C++ literal - gen_bind_table.py derives it fresh
+rem every build from scan_src_defs.py (which functions), interop_index.json
+rem + it_funcs_table.inc (VA/size/prototype), fn_domains.json (the hand-
+rem curated comparison-domain DATA), and THIS file's own link line (which
+rem lifted_/native_ forms are actually linked in - see below). Must run
+rem before bind.cpp is compiled (the final cl invocation, below); has no
+rem dependency on pf_bindings_src.h, so any point before that compile works.
+python gen\gen_bind_table.py --root ..
+if errorlevel 1 (
+  echo FAILED: gen_bind_table.py ^(regenerating gen\bind_table.inc^)
+  exit /b 1
+)
+
 rem --- compile src/ (the clean port, win32_pilot.md SS7a) as its OWN cl
 rem invocation with ONLY pf_bindings_src.h force-included - NOT a global /FI
 rem on the whole build, because pf_bindings_src.h pulls in the carrier's
@@ -71,41 +86,32 @@ rem (src\README.md's purity gate), which force-include already respects: the
 rem macro substitution happens without any #include text appearing in the
 rem source files themselves.
 rem
-rem Milestone 12 at scale (carrier/NOTES.md): all 35 src/icytower functions
-rem are now bound, not just update_frame/is_solid. 30 of the 35 are pure
-rem integer (map.c/add_combo.c/add_jump_sequence.c/control.c/scroller.c/
-rem timer.c/main_state.c/ok_to_play.c, plus update_frame.c/is_solid.c) and
-rem compile straight through MSVC exactly like before. The remaining 5
-rem (jump_player, line_intersect, new_rand, update_particle, create_particle
-rem - jump_player.c, line_intersect.c, new_rand.c, particle.c) have real x87
-rem floating point: MSVC's cl.exe (no /arch override on this 32-bit target)
-rem compiles `double` through SSE/plain-double codegen, which measurably
-rem DIFFERs from the original's genuine 80-bit x87 intermediates
-rem (PROMOTIONS.md; win32_pilot.md SS6a). Those 4 files are instead compiled
-rem with the 32-bit MinGW GCC already used for the offline harness's own
-rem x87 proof (carrier/lift/harness/GCC_X87.md) at
-rem -m32 -mfpmath=387 -mno-sse2 -O2, force-including the SAME
-rem pf_bindings_src.h (plain #define macros + typedefs - no MSVC-only
-rem syntax, so GCC accepts it unchanged), and the resulting COFF .o files
-rem are linked directly into carrier.exe below alongside the MSVC .obj
-rem files: both are 32-bit cdecl COFF, GCC's `_name` decoration matches
-rem MSVC's exactly (verified: `nm` on new_rand.o shows `T _new_rand`), and
-rem MSVC's link.exe accepts a GCC .o with no wrapping/lib.exe step needed
-rem (verified with a standalone link test before this was wired in here).
-rem -fno-asynchronous-unwind-tables drops GCC's .eh_frame/CFI sections
-rem (unwind info MSVC's linker does not consume and does not need - these
-rem are leaf-ish functions with no C++ exceptions crossing them); neither
-rem object needs any CRT beyond what globals resolve to fixed addresses
-rem (pf_bindings_src.h macros), so no extra runtime library is linked.
+rem Milestone 12 at scale (carrier/NOTES.md), extended by "binding table
+rem generated": every src/icytower/*.c file that DEFINES at least one real
+rem game function (an interop_index.json VA - excludes assets_standalone.c's
+rem harness-only helpers) is compiled and linked in, split MSVC-vs-GCC-x87
+rem mechanically by scan_src_defs.py --list-build-files (does this file
+rem contain a genuine `double`/`float` CODE token, comments/strings
+rem stripped first - see that script's own header for why this is safer
+rem than trusting a hand-maintained list). MSVC's cl.exe (no /arch override
+rem on this 32-bit target) compiles `double` through SSE/plain-double
+rem codegen, which measurably DIFFERs from the original's genuine 80-bit x87
+rem intermediates for a real floating-point function (PROMOTIONS.md;
+rem win32_pilot.md SS6a) - the GCC-routed files below get the 32-bit MinGW
+rem GCC x87-faithful build instead. Both lists are recomputed every build,
+rem so a new src\icytower\*.c file needs no manual addition here.
+set MSVC_SRC=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --prefix "..\src\icytower\\"') do set MSVC_SRC=%%E
+if "%MSVC_SRC%"=="" (
+  echo FAILED: scan_src_defs.py --list-build-files msvc found no files to compile
+  exit /b 1
+)
 cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /FIpf_bindings_src.h ^
-  /c ..\src\icytower\update_frame.c ..\src\icytower\is_solid.c ^
-     ..\src\icytower\map.c ..\src\icytower\add_combo.c ..\src\icytower\add_jump_sequence.c ^
-     ..\src\icytower\control.c ..\src\icytower\scroller.c ..\src\icytower\timer.c ^
-     ..\src\icytower\main_state.c ..\src\icytower\ok_to_play.c ^
+  /c %MSVC_SRC% ^
   /Fo:obj\
 if errorlevel 1 (
-  echo FAILED: src\icytower compile errors above
+  echo FAILED: src\icytower MSVC compile errors above
   exit /b 1
 )
 
@@ -130,19 +136,22 @@ if not exist obj_gcc mkdir obj_gcc
 set GCC_BIN=C:\msys64\mingw32\bin
 set PATH=%GCC_BIN%;%PATH%
 set GCC=gcc.exe
-%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\jump_player.c -o obj_gcc\jump_player.o
-if errorlevel 1 echo FAILED: GCC compile of jump_player.c
-if errorlevel 1 exit /b 1
-%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\line_intersect.c -o obj_gcc\line_intersect.o
-if errorlevel 1 echo FAILED: GCC compile of line_intersect.c
-if errorlevel 1 exit /b 1
-%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\new_rand.c -o obj_gcc\new_rand.o
-if errorlevel 1 echo FAILED: GCC compile of new_rand.c
-if errorlevel 1 exit /b 1
-%GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c ..\src\icytower\particle.c -o obj_gcc\particle.o
-if errorlevel 1 echo FAILED: GCC compile of particle.c
-if errorlevel 1 exit /b 1
-echo OK: 4 GCC x87 objects built (jump_player, line_intersect, new_rand, particle[update_particle+create_particle+reset_particles])
+set GCC_SRC=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --prefix "..\src\icytower\\"') do set GCC_SRC=%%E
+if "%GCC_SRC%"=="" (
+  echo FAILED: scan_src_defs.py --list-build-files gcc found no files to compile
+  exit /b 1
+)
+for %%F in (%GCC_SRC%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F & exit /b 1)
+echo OK: GCC x87 objects built: %GCC_SRC%
+
+rem Object lists for the final link, derived from the SAME two file lists
+rem above (not a third hand-maintained list) by swapping each .c for the
+rem .obj/.o cl/gcc just produced for it.
+set MSVC_OBJS=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --prefix "obj\\" --ext .obj') do set MSVC_OBJS=%%E
+set GCC_OBJS=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --prefix "obj_gcc\\" --ext .o') do set GCC_OBJS=%%E
 
 cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /I lift\lifted ^
@@ -151,9 +160,8 @@ cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
   gen\import_stubs.cpp ^
   lift\lifted\lifted_update_frame.c lift\lifted\lifted_is_solid.c lift\lifted\lifted_jump_player.c ^
   native\native_update_frame.c native\native_is_solid.c ^
-  obj\update_frame.obj obj\is_solid.obj ^
-  obj\map.obj obj\add_combo.obj obj\add_jump_sequence.obj obj\control.obj obj\scroller.obj obj\timer.obj obj\main_state.obj obj\ok_to_play.obj ^
-  obj_gcc\jump_player.o obj_gcc\line_intersect.o obj_gcc\new_rand.o obj_gcc\particle.o ^
+  %MSVC_OBJS% ^
+  %GCC_OBJS% ^
   /Fe:carrier.exe /Fo:obj\ ^
   /link /DYNAMICBASE:NO /FIXED /BASE:0x10000000 /LARGEADDRESSAWARE:NO /SUBSYSTEM:CONSOLE /DEBUG /MAP:obj\carrier.map kernel32.lib user32.lib psapi.lib
 

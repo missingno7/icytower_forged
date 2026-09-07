@@ -3483,3 +3483,174 @@ disassembly reading.
   further as a `--run-seconds`/watchdog regression - flagged in case a
   future pass sees it recur under similar host load.
 
+## Binding table generated (2026-09-07)
+
+Removes the last piece of per-function hand scaffolding `carrier/src/
+bind.cpp` still carried after "Milestone 12 at scale": a 35-row C++ literal
+(`kFns[]`) giving each bound function's name/VA/argc/return-shape/lifted-
+native-src pointers, plus one hand-written `dom_<fn>()`/`fa_<fn>()` C++
+function per row encoding its comparison domain. Both are now generated.
+
+**The binding table.** `carrier/gen/gen_bind_table.py` -> `carrier/gen/
+bind_table.inc` (generated, DO-NOT-EDIT, included by `bind.cpp`). One row
+per function `carrier/gen/scan_src_defs.py` finds defined in
+`src/icytower/*.c` that also has a VA in `carrier/gen/interop_index.json`
+(cross-checked against `carrier/gen/it_funcs_table.inc` - the generator
+exits non-zero on any VA/size disagreement between the two, rather than
+trusting either silently); VA/size/prototype come from that same JSON,
+argc/return-shape are parsed straight out of the prototype string, and
+whether a `lifted_<fn>`/`native_<fn>` form exists is parsed out of
+`build.cmd`'s own link line (not merely out of `carrier/lift/lifted/`'s
+directory listing, which holds more generated candidates than are actually
+linked into `carrier.exe` - MEASURED: 17 `.c` files there, only 3 linked).
+
+**The comparison domain, ONE source of truth.** Every domain the old
+`dom_<fn>()` functions hand-coded turned out to reduce to one of five small,
+generic shapes: a fixed global, an argument-relative pointer (+ optional
+byte offset), the `ply[player_id]` double indirection `update_frame` uses,
+or the "counter, then the slot it now indexes" shape `add_combo`/
+`add_jump_sequence` use. `bind.cpp` gained ONE generic engine
+(`hash_one_region()`/`fault_addr_generic()`) that walks a small `Region`
+array per function instead of one bespoke function per row; the array
+contents come from a new hand-curated data file, `carrier/gen/
+fn_domains.json` (regions + which region `--fault-inject` targets, `-1` for
+none). **Preferred-option (single generated/declared table shared with the
+offline harness) was evaluated and not used**: `carrier/lift/harness/
+lift_check.py`'s own `SPECS` dict is also data-shaped (`"domain": [(va,
+len), ...]`), but its VAs are fixed SYNTHETIC test addresses the harness's
+vector generator places arguments at for its own offline run (e.g. its
+`PLAYER_VA` is a scratch address, never the real `ply[player_id]` slot the
+running carrier must resolve dynamically) - reusing it byte-for-byte was not
+possible without re-deriving exactly the per-function symbolic knowledge
+(which argument, which global) `fn_domains.json` already states directly.
+`fn_domains.json`'s own header documents this choice; region shapes were
+cross-checked by hand against the harness `SPECS` entry of the same name
+wherever the two plainly correspond (is_solid/jump_player/getFloorData/
+line_intersect/...). **Default domain for a function absent from
+`fn_domains.json`**: empty region list (EAX only, when the prototype returns
+one) and no `--fault-inject` target - the same default the pre-existing code
+already used for `get_gamepad`'s sibling `get_controls` and `ok_to_play`.
+
+**Widened as a mechanical consequence, not a new decision**: `kMaxFns`
+35->42 (one stub slot per row the generator can now produce, including
+functions beyond the historical 35 - see below); `kMaxArgs` unchanged at 10
+(`gen_bind_table.py` itself refuses, loudly, to emit a row for a function
+with more than 10 cdecl arguments, so this ceiling and the generated table
+can never silently drift apart the way milestone 12's hand-maintained
+`kMaxArgs=4` once did).
+
+**One row per function now, not just the historical 35.** Because the
+generator derives rows mechanically from whatever `src/icytower/*.c`
+currently defines, it picked up every function added since - `add_floor`,
+`reset_player`, `update_player` (batch 6), `handle_player_collision_
+original`, `play_jump_sound` (batch 7's call-trace-domain work landing
+concurrently in `carrier/lift/harness` - not touched by this pass) - for
+**40 rows** total. Two more, `draw_buffer` and `start_reward`, are scanned
+but excluded via a new small hand-curated exception list, `carrier/gen/
+build_blockers.json`: both reference Allegro/asset-seam symbols (`makecol`,
+`textprintf_ex`, `asset_font`, `asset_bitmap`) the carrier's `src/` compile
+step does not resolve (LNK2019 unresolved externals, MEASURED first) - a
+separate asset-seam integration task (`src/icytower/ASSETS.md`), out of
+scope here.
+
+**The MSVC/GCC-x87 file split, also mechanized.** `scan_src_defs.py --list-
+build-files {msvc,gcc}` (new) replaces the old hand-listed 4-file GCC set:
+a file goes to `gcc` if it contains a genuine `double`/`float` token in code
+(comments/string literals stripped first), `msvc` otherwise, and only files
+defining at least one real game function are considered at all (excludes
+`assets_standalone.c`'s harness-only helpers automatically). `build.cmd`
+calls this twice (source list, then again with `--ext .obj`/`.o` to derive
+the matching link-line object list from the SAME classification, not a
+third hand-maintained list) and drops the result straight into `cl`/`gcc`.
+**Measured, not assumed, this pass**: `particle.c` no longer needs the GCC
+x87 build - its current recovered source uses Allegro's `fixed` (a plain
+`int32_t` typedef, `allegro_types.h:148`) throughout, not `double`, per its
+own header comment ("integer-only... not float"); the old hardcoded
+build.cmd GCC list was stale on this point (inherited from an earlier
+milestone-12-era description of this file). The mechanical detector moved
+it to the MSVC list; `update_particle`/`create_particle`'s in-vivo EQUAL
+result below (unchanged, still exercised through `bind_all.py`'s existing
+35-function pass, X87_FUNCTIONS bookkeeping unaffected) confirms this was
+safe. `update_player.c`/`handle_player_collision_original.c` (real
+`(double)` arithmetic, confirmed by inspection) are correctly newly routed
+to GCC; `add_floor` (`map.c`) stays on GCC too, matching PROMOTIONS.md's own
+"GCC is the toolchain of record" note for that function even though its
+sibling functions in the same file (`getFloorData`/`reset_map`/`get_level`)
+are pure integer.
+
+**Gates, re-verified against the regenerated table** (assets restored
+before every run, as everywhere in this file):
+
+```
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --digest-out ../artifacts_bt/g1a.txt
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --digest-out ../artifacts_bt/g1b.txt
+python carrier/scripts/compare_digests.py artifacts_bt/g1a.txt artifacts_bt/g1b.txt
+  -> EQUAL (876 ticks, ...)
+
+carrier.exe ... --bind update_frame=src      --fn-digest-out ../artifacts_bt/g2A.txt
+carrier.exe ... --bind update_frame=original --fn-digest-out ../artifacts_bt/g2B.txt
+python carrier/scripts/compare_fn_digests.py artifacts_bt/g2A.txt artifacts_bt/g2B.txt
+  -> EQUAL (877 invocations, ... [src] vs ... [original])
+
+carrier.exe --det --pace=fast --input=script --input-script ../replays/human_test.txt --stop-at-tick 2528 --run-seconds 180 --bind-file <abs>/scripts/all35_src.bindfile --digest-out ../artifacts_bt/all35_ticks.txt
+python carrier/scripts/compare_digests.py artifacts_bt/all35_ticks.txt replays/human_test.digest
+  -> EQUAL (2293 ticks, ...)
+```
+
+All three unchanged from every prior pass - confirms the generated table
+reproduces the milestone-11/12 binding behavior for the original 35
+byte-for-byte (same VAs, same forms bindable, same digest results), not
+just "compiles".
+
+**New rows verified in vivo** (`carrier/scripts/bind_all.py --fn
+reset_player,update_player,add_floor,handle_player_collision_original,
+play_jump_sound`, `replays/human_test.txt`): `reset_player` EQUAL (1
+invocation), `update_player` **EQUAL** (2293 invocations, GCC x87 build -
+the batch-6 offline proof holds in vivo too), `add_floor` **DIFFER**
+(`FIRST DIFFERENCE fn=add_floor k=5 T=220 field=post` - identical args and
+pre-state through k=4, a real divergence in the recovered source's 6th
+floor-generation call within tick 220; per-tick digest also first differs
+at T=237; root cause not investigated, `src/` out of scope for this pass -
+flagged as a background task with this evidence, the same treatment
+`add_jump_sequence`'s own earlier DIFFER got), `handle_player_collision_
+original` UNVERIFIED IN VIVO (0 invocations - `human_test.txt` never takes
+the collision branch that reaches it, the same class of gap already
+documented for `is_solid`), `play_jump_sound` EQUAL but **vacuously** (void
+return + the stated default empty domain - no call-trace mechanism in
+`bind.cpp` yet - so this only certifies 46 crash-free invocations, not
+behavioral equivalence). Full detail and the raw per-invocation records:
+`src/icytower/INVIVO.md` "Binding table generated" section.
+
+### Known gaps / open problems (this pass)
+
+- **`add_floor` DIFFERs in vivo** - a newly-found, real divergence (see
+  above), not fixed this pass (verification only, per this task's own
+  scope). Evidence recorded in `src/icytower/INVIVO.md`; needs the same
+  disassembly-vs-source root-causing `add_jump_sequence`'s DIFFER already
+  got.
+- **`handle_player_collision_original` and `play_jump_sound` have only the
+  default (empty) comparison domain** - meaningful verification needs the
+  call-trace domain mechanism `carrier/lift/harness/lift_check.py`'s own
+  `SPECS` already uses offline for both (their real effect is a
+  `play_sound()` call argument, not a memory write), which `bind.cpp` does
+  not implement. `handle_player_collision_original`'s domain COULD be
+  partially expressed today (its own `Tplayer`-via-`ply[player_id]` and
+  `any1X` global writes are real and harness-expressible per PROMOTIONS.md's
+  own batch-6 note) but was left at the default this pass to keep
+  `fn_domains.json`'s first version to the patterns already proven by the
+  original 35, rather than adding an under-tested new region combination
+  under this task's time budget.
+- **`draw_buffer`/`start_reward` cannot be bound at all** - missing
+  Allegro/asset-seam symbol resolution in the carrier's `src/` compile step
+  (`carrier/gen/build_blockers.json`), a separate integration task.
+- **`carrier/src/bind.hpp`'s `BindSavedState` arrays are still sized `[8]`**
+  (a stale comment: `// == bind.cpp's kMaxFns`) while `bind.cpp`'s
+  `bind_state_save`/`bind_state_load` loop `i < kMaxFns` (now 42) writing
+  into them - a pre-existing out-of-bounds write (predates this pass;
+  already present when `kMaxFns` was 35) that this pass's `kMaxFns` increase
+  makes marginally larger, not something this pass introduced. Exercised
+  only by `--snapshot-at-tick`/`--restore-at-tick` (G3 in `scripts/
+  gates.ps1`, not one of this task's required gates), so not hit by any run
+  above; not fixed here (`bind.hpp`/`snapshot.cpp` are outside this task's
+  stated scope) - flagged as a background task.
+

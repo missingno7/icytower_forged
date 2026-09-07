@@ -98,3 +98,58 @@ recording. See `carrier/NOTES.md` "Milestone 12 at scale" §E for the full
 win32_pilot.md §8a metrics table (137176 crossings/invocations, 0 domain
 read failures, 0 faults injected, 2028 original `.text` bytes no longer
 executed).
+
+## Binding table generated (2026-09-07)
+
+`carrier/src/bind.cpp`'s hand-maintained 35-row table (name/VA/argc/
+comparison-domain C++ function per row) was replaced by a generator
+(`carrier/gen/gen_bind_table.py` → `carrier/gen/bind_table.inc`, DO-NOT-EDIT)
+that derives every row mechanically from `scan_src_defs.py` (which
+functions), `interop_index.json`/`it_funcs_table.inc` (VA/size/prototype),
+`build.cmd`'s own link line (which `lifted_`/`native_` forms exist), and a
+new hand-curated data file, `carrier/gen/fn_domains.json` (comparison-domain
+regions — see that file's own header for why it, not `carrier/lift/
+harness/lift_check.py`'s own `SPECS` dict, is the source of truth the
+runtime table draws from). Because the generator produces one row per
+function `scan_src_defs.py` finds with a real VA — not just the historical
+35 — the binding table now also covers every function `src/icytower/`
+currently defines: **40 rows** (the 35 above, unchanged in domain and
+verdict, plus `add_floor`, `reset_player`, `update_player`,
+`handle_player_collision_original`, `play_jump_sound`). Two more —
+`draw_buffer`, `start_reward` — are scanned but excluded (`carrier/gen/
+build_blockers.json`, hand-curated with a reason each): both reference
+Allegro/asset-seam symbols (`makecol`, `textprintf_ex`, `asset_font`,
+`asset_bitmap`) the carrier's `src/` compile step does not yet resolve
+(LNK2019 unresolved externals, MEASURED) — a separate asset-seam
+integration task, not attempted here, and out of scope for "do not touch
+`carrier/lift/harness` or `src/`".
+
+Gates re-verified against the regenerated table (assets restored before
+every run, per this file's own convention):
+
+| gate | result |
+|---|---|
+| G1 (`scripts/newgame.txt`, two runs) | **EQUAL (876 ticks)** |
+| G2 (`compare_fn_digests.py`, `update_frame` src vs original) | **EQUAL (877 invocations)** |
+| all-35 bound (`--bind-file all35_src.bindfile`) vs `human_test.digest` | **EQUAL (2293 ticks)** |
+
+### New rows verified in vivo (`carrier/scripts/bind_all.py`, `replays/human_test.txt`)
+
+| function | VA | invocations | verdict |
+|---|---|---:|---|
+| `reset_player` | 0x418550 | 1 | EQUAL |
+| `update_player` | 0x418740 | 2293 | **EQUAL** (x87, GCC build) |
+| `add_floor` | 0x4167dc | (6 common before the split) | **DIFFER** — `FIRST DIFFERENCE fn=add_floor k=5 T=220 field=post`: identical arguments (`args=004f8b18`) and identical pre-state (`pre` at k=5 equals the previous invocation's `post`, matching between ORIGINAL and SRC through k=4) — a real, reproducible divergence in the recovered source, not upstream drift. Root cause not investigated this pass (verification only, `src/` out of scope); flagged as a background task with this evidence. Per-tick global digest also diverges, first at T=237. |
+| `handle_player_collision_original` | 0x407e10 | 0 | UNVERIFIED IN VIVO — `replays/human_test.txt` never takes the collision branch that reaches it (same class of gap already documented for `is_solid` above); comparison domain is also the stated *default* (empty — no call-trace mechanism in `bind.cpp` yet, see `fn_domains.json`), so even a reaching workload would only be checking that both forms return without a fault, not that their game-state effects agree. |
+| `play_jump_sound` | 0x406ecc | 46 | EQUAL, but **vacuously**: `play_jump_sound` returns `void` (no EAX comparison) and has the default *empty* domain (no call-trace mechanism, same reason as `handle_player_collision_original`), so this "EQUAL" only certifies that both forms ran 46 times without crashing — not that they had the same effect. A real check needs the call-trace domain `carrier/lift/harness/lift_check.py`'s own `SPECS` entry for this function already uses offline; not implemented in `bind.cpp` this pass. |
+
+`draw_buffer` and `start_reward` have no `src` form linked into this build
+(`build_blockers.json` above) and so cannot be bound or tested at all this
+pass.
+
+**Updated summary: 28 EQUAL (27 unchanged + `update_player`; `reset_player`
+and the vacuous `play_jump_sound` also EQUAL but noted separately above), 2
+DIFFER (`add_jump_sequence`, now also `add_floor`), 8 unverified in vivo
+(the 7 already listed plus `handle_player_collision_original`), 2 functions
+with no bindable form at all (`draw_buffer`, `start_reward`, asset-seam
+blocked).**

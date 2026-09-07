@@ -1,0 +1,107 @@
+{
+  "_purpose": "Hand-curated, per-function comparison-domain DATA (not code) for carrier/gen/gen_bind_table.py. This is the carrier side's one source of truth for what bind.cpp's per-invocation sensor hashes as a function's comparison domain (carrier/NOTES.md 'Milestones 11-12' part B / 'Milestone 12 at scale'). It is consumed by ONE generic runtime engine in bind.cpp (hash_one_region()/fault_addr_generic()) instead of one hand-written dom_<fn>()/fa_<fn>() C++ function per row, which is what used to hold this information before this pass.",
+  "_why_not_shared_with_the_offline_harness": "carrier/lift/harness/lift_check.py's own SPECS dict is ALSO a structured, data-shaped domain table ('domain': [(va,len), ...]) and was considered as the single shared source first (the task's preferred option). It was not reused directly: its VAs are FIXED SYNTHETIC test addresses the harness's own vector generator places a function's arguments at for its unicorn-vs-compiled-candidate offline run (e.g. PLAYER_VA is a scratch address, not the real ply[player_id] slot), not the argument-relative or globally-addressed regions the RUNNING carrier must hash from real, arbitrary invocation state. Re-deriving 'this offline VA corresponds to argument N' from the harness file would have needed exactly the same per-function symbolic knowledge (which argument, which global) that this file already states directly, so a small hand-curated carrier-side file (this one) is the source of truth for the runtime table instead, per the task's documented fallback. Where the shapes plainly correspond (e.g. is_solid/jump_player/getFloorData: 'hash the Tmap/Tplayer/output ints an argument points at') the region kind and length below were cross-checked against the harness SPECS entry of the same name to keep the two descriptions in agreement.",
+  "_region_kinds": {
+    "global":          "{va, len} - hash `len` bytes at the fixed guest VA `va`.",
+    "arg":             "{index, len} - hash `len` bytes at the pointer given by cdecl argument `index` (0-based).",
+    "arg_offset":      "{index, offset, len} - hash `len` bytes at (argument `index`) + `offset`.",
+    "player_indirect": "{index_va, table_va, max_index, len} - read a 4-byte index at `index_va` (e.g. player_id), look up a 4-byte pointer at table_va + index*4 (e.g. ply[]), and hash `len` bytes at THAT pointer (only used when the function reaches its own Tplayer through ply[player_id] internally rather than taking it as an argument - update_frame, and (for a future pass) handle_player_collision_original).",
+    "counter_indexed": "{index, counter_offset, table_offset, elem_size, max_index} - hash 4 bytes at (argument `index`)+counter_offset (the running count), then if its value is in [1, max_index] also hash `elem_size` bytes at (argument `index`)+table_offset+(count-1)*elem_size (the slot the count now indexes) - add_combo/add_jump_sequence's 'counter, then the slot it points at' shape."
+  },
+  "_default": "A function with no entry below (or explicitly {\"regions\": [], \"fault_region\": -1}) gets the SAME default used today for a genuinely leaf/no-interesting-state function - an EMPTY region list (only EAX, when the prototype returns one, is compared) and no --fault-inject target. Pre-existing precedent for this default in bind.cpp before this pass: get_gamepad's own sibling get_controls, and ok_to_play.",
+
+  "functions": {
+    "update_frame": {
+      "cite": "carrier/NOTES.md 'Milestones 11-12' part B; it_globals.h:524/520/448/452",
+      "regions": [
+        { "kind": "global", "va": "0x4fec68", "len": 4, "name": "reward_time" },
+        { "kind": "global", "va": "0x4fac28", "len": 4, "name": "reward_scale" },
+        { "kind": "player_indirect", "index_va": "0x4fe518", "table_va": "0x4ff128", "max_index": 1000, "len": 184, "name": "ply[player_id] (Tplayer)" }
+      ],
+      "fault_region": 1
+    },
+    "is_solid":  { "regions": [ { "kind": "arg", "index": 0, "len": 772, "name": "Tmap *m" } ], "fault_region": 0 },
+    "jump_player": { "regions": [ { "kind": "arg", "index": 0, "len": 184, "name": "Tplayer *p" } ], "fault_region": 0 },
+    "getFloorData": {
+      "regions": [
+        { "kind": "arg", "index": 0, "len": 772, "name": "Tmap *m" },
+        { "kind": "arg", "index": 2, "len": 4, "name": "*fy" },
+        { "kind": "arg", "index": 3, "len": 4, "name": "*fx1" },
+        { "kind": "arg", "index": 4, "len": 4, "name": "*fx2" }
+      ],
+      "fault_region": 0
+    },
+    "reset_map":  { "regions": [ { "kind": "arg", "index": 0, "len": 772, "name": "Tmap *m" } ], "fault_region": 0 },
+    "get_level":  { "regions": [ { "kind": "arg", "index": 0, "len": 772, "name": "Tmap *m" } ], "fault_region": 0 },
+    "add_combo": {
+      "cite": "Tgame_data field offsets, it_types_check.c:266-278",
+      "regions": [ { "kind": "counter_indexed", "index": 0, "counter_offset": 64, "table_offset": 68, "elem_size": 12, "max_index": 5000, "name": "gd->comboPosts, gd->combos[]" } ],
+      "fault_region": 0
+    },
+    "add_jump_sequence": {
+      "cite": "Tgame_data field offsets, it_types_check.c:266-278",
+      "regions": [ { "kind": "counter_indexed", "index": 0, "counter_offset": 60068, "table_offset": 60072, "elem_size": 12, "max_index": 5000, "name": "gd->jumpPosts, gd->jumps[]" } ],
+      "fault_region": 0
+    },
+    "get_gamepad": { "regions": [], "fault_region": -1 },
+    "is_up":    { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_down":  { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_left":  { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_right": { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_fire":  { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_pause": { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_enter": { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "is_any":   { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "set_control":        { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "init_control":       { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "check_control_key":  { "regions": [ { "kind": "arg", "index": 0, "len": 36, "name": "Tcontrol *c" } ], "fault_region": 0 },
+    "reset_particles": { "regions": [ { "kind": "arg", "index": 0, "len": 12288, "name": "Tparticle p[512]" } ], "fault_region": 0 },
+    "update_particle": {
+      "regions": [
+        { "kind": "arg", "index": 0, "len": 24, "name": "Tparticle *p" },
+        { "kind": "global", "va": "0x4ff108", "len": 8, "name": "seed" }
+      ],
+      "fault_region": 0
+    },
+    "create_particle": {
+      "regions": [
+        { "kind": "arg", "index": 0, "len": 12288, "name": "Tparticle p[512]" },
+        { "kind": "global", "va": "0x4ff108", "len": 8, "name": "seed" }
+      ],
+      "fault_region": 0
+    },
+    "scroll_scroller":  { "regions": [ { "kind": "arg_offset", "index": 0, "offset": 24, "len": 4, "name": "sc->offset" } ], "fault_region": 0 },
+    "restart_scroller": { "regions": [ { "kind": "arg_offset", "index": 0, "offset": 24, "len": 4, "name": "sc->offset" } ], "fault_region": 0 },
+    "cycle_counter": { "regions": [ { "kind": "global", "va": "0x506938", "len": 4, "name": "cycle_count" } ], "fault_region": 0 },
+    "fps_counter": {
+      "regions": [
+        { "kind": "global", "va": "0x506948", "len": 4, "name": "fps" },
+        { "kind": "global", "va": "0x506978", "len": 4, "name": "frame_count" },
+        { "kind": "global", "va": "0x506968", "len": 4, "name": "lps" },
+        { "kind": "global", "va": "0x506958", "len": 4, "name": "logic_count" }
+      ],
+      "fault_region": 0
+    },
+    "get_demo": { "regions": [ { "kind": "global", "va": "0x4dd250", "len": 4, "name": "demo" } ], "fault_region": -1 },
+    "get_controls": { "regions": [], "fault_region": -1 },
+    "switchedFromProgram": { "regions": [ { "kind": "global", "va": "0x4bc020", "len": 4, "name": "hasFocus" } ], "fault_region": 0 },
+    "switchedToProgram":   { "regions": [ { "kind": "global", "va": "0x4bc020", "len": 4, "name": "hasFocus" } ], "fault_region": 0 },
+    "clickedCloseButton":  { "regions": [ { "kind": "global", "va": "0x4dd264", "len": 4, "name": "closeButtonClicked" } ], "fault_region": 0 },
+    "ok_to_play": { "regions": [], "fault_region": -1 },
+    "new_rand": { "regions": [ { "kind": "global", "va": "0x4ff108", "len": 8, "name": "seed" } ], "fault_region": 0 },
+    "line_intersect": {
+      "regions": [
+        { "kind": "arg", "index": 8, "len": 4, "name": "*px_out" },
+        { "kind": "arg", "index": 9, "len": 4, "name": "*py_out" }
+      ],
+      "fault_region": 0
+    },
+
+    "_comment_new_functions": "batch 6/batch 7 (src/icytower/PROMOTIONS.md) - not yet in the original 35, picked up automatically because gen_bind_table.py generates one row per function scan_src_defs.py finds, not just the historical 35.",
+    "add_floor":     { "regions": [ { "kind": "arg", "index": 0, "len": 772, "name": "Tmap *m" } ], "fault_region": 0 },
+    "reset_player":  { "regions": [ { "kind": "arg", "index": 0, "len": 184, "name": "Tplayer *p" } ], "fault_region": 0 },
+    "update_player": { "regions": [ { "kind": "arg", "index": 0, "len": 184, "name": "Tplayer *p" } ], "fault_region": 0 },
+
+    "_comment_default_domain_functions": "draw_buffer (BITMAP write target not expressible with the region kinds above yet), handle_player_collision_original / play_jump_sound / start_reward (their real domain needs the call-trace mechanism - unicorn/harness-side hooks on their play_sound() call, PROMOTIONS.md batch 6/7 - which bind.cpp does not implement; see carrier/NOTES.md gap note this pass) all get the stated default (empty regions, no fault target) rather than a guessed approximation."
+  }
+}
