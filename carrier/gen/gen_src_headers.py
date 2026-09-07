@@ -128,23 +128,43 @@ def collect_functions_named(dies, cu_off, canonical, cache, out):
         low = a['DW_AT_low_pc']
         low = int(low, 16) if low.startswith('0x') else gi.parse_int(low)
         name = gi.parse_name(a.get('DW_AT_name'))
+        origin = None
+        if not name:
+            # Concrete instance carrying only DW_AT_abstract_origin/
+            # DW_AT_specification (e.g. a function also inlined elsewhere,
+            # per DW_AT_inline on the origin DIE) -- see
+            # gen_interop.follow_origin()'s docstring; without this, such a
+            # function has no name anywhere in game_funcs.h even though
+            # DWARF does carry one (e.g. set_control, control.c).
+            origin = gi.follow_origin(child, dies)
+            name = gi.parse_name(origin['attrs'].get('DW_AT_name')) if origin else None
         if not name:
             continue
-        ret = gi.resolve_type(gi.parse_ref(a.get('DW_AT_type')), dies, canonical, cache) \
-            if 'DW_AT_type' in a else {'kind': 'void'}
+        decl_off = origin['offset'] if origin is not None else child
+        decl_a = origin['attrs'] if origin is not None else a
+        ret = gi.resolve_type(gi.parse_ref(decl_a.get('DW_AT_type')), dies, canonical, cache) \
+            if 'DW_AT_type' in decl_a else {'kind': 'void'}
         params = []
         variadic = False
-        for c in cd['children']:
+        for c in dies[decl_off]['children']:
             pd = dies[c]
             if pd['tag'] == 'DW_TAG_formal_parameter':
-                pname = gi.parse_name(pd['attrs'].get('DW_AT_name')) or ('a%d' % (len(params) + 1))
-                ptype = gi.resolve_type(gi.parse_ref(pd['attrs'].get('DW_AT_type')), dies, canonical, cache)
+                pa = pd['attrs']
+                pname = gi.parse_name(pa.get('DW_AT_name'))
+                pt_off = gi.parse_ref(pa.get('DW_AT_type'))
+                if pname is None or pt_off is None:
+                    p_origin = gi.follow_origin(c, dies)
+                    po_a = p_origin['attrs'] if p_origin else {}
+                    pname = pname or gi.parse_name(po_a.get('DW_AT_name'))
+                    pt_off = pt_off if pt_off is not None else gi.parse_ref(po_a.get('DW_AT_type'))
+                pname = pname or ('a%d' % (len(params) + 1))
+                ptype = gi.resolve_type(pt_off, dies, canonical, cache)
                 params.append((gi.sanitize_ident(pname), ptype))
             elif pd['tag'] == 'DW_TAG_unspecified_parameters':
                 variadic = True
         out.append({
-            'name': name, 'va': low, 'external': 'DW_AT_external' in a,
-            'prototyped': 'DW_AT_prototyped' in a, 'ret': ret, 'params': params,
+            'name': name, 'va': low, 'external': 'DW_AT_external' in decl_a,
+            'prototyped': 'DW_AT_prototyped' in decl_a, 'ret': ret, 'params': params,
             'variadic': variadic, 'cu': cu_name,
         })
 
@@ -625,7 +645,18 @@ def main():
         'Calling convention is explicit only where DWARF/COFF evidence says it\n'
         'is not the MSVC default __cdecl (see carrier/gen/INTEROP_NOTES.md\n'
         '"Calling convention detection"); today that is WinMain alone\n'
-        '(__stdcall, verified from its COFF decoration _WinMain@16).'
+        '(__stdcall, verified from its COFF decoration _WinMain@16).\n\n'
+        'Each prototype is wrapped in `#ifndef <name>`/`#endif`: when this\n'
+        'file is compiled INTO the carrier/harness world (win32_pilot.md\n'
+        'SS7a, ICYTOWER_BINDINGS_ACTIVE), carrier/gen/pf_bindings_src.h or\n'
+        '.../pf_bindings_harness.h is force-included first and #defines the\n'
+        'plain name of every game function NOT excluded (i.e. not yet\n'
+        'promoted into src/) to an address-cast expression -- declaring\n'
+        'such a name again here would macro-expand into a syntax error, not\n'
+        'a harmless redeclaration. A name IS still declared here whenever no\n'
+        'such macro exists: every promoted (--exclude-d) function, and every\n'
+        'name in the plain standalone world where no bindings header is\n'
+        'force-included at all.'
     )
     with open(out_funcs, 'w', encoding='utf-8') as f:
         f.write(banner('gen_src_headers.py', args, funcs_extra))
@@ -650,7 +681,8 @@ def main():
                 paramstr = ', '.join(params) if params else ('void' if fn['prototyped'] else '')
                 ret_str = gi.decl(fn['ret'], '')
                 note = '' if fn['external'] else '  /* static in %s */' % cu
-                f.write('%s %s%s(%s);%s\n' % (ret_str, conv, fn['emit_name'], paramstr, note))
+                proto = '%s %s%s(%s);%s' % (ret_str, conv, fn['emit_name'], paramstr, note)
+                f.write('#ifndef %s\n%s\n#endif\n' % (fn['emit_name'], proto))
             f.write('\n')
         f.write('#endif /* ICYTOWER_GAME_FUNCS_H */\n')
 

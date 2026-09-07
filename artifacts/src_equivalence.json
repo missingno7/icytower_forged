@@ -912,5 +912,264 @@
   },
   "result": "EQUAL",
   "vectors": 20000
+ },
+ "new_rand": {
+  "result": "EQUAL",
+  "form": "src",
+  "compared_return_value": true,
+  "domain_bytes": 8,
+  "domain_names": [
+   "seed"
+  ],
+  "msvc": {
+   "result": "DIFFER",
+   "vectors": 20000,
+   "seeds_tested": [
+    20260907
+   ],
+   "differing_vectors": 6079,
+   "note": "double-vs-80-bit x87 precision gap only (win32_pilot.md SS6a) -- the same class of difference as line_intersect's pre-GCC-build MSVC result, amplified here because new_rand's own fractional-part*MODULUS step is far more precision-sensitive than a single truncation; NOT a logic bug (see gcc result below and the direct-unicorn cross-check in new_rand.c's header comment: 0 EAX mismatches over ~3200 independently-generated seeds against a pure-double Python reoccurrence of this exact algorithm)."
+  },
+  "gcc": {
+   "result": "EQUAL",
+   "toolchain": "gcc",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2 (also verified -O1)",
+   "vectors_per_seed": 20000,
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000,
+   "differing_vectors": 0
+  },
+  "negative_control": {
+   "fault": "new_rand:5:0",
+   "vectors": 200,
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "seed+0x0 (VA 0x004ff108)",
+    "byte_index": 0,
+    "original": "0xe0",
+    "lifted": "0xe1"
+   }
+  }
+ },
+ "update_particle": {
+  "result": "EQUAL",
+  "form": "src",
+  "compared_return_value": false,
+  "domain_bytes": 32,
+  "domain_names": [
+   "Tparticle",
+   "seed"
+  ],
+  "msvc": {
+   "result": "DIFFER",
+   "vectors": 20000,
+   "seeds_tested": [
+    20260907
+   ],
+   "differing_vectors": 6143,
+   "note": "propagates new_rand's double-vs-80-bit precision gap (1-2 new_rand() calls per invocation); same class as new_rand's own MSVC result, not a separate bug."
+  },
+  "gcc": {
+   "result": "EQUAL",
+   "toolchain": "gcc",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2 (also verified -O1)",
+   "vectors_per_seed": 20000,
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000,
+   "differing_vectors": 0
+  },
+  "negative_control": {
+   "fault": "update_particle:5:0",
+   "vectors": 200,
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tparticle+0x0 (VA 0x007a4000)",
+    "byte_index": 0,
+    "original": "0x60",
+    "lifted": "0x61"
+   }
+  }
+ },
+ "create_particle": {
+  "result": "EQUAL",
+  "form": "src",
+  "compared_return_value": true,
+  "domain_bytes": 12296,
+  "domain_names": [
+   "Tparticle[512]",
+   "seed"
+  ],
+  "msvc": {
+   "result": "DIFFER",
+   "vectors": 20000,
+   "seeds_tested": [
+    20260907
+   ],
+   "differing_vectors": 5181,
+   "note": "propagates new_rand's double-vs-80-bit precision gap (3 new_rand() calls per invocation on the found-a-slot path); same class as new_rand's own MSVC result, not a separate bug."
+  },
+  "gcc": {
+   "result": "EQUAL",
+   "toolchain": "gcc",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2 (also verified -O1)",
+   "vectors_per_seed": 20000,
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000,
+   "differing_vectors": 0
+  },
+  "negative_control": {
+   "fault": "create_particle:5:0",
+   "vectors": 200,
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tparticle[512]+0x0 (VA 0x007a4000)",
+    "byte_index": 0,
+    "original": "0x38",
+    "lifted": "0x39"
+   }
+  }
+ },
+ "ok_to_play": {
+  "result": "EQUAL",
+  "form": "src",
+  "compared_return_value": true,
+  "domain_bytes": 0,
+  "domain_names": [],
+  "vectors": 20000,
+  "gcc": {
+   "result": "EQUAL",
+   "toolchain": "gcc",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2 (also verified -O1)",
+   "vectors_per_seed": 20000,
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000
+  },
+  "negative_control": {
+   "attempted": false,
+   "reason": "ok_to_play's comparison domain is empty (0 memory bytes; only EAX, itself an unconditional constant, is compared) -- the harness's --fault mechanism flips one byte of the memory-domain result, which does not exist here, so a byte-flip negative control is not expressible for this function. Not attempted; not the same situation as an oversight, since no other promoted function so far has had a fully empty domain."
+  }
+ },
+ "pass_2026-09-07_batch4": {
+  "count": 4,
+  "functions": [
+   "new_rand",
+   "update_particle",
+   "create_particle",
+   "ok_to_play"
+  ],
+  "note": "new_rand is the game's own x87 float LCG (main.c) that blocked update_particle/create_particle in batch 3 (PROMOTIONS.md); promoted first, then its two integer callers, which now call the clean new_rand() directly (no guest-bytes execution needed). ok_to_play (trivial) closes out the batch-3 'skipped' list except destroy_game_data and get_version_str, which remain skipped for the reasons already documented there.",
+  "harness_changes": [
+   "carrier/lift/harness/lift_check.py: new_rand/update_particle/create_particle/ok_to_play gen_* vector generators + SPECS entries (additive)",
+   "carrier/lift/harness/src_check.c: 4 new extern declarations + dispatch branches (additive)",
+   "carrier/lift/harness/build_src.cmd: file list extended with new_rand.c, ok_to_play.c",
+   "carrier/lift/harness/gcc_check.c: extended from line_intersect/jump_player-only to also wire new_rand/update_particle/create_particle/ok_to_play, with `seed` given read-write storage+sync (unlike jump_player's read-only globals) since new_rand mutates it and that mutation is part of the compared domain",
+   "carrier/lift/harness/build_src_gcc.sh: file list extended with new_rand.c, particle.c, ok_to_play.c",
+   "carrier/gen/pf_bindings_src.h + pf_bindings_src_types.h, carrier/lift/harness/pf_bindings_harness.h + _types.h, carrier/gen/pf_bindings.h + _types.h: regenerated via scan_src_defs.py's auto-scanned --exclude list (39 names now, up from 35)"
+  ],
+  "result": "new_rand/update_particle/create_particle: EQUAL over 80000 vectors (4 seeds x 20000) under the GCC -m32 -mfpmath=387 -mno-sse2 -O2/-O1 build; DIFFER under MSVC (precision-only, 26-31% of vectors -- see each function's own 'msvc' entry) -- same win32_pilot.md SS6a pattern as line_intersect, now measured for a second, independently-recovered x87 function. ok_to_play: EQUAL under both toolchains (trivial, no FP). Negative control DIFFER named exactly for new_rand/update_particle/create_particle; not expressible for ok_to_play (empty domain, see its own entry)."
+ },
+ "generator_gap_fix_2026-09-07": {
+  "problem": "Some concrete function instances (e.g. set_control, 0x4017d4, control.c) have DW_AT_inline=1 on their DWARF 'abstract instance' (GCC also inlined them once elsewhere), so their own out-of-line DW_TAG_subprogram carries only DW_AT_abstract_origin (name, return type, and every formal_parameter's type all live only on the origin DIE) -- carrier/gen/gen_interop.py's collect_functions() and carrier/gen/gen_src_headers.py's collect_functions_named() both required a direct DW_AT_name and silently skipped anything without one, so such a function had no name anywhere in the generated pipeline (artifacts/functions.json, it_funcs.h, game_funcs.h) despite DWARF actually carrying one.",
+  "fix": "carrier/gen/gen_interop.py: added follow_origin(off, dies) -- walks DW_AT_abstract_origin/DW_AT_specification chains to the DIE that actually carries the declaration -- and used it in collect_functions() (and per-parameter, since a concrete formal_parameter carries only abstract_origin+location, not a type) whenever DW_AT_name is absent. carrier/gen/gen_src_headers.py's collect_functions_named() (needs parameter NAMES too, which gen_interop.py's own version does not track) uses the same gi.follow_origin() helper. Also: game_funcs.h's per-function prototypes are now each wrapped `#ifndef <name>` / `#endif` (gen_src_headers.py) -- a latent, previously-unexercised bug this pass's particle.c (the first src/ file to #include game_funcs.h) exposed: carrier/gen/pf_bindings_src.h force-included ahead of it #defines every NOT-yet-promoted game function's plain name to an address-cast expression, so declaring that same name again in game_funcs.h macro-expanded into a syntax error (MSVC C2059) rather than a harmless redeclaration; the guard makes game_funcs.h declare a name only when no such macro already exists.",
+  "origin_note": "artifacts/functions.json / tools_recon/build_functions.py were NOT the source of the gap -- functions.json is built from a DIFFERENT source (COFF symbols / static disassembly, per its own 'source': 'dwarf' field actually meaning 'named via DWARF where DWARF had a name, ELSE coff/other') and was not touched; the gap was entirely in gen_interop.py's DW_TAG_subprogram DW_AT_name requirement.",
+  "previously_unnamed_functions_gained_names": 11,
+  "functions": [
+   {
+    "name": "set_control",
+    "va": "0x4017d4"
+   },
+   {
+    "name": "generate_checksum",
+    "va": "0x404a50"
+   },
+   {
+    "name": "new_srand",
+    "va": "0x406a04"
+   },
+   {
+    "name": "syncProfileFromOptions",
+    "va": "0x406a14"
+   },
+   {
+    "name": "update_reward",
+    "va": "0x406a8c"
+   },
+   {
+    "name": "is_custom_replay",
+    "va": "0x406b3c"
+   },
+   {
+    "name": "hash3",
+    "va": "0x418184"
+   },
+   {
+    "name": "hash2",
+    "va": "0x4189cc"
+   },
+   {
+    "name": "get_rank_id",
+    "va": "0x418a84"
+   },
+   {
+    "name": "get_rank",
+    "va": "0x418ad0"
+   },
+   {
+    "name": "hash",
+    "va": "0x41b9c8"
+   }
+  ],
+  "function_count_before_after": {
+   "before": 242,
+   "after": 253
+  },
+  "regenerated": [
+   "carrier/gen/it_types.h",
+   "carrier/gen/it_globals.h",
+   "carrier/gen/it_funcs.h",
+   "carrier/gen/it_funcs_table.inc",
+   "carrier/gen/interop_index.json",
+   "carrier/gen/INTEROP_NOTES.md",
+   "src/icytower/game_types.h (byte-identical -- no type changed)",
+   "src/icytower/game_state.h (byte-identical -- no global changed)",
+   "src/icytower/game_funcs.h (+11 newly-named prototypes, #ifndef guard added)",
+   "src/icytower/state.c (byte-identical)",
+   "src/icytower/GENERATED.md",
+   "carrier/gen/pf_bindings_src.h + _types.h",
+   "carrier/lift/harness/pf_bindings_harness.h + _types.h",
+   "carrier/gen/pf_bindings.h + _types.h (default carrier table)"
+  ],
+  "verification": {
+   "purity_gate": "python scripts/check_native_layer.py -- scanned 25 file(s), 0 violation(s)",
+   "carrier_world_compile": "cl /nologo /c /W3 /TC /Icarrier\\gen /FIpf_bindings_src.h over all 14 promoted src/icytower/*.c files (batch1-4) -- 0 errors, 0 warnings",
+   "upstream_world_build": "mingw32-make -f src/build/Makefile.standalone: libicytower.a + standalone_smoke.exe build clean; standalone_smoke.exe run: 16/16 PASS, 0 failure(s) (SOURCES list in that Makefile is a hand-maintained subset predating batch 3/4 and was not touched -- this is a regression check on the existing target, not new coverage)",
+   "offline_harness_rerun_31_functions": "carrier/lift/harness/lift_check.py --form src, all 31 batch1-3 functions, 20000 vectors each: 30/31 EQUAL (unchanged); line_intersect DIFFER under MSVC exactly as already documented (pre-existing x87 precision gap, PROMOTIONS.md 'pending a bit-exact build config' -- unaffected by this pass's generator changes)"
+  }
  }
 }

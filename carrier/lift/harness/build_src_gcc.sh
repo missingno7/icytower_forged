@@ -37,5 +37,8 @@ mkdir -p obj_gcc
     gcc_check.c \
     ../../../src/icytower/line_intersect.c \
     ../../../src/icytower/jump_player.c \
+    ../../../src/icytower/new_rand.c \
+    ../../../src/icytower/particle.c \
+    ../../../src/icytower/ok_to_play.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"

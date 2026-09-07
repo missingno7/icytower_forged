@@ -63,6 +63,7 @@ SZ_PARTICLE = 24                       # Tparticle: intensity, x, y, sx, sy, col
 GD_JS_VA = GD_VA + 0xeaa4              # jumpPosts field
 GD_JUMPS_VA = GD_VA + 0xeaa8           # jumps[] array base
 
+G_SEED = 0x4ff108                      # double seed -- new_rand()'s LCG state
 G_DEMO = 0x4dd250                      # Treplay *demo
 G_CTRL = 0x5000c8                      # Tcontrol ctrl (player-1 control state)
 G_HASFOCUS = 0x4bc020                  # int hasFocus
@@ -416,6 +417,80 @@ def gen_clicked_close_button(rng, k):
 
 
 # --------------------------------------------------------------------------
+# batch 4 (2026-09-07) -- new_rand (the game's own x87 float LCG, the
+# callee that blocked update_particle/create_particle in batch 3) plus its
+# two integer callers and the trivial ok_to_play.
+# --------------------------------------------------------------------------
+
+NEW_RAND_MULTIPLIER = 1.4294484665
+NEW_RAND_MODULUS = 65535.0
+
+
+def gen_new_rand(rng, k):
+    """`seed` values chosen to exercise: the branch not taken (x <= MODULUS),
+    taken with exactly one fold, and taken with several folds (the do/while
+    loop the disassembly's fucom/je pair actually is -- reachable once
+    |seed| is large enough that MULTIPLIER*seed exceeds 2*MODULUS), plus
+    the truncation boundary of the final fractional-part conversion."""
+    pool = [0.0, 1.0, -1.0, 0.5, -0.5, 65535.0, -65535.0, 131070.0,
+            45845.0, -45845.0, 65535.0 / NEW_RAND_MULTIPLIER]
+    if k < len(pool):
+        s = pool[k]
+    else:
+        m = k % 5
+        if m == 0:
+            s = rng.uniform(-65535.0 * 4, 65535.0 * 4)
+        elif m == 1:
+            s = rng.uniform(-5.0, 5.0)
+        elif m == 2:
+            s = rng.uniform(-1e7, 1e7)          # several loop folds
+        elif m == 3:
+            # near a multiple of MODULUS/MULTIPLIER -- pushes x close to a
+            # MODULUS boundary, exercising the final truncation the same
+            # way line_intersect.c's _boundary() helper targets ua*dx1+0.5
+            fold = rng.randint(-6, 6)
+            s = (NEW_RAND_MODULUS * fold) / NEW_RAND_MULTIPLIER + rng.uniform(-2.0, 2.0)
+        else:
+            s = rng.uniform(-200000.0, 200000.0)  # the realistic gameplay range
+    return [], [(G_SEED, struct.pack("<d", s))]
+
+
+SZ_SEED = 8
+
+
+def gen_update_particle(rng, k):
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PARTICLE))
+    s = gen_new_rand(rng, k)[1][0][1]
+    return [PART_VA], [(PART_VA, bytes(p)), (G_SEED, s)]
+
+
+def gen_create_particle(rng, k):
+    n = 512
+    buf = bytearray(SZ_PARTICLE * n)
+    for i in range(n):
+        off = i * SZ_PARTICLE
+        intens = rng.choice([0, 0, 0, rng.randint(-1000, 1000)])
+        struct.pack_into("<i", buf, off, intens)
+        for f in range(4, SZ_PARTICLE, 4):
+            struct.pack_into("<i", buf, off + f, rng.randint(-100000, 100000))
+    if k % 5 == 0:
+        # force NO free slot anywhere -- exercises the "return 0, touch
+        # nothing" path (the disassembly's xor si,si branch)
+        for i in range(n):
+            off = i * SZ_PARTICLE
+            if struct.unpack_from("<i", buf, off)[0] == 0:
+                struct.pack_into("<i", buf, off, rng.randint(1, 1000))
+    x = rng.randint(-2000, 2000)
+    y = rng.randint(-2000, 2000)
+    s = gen_new_rand(rng, k)[1][0][1]
+    return [PART_VA, x, y], [(PART_VA, bytes(buf)), (G_SEED, s)]
+
+
+def gen_ok_to_play(rng, k):
+    return [], []
+
+
+# --------------------------------------------------------------------------
 # line_intersect (0x406b80) -- the x87 discriminator
 #
 #   D  = dx1*dy3 - dx3*dy1        (32-bit IMULs, wrapping)
@@ -659,6 +734,17 @@ SPECS = {
                           "domain": [(G_HASFOCUS, 4)], "domain_names": ["hasFocus"]},
     "clickedCloseButton": {"va": 0x406a7c, "gen": gen_clicked_close_button, "cmp_eax": False,
                            "domain": [(G_CLOSEBTN, 4)], "domain_names": ["closeButtonClicked"]},
+    # -- batch 4 (2026-09-07) --
+    "new_rand": {"va": 0x406984, "gen": gen_new_rand, "cmp_eax": True,
+                "domain": [(G_SEED, SZ_SEED)], "domain_names": ["seed"]},
+    "update_particle": {"va": 0x41843c, "gen": gen_update_particle, "cmp_eax": False,
+                        "domain": [(PART_VA, SZ_PARTICLE), (G_SEED, SZ_SEED)],
+                        "domain_names": ["Tparticle", "seed"]},
+    "create_particle": {"va": 0x418490, "gen": gen_create_particle, "cmp_eax": True,
+                        "domain": [(PART_VA, 512 * SZ_PARTICLE), (G_SEED, SZ_SEED)],
+                        "domain_names": ["Tparticle[512]", "seed"]},
+    "ok_to_play": {"va": 0x406a50, "gen": gen_ok_to_play, "cmp_eax": True,
+                   "domain": [], "domain_names": []},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -666,6 +752,8 @@ SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
                     "restart_scroller,cycle_counter,fps_counter,get_demo,"
                     "get_controls,switchedFromProgram,switchedToProgram,"
                     "clickedCloseButton")
+
+SRC_BATCH4_FUNCS = "new_rand,update_particle,create_particle,ok_to_play"
 
 
 # --------------------------------------------------------------------------
@@ -830,7 +918,8 @@ def main():
         elif args.form == "src":
             args.funcs = ("update_frame,is_solid,jump_player,getFloorData,reset_map,"
                          "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
-                         "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS)
+                         "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
+                         "," + SRC_BATCH4_FUNCS)
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")

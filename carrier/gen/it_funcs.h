@@ -352,6 +352,10 @@ typedef void (__cdecl *PFN_fps_counter)(void);
 typedef void (__cdecl *PFN_garble_string)(char *, int);
 #define IT_F_garble_string ((PFN_garble_string)0x401318)
 
+/* generate_checksum  VA=0x404a50  size=44  cu=F:\projects\icytower\trunk\source\hisc.c  conv=cdecl [KNOWN (COFF symbol _generate_checksum)] */
+typedef int (__cdecl *PFN_generate_checksum)(Thisc *);
+#define IT_F_generate_checksum ((PFN_generate_checksum)0x404a50)
+
 /* generate_options_checksum  VA=0x4181cc  size=254  cu=F:\projects\icytower\trunk\source\options.c  conv=cdecl [KNOWN (COFF symbol _generate_options_checksum)] */
 typedef int (__cdecl *PFN_generate_options_checksum)(Toptions *);
 #define IT_F_generate_options_checksum ((PFN_generate_options_checksum)0x4181cc)
@@ -424,6 +428,14 @@ typedef int (__cdecl *PFN_get_profile_dir_for_profile)(char *, it_orig_size_t, c
 typedef int (__cdecl *PFN_get_profiles_dir)(char *, it_orig_size_t);
 #define IT_F_get_profiles_dir ((PFN_get_profiles_dir)0x403a1c)
 
+/* get_rank  VA=0x418ad0  size=82  cu=F:\projects\icytower\trunk\source\profile.c  conv=cdecl [KNOWN (COFF symbol _get_rank)] */
+typedef char * (__cdecl *PFN_get_rank)(Tprofile *);
+#define IT_F_get_rank ((PFN_get_rank)0x418ad0)
+
+/* get_rank_id  VA=0x418a84  size=75  cu=F:\projects\icytower\trunk\source\profile.c  conv=cdecl [KNOWN (COFF symbol _get_rank_id)] */
+typedef int (__cdecl *PFN_get_rank_id)(Tprofile *);
+#define IT_F_get_rank_id ((PFN_get_rank_id)0x418a84)
+
 /* get_replay_property  VA=0x41e244  size=1147  cu=F:\projects\icytower\trunk\source\replay.c  conv=cdecl [KNOWN (COFF symbol _get_replay_property)] */
 typedef int (__cdecl *PFN_get_replay_property)(const char *, int);
 #define IT_F_get_replay_property ((PFN_get_replay_property)0x41e244)
@@ -484,6 +496,18 @@ typedef void (__cdecl *PFN_handle_player_collision_vector_2)(int, int);
 typedef void (__cdecl *PFN_handle_player_input)(Tcontrol *);
 #define IT_F_handle_player_input ((PFN_handle_player_input)0x40b3e4)
 
+/* hash  VA=0x41b9c8  size=71  cu=F:\projects\icytower\trunk\source\replay.c  conv=cdecl [KNOWN (COFF symbol _hash)] */
+typedef unsigned int (__cdecl *PFN_hash)(unsigned int);
+#define IT_F_hash ((PFN_hash)0x41b9c8)
+
+/* hash2  VA=0x4189cc  size=71  cu=F:\projects\icytower\trunk\source\profile.c  conv=cdecl [KNOWN (COFF symbol _hash2)] */
+typedef unsigned int (__cdecl *PFN_hash2)(unsigned int);
+#define IT_F_hash2 ((PFN_hash2)0x4189cc)
+
+/* hash3  VA=0x418184  size=71  cu=F:\projects\icytower\trunk\source\options.c  conv=cdecl [KNOWN (COFF symbol _hash3)] */
+typedef unsigned int (__cdecl *PFN_hash3)(unsigned int);
+#define IT_F_hash3 ((PFN_hash3)0x418184)
+
 /* httpGetLastModified  VA=0x405890  size=126  cu=F:\projects\icytower\trunk\source\httpget.c  conv=cdecl [KNOWN (COFF symbol _httpGetLastModified)] */
 typedef it_orig_time_t (__cdecl *PFN_httpGetLastModified)(HTTPResponse *);
 #define IT_F_httpGetLastModified ((PFN_httpGetLastModified)0x405890)
@@ -515,6 +539,10 @@ typedef int (__cdecl *PFN_install_timers)();
 /* is_any  VA=0x4018e8  size=22  cu=F:\projects\icytower\trunk\source\control.c  conv=cdecl [KNOWN (COFF symbol _is_any)] */
 typedef int (__cdecl *PFN_is_any)(Tcontrol *);
 #define IT_F_is_any ((PFN_is_any)0x4018e8)
+
+/* is_custom_replay  VA=0x406b3c  size=66  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _is_custom_replay)] */
+typedef int (__cdecl *PFN_is_custom_replay)(Treplay *);
+#define IT_F_is_custom_replay ((PFN_is_custom_replay)0x406b3c)
 
 /* is_down  VA=0x40185c  size=22  cu=F:\projects\icytower\trunk\source\control.c  conv=cdecl [KNOWN (COFF symbol _is_down)] */
 typedef int (__cdecl *PFN_is_down)(Tcontrol *);
@@ -683,6 +711,10 @@ typedef int (__cdecl *PFN_new_game)();
 /* new_rand  VA=0x406984  size=128  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _new_rand)] */
 typedef int (__cdecl *PFN_new_rand)();
 #define IT_F_new_rand ((PFN_new_rand)0x406984)
+
+/* new_srand  VA=0x406a04  size=14  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _new_srand)] */
+typedef void (__cdecl *PFN_new_srand)(int);
+#define IT_F_new_srand ((PFN_new_srand)0x406a04)
 
 /* ok_to_play  VA=0x406a50  size=10  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _ok_to_play)] */
 typedef int (__cdecl *PFN_ok_to_play)();
@@ -860,6 +892,10 @@ typedef void (__cdecl *PFN_scroll_star_field)(Tstar_field *, double, double);
 typedef Tprofile * (__cdecl *PFN_select_profile)(Tprofile *, Tavailable_profile *, int, Tcontrol *);
 #define IT_F_select_profile ((PFN_select_profile)0x41acc0)
 
+/* set_control  VA=0x4017d4  size=38  cu=F:\projects\icytower\trunk\source\control.c  conv=cdecl [KNOWN (COFF symbol _set_control)] */
+typedef void (__cdecl *PFN_set_control)(Tcontrol *, int, int, int, int, int);
+#define IT_F_set_control ((PFN_set_control)0x4017d4)
+
 /* set_current_avatar  VA=0x406ce4  size=96  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _set_current_avatar)] */
 typedef void (__cdecl *PFN_set_current_avatar)();
 #define IT_F_set_current_avatar ((PFN_set_current_avatar)0x406ce4)
@@ -932,6 +968,10 @@ typedef void (__cdecl *PFN_switchedToProgram)();
 typedef void (__cdecl *PFN_syncOptionsFromProfile)();
 #define IT_F_syncOptionsFromProfile ((PFN_syncOptionsFromProfile)0x40c820)
 
+/* syncProfileFromOptions  VA=0x406a14  size=58  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _syncProfileFromOptions)] */
+typedef void (__cdecl *PFN_syncProfileFromOptions)();
+#define IT_F_syncProfileFromOptions ((PFN_syncProfileFromOptions)0x406a14)
+
 /* take_screenshot  VA=0x41002c  size=203  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _take_screenshot)] */
 typedef void (__cdecl *PFN_take_screenshot)(BITMAP *);
 #define IT_F_take_screenshot ((PFN_take_screenshot)0x41002c)
@@ -967,6 +1007,10 @@ typedef void (__cdecl *PFN_update_particle)(Tparticle *);
 /* update_player  VA=0x418740  size=651  cu=F:\projects\icytower\trunk\source\player.c  conv=cdecl [KNOWN (COFF symbol _update_player)] */
 typedef void (__cdecl *PFN_update_player)(Tplayer *);
 #define IT_F_update_player ((PFN_update_player)0x418740)
+
+/* update_reward  VA=0x406a8c  size=55  cu=F:\projects\icytower\trunk\source\main.c  conv=cdecl [KNOWN (COFF symbol _update_reward)] */
+typedef void (__cdecl *PFN_update_reward)();
+#define IT_F_update_reward ((PFN_update_reward)0x406a8c)
 
 /* view_profile  VA=0x419aec  size=2249  cu=F:\projects\icytower\trunk\source\profile.c  conv=cdecl [KNOWN (COFF symbol _view_profile)] */
 typedef int (__cdecl *PFN_view_profile)(Tprofile *);

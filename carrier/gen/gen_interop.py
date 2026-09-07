@@ -780,6 +780,44 @@ def emit_struct_body(node, opaque_reasons):
 # Function / global collection from the scoped CUs
 # --------------------------------------------------------------------------
 
+def follow_origin(off, dies, max_hops=8):
+    """Follow DW_AT_abstract_origin / DW_AT_specification from the DIE at
+    `off` to the DIE that actually carries its declaration (name, type,
+    external/prototyped flags, and -- for a subprogram -- formal_parameter
+    children with real types).
+
+    GCC splits a function's DWARF in two when it is ALSO inlined somewhere
+    (DW_AT_inline on the "abstract instance"): the abstract instance DIE
+    carries DW_AT_name/DW_AT_type/full formal_parameter list but no
+    DW_AT_low_pc, while each out-of-line copy (a real, callable, addressed
+    instance -- exactly what collect_functions()/collect_functions_named()
+    want one entry per) is a SEPARATE DW_TAG_subprogram carrying
+    DW_AT_low_pc/DW_AT_high_pc but ONLY DW_AT_abstract_origin, no name of
+    its own; its own formal_parameter children mirror that, each carrying
+    only DW_AT_abstract_origin + DW_AT_location, no DW_AT_type. Without
+    following the reference, such a function has no name ANYWHERE in the
+    generated pipeline (functions.json, it_funcs.h) even though DWARF does
+    carry one -- e.g. set_control (0x4017d4, control.c): also inlined once
+    into init_control, so its own out-of-line copy is exactly this shape
+    (artifacts/dwarf_info.txt offset 0x46af, abstract_origin 0x45f1).
+    Same mechanism as compute_anon_typedef_names() above, for subprograms
+    instead of typedefs."""
+    cur, hops = off, 0
+    while hops < max_hops:
+        d = dies.get(cur)
+        if d is None:
+            return None
+        nxt = d['attrs'].get('DW_AT_abstract_origin') or d['attrs'].get('DW_AT_specification')
+        if nxt is None:
+            return d
+        nxt_off = parse_ref(nxt)
+        if nxt_off is None or nxt_off == cur or nxt_off not in dies:
+            return d
+        cur = nxt_off
+        hops += 1
+    return dies.get(cur)
+
+
 def in_scope_cus(dies, scope):
     out = []
     for off, d in dies.items():
@@ -805,20 +843,32 @@ def collect_functions(dies, cu_off, canonical, cache, out):
         high_raw = a.get('DW_AT_high_pc')
         high = int(high_raw, 16) if high_raw and high_raw.startswith('0x') else (low + (parse_int(high_raw) or 0))
         name = parse_name(a.get('DW_AT_name'))
+        origin = None
+        if not name:
+            # Only DW_AT_abstract_origin/DW_AT_specification -- see
+            # follow_origin()'s docstring.
+            origin = follow_origin(child, dies)
+            name = parse_name(origin['attrs'].get('DW_AT_name')) if origin else None
         if not name:
             continue
-        ret = resolve_type(parse_ref(a.get('DW_AT_type')), dies, canonical, cache) if 'DW_AT_type' in a else {'kind': 'void'}
+        decl_off = origin['offset'] if origin is not None else child
+        decl_a = origin['attrs'] if origin is not None else a
+        ret = resolve_type(parse_ref(decl_a.get('DW_AT_type')), dies, canonical, cache) if 'DW_AT_type' in decl_a else {'kind': 'void'}
         params = []
         variadic = False
-        for c in cd['children']:
+        for c in dies[decl_off]['children']:
             pd = dies[c]
             if pd['tag'] == 'DW_TAG_formal_parameter':
-                params.append(resolve_type(parse_ref(pd['attrs'].get('DW_AT_type')), dies, canonical, cache))
+                pt_off = parse_ref(pd['attrs'].get('DW_AT_type'))
+                if pt_off is None:
+                    p_origin = follow_origin(c, dies)
+                    pt_off = parse_ref(p_origin['attrs'].get('DW_AT_type')) if p_origin else None
+                params.append(resolve_type(pt_off, dies, canonical, cache))
             elif pd['tag'] == 'DW_TAG_unspecified_parameters':
                 variadic = True
         out.append({
-            'name': name, 'va': low, 'high_pc': high, 'external': 'DW_AT_external' in a,
-            'prototyped': 'DW_AT_prototyped' in a, 'ret': ret, 'params': params,
+            'name': name, 'va': low, 'high_pc': high, 'external': 'DW_AT_external' in decl_a,
+            'prototyped': 'DW_AT_prototyped' in decl_a, 'ret': ret, 'params': params,
             'variadic': variadic, 'cu': cu_name,
         })
 

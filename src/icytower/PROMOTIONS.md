@@ -220,3 +220,116 @@ No function promoted this pass calls an Allegro import directly, so the
 arise; `play_sound` (a game function, not Allegro) already has a prototype
 in the generated `game_funcs.h` and would need no special handling if
 `play_jump_sound` is revisited later.
+
+## Batch 4 (2026-09-07 — this pass)
+
+`new_rand` (0x406984, main.c) first — the game's own x87 float LCG that
+blocked `update_particle`/`create_particle` in batch 3 (see that batch's
+"Skipped this pass" table) — then its two integer callers, now that they
+can call the clean `new_rand()` directly instead of needing to execute a
+copy of its original bytes. `ok_to_play` closes out the rest of batch 3's
+skip list that was skipped for headroom, not difficulty.
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `new_rand` | 0x406984 | 128 | main.c | **EQUAL** (80000 = 4 seeds × 20000, GCC `-m32 -mfpmath=387 -mno-sse2 -O1`/`-O2`); MSVC DIFFER 6079/20000 (seed 20260907), precision-only | x87 float LCG: `x = 1.4294484665 * seed; seed = x; if (x > 65535.0) { do { x -= 65535.0; } while (x > 65535.0); seed = x; } return (int)((x - (int)x) * 65535.0);`. The `do/while` (not a one-shot `if`) matters: the original's `fucom`/`je` pair after the fold is a real loop, reachable whenever `|seed|` is large enough that `MULTIPLIER*seed` exceeds `2*MODULUS` — a one-shot `if` would only be exact for the bounded, in-gameplay range of `seed`. Recovered by hand-simulating the x87 stack traffic in `artifacts/disasm.txt` (0x406984-0x406a03), then *directly executing the original bytes in unicorn* (not just reading the disassembly) over ~3200 independently-generated seeds against a Python double re-implementation: 0 EAX mismatches, confirming the algorithm; the ~38% of vectors where the returned *seed* differed in its last bit or two is exactly the double-vs-80-bit gap win32_pilot.md SS6a predicts, reproduced again below at the source level. One real mistake this cross-check caught before it reached source: the `fsubr %st,%st(1)` instruction computes `ST(1) = ST(0) - ST(1)` (i.e. `x - MODULUS`), not the reversed `MODULUS - x` the mnemonic's name alone suggests — an early hand-trace had this backwards and the unicorn cross-check's very first mismatch (at the exact seed engineered to sit on the fold boundary) caught it immediately. | pending |
+| `update_particle` | 0x41843c | 83 | particle.c | **EQUAL** (80000, GCC); MSVC DIFFER 6143/20000, precision-only (propagates `new_rand`'s) | Advances `x`/`y` by `sx`/`sy` (all `fixed` 16.16, plain int32 — no FPU of its own), adds a constant `0x4ccd` to `sy` (gravity), ages `intensity--`, and — 1 time in 5 (`new_rand() % 5 == 1`) — rerolls `color` to `new_rand() % 8`. Validated the same way as `new_rand`: original bytes run in unicorn over 2000 random (particle, seed) pairs against a hand-written Python model, 0 mismatches — after the model's own first draft was caught using Python's floor-style `%` instead of C's truncating one on the negative-seed vectors (the fix, `new_rand() % 5`/`% 8` in the C source itself, needs no such care — C's `%` already matches `idiv`). | pending |
+| `create_particle` | 0x418490 | 192 | particle.c | **EQUAL** (80000, GCC); MSVC DIFFER 5181/20000, precision-only (propagates `new_rand`'s) | Scans `p[0..511]` for the first `intensity == 0` slot; on a miss, returns 0 and touches nothing (confirmed against the disassembly's `xor si,si` path directly, not assumed — batch 3's skip note did not commit to a return value). On a hit: `x`/`y` become `x<<16`/`y<<16`, `intensity = 0xff`, `color = new_rand() % 8`, and `sx`/`sy` are drawn from two more `new_rand()` calls as `(((new_rand()%50)-25)<<16) / 10` and `/ 50` respectively. The two integer divisors (10 and 50) were **not** guessed from update_particle.c's visually similar `%5`/`%8` pattern — a first attempt assumed `/5` and `/10` by that analogy and was wrong; both were re-derived by testing the disassembly's two magic-number multiply/shift sequences (`0x66666667`/shift 2, `0x51eb851f`/shift 4) against a dense sweep of plausible plain-C divisors until an exact match was found (10 and 50), then confirmed against 2000 unicorn-executed vectors covering both the found-a-slot and no-free-slot paths, 0 mismatches. | pending |
+| `ok_to_play` | 0x406a50 | 10 | main.c | EQUAL (20000, trivial — 0 args, 0 domain bytes, EAX only) | `return 1;` unconditionally. Negative control **not attempted**: its comparison domain is empty (no memory bytes, only a constant EAX), and the harness's `--fault` mechanism flips one *domain* byte — there is none here to flip. Not the same as an oversight; every other promoted function so far has had at least one domain byte. | pending |
+
+Every row's negative control (except `ok_to_play`, above): one bit of the
+SRC side's vector-5 result flipped by the harness (`--fault <fn>:5:0`, 200
+vectors), comparator names the exact byte — `seed+0x0 (VA 0x004ff108)` for
+`new_rand`, `Tparticle+0x0 (VA 0x007a4000)` for `update_particle`,
+`Tparticle[512]+0x0 (VA 0x007a4000)` for `create_particle` — full detail in
+`artifacts/src_equivalence.json`.
+
+### GCC x87 build (win32_pilot.md SS6a, second measurement)
+
+`new_rand`/`update_particle`/`create_particle` are this project's second
+independently-recovered x87 function family (after `line_intersect`), and
+the result reproduces SS6a's rule exactly: `harness/gcc_check.c` (extended
+from wiring only `line_intersect`/`jump_player` to also wire these four,
+`seed` given read-**write** storage+sync since — unlike `jump_player`'s
+read-only globals — `new_rand` mutates `seed` and that mutation is the
+compared domain) built with 32-bit MinGW GCC 16.2.0 at `-m32 -mfpmath=387
+-mno-sse2 -O1`/`-O2` is bit-exact over 80000 vectors (4 canonical seeds ×
+20000) for all three functions; MSVC (plain `double`/SSE) DIFFERs on
+26-31% of vectors, all attributable to the same double-vs-80-bit precision
+gap, not a logic error (each function's own row above, and
+`artifacts/src_equivalence.json`, separate the two). The differ *fraction*
+is far higher than `line_intersect`'s (0.1-5%) because `new_rand` has no
+single "mostly exact" truncation point — every call re-derives its result
+from a fresh multiply-fold-fractional-part chain, so precision sensitivity
+does not average out the way it does across `line_intersect`'s wider
+[0,1] `ua`/`ub` range.
+
+### Totals (updated)
+
+| | batch 4 (this pass) | cumulative (4 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 4 | 35 |
+| functions skipped (documented, all passes) | 4 (destroy_game_data, get_version_str carried over; `update_particle`/`create_particle` graduated out of the skip list) | 3 |
+| original bytes recovered | 413 (128 + 83 + 192 + 10) | 2028 |
+
+`git diff --stat`-style file list this pass: `new_rand.c` (new file, 91
+lines with comments), `ok_to_play.c` (new file, 12 lines), `particle.c`
+(+69 lines: `update_particle`/`create_particle` added, header comment
+rewritten to drop the "deferred" framing).
+
+## Generator gap fix (2026-09-07, this pass)
+
+**Problem** (found while promoting this batch): some concrete function
+instances have DWARF that carries only `DW_AT_abstract_origin` on their
+`DW_TAG_subprogram` — GCC's output for a function that is *also* inlined
+somewhere splits its DWARF into an "abstract instance" (name, return type,
+full parameter list, but no `DW_AT_low_pc`) and one out-of-line
+`DW_TAG_subprogram` per real, addressed, callable copy (`DW_AT_low_pc`/
+`DW_AT_high_pc`, but only `DW_AT_abstract_origin` — no name of its own,
+and its `formal_parameter` children carry only `DW_AT_abstract_origin` +
+`DW_AT_location`, no type). `carrier/gen/gen_interop.py`'s
+`collect_functions()` and `carrier/gen/gen_src_headers.py`'s
+`collect_functions_named()` both required a direct `DW_AT_name` and
+silently skipped anything without one — exactly `set_control`'s situation
+(control.c's own header comment already flagged this as a "documented
+no-op" for `gen_bindings.py --exclude`; the actual root cause is here).
+
+**Fix**: `carrier/gen/gen_interop.py` gained `follow_origin(off, dies)`,
+which walks `DW_AT_abstract_origin`/`DW_AT_specification` chains to the
+DIE that actually carries the declaration, used in `collect_functions()`
+(subprogram name/return-type/external/prototyped, and per-parameter type
+when a formal_parameter itself carries only an origin reference) whenever
+`DW_AT_name` is absent. `gen_src_headers.py`'s `collect_functions_named()`
+(needs parameter *names* too) reuses the same `gi.follow_origin()` helper.
+Also fixed, found only because this batch's `particle.c` is the first
+`src/` file to `#include "game_funcs.h"`: every one of that generated
+file's prototypes is now wrapped `#ifndef <name>` / `#endif`, because
+`carrier/gen/pf_bindings_src.h`, force-included ahead of it, `#define`s
+every *not-yet-promoted* game function's plain name to an address-cast
+expression — declaring that same name again (unconditionally, as before)
+macro-expands into a syntax error (MSVC C2059), not a harmless
+redeclaration; the guard makes `game_funcs.h` declare a name only when no
+such macro already won it.
+
+**Result**: 11 previously-unnamed functions gained real names —
+`set_control` (0x4017d4), `generate_checksum` (0x404a50), `new_srand`
+(0x406a04), `syncProfileFromOptions` (0x406a14), `update_reward`
+(0x406a8c), `is_custom_replay` (0x406b3c), `hash3` (0x418184), `hash2`
+(0x4189cc), `get_rank_id` (0x418a84), `get_rank` (0x418ad0), `hash`
+(0x41b9c8) — taking the game-scope function count from 242 to 253, 0
+regressions (nothing lost a name). `artifacts/functions.json` /
+`tools_recon/build_functions.py` were **not** the source of the gap (that
+pipeline is COFF/disassembly-based, independent of `gen_interop.py`'s
+DWARF walk) and were not touched. Regenerated: `it_types.h`, `it_globals.h`,
+`it_funcs.h`, `it_funcs_table.inc`, `interop_index.json`,
+`INTEROP_NOTES.md`, `game_funcs.h` (+11 prototypes, `#ifndef`-guarded),
+`game_types.h`/`game_state.h`/`state.c` (byte-identical — no type or
+global changed), `pf_bindings_src.h`/`pf_bindings_harness.h`/
+`pf_bindings.h` (+ their `_types.h` twins), all via the existing
+generators, no hand-editing.
+
+**Verification**:
+- Purity gate: `python scripts/check_native_layer.py` — scanned 25 file(s), 0 violation(s).
+- Carrier-world compile: `cl /nologo /c /W3 /TC /Icarrier\gen /FIpf_bindings_src.h` over all 14 promoted-batch `src\icytower\*.c` files (batches 1-4) — 0 errors, 0 warnings.
+- Upstream-world build: `mingw32-make -f src\build\Makefile.standalone` — `libicytower.a` + `standalone_smoke.exe` build clean; `standalone_smoke.exe` run: 16/16 PASS, 0 failure(s) (that Makefile's `SOURCES` list is a hand-maintained subset predating batches 3-4 and was left untouched — this is a regression check on the existing target).
+- Offline harness, all 31 batch 1-3 functions rerun at 20000 vectors each: 30/31 still EQUAL, unchanged; `line_intersect` still DIFFERs under MSVC exactly as already documented (the pre-existing, separately-tracked x87 precision gap) — confirming this pass's generator changes introduced no regression.

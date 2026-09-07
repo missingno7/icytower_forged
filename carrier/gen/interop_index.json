@@ -1,7 +1,7 @@
 {
  "counts": {
   "enums": 0,
-  "functions": 242,
+  "functions": 253,
   "globals": 156,
   "structs_unions": 70,
   "typedefs": 109
@@ -860,6 +860,16 @@
   },
   {
    "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "generate_checksum",
+   "evidence": "KNOWN (COFF symbol _generate_checksum)",
+   "name": "generate_checksum",
+   "prototype": "int generate_checksum(Thisc *)",
+   "size": 44,
+   "va": "0x404a50"
+  },
+  {
+   "calling_convention": "cdecl",
    "cu": "F:\\projects\\icytower\\trunk\\source\\options.c",
    "dwarf_name": "generate_options_checksum",
    "evidence": "KNOWN (COFF symbol _generate_options_checksum)",
@@ -1040,6 +1050,26 @@
   },
   {
    "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "get_rank",
+   "evidence": "KNOWN (COFF symbol _get_rank)",
+   "name": "get_rank",
+   "prototype": "char * get_rank(Tprofile *)",
+   "size": 82,
+   "va": "0x418ad0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "get_rank_id",
+   "evidence": "KNOWN (COFF symbol _get_rank_id)",
+   "name": "get_rank_id",
+   "prototype": "int get_rank_id(Tprofile *)",
+   "size": 75,
+   "va": "0x418a84"
+  },
+  {
+   "calling_convention": "cdecl",
    "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
    "dwarf_name": "get_replay_property",
    "evidence": "KNOWN (COFF symbol _get_replay_property)",
@@ -1190,6 +1220,36 @@
   },
   {
    "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "hash",
+   "evidence": "KNOWN (COFF symbol _hash)",
+   "name": "hash",
+   "prototype": "unsigned int hash(unsigned int)",
+   "size": 71,
+   "va": "0x41b9c8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "hash2",
+   "evidence": "KNOWN (COFF symbol _hash2)",
+   "name": "hash2",
+   "prototype": "unsigned int hash2(unsigned int)",
+   "size": 71,
+   "va": "0x4189cc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\options.c",
+   "dwarf_name": "hash3",
+   "evidence": "KNOWN (COFF symbol _hash3)",
+   "name": "hash3",
+   "prototype": "unsigned int hash3(unsigned int)",
+   "size": 71,
+   "va": "0x418184"
+  },
+  {
+   "calling_convention": "cdecl",
    "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
    "dwarf_name": "httpGetLastModified",
    "evidence": "KNOWN (COFF symbol _httpGetLastModified)",
@@ -1267,6 +1327,16 @@
    "prototype": "int is_any(Tcontrol *)",
    "size": 22,
    "va": "0x4018e8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "is_custom_replay",
+   "evidence": "KNOWN (COFF symbol _is_custom_replay)",
+   "name": "is_custom_replay",
+   "prototype": "int is_custom_replay(Treplay *)",
+   "size": 66,
+   "va": "0x406b3c"
   },
   {
    "calling_convention": "cdecl",
@@ -1687,6 +1757,16 @@
    "prototype": "int new_rand()",
    "size": 128,
    "va": "0x406984"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "new_srand",
+   "evidence": "KNOWN (COFF symbol _new_srand)",
+   "name": "new_srand",
+   "prototype": "void new_srand(int)",
+   "size": 14,
+   "va": "0x406a04"
   },
   {
    "calling_convention": "cdecl",
@@ -2130,6 +2210,16 @@
   },
   {
    "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "set_control",
+   "evidence": "KNOWN (COFF symbol _set_control)",
+   "name": "set_control",
+   "prototype": "void set_control(Tcontrol *, int, int, int, int, int)",
+   "size": 38,
+   "va": "0x4017d4"
+  },
+  {
+   "calling_convention": "cdecl",
    "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
    "dwarf_name": "set_current_avatar",
    "evidence": "KNOWN (COFF symbol _set_current_avatar)",
@@ -2311,6 +2401,16 @@
   {
    "calling_convention": "cdecl",
    "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "syncProfileFromOptions",
+   "evidence": "KNOWN (COFF symbol _syncProfileFromOptions)",
+   "name": "syncProfileFromOptions",
+   "prototype": "void syncProfileFromOptions()",
+   "size": 58,
+   "va": "0x406a14"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
    "dwarf_name": "take_screenshot",
    "evidence": "KNOWN (COFF symbol _take_screenshot)",
    "name": "take_screenshot",
@@ -2397,6 +2497,16 @@
    "prototype": "void update_player(Tplayer *)",
    "size": 651,
    "va": "0x418740"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "update_reward",
+   "evidence": "KNOWN (COFF symbol _update_reward)",
+   "name": "update_reward",
+   "prototype": "void update_reward()",
+   "size": 55,
+   "va": "0x406a8c"
   },
   {
    "calling_convention": "cdecl",

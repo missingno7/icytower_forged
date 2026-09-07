@@ -4,7 +4,7 @@ Produced by `carrier/gen/gen_src_headers.py` (reusing `carrier/gen/gen_interop.p
 | item | count |
 |---|---:|
 | game-CU globals | 156 |
-| game-CU functions | 242 |
+| game-CU functions | 253 |
 | game structs/unions (game_types.h) | 50 |
 | library structs/unions (allegro_types.h) | 20 |
 | game typedefs (game_types.h) | 91 |

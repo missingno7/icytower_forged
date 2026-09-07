@@ -22,6 +22,7 @@ cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\..\gen /I. /I..\..\..\src\icyt
    ..\..\..\src\icytower\control.c ..\..\..\src\icytower\particle.c ^
    ..\..\..\src\icytower\scroller.c ..\..\..\src\icytower\timer.c ^
    ..\..\..\src\icytower\main_state.c ^
+   ..\..\..\src\icytower\new_rand.c ..\..\..\src\icytower\ok_to_play.c ^
    /Fe:src_check.exe /Fo:obj_src\
 if errorlevel 1 ( echo FAILED & exit /b 1 )
 echo OK: harness\src_check.exe

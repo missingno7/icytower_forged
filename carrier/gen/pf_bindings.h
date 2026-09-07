@@ -3,7 +3,9 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 11:00:59 UTC
+ * Generated: 2026-09-07 13:41:49 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle
+ * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
  * when address-free clean C from src/ is compiled INTO the carrier.
@@ -16,6 +18,8 @@
 
 #ifndef PF_BINDINGS_H
 #define PF_BINDINGS_H
+
+#define ICYTOWER_BINDINGS_ACTIVE 1  /* purity-safe "bindings are active" signal for src/ */
 
 #include "pf_bindings_types.h"  /* struct/enum/typedef layouts */
 #include "it_funcs.h"           /* PFN_<name> typedefs, reused verbatim */
@@ -367,18 +371,14 @@
 /* _strptime  VA=0x41f640  cu=F:\projects\icytower\trunk\source\strptime.c */
 /* prototype: char * _strptime(const char *, const char *, struct it_orig_tm *, int *) */
 #define _strptime ((PFN__strptime)0x41f640)
-/* add_combo  VA=0x40414c  cu=F:\projects\icytower\trunk\source\game_data.c */
-/* prototype: void add_combo(Tgame_data *, Tgd_combo *) */
-#define add_combo ((PFN_add_combo)0x40414c)
+/* excluded by --exclude (compiled natively): add_combo */
 /* add_floor  VA=0x4167dc  cu=F:\projects\icytower\trunk\source\map.c */
 /* prototype: void add_floor(Tmap *) */
 #define add_floor ((PFN_add_floor)0x4167dc)
 /* add_itr_file  VA=0x41e740  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int add_itr_file(const char *, int, void *) */
 #define add_itr_file ((PFN_add_itr_file)0x41e740)
-/* add_jump_sequence  VA=0x4040f4  cu=F:\projects\icytower\trunk\source\game_data.c */
-/* prototype: void add_jump_sequence(Tgame_data *, Tgd_jump_sequence *) */
-#define add_jump_sequence ((PFN_add_jump_sequence)0x4040f4)
+/* excluded by --exclude (compiled natively): add_jump_sequence */
 /* add_profile  VA=0x40c8c0  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int add_profile(const char *, int, void *) */
 #define add_profile ((PFN_add_profile)0x40c8c0)
@@ -406,27 +406,21 @@
 /* check_characters  VA=0x40e680  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int check_characters() */
 #define check_characters ((PFN_check_characters)0x40e680)
-/* check_control_key  VA=0x401808  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int check_control_key(Tcontrol *, int) */
-#define check_control_key ((PFN_check_control_key)0x401808)
+/* excluded by --exclude (compiled natively): check_control_key */
 /* check_dir  VA=0x40ffc4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int check_dir(const char *, int, void *) */
 #define check_dir ((PFN_check_dir)0x40ffc4)
 /* clear_trailing_whitespace  VA=0x402078  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: void clear_trailing_whitespace(char *) */
 #define clear_trailing_whitespace ((PFN_clear_trailing_whitespace)0x402078)
-/* clickedCloseButton  VA=0x406a7c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void clickedCloseButton() */
-#define clickedCloseButton ((PFN_clickedCloseButton)0x406a7c)
+/* excluded by --exclude (compiled natively): clickedCloseButton */
 /* color_map_callback  VA=0x407c20  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void color_map_callback(int) */
 #define color_map_callback ((PFN_color_map_callback)0x407c20)
 /* create_game_data  VA=0x404198  cu=F:\projects\icytower\trunk\source\game_data.c */
 /* prototype: Tgame_data * create_game_data() */
 #define create_game_data ((PFN_create_game_data)0x404198)
-/* create_particle  VA=0x418490  cu=F:\projects\icytower\trunk\source\particle.c */
-/* prototype: int create_particle(Tparticle *, int, int) */
-#define create_particle ((PFN_create_particle)0x418490)
+/* excluded by --exclude (compiled natively): create_particle */
 /* create_post  VA=0x4014ec  cu=F:\projects\icytower\trunk\source\beta.c */
 /* prototype: Tbeta * create_post() */
 #define create_post ((PFN_create_post)0x4014ec)
@@ -457,9 +451,7 @@
 /* custom_alert  VA=0x4027f0  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: void custom_alert(char *, char *) */
 #define custom_alert ((PFN_custom_alert)0x4027f0)
-/* cycle_counter  VA=0x41fed4  cu=F:\projects\icytower\trunk\source\timer.c */
-/* prototype: void cycle_counter() */
-#define cycle_counter ((PFN_cycle_counter)0x41fed4)
+/* excluded by --exclude (compiled natively): cycle_counter */
 /* datafile_callback  VA=0x407c14  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void datafile_callback(DATAFILE *) */
 #define datafile_callback ((PFN_datafile_callback)0x407c14)
@@ -496,9 +488,7 @@
 /* drawSlot  VA=0x406fb4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void drawSlot(BITMAP *, int, int, char *, char *, int) */
 #define drawSlot ((PFN_drawSlot)0x406fb4)
-/* draw_buffer  VA=0x4191c8  cu=F:\projects\icytower\trunk\source\profile.c */
-/* prototype: int draw_buffer(BITMAP *, char *, int, int) */
-#define draw_buffer ((PFN_draw_buffer)0x4191c8)
+/* excluded by --exclude (compiled natively): draw_buffer */
 /* draw_frame  VA=0x40929c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void draw_frame(BITMAP *) */
 #define draw_frame ((PFN_draw_frame)0x40929c)
@@ -592,21 +582,20 @@
 /* force_create_profile  VA=0x40d454  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void force_create_profile() */
 #define force_create_profile ((PFN_force_create_profile)0x40d454)
-/* fps_counter  VA=0x41fea4  cu=F:\projects\icytower\trunk\source\timer.c */
-/* prototype: void fps_counter() */
-#define fps_counter ((PFN_fps_counter)0x41fea4)
+/* excluded by --exclude (compiled natively): fps_counter */
 /* garble_string  VA=0x401318  cu=F:\projects\icytower\trunk\source\beta.c */
 /* prototype: void garble_string(char *, int) */
 #define garble_string ((PFN_garble_string)0x401318)
+/* generate_checksum  VA=0x404a50  cu=F:\projects\icytower\trunk\source\hisc.c */
+/* prototype: int generate_checksum(Thisc *) */
+#define generate_checksum ((PFN_generate_checksum)0x404a50)
 /* generate_options_checksum  VA=0x4181cc  cu=F:\projects\icytower\trunk\source\options.c */
 /* prototype: int generate_options_checksum(Toptions *) */
 #define generate_options_checksum ((PFN_generate_options_checksum)0x4181cc)
 /* generate_profile_checksum  VA=0x418a14  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: int generate_profile_checksum(Tprofile *) */
 #define generate_profile_checksum ((PFN_generate_profile_checksum)0x418a14)
-/* getFloorData  VA=0x416770  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: void getFloorData(Tmap *, int, int *, int *, int *) */
-#define getFloorData ((PFN_getFloorData)0x416770)
+/* excluded by --exclude (compiled natively): getFloorData */
 /* getGameDataXML  VA=0x404254  cu=F:\projects\icytower\trunk\source\game_data.c */
 /* prototype: char * getGameDataXML(Tgame_data *) */
 #define getGameDataXML ((PFN_getGameDataXML)0x404254)
@@ -625,24 +614,16 @@
 /* get_configfile_path  VA=0x4039cc  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_configfile_path(char *, it_orig_size_t) */
 #define get_configfile_path ((PFN_get_configfile_path)0x4039cc)
-/* get_controls  VA=0x406978  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: Tcontrol * get_controls() */
-#define get_controls ((PFN_get_controls)0x406978)
+/* excluded by --exclude (compiled natively): get_controls */
 /* get_custom_characters_dir  VA=0x403994  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_custom_characters_dir(char *, it_orig_size_t) */
 #define get_custom_characters_dir ((PFN_get_custom_characters_dir)0x403994)
-/* get_demo  VA=0x40696c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: Treplay * get_demo() */
-#define get_demo ((PFN_get_demo)0x40696c)
-/* get_gamepad  VA=0x4017fc  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: Tgamepad * get_gamepad() */
-#define get_gamepad ((PFN_get_gamepad)0x4017fc)
+/* excluded by --exclude (compiled natively): get_demo */
+/* excluded by --exclude (compiled natively): get_gamepad */
 /* get_gamepad_value  VA=0x40c984  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int get_gamepad_value(char *) */
 #define get_gamepad_value ((PFN_get_gamepad_value)0x40c984)
-/* get_level  VA=0x416748  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: int get_level(Tmap *, int) */
-#define get_level ((PFN_get_level)0x416748)
+/* excluded by --exclude (compiled natively): get_level */
 /* get_logfile_path  VA=0x4039f4  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_logfile_path(char *, it_orig_size_t) */
 #define get_logfile_path ((PFN_get_logfile_path)0x4039f4)
@@ -652,6 +633,12 @@
 /* get_profiles_dir  VA=0x403a1c  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_profiles_dir(char *, it_orig_size_t) */
 #define get_profiles_dir ((PFN_get_profiles_dir)0x403a1c)
+/* get_rank  VA=0x418ad0  cu=F:\projects\icytower\trunk\source\profile.c */
+/* prototype: char * get_rank(Tprofile *) */
+#define get_rank ((PFN_get_rank)0x418ad0)
+/* get_rank_id  VA=0x418a84  cu=F:\projects\icytower\trunk\source\profile.c */
+/* prototype: int get_rank_id(Tprofile *) */
+#define get_rank_id ((PFN_get_rank_id)0x418a84)
 /* get_replay_property  VA=0x41e244  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int get_replay_property(const char *, int) */
 #define get_replay_property ((PFN_get_replay_property)0x41e244)
@@ -697,12 +684,19 @@
 /* handle_player_input  VA=0x40b3e4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void handle_player_input(Tcontrol *) */
 #define handle_player_input ((PFN_handle_player_input)0x40b3e4)
+/* hash  VA=0x41b9c8  cu=F:\projects\icytower\trunk\source\replay.c */
+/* prototype: unsigned int hash(unsigned int) */
+#define hash ((PFN_hash)0x41b9c8)
+/* hash2  VA=0x4189cc  cu=F:\projects\icytower\trunk\source\profile.c */
+/* prototype: unsigned int hash2(unsigned int) */
+#define hash2 ((PFN_hash2)0x4189cc)
+/* hash3  VA=0x418184  cu=F:\projects\icytower\trunk\source\options.c */
+/* prototype: unsigned int hash3(unsigned int) */
+#define hash3 ((PFN_hash3)0x418184)
 /* httpGetLastModified  VA=0x405890  cu=F:\projects\icytower\trunk\source\httpget.c */
 /* prototype: it_orig_time_t httpGetLastModified(HTTPResponse *) */
 #define httpGetLastModified ((PFN_httpGetLastModified)0x405890)
-/* init_control  VA=0x401790  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: void init_control(Tcontrol *) */
-#define init_control ((PFN_init_control)0x401790)
+/* excluded by --exclude (compiled natively): init_control */
 /* init_custom  VA=0x401d28  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: int init_custom(Tcustom *, const char *, int) */
 #define init_custom ((PFN_init_custom)0x401d28)
@@ -718,45 +712,26 @@
 /* install_timers  VA=0x41fee4  cu=F:\projects\icytower\trunk\source\timer.c */
 /* prototype: int install_timers() */
 #define install_timers ((PFN_install_timers)0x41fee4)
-/* is_any  VA=0x4018e8  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_any(Tcontrol *) */
-#define is_any ((PFN_is_any)0x4018e8)
-/* is_down  VA=0x40185c  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_down(Tcontrol *) */
-#define is_down ((PFN_is_down)0x40185c)
-/* is_enter  VA=0x4018d0  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_enter(Tcontrol *) */
-#define is_enter ((PFN_is_enter)0x4018d0)
-/* is_fire  VA=0x4018a0  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_fire(Tcontrol *) */
-#define is_fire ((PFN_is_fire)0x4018a0)
-/* is_left  VA=0x401874  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_left(Tcontrol *) */
-#define is_left ((PFN_is_left)0x401874)
-/* is_pause  VA=0x4018b8  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_pause(Tcontrol *) */
-#define is_pause ((PFN_is_pause)0x4018b8)
-/* is_right  VA=0x401888  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_right(Tcontrol *) */
-#define is_right ((PFN_is_right)0x401888)
-/* is_solid  VA=0x4166dc  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: int is_solid(Tmap *, int, int) */
-#define is_solid ((PFN_is_solid)0x4166dc)
-/* is_up  VA=0x401844  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: int is_up(Tcontrol *) */
-#define is_up ((PFN_is_up)0x401844)
-/* jump_player  VA=0x418678  cu=F:\projects\icytower\trunk\source\player.c */
-/* prototype: int jump_player(Tplayer *, int) */
-#define jump_player ((PFN_jump_player)0x418678)
+/* excluded by --exclude (compiled natively): is_any */
+/* is_custom_replay  VA=0x406b3c  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: int is_custom_replay(Treplay *) */
+#define is_custom_replay ((PFN_is_custom_replay)0x406b3c)
+/* excluded by --exclude (compiled natively): is_down */
+/* excluded by --exclude (compiled natively): is_enter */
+/* excluded by --exclude (compiled natively): is_fire */
+/* excluded by --exclude (compiled natively): is_left */
+/* excluded by --exclude (compiled natively): is_pause */
+/* excluded by --exclude (compiled natively): is_right */
+/* excluded by --exclude (compiled natively): is_solid */
+/* excluded by --exclude (compiled natively): is_up */
+/* excluded by --exclude (compiled natively): jump_player */
 /* key_to_str  VA=0x416a9c  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: void key_to_str(int, char *) */
 #define key_to_str ((PFN_key_to_str)0x416a9c)
 /* line_alert  VA=0x409138  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void line_alert(char *) */
 #define line_alert ((PFN_line_alert)0x409138)
-/* line_intersect  VA=0x406b80  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int line_intersect(int, int, int, int, int, int, int, int, int *, int *) */
-#define line_intersect ((PFN_line_intersect)0x406b80)
+/* excluded by --exclude (compiled natively): line_intersect */
 /* loadCustomSoundDF  VA=0x402040  cu=F:\projects\icytower\trunk\source\custom.c */
 /* prototype: SAMPLE * loadCustomSoundDF(DATAFILE *, int) */
 #define loadCustomSoundDF ((PFN_loadCustomSoundDF)0x402040)
@@ -844,12 +819,11 @@
 /* new_game  VA=0x40dc9c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int new_game() */
 #define new_game ((PFN_new_game)0x40dc9c)
-/* new_rand  VA=0x406984  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int new_rand() */
-#define new_rand ((PFN_new_rand)0x406984)
-/* ok_to_play  VA=0x406a50  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int ok_to_play() */
-#define ok_to_play ((PFN_ok_to_play)0x406a50)
+/* excluded by --exclude (compiled natively): new_rand */
+/* new_srand  VA=0x406a04  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: void new_srand(int) */
+#define new_srand ((PFN_new_srand)0x406a04)
+/* excluded by --exclude (compiled natively): ok_to_play */
 /* open_web_browser  VA=0x40e510  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void open_web_browser(const char *) */
 #define open_web_browser ((PFN_open_web_browser)0x40e510)
@@ -925,24 +899,18 @@
 /* reset_hisc_table  VA=0x405750  cu=F:\projects\icytower\trunk\source\hisc.c */
 /* prototype: void reset_hisc_table(Thisc_table *, char *, int, int) */
 #define reset_hisc_table ((PFN_reset_hisc_table)0x405750)
-/* reset_map  VA=0x4166a4  cu=F:\projects\icytower\trunk\source\map.c */
-/* prototype: void reset_map(Tmap *) */
-#define reset_map ((PFN_reset_map)0x4166a4)
+/* excluded by --exclude (compiled natively): reset_map */
 /* reset_menu  VA=0x41748c  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: void reset_menu(Tmenu *, Tmenu_params *, int) */
 #define reset_menu ((PFN_reset_menu)0x41748c)
 /* reset_options  VA=0x4182cc  cu=F:\projects\icytower\trunk\source\options.c */
 /* prototype: void reset_options(Toptions *) */
 #define reset_options ((PFN_reset_options)0x4182cc)
-/* reset_particles  VA=0x418420  cu=F:\projects\icytower\trunk\source\particle.c */
-/* prototype: void reset_particles(Tparticle *) */
-#define reset_particles ((PFN_reset_particles)0x418420)
+/* excluded by --exclude (compiled natively): reset_particles */
 /* reset_player  VA=0x418550  cu=F:\projects\icytower\trunk\source\player.c */
 /* prototype: void reset_player(Tplayer *) */
 #define reset_player ((PFN_reset_player)0x418550)
-/* restart_scroller  VA=0x41f0d0  cu=F:\projects\icytower\trunk\source\scroller.c */
-/* prototype: void restart_scroller(Tscroller *) */
-#define restart_scroller ((PFN_restart_scroller)0x41f0d0)
+/* excluded by --exclude (compiled natively): restart_scroller */
 /* run_demo  VA=0x415e0c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void run_demo(char *) */
 #define run_demo ((PFN_run_demo)0x415e0c)
@@ -970,15 +938,14 @@
 /* save_replay  VA=0x41dd78  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int save_replay(const char *, const char *, Treplay *, int, int) */
 #define save_replay ((PFN_save_replay)0x41dd78)
-/* scroll_scroller  VA=0x41f0c0  cu=F:\projects\icytower\trunk\source\scroller.c */
-/* prototype: void scroll_scroller(Tscroller *, int) */
-#define scroll_scroller ((PFN_scroll_scroller)0x41f0c0)
+/* excluded by --exclude (compiled natively): scroll_scroller */
 /* scroll_star_field  VA=0x41f408  cu=F:\projects\icytower\trunk\source\stars.c */
 /* prototype: void scroll_star_field(Tstar_field *, double, double) */
 #define scroll_star_field ((PFN_scroll_star_field)0x41f408)
 /* select_profile  VA=0x41acc0  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: Tprofile * select_profile(Tprofile *, Tavailable_profile *, int, Tcontrol *) */
 #define select_profile ((PFN_select_profile)0x41acc0)
+/* excluded by --exclude (compiled natively): set_control */
 /* set_current_avatar  VA=0x406ce4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void set_current_avatar() */
 #define set_current_avatar ((PFN_set_current_avatar)0x406ce4)
@@ -1024,15 +991,14 @@
 /* strptime  VA=0x41fe2c  cu=F:\projects\icytower\trunk\source\strptime.c */
 /* prototype: char * strptime(const char *, const char *, struct it_orig_tm *) */
 #define strptime ((PFN_strptime)0x41fe2c)
-/* switchedFromProgram  VA=0x406a5c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void switchedFromProgram() */
-#define switchedFromProgram ((PFN_switchedFromProgram)0x406a5c)
-/* switchedToProgram  VA=0x406a6c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void switchedToProgram() */
-#define switchedToProgram ((PFN_switchedToProgram)0x406a6c)
+/* excluded by --exclude (compiled natively): switchedFromProgram */
+/* excluded by --exclude (compiled natively): switchedToProgram */
 /* syncOptionsFromProfile  VA=0x40c820  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void syncOptionsFromProfile() */
 #define syncOptionsFromProfile ((PFN_syncOptionsFromProfile)0x40c820)
+/* syncProfileFromOptions  VA=0x406a14  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: void syncProfileFromOptions() */
+#define syncProfileFromOptions ((PFN_syncProfileFromOptions)0x406a14)
 /* take_screenshot  VA=0x41002c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void take_screenshot(BITMAP *) */
 #define take_screenshot ((PFN_take_screenshot)0x41002c)
@@ -1048,18 +1014,17 @@
 /* update_file_list  VA=0x41bda0  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: void update_file_list(char *) */
 #define update_file_list ((PFN_update_file_list)0x41bda0)
-/* update_frame  VA=0x406ac4  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void update_frame() */
-#define update_frame ((PFN_update_frame)0x406ac4)
+/* excluded by --exclude (compiled natively): update_frame */
 /* update_game_menu  VA=0x417adc  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: int update_game_menu(BITMAP *, Tmenu *, Tmenu_params *, Tcontrol *, int, int, void **) */
 #define update_game_menu ((PFN_update_game_menu)0x417adc)
-/* update_particle  VA=0x41843c  cu=F:\projects\icytower\trunk\source\particle.c */
-/* prototype: void update_particle(Tparticle *) */
-#define update_particle ((PFN_update_particle)0x41843c)
+/* excluded by --exclude (compiled natively): update_particle */
 /* update_player  VA=0x418740  cu=F:\projects\icytower\trunk\source\player.c */
 /* prototype: void update_player(Tplayer *) */
 #define update_player ((PFN_update_player)0x418740)
+/* update_reward  VA=0x406a8c  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: void update_reward() */
+#define update_reward ((PFN_update_reward)0x406a8c)
 /* view_profile  VA=0x419aec  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: int view_profile(Tprofile *) */
 #define view_profile ((PFN_view_profile)0x419aec)

@@ -20,6 +20,17 @@
  *                   under every toolchain/flag combination; a DIFFER here
  *                   would mean something is wrong with the harness itself,
  *                   not with x87 precision.
+ *   new_rand        batch 4 (2026-09-07): the game's own x87 float LCG
+ *                   (main.c) -- every intermediate stays in an ordinary
+ *                   automatic `double` (src/icytower/new_rand.c), same
+ *                   register-residency question as line_intersect.
+ *   update_particle,
+ *   create_particle batch 4: integer-only callers of new_rand -- included
+ *                   here (not just line_intersect/jump_player) because
+ *                   they are the reason new_rand needed this same GCC
+ *                   x87 build in the first place (PROMOTIONS.md batch 3's
+ *                   "Skipped this pass" note).
+ *   ok_to_play      batch 4: trivial control, no FP, no globals.
  *
  * Deliberately its own, wholly GCC-compiled executable -- no object file
  * from this build is ever linked against an MSVC-built one. That sidesteps
@@ -67,12 +78,18 @@
 #define G_PLY           0x4ff128u
 #define G_COLLISION_TYPE 0x4dd140u
 #define G_MAX_SPEED      0x4bdb80u
+#define G_SEED           0x4ff108u
 
 /* storage for game_state.h's extern decls -- the STANDALONE world's
  * contract (win32_pilot.md SS7a: "a state.c defines the globals"); this
- * driver plays that role for the two globals jump_player.c reads. */
+ * driver plays that role for the globals line_intersect.c/jump_player.c/
+ * new_rand.c read. Unlike collision_type/max_speed (read-only from
+ * jump_player's side), `seed` is read-WRITE -- new_rand.c mutates it, and
+ * that mutation is exactly what batch 4's offline check compares -- so it
+ * is synced from the guest image before every call AND written back after. */
 int collision_type;
 double max_speed[5];
+double seed;
 
 unsigned char *pf_guest = 0;
 static unsigned char *pf_pristine = 0;
@@ -85,6 +102,10 @@ void pf_trap(unsigned int va, const char *why)
 
 extern int jump_player(Tplayer *, int);
 extern int line_intersect(int, int, int, int, int, int, int, int, int *, int *);
+extern int new_rand(void);
+extern void update_particle(Tparticle *);
+extern int create_particle(Tparticle *, int, int);
+extern int ok_to_play(void);
 
 static unsigned int rd32(FILE *f)
 {
@@ -118,9 +139,12 @@ int main(int argc, char **argv)
         return 2;
     }
     fn = argv[4];
-    if (strcmp(fn, "line_intersect") != 0 && strcmp(fn, "jump_player") != 0) {
-        fprintf(stderr, "gcc_check only wires up line_intersect/jump_player "
-                        "(win32_pilot.md SS6a experiment); got '%s'\n", fn);
+    if (strcmp(fn, "line_intersect") != 0 && strcmp(fn, "jump_player") != 0 &&
+        strcmp(fn, "new_rand") != 0 && strcmp(fn, "update_particle") != 0 &&
+        strcmp(fn, "create_particle") != 0 && strcmp(fn, "ok_to_play") != 0) {
+        fprintf(stderr, "gcc_check only wires up line_intersect/jump_player/"
+                        "new_rand/update_particle/create_particle/ok_to_play; "
+                        "got '%s'\n", fn);
         return 2;
     }
 
@@ -178,7 +202,7 @@ int main(int argc, char **argv)
             eax = (unsigned int)line_intersect((int)a[0], (int)a[1], (int)a[2], (int)a[3],
                                                (int)a[4], (int)a[5], (int)a[6], (int)a[7],
                                                px, py);
-        } else { /* jump_player */
+        } else if (!strcmp(fn, "jump_player")) {
             Tplayer *p = (Tplayer *)tr(a[0]);
             /* sync the two globals jump_player.c reads (see header comment)
              * from the guest image before the call; both are read-only from
@@ -186,6 +210,23 @@ int main(int argc, char **argv)
             collision_type = *(int *)(pf_guest + (G_COLLISION_TYPE - PF_GUEST_BASE));
             memcpy(max_speed, pf_guest + (G_MAX_SPEED - PF_GUEST_BASE), sizeof(max_speed));
             eax = (unsigned int)jump_player(p, (int)a[1]);
+        } else if (!strcmp(fn, "new_rand")) {
+            seed = *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE));
+            eax = (unsigned int)new_rand();
+            *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
+        } else if (!strcmp(fn, "update_particle")) {
+            Tparticle *p = (Tparticle *)tr(a[0]);
+            seed = *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE));
+            update_particle(p);
+            *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
+            eax = 0;
+        } else if (!strcmp(fn, "create_particle")) {
+            Tparticle *p = (Tparticle *)tr(a[0]);
+            seed = *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE));
+            eax = (unsigned int)create_particle(p, (int)a[1], (int)a[2]);
+            *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
+        } else { /* ok_to_play */
+            eax = (unsigned int)ok_to_play();
         }
 
         fwrite(&eax, 4, 1, fo);

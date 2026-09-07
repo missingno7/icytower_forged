@@ -113,6 +113,11 @@ extern Tcontrol *get_controls(void);
 extern void switchedFromProgram(void);
 extern void switchedToProgram(void);
 extern void clickedCloseButton(void);
+/* batch 4 (2026-09-07) */
+extern int  new_rand(void);
+extern void update_particle(Tparticle *);
+extern int  create_particle(Tparticle *, int, int);
+extern int  ok_to_play(void);
 
 static unsigned int rd32(FILE *f)
 {
@@ -312,6 +317,17 @@ int main(int argc, char **argv)
         } else if (!strcmp(fn, "clickedCloseButton")) {
             clickedCloseButton();
             eax = 0;
+        } else if (!strcmp(fn, "new_rand")) {
+            eax = (unsigned int)new_rand();
+        } else if (!strcmp(fn, "update_particle")) {
+            Tparticle *p = (Tparticle *)tr(a[0]);
+            update_particle(p);
+            eax = 0;
+        } else if (!strcmp(fn, "create_particle")) {
+            Tparticle *p = (Tparticle *)tr(a[0]);
+            eax = (unsigned int)create_particle(p, (int)a[1], (int)a[2]);
+        } else if (!strcmp(fn, "ok_to_play")) {
+            eax = (unsigned int)ok_to_play();
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);
             return 2;

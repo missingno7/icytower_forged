@@ -3,8 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 13:06:25 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, cycle_counter, draw_buffer, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame
+ * Generated: 2026-09-07 13:51:47 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -420,9 +420,7 @@
 /* create_game_data  VA=0x404198  cu=F:\projects\icytower\trunk\source\game_data.c */
 /* prototype: Tgame_data * create_game_data() */
 #define create_game_data ((PFN_create_game_data)0x404198)
-/* create_particle  VA=0x418490  cu=F:\projects\icytower\trunk\source\particle.c */
-/* prototype: int create_particle(Tparticle *, int, int) */
-#define create_particle ((PFN_create_particle)0x418490)
+/* excluded by --exclude (compiled natively): create_particle */
 /* create_post  VA=0x4014ec  cu=F:\projects\icytower\trunk\source\beta.c */
 /* prototype: Tbeta * create_post() */
 #define create_post ((PFN_create_post)0x4014ec)
@@ -588,6 +586,9 @@
 /* garble_string  VA=0x401318  cu=F:\projects\icytower\trunk\source\beta.c */
 /* prototype: void garble_string(char *, int) */
 #define garble_string ((PFN_garble_string)0x401318)
+/* generate_checksum  VA=0x404a50  cu=F:\projects\icytower\trunk\source\hisc.c */
+/* prototype: int generate_checksum(Thisc *) */
+#define generate_checksum ((PFN_generate_checksum)0x404a50)
 /* generate_options_checksum  VA=0x4181cc  cu=F:\projects\icytower\trunk\source\options.c */
 /* prototype: int generate_options_checksum(Toptions *) */
 #define generate_options_checksum ((PFN_generate_options_checksum)0x4181cc)
@@ -632,6 +633,12 @@
 /* get_profiles_dir  VA=0x403a1c  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_profiles_dir(char *, it_orig_size_t) */
 #define get_profiles_dir ((PFN_get_profiles_dir)0x403a1c)
+/* get_rank  VA=0x418ad0  cu=F:\projects\icytower\trunk\source\profile.c */
+/* prototype: char * get_rank(Tprofile *) */
+#define get_rank ((PFN_get_rank)0x418ad0)
+/* get_rank_id  VA=0x418a84  cu=F:\projects\icytower\trunk\source\profile.c */
+/* prototype: int get_rank_id(Tprofile *) */
+#define get_rank_id ((PFN_get_rank_id)0x418a84)
 /* get_replay_property  VA=0x41e244  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int get_replay_property(const char *, int) */
 #define get_replay_property ((PFN_get_replay_property)0x41e244)
@@ -677,6 +684,15 @@
 /* handle_player_input  VA=0x40b3e4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void handle_player_input(Tcontrol *) */
 #define handle_player_input ((PFN_handle_player_input)0x40b3e4)
+/* hash  VA=0x41b9c8  cu=F:\projects\icytower\trunk\source\replay.c */
+/* prototype: unsigned int hash(unsigned int) */
+#define hash ((PFN_hash)0x41b9c8)
+/* hash2  VA=0x4189cc  cu=F:\projects\icytower\trunk\source\profile.c */
+/* prototype: unsigned int hash2(unsigned int) */
+#define hash2 ((PFN_hash2)0x4189cc)
+/* hash3  VA=0x418184  cu=F:\projects\icytower\trunk\source\options.c */
+/* prototype: unsigned int hash3(unsigned int) */
+#define hash3 ((PFN_hash3)0x418184)
 /* httpGetLastModified  VA=0x405890  cu=F:\projects\icytower\trunk\source\httpget.c */
 /* prototype: it_orig_time_t httpGetLastModified(HTTPResponse *) */
 #define httpGetLastModified ((PFN_httpGetLastModified)0x405890)
@@ -697,6 +713,9 @@
 /* prototype: int install_timers() */
 #define install_timers ((PFN_install_timers)0x41fee4)
 /* excluded by --exclude (compiled natively): is_any */
+/* is_custom_replay  VA=0x406b3c  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: int is_custom_replay(Treplay *) */
+#define is_custom_replay ((PFN_is_custom_replay)0x406b3c)
 /* excluded by --exclude (compiled natively): is_down */
 /* excluded by --exclude (compiled natively): is_enter */
 /* excluded by --exclude (compiled natively): is_fire */
@@ -800,12 +819,11 @@
 /* new_game  VA=0x40dc9c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int new_game() */
 #define new_game ((PFN_new_game)0x40dc9c)
-/* new_rand  VA=0x406984  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int new_rand() */
-#define new_rand ((PFN_new_rand)0x406984)
-/* ok_to_play  VA=0x406a50  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int ok_to_play() */
-#define ok_to_play ((PFN_ok_to_play)0x406a50)
+/* excluded by --exclude (compiled natively): new_rand */
+/* new_srand  VA=0x406a04  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: void new_srand(int) */
+#define new_srand ((PFN_new_srand)0x406a04)
+/* excluded by --exclude (compiled natively): ok_to_play */
 /* open_web_browser  VA=0x40e510  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void open_web_browser(const char *) */
 #define open_web_browser ((PFN_open_web_browser)0x40e510)
@@ -927,6 +945,7 @@
 /* select_profile  VA=0x41acc0  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: Tprofile * select_profile(Tprofile *, Tavailable_profile *, int, Tcontrol *) */
 #define select_profile ((PFN_select_profile)0x41acc0)
+/* excluded by --exclude (compiled natively): set_control */
 /* set_current_avatar  VA=0x406ce4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void set_current_avatar() */
 #define set_current_avatar ((PFN_set_current_avatar)0x406ce4)
@@ -977,6 +996,9 @@
 /* syncOptionsFromProfile  VA=0x40c820  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void syncOptionsFromProfile() */
 #define syncOptionsFromProfile ((PFN_syncOptionsFromProfile)0x40c820)
+/* syncProfileFromOptions  VA=0x406a14  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: void syncProfileFromOptions() */
+#define syncProfileFromOptions ((PFN_syncProfileFromOptions)0x406a14)
 /* take_screenshot  VA=0x41002c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void take_screenshot(BITMAP *) */
 #define take_screenshot ((PFN_take_screenshot)0x41002c)
@@ -996,12 +1018,13 @@
 /* update_game_menu  VA=0x417adc  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: int update_game_menu(BITMAP *, Tmenu *, Tmenu_params *, Tcontrol *, int, int, void **) */
 #define update_game_menu ((PFN_update_game_menu)0x417adc)
-/* update_particle  VA=0x41843c  cu=F:\projects\icytower\trunk\source\particle.c */
-/* prototype: void update_particle(Tparticle *) */
-#define update_particle ((PFN_update_particle)0x41843c)
+/* excluded by --exclude (compiled natively): update_particle */
 /* update_player  VA=0x418740  cu=F:\projects\icytower\trunk\source\player.c */
 /* prototype: void update_player(Tplayer *) */
 #define update_player ((PFN_update_player)0x418740)
+/* update_reward  VA=0x406a8c  cu=F:\projects\icytower\trunk\source\main.c */
+/* prototype: void update_reward() */
+#define update_reward ((PFN_update_reward)0x406a8c)
 /* view_profile  VA=0x419aec  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: int view_profile(Tprofile *) */
 #define view_profile ((PFN_view_profile)0x419aec)
