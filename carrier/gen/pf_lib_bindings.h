@@ -2,7 +2,7 @@
  * Produced by carrier/gen/gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json (allow-list: summary.allegro_family_api_names + shared_globals.lib_globals_touched_by_game.globals)
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model, reused from gen_interop.py)
- * Generated: 2026-09-07 12:00:17 UTC
+ * Generated: 2026-09-07 12:23:06 UTC
  *
  * win32_pilot.md SS7b "NEXT": the library-call layer game-scope
  * pf_bindings.h does not cover. One #define per allow-listed name,

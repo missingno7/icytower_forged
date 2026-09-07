@@ -27,11 +27,58 @@
  * compiled INTO the carrier) already supplied every one of these names
  * with the same layout, via its own copy of it_types.h -- see
  * src/README.md.
+ *
+ * Skipped, in favour of the REAL upstream <allegro.h>, when ICYTOWER_UPSTREAM_ALLEGRO is
+ * defined: this is the standalone-build LIBRARIES-coastline swap
+ * (carrier/gen/LIB_BINDINGS_NOTES.md "Standalone build swap") --
+ * no source file under src/icytower changes at all to select it, because every
+ * src/ file reaches this header only through game_types.h's own
+ * `#include "allegro_types.h"`, never directly; defining ICYTOWER_UPSTREAM_ALLEGRO on the
+ * compiler command line (`-DICYTOWER_UPSTREAM_ALLEGRO`) is the entire swap. The CRT-reserved
+ * subset below (it_orig_size_t, it_orig_FILE, ...) is NOT Allegro's
+ * own and upstream <allegro.h> never defines these renamed names, so
+ * it is emitted in this branch too -- see CRT_RESERVED_NAMES in
+ * gen_src_headers.py.
  */
 #ifndef ICYTOWER_ALLEGRO_TYPES_H
 #define ICYTOWER_ALLEGRO_TYPES_H
 
-#ifndef ICYTOWER_BINDINGS_ACTIVE
+#if defined(ICYTOWER_UPSTREAM_ALLEGRO)
+
+#include <allegro.h>  /* real upstream Allegro 4.4.3.1 -- BITMAP, DATAFILE, */
+                      /* SAMPLE, FONT, PACKFILE, RGB, PALETTE, JOYSTICK_INFO, */
+                      /* fixed and friends now come from here, not below */
+
+/* CRT-reserved names upstream <allegro.h> does not define under these
+ * renamed identifiers (it never needed to -- it just uses plain FILE/
+ * size_t/time_t itself); game_types.h still references them by these
+ * names, so they are emitted unconditionally here. */
+#pragma pack(push, 1)
+
+/* forward declarations */
+struct it_orig__iobuf;
+
+/* enumerations */
+/* none in this scope */
+
+/* struct / union bodies and typedefs, in dependency order */
+struct it_orig__iobuf {
+    char *_ptr;
+    int _cnt;
+    char *_base;
+    int _flag;
+    int _file;
+    int _charbuf;
+    int _bufsiz;
+    char *_tmpfname;
+};
+typedef unsigned int it_orig_size_t;
+typedef struct it_orig__iobuf it_orig_FILE;
+typedef long it_orig_time_t;
+
+#pragma pack(pop)
+
+#elif !defined(ICYTOWER_BINDINGS_ACTIVE)
 
 #pragma pack(push, 1)
 
@@ -319,6 +366,6 @@ typedef struct PACKFILE PACKFILE;
 
 #pragma pack(pop)
 
-#endif /* !ICYTOWER_BINDINGS_ACTIVE */
+#endif /* ICYTOWER_UPSTREAM_ALLEGRO / !ICYTOWER_BINDINGS_ACTIVE */
 
 #endif /* ICYTOWER_ALLEGRO_TYPES_H */

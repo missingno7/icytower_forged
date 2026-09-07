@@ -1,0 +1,89 @@
+# Makefile.standalone -- proves the LIBRARIES-coastline header swap
+# (src/README.md, src/icytower/GENERATED.md,
+# carrier/gen/LIB_BINDINGS_NOTES.md "Standalone build swap") by compiling
+# the UNCHANGED clean-source .c files under src/icytower/ into a static
+# library, -DICYTOWER_UPSTREAM_ALLEGRO, against the REAL upstream Allegro
+# 4.4.3.1 headers/libs built in third_party/ (third_party/BUILD.md) instead
+# of the port's own allegro_types.h/allegro_api.h stand-ins, then links a
+# tiny smoke test against it.
+#
+# Toolchain: MSYS2 MINGW32 (32-bit i686-w64-mingw32 gcc, native -- not a
+# multilib compiler, so -m32 is accepted but a no-op; kept because it is
+# this task's specified invocation and is harmless).
+#
+#   MSYSTEM=MINGW32 C:\msys64\usr\bin\bash.exe -lc \
+#     "cd /d/Games/DOS/dos_recosystem/icytower_forged && \
+#      mingw32-make -f src/build/Makefile.standalone"
+#
+# Targets:
+#   all (default)     libicytower.a + standalone_smoke.exe, then runs the smoke test
+#   libicytower.a      the 8 promoted-function .c files + state.c, upstream world
+#   standalone_smoke.exe  links the above against liballeg.a/liblogg.a
+#   run                 runs standalone_smoke.exe
+#   clean
+
+REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
+SRC       := $(REPO_ROOT)/src/icytower
+BUILDDIR  := $(REPO_ROOT)/src/build
+OBJDIR    := $(BUILDDIR)/obj
+
+ALLEGRO_SRC   := $(REPO_ROOT)/third_party/allegro-4.4.3.1
+ALLEGRO_BUILD := $(REPO_ROOT)/third_party/build-allegro-4.4.3.1
+
+CC      := gcc
+CFLAGS  := -m32 -mfpmath=387 -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK -Wall \
+           -I$(ALLEGRO_SRC)/include -I$(ALLEGRO_BUILD)/include \
+           -I$(ALLEGRO_SRC)/addons/logg -I$(SRC)
+AR      := ar
+
+# The 16 promoted functions, 9 .c files (game_types_check.c is excluded on
+# purpose -- see STANDALONE.md "game_types_check.c is out of scope here":
+# its sizeof/offsetof assertions check the DWARF-recovered ADDRESS-BACKED
+# layout of Allegro's internal structs, e.g. LZSS_UNPACK_DATA/
+# _al_normal_packfile_details, which upstream's public <allegro.h> does not
+# even expose -- that check only makes sense against src/icytower's own
+# stand-in, never against upstream).
+SOURCES := add_combo.c control.c is_solid.c jump_player.c line_intersect.c \
+           map.c update_frame.c state.c
+OBJECTS := $(patsubst %.c,$(OBJDIR)/%.o,$(SOURCES))
+
+LIB       := $(BUILDDIR)/libicytower.a
+SMOKE_SRC := $(BUILDDIR)/standalone_smoke.c
+SMOKE_EXE := $(BUILDDIR)/standalone_smoke.exe
+
+LIBDIR := $(ALLEGRO_BUILD)/lib
+# liballeg.a + liblogg.a (static, this project's own build); libpng not
+# needed (load_png is not in the lib_boundary.json allow-list -- see
+# carrier/gen/LIB_BINDINGS_NOTES.md "Constants"/"Allow-list source" --
+# allegro_api.h's ICYTOWER_UPSTREAM_ALLEGRO branch only pulls in <logg.h>).
+# libvorbis/libogg/libz are logg's own dependencies (DLL import libs, per
+# third_party/BUILD.md SS3); the DirectX/Win32 libs are liballeg.a's own,
+# same set third_party/smoke/smoke.c links against.
+LIBS := -L$(LIBDIR) -llogg -lalleg \
+        -lvorbisfile -lvorbis -logg -lz \
+        -ldinput -lddraw -ldxguid -lwinmm -ldsound -lole32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 \
+        -lmingw32
+
+.PHONY: all clean run
+all: $(SMOKE_EXE)
+
+$(OBJDIR):
+	mkdir -p "$(OBJDIR)"
+
+$(OBJDIR)/%.o: $(SRC)/%.c | $(OBJDIR)
+	$(CC) $(CFLAGS) -c "$<" -o "$@"
+
+$(LIB): $(OBJECTS)
+	$(AR) rcs "$(LIB)" $(OBJECTS)
+
+$(OBJDIR)/standalone_smoke.o: $(SMOKE_SRC) | $(OBJDIR)
+	$(CC) $(CFLAGS) -c "$<" -o "$@"
+
+$(SMOKE_EXE): $(OBJDIR)/standalone_smoke.o $(LIB)
+	$(CC) -m32 "$(OBJDIR)/standalone_smoke.o" "$(LIB)" -o "$(SMOKE_EXE)" $(LIBS)
+
+run: $(SMOKE_EXE)
+	cd "$(BUILDDIR)" && ./standalone_smoke.exe
+
+clean:
+	rm -rf "$(OBJDIR)" "$(LIB)" "$(SMOKE_EXE)"

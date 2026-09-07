@@ -128,6 +128,17 @@ REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
 
 BINDINGS_GUARD = 'ICYTOWER_BINDINGS_ACTIVE'
 
+# Standalone-build LIBRARIES-coastline swap (this file's own "Standalone
+# build swap" section below): when defined, allegro_api.h skips its 100
+# stand-in function prototypes / 26 stand-in extern globals / hand-
+# transcribed constants and instead #includes the addon headers the
+# allow-list actually needs (<logg.h> for logg_load/logg_load_memory --
+# the allow-list's only two non-core-Allegro entries) on top of the real
+# <allegro.h> that allegro_types.h already pulled in under the same macro.
+# Mirrors gen_src_headers.py's UPSTREAM_GUARD exactly (same name, same
+# one-of-three-states contract with BINDINGS_GUARD).
+UPSTREAM_GUARD = 'ICYTOWER_UPSTREAM_ALLEGRO'
+
 # Upstream Allegro 4.4 fixed-point math that is `static inline` in
 # allegro/inline/*.inl (alfixed.inl). Never expected to intersect the
 # allow-list (see module docstring "Inline functions"); listed here only so
@@ -659,6 +670,14 @@ def main():
     a.append(' * parse text with those names already macro-expanded (see')
     a.append(' * carrier/gen/BINDINGS_NOTES.md "selftest_state.h" for the same failure')
     a.append(' * mode already solved once for game-scope names).')
+    a.append(' *')
+    a.append(' * Skipped, in favour of the real upstream headers, when %s is' % UPSTREAM_GUARD)
+    a.append(' * defined ("Standalone build swap" below): allegro_types.h has already')
+    a.append(' * #included <allegro.h> under the same macro, which is where all 100')
+    a.append(' * functions and 26 globals below actually come from upstream; this file')
+    a.append(' * then only needs <logg.h>, for the allow-list\'s 2 non-core-Allegro')
+    a.append(' * entries (`logg_load`/`logg_load_memory`) that <allegro.h> itself does')
+    a.append(' * not declare.')
     a.append(' */')
     a.append('')
     a.append('#ifndef ICYTOWER_ALLEGRO_API_H')
@@ -666,9 +685,15 @@ def main():
     a.append('')
     a.append('#include "allegro_types.h"  /* BITMAP, FONT, RGB, SAMPLE, DATAFILE, PACKFILE, */')
     a.append('                            /* MIDI, PALETTE, fixed -- already generated,     */')
-    a.append('                            /* already self-skipping under %s      */' % BINDINGS_GUARD)
+    a.append('                            /* already self-skipping under %s and    */' % BINDINGS_GUARD)
+    a.append('                            /* %s (real <allegro.h> in the latter) */' % UPSTREAM_GUARD)
     a.append('')
-    a.append('#ifndef %s' % BINDINGS_GUARD)
+    a.append('#if defined(%s)' % UPSTREAM_GUARD)
+    a.append('')
+    a.append('#include <logg.h>  /* logg_load, logg_load_memory -- the allow-list\'s only */')
+    a.append('                   /* two entries <allegro.h> itself does not declare      */')
+    a.append('')
+    a.append('#elif !defined(%s)' % BINDINGS_GUARD)
     a.append('')
     a.append('#pragma pack(push, 1)')
     a.append('')
@@ -697,7 +722,7 @@ def main():
         a.append('%s %s%s(%s);  /* raw=%s cu=%s */' %
                   (ret_str, conv_kw, name, paramstr, f['raw_name'], f['cu']))
     a.append('')
-    a.append('#endif /* !%s */' % BINDINGS_GUARD)
+    a.append('#endif /* %s / !%s */' % (UPSTREAM_GUARD, BINDINGS_GUARD))
     a.append('')
     a.append('#endif /* ICYTOWER_ALLEGRO_API_H */')
     a.append('')

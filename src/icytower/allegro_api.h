@@ -2,7 +2,7 @@
  * Produced by carrier/gen/gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model)
- * Generated: 2026-09-07 12:00:17 UTC
+ * Generated: 2026-09-07 12:23:06 UTC
  *
  * This port's STAND-IN for <allegro.h>, address-free, upstream spelling
  * only (win32_pilot.md SS7b): declares exactly the 100 functions and 26
@@ -27,6 +27,14 @@
  * parse text with those names already macro-expanded (see
  * carrier/gen/BINDINGS_NOTES.md "selftest_state.h" for the same failure
  * mode already solved once for game-scope names).
+ *
+ * Skipped, in favour of the real upstream headers, when ICYTOWER_UPSTREAM_ALLEGRO is
+ * defined ("Standalone build swap" below): allegro_types.h has already
+ * #included <allegro.h> under the same macro, which is where all 100
+ * functions and 26 globals below actually come from upstream; this file
+ * then only needs <logg.h>, for the allow-list's 2 non-core-Allegro
+ * entries (`logg_load`/`logg_load_memory`) that <allegro.h> itself does
+ * not declare.
  */
 
 #ifndef ICYTOWER_ALLEGRO_API_H
@@ -34,9 +42,15 @@
 
 #include "allegro_types.h"  /* BITMAP, FONT, RGB, SAMPLE, DATAFILE, PACKFILE, */
                             /* MIDI, PALETTE, fixed -- already generated,     */
-                            /* already self-skipping under ICYTOWER_BINDINGS_ACTIVE      */
+                            /* already self-skipping under ICYTOWER_BINDINGS_ACTIVE and    */
+                            /* ICYTOWER_UPSTREAM_ALLEGRO (real <allegro.h> in the latter) */
 
-#ifndef ICYTOWER_BINDINGS_ACTIVE
+#if defined(ICYTOWER_UPSTREAM_ALLEGRO)
+
+#include <logg.h>  /* logg_load, logg_load_memory -- the allow-list's only */
+                   /* two entries <allegro.h> itself does not declare      */
+
+#elif !defined(ICYTOWER_BINDINGS_ACTIVE)
 
 #pragma pack(push, 1)
 
@@ -482,6 +496,6 @@ int voice_get_position(int);  /* raw=_voice_get_position cu=C:\Lib\allegro4\src\
 void voice_stop(int);  /* raw=_voice_stop cu=C:\Lib\allegro4\src\sound.c */
 void vsync(void);  /* raw=_vsync cu=C:\Lib\allegro4\src\gfx.c */
 
-#endif /* !ICYTOWER_BINDINGS_ACTIVE */
+#endif /* ICYTOWER_UPSTREAM_ALLEGRO / !ICYTOWER_BINDINGS_ACTIVE */
 
 #endif /* ICYTOWER_ALLEGRO_API_H */

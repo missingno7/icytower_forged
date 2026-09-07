@@ -54,6 +54,15 @@ import gen_interop as gi  # noqa: E402  (reused DWARF parser + type IR)
 
 BINDINGS_GUARD = 'ICYTOWER_BINDINGS_ACTIVE'
 
+# Standalone-build LIBRARIES-coastline swap (carrier/gen/LIB_BINDINGS_NOTES.md
+# "Standalone build swap"): when this is #defined, allegro_types.h's stand-in
+# struct/typedef bodies are skipped and it #includes the REAL upstream
+# <allegro.h> instead. Mirrors BINDINGS_GUARD's shape (one macro, checked
+# with a plain #if/#elif, no other file needs to know it exists) so the two
+# skip conditions never fight: exactly one of BINDINGS_ACTIVE, UPSTREAM, or
+# neither is ever defined in a given translation unit.
+UPSTREAM_GUARD = 'ICYTOWER_UPSTREAM_ALLEGRO'
+
 # scripts/check_native_layer.py's BANNED_IDENT_RE, reproduced here (not
 # imported -- it is a purity-gate detail, not part of the DWARF model this
 # script otherwise reuses from gen_interop.py) only so this generator can
@@ -224,13 +233,20 @@ def propagate_game_origin(order, nodes, origin_of_key):
 # gi.emit_struct_body / gi.decl for the bodies themselves.
 # --------------------------------------------------------------------------
 
-def emit_types_section(order, nodes, origin_of_key, want_origin, opaque_reasons):
-    su_keys = [k for k in order if k[0] == 'su' and origin_of_key[k] == want_origin]
+def emit_types_section(order, nodes, origin_of_key, want_origin, opaque_reasons, name_filter=None):
+    """name_filter, if given, additionally restricts every key emitted (forward
+    decl, enum, struct body, typedef) to nodes whose name it accepts -- used
+    to carve the CRT-reserved subset (it_orig_size_t, it_orig_FILE, ...) out
+    of the 'library' origin so it can be emitted separately from Allegro's
+    own types (see CRT_RESERVED_NAMES / the ICYTOWER_UPSTREAM_ALLEGRO split
+    in main())."""
+    keep = (lambda n: True) if name_filter is None else name_filter
+    su_keys = [k for k in order if k[0] == 'su' and origin_of_key[k] == want_origin and keep(nodes[k]['name'])]
     # forward decls: every su entity of this origin, name-sorted (matches
     # gen_interop.py's it_types.h convention -- decl order is irrelevant to
     # a forward declaration, so a stable independent sort reads best)
     fwd_keys = sorted(su_keys, key=lambda k: nodes[k]['name'])
-    en_keys = [k for k in order if k[0] == 'en' and origin_of_key[k] == want_origin]
+    en_keys = [k for k in order if k[0] == 'en' and origin_of_key[k] == want_origin and keep(nodes[k]['name'])]
 
     lines = []
     lines.append('/* forward declarations */')
@@ -258,6 +274,8 @@ def emit_types_section(order, nodes, origin_of_key, want_origin, opaque_reasons)
         if origin_of_key[key] != want_origin:
             continue
         n = nodes[key]
+        if not keep(n['name']):
+            continue
         if key[0] == 'su':
             if n['name'] in emitted:
                 continue
@@ -269,6 +287,20 @@ def emit_types_section(order, nodes, origin_of_key, want_origin, opaque_reasons)
             body_keys.append(key)
     lines.append('')
     return '\n'.join(lines), body_keys
+
+
+# CRT-reserved names (gi.RESERVED_TYPE_RENAMES's it_orig_-prefixed values):
+# these ride along in allegro_types.h's 'library' origin bucket only because
+# gen_interop.compute_type_origin's rule is "declared outside the game CUs",
+# which is also true of any CRT header the game transitively pulls in -- they
+# are NOT Allegro's own types, so upstream's real <allegro.h> never defines
+# them under these renamed names (it doesn't need to: it just uses plain
+# FILE/size_t/time_t itself). Skipping them under ICYTOWER_UPSTREAM_ALLEGRO
+# the same way the Allegro-origin types are skipped would leave
+# game_types.h's `it_orig_size_t iDocSize;` (etc.) referencing an undefined
+# type, so they are emitted unconditionally instead -- see main()'s allegro_
+# types.h writer.
+CRT_RESERVED_NAMES = frozenset(gi.RESERVED_TYPE_RENAMES.values())
 
 
 def banner(generator_name, args, extra=''):
@@ -351,6 +383,15 @@ def main():
     opaque_reasons = []
     lib_body, lib_keys = emit_types_section(order, nodes, origin_of_key, 'library', opaque_reasons)
     game_body, game_keys = emit_types_section(order, nodes, origin_of_key, 'game', opaque_reasons)
+    # CRT-reserved subset of 'library' (it_orig_size_t, it_orig_FILE, ...):
+    # needed in EVERY world, including ICYTOWER_UPSTREAM_ALLEGRO, since
+    # upstream <allegro.h> never defines these renamed names -- see
+    # CRT_RESERVED_NAMES's docstring above. Thrown-away opaque list: none of
+    # this subset is ever opaque (verified against GENERATED.md's 4 opaque
+    # entries), so there is nothing for a second call to double-count.
+    crt_body, crt_keys = emit_types_section(
+        order, nodes, origin_of_key, 'library', [],
+        name_filter=lambda name: name in CRT_RESERVED_NAMES)
 
     # ---- allegro_types.h ----
     out_allegro = os.path.join(args.out, 'allegro_types.h')
@@ -374,17 +415,40 @@ def main():
         '(carrier/gen/pf_bindings_src.h, force-included only when src/ is\n'
         'compiled INTO the carrier) already supplied every one of these names\n'
         'with the same layout, via its own copy of it_types.h -- see\n'
-        'src/README.md.' % BINDINGS_GUARD
+        'src/README.md.\n\n'
+        'Skipped, in favour of the REAL upstream <allegro.h>, when %s is\n'
+        'defined: this is the standalone-build LIBRARIES-coastline swap\n'
+        '(carrier/gen/LIB_BINDINGS_NOTES.md "Standalone build swap") --\n'
+        'no source file under src/icytower changes at all to select it, because every\n'
+        'src/ file reaches this header only through game_types.h\'s own\n'
+        '`#include "allegro_types.h"`, never directly; defining %s on the\n'
+        'compiler command line (`-D%s`) is the entire swap. The CRT-reserved\n'
+        'subset below (it_orig_size_t, it_orig_FILE, ...) is NOT Allegro\'s\n'
+        'own and upstream <allegro.h> never defines these renamed names, so\n'
+        'it is emitted in this branch too -- see CRT_RESERVED_NAMES in\n'
+        'gen_src_headers.py.' %
+        (BINDINGS_GUARD, UPSTREAM_GUARD, UPSTREAM_GUARD, UPSTREAM_GUARD)
     )
     with open(out_allegro, 'w', encoding='utf-8') as f:
         f.write(banner('gen_src_headers.py', args, allegro_extra))
         f.write('#ifndef ICYTOWER_ALLEGRO_TYPES_H\n')
         f.write('#define ICYTOWER_ALLEGRO_TYPES_H\n\n')
-        f.write('#ifndef %s\n\n' % BINDINGS_GUARD)
+        f.write('#if defined(%s)\n\n' % UPSTREAM_GUARD)
+        f.write('#include <allegro.h>  /* real upstream Allegro 4.4.3.1 -- BITMAP, DATAFILE, */\n')
+        f.write('                      /* SAMPLE, FONT, PACKFILE, RGB, PALETTE, JOYSTICK_INFO, */\n')
+        f.write('                      /* fixed and friends now come from here, not below */\n\n')
+        f.write('/* CRT-reserved names upstream <allegro.h> does not define under these\n')
+        f.write(' * renamed identifiers (it never needed to -- it just uses plain FILE/\n')
+        f.write(' * size_t/time_t itself); game_types.h still references them by these\n')
+        f.write(' * names, so they are emitted unconditionally here. */\n')
+        f.write('#pragma pack(push, 1)\n\n')
+        f.write(crt_body)
+        f.write('\n#pragma pack(pop)\n\n')
+        f.write('#elif !defined(%s)\n\n' % BINDINGS_GUARD)
         f.write('#pragma pack(push, 1)\n\n')
         f.write(lib_body)
         f.write('\n#pragma pack(pop)\n\n')
-        f.write('#endif /* !%s */\n\n' % BINDINGS_GUARD)
+        f.write('#endif /* %s / !%s */\n\n' % (UPSTREAM_GUARD, BINDINGS_GUARD))
         f.write('#endif /* ICYTOWER_ALLEGRO_TYPES_H */\n')
 
     # ---- game_types.h ----
