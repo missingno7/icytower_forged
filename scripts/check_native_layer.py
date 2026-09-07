@@ -28,10 +28,17 @@ DEC_ADDR_RE = re.compile(r'\b[0-9]{6,10}\b')
 INCLUDE_RE = re.compile(r'#\s*include\s*[<"]([^">]+)[">]')
 BANNED_INCLUDE_SUBSTR = (
     'carrier/', 'gen/', 'port_forge',
-    'it_types.h', 'it_globals.h', 'it_funcs.h', 'pf_',
+    'it_types.h', 'it_globals.h', 'it_funcs.h', 'pf_rt.h', 'pf_bindings',
+    'pf_harness',
 )
+# Carrier vocabulary only. A bare `pf_` prefix is NOT banned: Allegro's own
+# PACKFILE_VTABLE members (pf_fclose, pf_getc, ...) legitimately carry it and
+# the port must keep the library's real names.
 BANNED_IDENT_RE = re.compile(
-    r'\b(?:PF_|pf_|IT_G_|IT_F_|PFN_|lifted_)[A-Za-z0-9_]*')
+    r'(?:PF_[A-Za-z0-9_]*|pf_rt|pf_x87_t|pf_bindings[A-Za-z0-9_]*'
+    r'|pf_harness[A-Za-z0-9_]*|pf_lift[A-Za-z0-9_]*|pf_import[A-Za-z0-9_]*'
+    r'|pf_on_[A-Za-z0-9_]*|IT_G_[A-Za-z0-9_]*|IT_F_[A-Za-z0-9_]*'
+    r'|PFN_[A-Za-z0-9_]*|lifted_[A-Za-z0-9_]*)')[A-Za-z0-9_]*')
 ASM_RE = re.compile(r'\b(?:__asm__|__asm|_asm|asm)\b')
 COMMENT_RE = re.compile(r'/\*.*?\*/|//[^\n]*', re.S)
 

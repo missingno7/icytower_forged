@@ -6,27 +6,74 @@ lifter output (`carrier/lift/`) and the generated interop (`carrier/gen/`)
 never live here.
 
 ```
-src/icytower/game_types.h   the port's own struct/scalar layouts (Tplayer,
-                             Tmap, Tfloor, fixed), initially transcribed
-                             member-for-member from the DWARF-recovered
-                             carrier/gen/it_types.h. Layouts must stay
-                             binary-compatible with the original process
-                             memory for as long as state stays
-                             address-backed (see the file's own header
-                             comment); this is the one place that fact is
-                             recorded, because nothing else here may
-                             mention it.
-src/icytower/game_state.h   ordinary extern declarations of the game
-                             globals this layer touches (reward_time,
-                             reward_scale, player_id, ply, logic_count),
-                             typed with game_types.h
-src/icytower/state.c        standalone storage for those externs, used only
-                             when this layer is built OUTSIDE the carrier
+src/icytower/allegro_types.h GENERATED (carrier/gen/gen_src_headers.py):
+                             public library types the game CUs use by value
+                             or pointer (BITMAP, DATAFILE, SAMPLE, FONT,
+                             PACKFILE, RGB, PALETTE, JOYSTICK_INFO, fixed,
+                             ...) -- Allegro's own, recovered here only so
+                             this layer compiles without a carrier header;
+                             a real Allegro dependency replaces this file
+                             later (see its own header comment).
+src/icytower/game_types.h   GENERATED (carrier/gen/gen_src_headers.py):
+                             every struct/union/enum/typedef the game CUs
+                             (F:\projects\icytower\trunk\source\*.c)
+                             declare and that is reachable from a game-CU
+                             global or function -- Tplayer, Tmap, Tfloor
+                             and every other native game type -- reusing
+                             carrier/gen/gen_interop.py's DWARF parser and
+                             type IR so the layouts are the same DWARF
+                             recovery it_types.h already proved correct
+                             (INTEROP_NOTES.md), not a second transcription
+                             of it. Layouts must stay binary-compatible
+                             with the original process memory for as long
+                             as state stays address-backed (see the file's
+                             own header comment); this is the one place
+                             that fact is recorded, because nothing else
+                             here may mention it.
+src/icytower/game_types_check.c GENERATED: standalone sizeof/offsetof
+                             PASS/FAIL host program proving every
+                             game_types.h/allegro_types.h layout against
+                             the DWARF-reported one; touches no game
+                             memory. `cl /W3 /TC game_types_check.c && 
+                             game_types_check.exe` must print `ALL PASS`.
+src/icytower/game_state.h   GENERATED: ordinary extern declarations of
+                             every game-CU global (real DWARF type, array
+                             bounds, volatile preserved), grouped by
+                             originating source file, typed with
+                             game_types.h. update_frame.c/is_solid.c today
+                             only touch five of them (reward_time,
+                             reward_scale, player_id, ply, logic_count).
+src/icytower/game_funcs.h   GENERATED: prototypes of every game-CU
+                             function, original names and DWARF parameter
+                             names -- this layer's own header, never an
+                             address.
+src/icytower/state.c        GENERATED: zero-initialized storage for every
+                             game_state.h extern, used only when this
+                             layer is built OUTSIDE the carrier
                              (win32_pilot.md SS7a: "a state.c defines the
                              globals and the bindings header is absent")
 src/icytower/update_frame.c  recovered game logic, one file per function
 src/icytower/is_solid.c
+src/icytower/GENERATED.md   generator report: counts, opaque types,
+                             identifier/name collisions, purity-gate
+                             renames -- see there for detail
 ```
+
+The five generated files above are produced by
+`carrier/gen/gen_src_headers.py` (which imports `carrier/gen/gen_interop.py`
+as a module and reuses its DWARF parser/type IR rather than re-deriving it)
+and carry a DO-NOT-EDIT header naming their inputs:
+
+```
+python carrier\gen\gen_src_headers.py --dwarf artifacts\dwarf_info.txt ^
+    --functions artifacts\functions.json --out src\icytower --scope game
+```
+
+Re-run it whenever `artifacts/dwarf_info.txt` changes; do not hand-edit any
+of its five outputs. See `src/icytower/GENERATED.md` for this run's counts
+and `carrier/gen/gen_src_headers.py`'s own module docstring for how it
+differs from `gen_interop.py`'s carrier-side output (no address, no
+`IT_`/`PF_`-prefixed name, ever, in anything under `src/`).
 
 ## What may be in a file here
 

@@ -258,6 +258,57 @@ def compute_canonical(dies, anon_names):
 
 
 # --------------------------------------------------------------------------
+# Type origin classification (additive: consumed by carrier/gen/
+# gen_src_headers.py to split reachable types between src/icytower/
+# game_types.h -- the game's own structs -- and src/icytower/allegro_types.h
+# -- public library types the game merely uses. Not used by gen_interop.py's
+# own it_types.h emission, which does not need the distinction.)
+#
+# GCC re-emits a full struct/union/enum/typedef definition in every CU that
+# includes its declaring header (verified: BITMAP appears 137 times,
+# byte_size 64 identically -- see compute_canonical above). A type genuinely
+# private to the game (Tplayer, Tmap, Tfloor, ...) is declared only in the
+# game's own headers, so EVERY one of its physical redeclarations lives in a
+# game-prefixed CU; a type the game shares with the rest of the binary
+# (BITMAP, RGB, fixed, time_t, ...) also gets redeclared inside at least one
+# non-game CU (Allegro's or the CRT's own source, wherever it is defined),
+# because those files include the same header. That is the signal used
+# here: "is every occurrence confined to game CUs" is checked across the
+# WHOLE dwarf file, not just the scope passed to gen_interop.py's own run,
+# so it stays correct even when gen_src_headers.py is invoked with a
+# narrower --dwarf/--functions pair than gen_interop.py was.
+# --------------------------------------------------------------------------
+
+def compute_type_origin(dies, canonical, anon_names, game_prefix):
+    """Returns {canonical_offset: True} for entities where every physical
+    redeclaration lives in a game-prefixed CU, {canonical_offset: False}
+    otherwise. Anonymous entities (no name, so never grouped by
+    compute_canonical) are absent from the result; callers should fall back
+    to checking that single DIE's own 'cu' directly."""
+    cu_name_cache = {}
+
+    def cu_is_game(cu_off):
+        if cu_off not in cu_name_cache:
+            cu_die = dies.get(cu_off)
+            name = parse_name(cu_die['attrs'].get('DW_AT_name')) if cu_die else None
+            cu_name_cache[cu_off] = bool(name) and name.lower().replace('/', '\\').startswith(game_prefix)
+        return cu_name_cache[cu_off]
+
+    all_game = {}
+    for off, d in dies.items():
+        if d['tag'] not in ('DW_TAG_structure_type', 'DW_TAG_union_type',
+                             'DW_TAG_enumeration_type', 'DW_TAG_typedef'):
+            continue
+        name = parse_name(d['attrs'].get('DW_AT_name')) or anon_names.get(off)
+        if not name:
+            continue
+        canon = canonical.get(off, off)
+        is_game = cu_is_game(d.get('cu'))
+        all_game[canon] = all_game.get(canon, True) and is_game
+    return all_game
+
+
+# --------------------------------------------------------------------------
 # Type IR: {'kind': base|ptr|array|struct|union|enum|typedef|func|const|
 #           volatile|void, ...}
 # --------------------------------------------------------------------------
