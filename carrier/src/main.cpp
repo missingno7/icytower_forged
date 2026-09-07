@@ -759,9 +759,7 @@ int main(int argc, char** argv) {
 
     char assets_dir[MAX_PATH];
     dirname_of(o.image, assets_dir, sizeof(assets_dir));
-    wrappers_set_guest_image_path(o.image);
-    wrappers_set_carrier_hmodule(GetModuleHandleA(nullptr));
-    wrappers_set_shutdown_hook(carrier_shutdown);
+    wrappers_set_guest_identity(o.image, GetModuleHandleA(nullptr), carrier_shutdown);
 
     ImportsConfig icfg;
     icfg.assets_dir = assets_dir;
