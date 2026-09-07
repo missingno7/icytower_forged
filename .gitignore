@@ -46,3 +46,10 @@ artifacts/mem_diff_*.txt
 artifacts/game_globals_*.txt
 replays/*.replay.digest
 artifacts/assets_extract/
+# local extraction cache (scripts/extract_assets.py): never redistribute
+# Icy Tower's own art/sound -- see that script's header comment
+assets_extracted/
+# src/build/ compile cache (Makefile.standalone); asset_oracle.exe is a
+# rebuildable local proof artifact, not committed (src/icytower/ASSETS.md)
+src/build/obj/
+src/build/asset_oracle.exe

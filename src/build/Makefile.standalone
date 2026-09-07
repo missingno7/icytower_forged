@@ -58,7 +58,7 @@ SOURCES := add_combo.c add_jump_sequence.c control.c is_solid.c jump_player.c \
            line_intersect.c map.c main_state.c new_rand.c ok_to_play.c \
            particle.c reset_player.c scroller.c timer.c update_frame.c \
            update_player.c play_jump_sound.c handle_player_collision_original.c \
-           state.c
+           collision.c state.c
 OBJECTS := $(patsubst %.c,$(OBJDIR)/%.o,$(SOURCES))
 
 LIB       := $(BUILDDIR)/libicytower.a
@@ -78,7 +78,16 @@ LIBS := -L$(LIBDIR) -llogg -lalleg \
         -ldinput -lddraw -ldxguid -lwinmm -ldsound -lole32 -lcomdlg32 -lgdi32 -luser32 -lkernel32 \
         -lmingw32
 
-.PHONY: all clean run
+# asset_oracle: src/icytower/ASSETS.md "Extraction and the asset oracle" --
+# links assets_standalone.c (excluded from SOURCES/libicytower.a above; the
+# oracle needs it standalone, not as part of the game-logic archive) plus
+# this directory's own asset_oracle.c + sha256.h against the same static
+# Allegro, so it can call the real load_datafile()-backed asset_bitmap()/
+# asset_sample()/asset_font()/asset_palette()/asset_object() for every id.
+ORACLE_EXE := $(BUILDDIR)/asset_oracle.exe
+ORACLE_OBJS := $(OBJDIR)/asset_oracle.o $(OBJDIR)/assets_standalone.o $(OBJDIR)/logg_load_memory_shim.o
+
+.PHONY: all clean run asset_oracle run-asset-oracle
 all: $(SMOKE_EXE)
 
 $(OBJDIR):
@@ -96,8 +105,34 @@ $(OBJDIR)/standalone_smoke.o: $(SMOKE_SRC) | $(OBJDIR)
 $(SMOKE_EXE): $(OBJDIR)/standalone_smoke.o $(LIB)
 	$(CC) -m32 "$(OBJDIR)/standalone_smoke.o" "$(LIB)" -o "$(SMOKE_EXE)" $(LIBS)
 
+$(OBJDIR)/asset_oracle.o: $(BUILDDIR)/asset_oracle.c $(BUILDDIR)/sha256.h | $(OBJDIR)
+	$(CC) $(CFLAGS) -c "$<" -o "$@"
+
+$(OBJDIR)/logg_load_memory_shim.o: $(BUILDDIR)/logg_load_memory_shim.c | $(OBJDIR)
+	$(CC) $(CFLAGS) -c "$<" -o "$@"
+
+# assets_standalone.c is GENERATED (carrier/gen/gen_assets.py) and this task
+# does not own that generator; force-including the shim's prototype ahead of
+# its compile (only for THIS target, not the generic pattern rule other
+# game-logic files use) supplies logg_load_memory's declaration without
+# hand-editing the generated file. See logg_load_memory_shim.h.
+$(OBJDIR)/assets_standalone.o: $(SRC)/assets_standalone.c $(BUILDDIR)/logg_load_memory_shim.h | $(OBJDIR)
+	$(CC) $(CFLAGS) -include "$(BUILDDIR)/logg_load_memory_shim.h" -c "$<" -o "$@"
+
+asset_oracle: $(ORACLE_EXE)
+
+$(ORACLE_EXE): $(ORACLE_OBJS)
+	$(CC) -m32 $(ORACLE_OBJS) -o "$(ORACLE_EXE)" $(LIBS)
+
 run: $(SMOKE_EXE)
 	cd "$(BUILDDIR)" && ./standalone_smoke.exe
 
+# asset_oracle.exe opens its datafiles by the SAME relative paths the real
+# game does ("data/data.dat", "characters/<name>/<name>.dat" --
+# src/icytower/assets_table.inc), so it must run with the gitignored
+# assets/ directory (a local copy of the game) as its working directory.
+run-asset-oracle: $(ORACLE_EXE)
+	cd "$(REPO_ROOT)/assets" && "$(ORACLE_EXE)"
+
 clean:
-	rm -rf "$(OBJDIR)" "$(LIB)" "$(SMOKE_EXE)"
+	rm -rf "$(OBJDIR)" "$(LIB)" "$(SMOKE_EXE)" "$(ORACLE_EXE)"

@@ -82,6 +82,30 @@
     ]
   },
 
+  "assets": {
+    "_purpose": "ASSETS-coastline literals (notes/asset_census.md, src/icytower/ASSETS.md): the 7 Allegro 4 datafile paths/passwords port_forge/tools/pf_allegro4_datafile.py needs per --policy 'files' entry (keyed by basename, generic tool contract), plus the family grouping and CHAR_SLOT game-visible slot names this project's own carrier/gen/gen_assets.py and scripts/extract_assets.py read -- moved here from tools_recon/assets_manifest.py's PASSWORDS/DATAFILES/CHAR_SLOT module constants so the passwords are ICY GAME DATA recorded once, not re-hardcoded in every tool that needs one (notes/asset_census.md SS5a for how CHEESE was recovered).",
+    "root": "assets",
+    "output": "assets_extracted",
+    "families": {
+      "data": {"path": "data/data.dat", "password": "CHEESE", "clean_dir": "gfx"},
+      "sfx": {"path": "data/sfx15.dat", "password": "CHEESE", "strip_object_prefix": "S_", "clean_dir": "sfx"},
+      "loading": {"path": "data/loading.dat", "password": "(c) Free Lunch Design", "clean_dir": "gfx"},
+      "char:harold_the_homeboy": {"path": "characters/harold_the_homeboy/harold.dat", "password": null, "char_dir": "harold_the_homeboy"},
+      "char:disco_dave": {"path": "characters/disco_dave/dave.dat", "password": null, "char_dir": "disco_dave"},
+      "char:jungle_jane": {"path": "characters/jungle_jane/jane.dat", "password": null, "char_dir": "jungle_jane"},
+      "char:wild_wendy": {"path": "characters/wild_wendy/wendy.dat", "password": null, "char_dir": "wild_wendy"}
+    },
+    "_char_slot_note": "one shared table -- KNOWN, read off load_frames/load_sounds's disassembly (notes/asset_census.md SS3), identical index layout for all 4 character datafiles: 0 the palette, 1-15 the 15 animation frames, 16-23 the 8 named sounds.",
+    "char_slot_names": {
+      "0": "palette",
+      "1": "frame01", "2": "frame02", "3": "frame03", "4": "frame04", "5": "frame05",
+      "6": "frame06", "7": "frame07", "8": "frame08", "9": "frame09", "10": "frame10",
+      "11": "frame11", "12": "frame12", "13": "frame13", "14": "frame14", "15": "frame15",
+      "16": "snd_jump_lo", "17": "snd_jump_med", "18": "snd_jump_hi", "19": "snd_yo",
+      "20": "snd_wazup", "21": "snd_falling", "22": "snd_edge", "23": "music_bg"
+    }
+  },
+
   "bind_all": {
     "_bind_all_note": "carrier/scripts/bind_all.py's own command-line literals (notes/extraction_plan.md S3): the 35 src/icytower functions in src/icytower/PROMOTIONS.md batches 1-4, in that table's own order; the subset of those whose src/ form has real x87 floating point and was built through the mingw32 GCC -mfpmath=387 -mno-sse2 mixed-toolchain path (carrier/build.cmd) -- 'particles' below means update_particle + create_particle; and the fixed carrier.exe flags every bind_all run passes (--det for deterministic mode, --pace=fast to skip real-time pacing, --input=script to replay a recording instead of live input).",
     "functions": [
