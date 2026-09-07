@@ -18,6 +18,7 @@
 #include "snapshot.hpp" // milestones 8-9: safepoint snapshot / in-process rewind
 #include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
 #include "../../port_forge/src/platform/win32/arena.hpp"
+#include "../../port_forge/src/platform/win32/breakpoints.hpp"
 #include "../../port_forge/src/platform/win32/rng.hpp"
 #include "../../port_forge/src/core/sha256.hpp"
 #include "../win32_policy.hpp"
@@ -737,27 +738,15 @@ extern "C" void __cdecl det_stub_switch_out() { switch_hook(false); }
 // two suspects "Divergences 004 and 005" left open.
 extern "C" void __cdecl det_stub_handle_mouse_input() { ++g_mouse_parked; }
 
-// 5-byte `jmp rel32` entry patch, same technique/protections as bind.cpp's
-// (VirtualProtect + FlushInstructionCache even though the image is mapped RWX,
-// so the patch keeps working when that TEMPORARY is retired). Fails loudly.
+// 5-byte `jmp rel32` entry patch: pf::win32::patch_entry_jmp
+// (port_forge/src/platform/win32/breakpoints.hpp). Failing to take control
+// of an entry point is fatal HERE rather than in the framework, because
+// whether a carrier can survive an unowned channel is the carrier's own
+// question: this one cannot - a run that silently left the real
+// window-activation or mouse path in place would report determinism it did
+// not have.
 static void patch_entry_jmp(DWORD_PTR va, void* target, const char* what) {
-    unsigned char* p = (unsigned char*)va;
-    intptr_t rel = (intptr_t)target - (intptr_t)(va + 5);
-    if (rel > 0x7fffffff || rel < -0x7fffffff) {
-        fprintf(stderr, "det: FATAL - %s stub is out of jmp rel32 range of 0x%08x\n", what, (unsigned)va);
-        exit(3);
-    }
-    DWORD old = 0;
-    if (!VirtualProtect(p, 5, PAGE_EXECUTE_READWRITE, &old)) {
-        fprintf(stderr, "det: FATAL - VirtualProtect(%s @0x%08x) failed gle=%lu\n",
-                what, (unsigned)va, GetLastError());
-        exit(3);
-    }
-    p[0] = 0xE9;
-    *(int32_t*)(p + 1) = (int32_t)rel;
-    VirtualProtect(p, 5, old, &old);
-    FlushInstructionCache(GetCurrentProcess(), p, 5);
-    fprintf(stderr, "det: %s @0x%08x -> carrier stub (5-byte jmp rel32)\n", what, (unsigned)va);
+    if (!pf::win32::patch_entry_jmp(va, target, what)) exit(3);
 }
 
 // Called from the Sleep wrapper (main thread, both modes) right after the
@@ -1901,39 +1890,22 @@ extern "C" long __stdcall det_wrap_DirectSoundEnumerateA(void* cb, void* ctx) {
 // play() safepoint when digest/stop-at-tick is requested, slots 1-2 are the
 // key-event recorder when --record-input is requested.
 // ---------------------------------------------------------------------
-struct BpSlot { DWORD_PTR va; void (*on_hit)(CONTEXT*); };
-static BpSlot g_bp[4];
-static int g_bp_count = 0;
-
+// The table itself, the four-slot budget, the RF resume-flag rule, the
+// arm-from-inside-your-own-handler trick and the arming helper thread are
+// pf::win32::* (port_forge/src/platform/win32/breakpoints.hpp). What stays
+// here is WHO registers WHICH slot in WHAT ORDER - the composition, which
+// is what actually decides this carrier's DR budget (det_init, below).
 static int register_breakpoint(DWORD_PTR va, void (*cb)(CONTEXT*)) {
-    if (g_bp_count >= 4) { fprintf(stderr, "det: breakpoint table full, dropping 0x%p\n", (void*)va); return -1; }
-    g_bp[g_bp_count].va = va;
-    g_bp[g_bp_count].on_hit = cb;
-    return g_bp_count++;
+    return pf::win32::register_breakpoint(va, cb);
 }
-
-// Milestones 11-12 (bind.cpp): the same table, from a second consumer. See
-// det.hpp for the slot-budget rationale.
-int det_register_breakpoint(DWORD_PTR va, void (*cb)(CONTEXT*)) { return register_breakpoint(va, cb); }
-
+int det_register_breakpoint(DWORD_PTR va, void (*cb)(CONTEXT*)) {
+    return pf::win32::register_breakpoint(va, cb);
+}
 void det_ctx_arm_slot(CONTEXT* ctx, int slot, DWORD_PTR va) {
-    if (slot < 0 || slot > 3) return;
-    g_bp[slot].va = va;
-    DWORD* drs[4] = {&ctx->Dr0, &ctx->Dr1, &ctx->Dr2, &ctx->Dr3};
-    *drs[slot] = (DWORD)va;
-    ctx->Dr7 |= (1u << (slot * 2));   // Ln local-enable; RW/LEN stay 0 = execute, 1 byte
-    // NtContinue only reloads DR0-DR7 when the context it is handed claims
-    // to carry them; the exception context we were given may not.
-    ctx->ContextFlags |= CONTEXT_DEBUG_REGISTERS;
+    pf::win32::ctx_arm_slot(ctx, slot, va);
 }
-
 void det_ctx_disarm_slot(CONTEXT* ctx, int slot) {
-    if (slot < 0 || slot > 3) return;
-    g_bp[slot].va = 0;
-    DWORD* drs[4] = {&ctx->Dr0, &ctx->Dr1, &ctx->Dr2, &ctx->Dr3};
-    *drs[slot] = 0;
-    ctx->Dr7 &= ~(1u << (slot * 2));
-    ctx->ContextFlags |= CONTEXT_DEBUG_REGISTERS;
+    pf::win32::ctx_disarm_slot(ctx, slot);
 }
 
 // MEASURED (carrier/NOTES.md "Milestones 5-7", two documented attempts):
@@ -2137,78 +2109,16 @@ static void keyrelease_record_hit(CONTEXT* ctx) {
     fflush(g_record_file);
 }
 
-void det_arm_thread(HANDLE thread) {
-    if (g_bp_count == 0) return;
-    if (SuspendThread(thread) == (DWORD)-1) {
-        fprintf(stderr, "det_arm_thread: SuspendThread failed gle=%lu\n", GetLastError());
-        return;
-    }
-    CONTEXT ctx;
-    ZeroMemory(&ctx, sizeof(ctx));
-    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-    if (!GetThreadContext(thread, &ctx)) {
-        fprintf(stderr, "det_arm_thread: GetThreadContext failed gle=%lu\n", GetLastError());
-        ResumeThread(thread);
-        return;
-    }
-    DWORD* drs[4] = {&ctx.Dr0, &ctx.Dr1, &ctx.Dr2, &ctx.Dr3};
-    for (int i = 0; i < g_bp_count; ++i) {
-        if (g_bp[i].va == 0) continue; // slot registered but armed later from a VEH callback (det_ctx_arm_slot)
-        *drs[i] = (DWORD)g_bp[i].va;
-        ctx.Dr7 |= (1u << (i * 2)); // Li local-enable bit (L0=bit0, L1=bit2, ...); RW/LEN bits stay 0 (execute, 1 byte)
-    }
-    ctx.Dr6 = 0;
-    if (!SetThreadContext(thread, &ctx)) {
-        fprintf(stderr, "det_arm_thread: SetThreadContext failed gle=%lu\n", GetLastError());
-    }
-    ResumeThread(thread);
-}
+void det_arm_thread(HANDLE thread) { pf::win32::arm_thread(thread); }
 
-static DWORD WINAPI arm_main_thread_helper(LPVOID) {
-    HANDLE h = OpenThread(THREAD_ALL_ACCESS, FALSE, g_main_tid);
-    if (!h) { fprintf(stderr, "det: OpenThread(main) failed gle=%lu\n", GetLastError()); return 1; }
-    det_arm_thread(h);
-    CloseHandle(h);
-    return 0;
-}
+void det_arm_main_thread() { pf::win32::arm_thread_by_id(g_main_tid); }
 
-void det_arm_main_thread() {
-    if (g_bp_count == 0) return;
-    HANDLE helper = CreateThread(nullptr, 0, arm_main_thread_helper, nullptr, 0, nullptr);
-    if (!helper) { fprintf(stderr, "det: could not start arm-sensor helper thread, gle=%lu\n", GetLastError()); return; }
-    WaitForSingleObject(helper, INFINITE);
-    CloseHandle(helper);
-    fprintf(stderr, "det: armed %d hardware breakpoint(s) on the guest main thread\n", g_bp_count);
-}
-
-LONG WINAPI det_veh_handler(EXCEPTION_POINTERS* ep) {
-    if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP) return EXCEPTION_CONTINUE_SEARCH;
-    CONTEXT* ctx = ep->ContextRecord;
-    DWORD dr6 = ctx->Dr6;
-    bool handled = false;
-    for (int i = 0; i < g_bp_count; ++i) {
-        if (dr6 & (1u << i)) {
-            handled = true;
-            g_bp[i].on_hit(ctx);
-        }
-    }
-    if (handled) {
-        ctx->Dr6 = 0;
-        ctx->EFlags |= 0x10000; // RF (resume flag): step past this instruction once without retriggering
-    } else if (snapshot_trace_active()) {
-        // Milestone 9's "--trace-window": a TRAP-FLAG single step, not one of
-        // our four hardware breakpoints. Dr6 bit 14 (BS) is set instead of
-        // bits 0-3, so the loop above found nothing - claim it here rather
-        // than letting it fall through to main.cpp's fatal-crash handler.
-        ctx->Dr6 = 0;
-    } else {
-        return EXCEPTION_CONTINUE_SEARCH; // not one of ours
-    }
-    // Logs this instruction and re-arms (or, at the end of the window,
-    // clears) EFlags.TF in the context we are about to resume.
-    if (snapshot_trace_active()) snapshot_trace_step(ctx);
-    return EXCEPTION_CONTINUE_EXECUTION;
-}
+// The framework's handler owns the DR6 decode, the RF resume flag and the
+// fall-through to the fatal-crash dump. The bounded-instruction tracer is
+// a SECOND kind of single step (trap flag, Dr6 bit 14) and is registered
+// with it as a pair of hooks from det_init, so snapshot.cpp keeps its
+// window without this file's handler having to know about it.
+LONG WINAPI det_veh_handler(EXCEPTION_POINTERS* ep) { return pf::win32::veh_handler(ep); }
 
 // --record-input header (item 2: "T press|release KEY_NAME ... plus # header
 // lines: date, image sha256, policy, pace"). sha256 of the guest image is
@@ -2244,6 +2154,11 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     g_main_tid = GetCurrentThreadId();
     g_start_tick64 = GetTickCount64();
     g_parked_event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+    // The bounded-instruction tracer is the second kind of single step the
+    // shared VEH has to claim (trap flag, Dr6 bit 14 - not one of the four
+    // hardware slots); snapshot.cpp owns it, so it is registered as a pair
+    // of hooks rather than known to breakpoints.hpp by name.
+    pf::win32::set_trace_hooks(snapshot_trace_active, snapshot_trace_step);
     pf::win32::rng_init(icytower::kRng);
     if (g_det_mode) pf::win32::arena_init(icytower::kArena);
 
