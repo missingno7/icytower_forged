@@ -986,3 +986,341 @@ full regression (all 41 promoted functions, default vector counts): 0 new
             update_player, start_reward) -- every function that was EQUAL
             before this pass is still EQUAL.
 ```
+
+## Batch 8 (2026-09-07 -- collision variants + drawing layer)
+
+Task: the four remaining `handle_player_collision_*` variants, plus the
+drawing layer bottom-up from `draw_frame`. Neither target's premise
+survived first contact with the disassembly unchanged -- both are recorded
+below as findings, not just outcomes.
+
+**Sandbox note**: this pass has no MSVC `cl.exe` available (checked: not on
+`PATH`, no Visual Studio installation under `C:\Program Files*`) -- every
+GCC-toolchain claim below used the real 32-bit MinGW GCC 16.2.0 at
+`C:\msys64\mingw32\bin\gcc.exe` (present but not on `PATH` by default; its
+own `lib*.a`/DLLs need `C:\msys64\mingw32\bin` prepended to `PATH` too, or
+`cc1.exe` fails to load with no error text -- a real, silent trap the first
+attempt hit). No function below was compared against MSVC this pass; every
+"EQUAL" is GCC x87 only, exactly as the task brief's "verify each with
+memory + call-trace domains, GCC x87" already specified for target (1).
+
+### The four `handle_player_collision_*` variants: hand-traced enough to correct batch 6/7's premise, not promoted
+
+Fully hand-traced `handle_player_collision_old` (0x407fd8, 894 bytes,
+smallest of the four) instruction-by-instruction before deciding not to
+promote it. Finding: **it is NOT "the same shape as `_original`"** --
+`_original`'s two straight-line `is_solid()` foot probes are replaced here
+by a genuine **iterative bisection loop** between the player's current
+truncated integer position and the two candidate-position parameters
+(real loop-back edges at 0x408052/0x40812f/0x40813e, converging `esi`
+across iterations, each guarded by a signed-average idiom -- `shr
+$0x1f`/`add`/`sar` -- applied twice, once per axis, before the eventual
+`is_solid()` call at the converged point). Getting the rounding direction
+of that bisection exactly right (this project's own track record --
+`line_intersect`'s NaN-guard sign, `update_player`'s strict-vs-non-strict
+`ah`-mask reading, `new_rand`'s `fsubr` operand order -- is three-for-three
+on "an early hand-trace had this backwards, caught only by a
+byte-for-byte unicorn cross-check") is exactly the kind of thing this
+project does not ship without that cross-check, and building + running
+that cross-check for a genuinely novel algorithm (not "port `_original`'s
+already-proven shape") was judged not to fit this pass's remaining budget
+alongside the drawing-layer work below. Not attempted past the hand-trace;
+no C written, no risk of a wrong-but-plausible promotion.
+
+A shallower pass (call-graph only, not full hand-trace) on the other
+three confirms they are a *third*, different family again, not a repeat
+of `_old`'s bisection either: `handle_player_collision_combo` (1390
+bytes), `handle_player_collision_vector` (1071 bytes) and
+`handle_player_collision_vector_2` (1086 bytes) each call
+`line_intersect`/`getFloorData`/`makecol`/`play_sound` (2, 2, and 1 times
+respectively for `play_sound`; `_vector_2` calls `line_intersect` FOUR
+times) -- a line-segment-sweep collision algorithm, distinct again from
+both `_original`'s two-probe check and `_old`'s bisection, and calling
+`makecol` suggests a debug-overlay draw path inside the collision
+handler itself. All three already-promoted callees (`line_intersect`,
+`getFloorData`, `play_sound`'s call-trace domain) are available, so
+nothing NEW blocks these the way batch 2/6's misdiagnosed "unnamed
+global" once did -- the blocker is purely hand-trace effort for three
+functions in the 1000+-byte range, each its own algorithm.
+
+**Correction to batch 6's own skip note** (`handle_player_collision_old`'s
+row): "likely shares its unnamed-global dependency" was speculation that
+turned out both unnecessary (batch 7 already resolved the naming
+question generally) and beside the real point -- the actual reason this
+family stays unpromoted is algorithmic complexity distinct per variant,
+not a shared blocker. `_old`/`_combo`/`_vector`/`_vector_2` are re-skipped
+this pass for that reason, refined; still confirmed LIVE (batch 7's jump
+table finding stands), still no C written, still headroom rather than a
+discovered impossibility.
+
+### The drawing layer: `draw_frame` is not decomposable into small helpers -- one real finding, `draw_scroller` promoted, `draw_star_field` promoted compile-only
+
+**`draw_frame` (0x40929c, 8518 bytes, main.c) structure, for the record**:
+read its full call list (64 `call` sites) before writing anything. It is
+**one monolithic function**, not "draw_player/draw_floor(s)/draw_hud/
+draw_combo/draw_text helper calls" the task brief's own hypothesis named
+-- that decomposition does not exist in this binary. The 64 calls are:
+15 `makecol`, 12 `textprintf_ex`, 10 `textout_ex`, 7 `text_length`, 6
+`textprintf_centre_ex`, 3 `sprintf`, 2 `blit`, 2 `new_rand`, 2
+`set_clip_rect`, 1 `strcpy`, 1 each of `is_left`/`is_fire`/`is_right`, and
+exactly **one** call to a genuine game-scope helper function:
+`draw_reward` (0x4070fc, already a separate function, not inlined here).
+Per this batch's own task brief ("decompose draw_frame itself only if its
+structure is a straight sequence of helper calls -- otherwise stop and
+document its structure for the next batch"): its structure is direct,
+heavy, inline use of ~10 different Allegro text/blit primitives across
+~2100 disassembly lines with extensive branching (background stripes,
+floor/sign strips, HUD, combo popups, at least one computed-index asset
+read per `src/icytower/ASSETS.md`'s own "what remains hand-mapped" table,
+two of the five listed sites are inside this very function) -- NOT a
+straight sequence, so **not decomposed this pass**, per the task's own
+stop condition. Any future pass attempting this function should expect a
+single very large recovery, not a set of small pre-existing pieces to
+extract.
+
+**Real, small, standalone draw helpers exist elsewhere** (not as
+`draw_frame`'s own children, but as separate functions in the same
+"drawing layer" the task meant): `draw_scroller` (396 bytes,
+scroller.c -- scroll_scroller.c/restart_scroller.c's own header comment
+had already flagged this one as "not attempted"), `draw_star_field` (199
+bytes, stars.c -- explicitly named in batch 3's "Call-trace domain" note
+as the natural next call-trace candidate), `draw_table` (441 bytes,
+hisc.c), `drawSlot` (328 bytes, main.c), `draw_reward` (581 bytes,
+main.c), `draw_progress_bar` (486 bytes, main.c), `draw_results` (839
+bytes, main.c). Of these, only `draw_scroller` and `draw_star_field` were
+promoted this pass (see below); `draw_table`/`draw_reward`/
+`draw_progress_bar`/`draw_results` call a MIX of named Allegro functions
+and indirect `bmp->vtable-><slot>` calls (`drawSlot`/`draw_reward`/
+`draw_results`/`draw_progress_bar` each have 1-4 such indirect calls
+alongside their named ones) and were left for a future pass rather than
+promoted with a partially-expressible domain.
+
+**Mechanism B extended to Allegro-family callees** (`LIB_CALL_TARGETS` in
+`carrier/lift/harness/lift_check.py`, sourced from `carrier/gen/
+pf_lib_bindings.h`'s own generated VA/argc for `set_clip_rect`/
+`textout_ex`/`textout_centre_ex` -- the same evidence class
+`load_call_targets()` already used for game-scope callees, just read from
+a different generated file since Allegro-family names are not in
+`interop_index.json`, per `carrier/gen/LIB_BINDINGS_NOTES.md`). Two real
+bugs found and fixed while extending it, both additive/harness-only, both
+backward-compatible (full regression of every other GCC-verified function
+rerun unaffected):
+
+1. **FIRST-CALL-CAPTURE, not last-call.** The pre-existing hook
+   overwrote a callee's logged arguments on EVERY call, keeping only the
+   most recent -- fine when a traced callee is called at most once per
+   invocation (true of every batch 7 `play_sound` use), but wrong for
+   `draw_scroller`, whose `set_clip_rect` is called TWICE per drawn
+   invocation: once with the interesting, argument-dependent clip
+   rectangle, then again, always, to restore the clip to the whole
+   bitmap (`bmp->w-1`/`bmp->h-1`) -- a deterministic call that would have
+   silently masked the first, interesting one. Fixed in
+   `Oracle._make_call_trace_hook` (only writes args when `count == 0` at
+   entry; `count` itself still increments on every call) and mirrored in
+   the compiled-candidate stubs (`call_trace_stubs.c`). Documented,
+   known-remaining limitation: a bug that only affects row 2+ of a
+   multi-row vertical scroller (while row 1 and the total call COUNT stay
+   correct) would not be caught by this domain -- only the first call to
+   a given callee has its arguments captured, not every call.
+2. **Pointer arguments relayed opaquely into a traced call need reverse
+   translation.** `draw_scroller`'s `bmp` parameter is genuinely
+   dereferenced (`bmp->w`, `bmp->h`) so the driver's `tr()` correctly
+   turns it into a real host pointer before the call -- but that SAME
+   pointer is then relayed unchanged into `set_clip_rect`/`textout_ex`/
+   `textout_centre_ex`, and the ORIGINAL side (unicorn, executing the
+   real bytes directly in guest address space) never translates anything,
+   so the two sides logged different numbers for the identical logical
+   bitmap (found immediately: the very first run's own DIFFER, one byte
+   of a host malloc address instead of `BMP_VA`'s own byte). Fixed with
+   `pf_untranslate()` in `call_trace_stubs.c` (host pointer -> guest VA,
+   the exact reverse of `PF_MEM()`), applied to the `bmp` argument in all
+   three new stubs -- `sc->fnt`/`sc->text`/`sc->lines[i]` needed no such
+   fix (opaque sentinel dwords stored as plain struct FIELDS, never
+   themselves translated by any driver, so they already round-trip
+   unchanged on both sides, unlike the `bmp` POINTER ARGUMENT itself).
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `draw_scroller` | 0x41f0ec | 396 | scroller.c | **EQUAL** (GCC x87, 20000/20000, call-trace + EAX domain; MSVC not run, no `cl.exe` in this sandbox) | Draws a `Tscroller`: horizontal branch (`sc->horizontal != 0`) draws one scrolling line via a single `textout_ex`; vertical branch draws `sc->rows` lines via `textout_centre_ex`, one call per row that survives TWO independently-computed guards (`top = (i-1)*font_height+offset` must not exceed `height`; `bottom = i*font_height+offset` must not be negative -- NOT the same quantity tested twice, confirmed by re-reading the disassembly a second time after an initial draft conflated them). Gated before anything is drawn (`-length<=offset<=width` horizontal / `-rows*font_height<=offset<=height` vertical); a culled call returns 0 and calls nothing at all. Writes no game memory of its own -- the entire comparison domain is the call-trace domain (see above) plus EAX. | pending |
+| `draw_star_field` | 0x41f340 | 199 | stars.c | **compile-only** (standalone/upstream-Allegro world; carrier-world compile BLOCKED, two precise reasons below) -- same class as `draw_buffer.c` | Clears `sf`'s rectangle via one `rectfill` (unless `clear_color==-1`), then plots each of `sf->stars` stars via one `putpixel` each, colour ramped by depth (`sf->col1 + sf->col_step*((sf->depth-1)-star.z)`), position `(int)star.x+x, (int)star.y+y` (plain truncating cast, matching every other recovered position truncation in this project). No memory domain (pixels only) and no call-trace domain possible: `rectfill`/`putpixel` are `AL_INLINE` macros in real Allegro, confirmed by the disassembly itself (`call *0x3c(%ecx)`/`call *0x24(%ecx)` through `bmp->vtable`, not a `call <fixed VA>`) -- there is no stable address for mechanism B to hook. | not bindable yet (see below) |
+
+Every negative control: `--fault <fn>:5:0`, 200 vectors (`draw_scroller`
+only -- `draw_star_field` has no offline domain to fault); comparator
+names the exact byte, `set_clip_rect_trace(count,bmp,x1,y1,x2,y2)+0x0 (VA
+0x007c1100)` -- full detail in `artifacts/src_equivalence.json`.
+
+### `draw_star_field`'s carrier-world compile: two real, out-of-scope gaps found, not fixed
+
+Compiles clean against real upstream Allegro headers (standalone world --
+`rectfill`/`putpixel` resolve through a real, linked `GFX_VTABLE`, which
+is the whole point of that world). Does **not** compile against the
+carrier's scratch bindings, for two independent reasons, both diagnosed
+precisely and left as generator TODOs rather than worked around:
+
+1. `rectfill`/`putpixel` have no declaration anywhere in
+   `carrier/gen/pf_lib_bindings.h` or `allegro_api.h` -- confirmed absent
+   by grep. `carrier/gen/gen_lib_bindings.py`'s 100-function allow-list
+   (`carrier/gen/LIB_BINDINGS_NOTES.md`) is built from a DWARF callee
+   scan of what the game calls BY NAME; a function the game only ever
+   reaches through an inlined `bmp->vtable-><slot>` dispatch structurally
+   never appears as a named callee, so it was never in scope for that
+   generator to bind, the same "inline function" gap
+   `LIB_BINDINGS_NOTES.md` already documents for `itofix`/etc, just for
+   the graphics-primitive macros instead of the fixed-point math ones. A
+   real fix (emitting the handful of `GFX_VTABLE`-dispatch macros
+   upstream's own `gfx.h` defines) belongs in `gen_lib_bindings.py`, not
+   attempted this pass.
+2. `sf->stars` (`Tstar_field`'s int star-COUNT member) is rewritten into
+   a syntax error by the same blunt textual `#define stars
+   <address-cast>` bug class already found and fixed for `jump_sound` in
+   batch 7 -- **except this instance cannot reuse that fix**:
+   `start_reward.c` (already promoted) reads the top-level `Tparticle
+   stars[512]` global BARE and needs its own `#define` to keep resolving,
+   so adding `stars` to `MEMBER_ACCESS_COLLISIONS` (which SKIPS the
+   `#define` entirely, batch 7's only tool) would fix this file and
+   silently break that one in the same build. Confirmed by trying it:
+   regressed `start_reward.c`'s own compile, reverted immediately.
+   `carrier/gen/gen_bindings.py`'s own `MEMBER_ACCESS_COLLISIONS` comment
+   now documents this as a named, deliberately-not-taken fix, needing a
+   context-sensitive rewrite (skip a `.name`/`->name` occurrence, keep
+   rewriting a bare one) the current mechanism cannot express.
+
+### Skipped this pass
+
+| function | VA | size | CU | why skipped |
+|---|---|---:|---|---|
+| `handle_player_collision_old` | 0x407fd8 | 894 | main.c | Fully hand-traced; NOT the same shape as `_original` (a genuine iterative bisection loop, see above) -- promoting it safely needs the same byte-for-byte unicorn cross-check this project's track record shows is required for a novel algorithm's rounding direction; not built this pass (headroom, alongside the drawing-layer work). |
+| `handle_player_collision_combo` | 0x408358 | 1390 | main.c | Call-graph scan only (not hand-traced): calls `line_intersect`/`getFloorData`/`makecol`/`play_sound`, a line-sweep algorithm distinct from both `_original` and `_old` -- largest of the five variants, headroom. |
+| `handle_player_collision_vector` | 0x408d08 | 1071 | main.c | Same line-sweep family as `_combo` (call-graph scan only); headroom. |
+| `handle_player_collision_vector_2` | 0x4088c8 | 1086 | main.c | Same family, calls `line_intersect` FOUR times (call-graph scan only); headroom. |
+| `draw_table` | 0x404a7c | 441 | hisc.c | Calls `makecol`/`textprintf_ex`/`textprintf_right_ex` (all named, call-trace-tractable) but not attempted this pass -- headroom after `draw_scroller`/`draw_star_field`. |
+| `drawSlot` | 0x406fb4 | 328 | main.c | Mixes named calls (`makecol`, `textout_ex`) with 2 indirect `bmp->vtable` calls (offsets 0x3c=rectfill, 0xbc=an unidentified sprite-draw slot) -- a partially-expressible domain, not attempted. |
+| `draw_reward` | 0x4070fc | 581 | main.c | `draw_frame`'s own one real helper call (see above); mixes a named `stretch_sprite` call with 1 indirect `bmp->vtable+0xa4` call -- not attempted. |
+| `draw_results` | 0x4076c0 | 839 | main.c | Mixes `textprintf_ex`/`textprintf_right_ex`/`makecol`/`stricmp` (named) with 4 indirect `bmp->vtable` calls -- not attempted. |
+| `draw_progress_bar` | 0x407a08 | 486 | main.c | Mixes `makecol`/`textout_centre_ex` (named) with 2 indirect `bmp->vtable` calls plus 2 bare `call *%eax` (function-pointer-variable calls, not even a vtable slot) -- not attempted. |
+| `draw_frame` | 0x40929c | 8518 | main.c | Structure documented above (monolithic, not a helper-call sequence) per this batch's own stop condition; not decomposed. |
+
+### Harness changes (additive, none touching `src/`)
+
+- `carrier/lift/harness/lift_check.py`: `LIB_CALL_TARGETS` (Allegro-family
+  callee VA/argc, from `pf_lib_bindings.h`) merged into `CALL_TARGETS`;
+  `CALLTRACE_SET_CLIP_RECT_VA`/`_TEXTOUT_EX_VA`/`_TEXTOUT_CENTRE_EX_VA`
+  scratch slots; `_CT_SET_CLIP_RECT`/`_CT_TEXTOUT_EX`/
+  `_CT_TEXTOUT_CENTRE_EX`; `_blank_trace()` (generalizes
+  `_blank_call_trace()` to any argc); `Oracle._make_call_trace_hook`
+  generalized to first-call-capture (see above, backward-compatible);
+  `gen_draw_scroller` + `draw_scroller` `SPECS` entry; `SRC_BATCH8_FUNCS`
+  added to the `--form src` default `--funcs` list.
+- `carrier/lift/harness/pf_harness_calltrace.h`: `harness_trace_
+  set_clip_rect`/`_textout_ex`/`_textout_centre_ex` declarations +
+  `#define` redirects, mirroring `play_sound`'s existing shape exactly.
+- `carrier/lift/harness/call_trace_stubs.c`: the three stub definitions
+  (first-call-capture, matching the Python hook) + `pf_untranslate()`
+  (host pointer -> guest VA, the reverse of `PF_MEM()`, applied to every
+  `bmp` argument the three new stubs log -- see finding 2 above).
+- `carrier/lift/harness/pf_harness_msvc_types.h` (new, harness-only):
+  `#define __int64 long long` -- plain GCC (no Windows SDK headers) does
+  not define `__int64` on its own, and `allegro_api.h` (generated) has
+  one line needing it (`typedef unsigned __int64 uint64_t;` for
+  `file_size_ex`'s return type). `draw_scroller.c` is the first file this
+  GCC harness build compiles that itself `#include`s `allegro_api.h`
+  (`draw_buffer.c`, the only earlier such file, was never part of
+  `build_src_gcc.sh`'s file list -- its own verification is MSVC compile-
+  only). Confirmed reproducible in complete isolation before writing this
+  shim; the real fix belongs in `carrier/gen/gen_lib_bindings.py`
+  (spell the typedef portably), out of scope here.
+- `carrier/lift/harness/gcc_check.c`/`build_src_gcc.sh`: extended to wire
+  `draw_scroller` (no game global read or written -- dispatch is just
+  `tr()`-translate `sc`/`bmp`, call, done) and force-include the new
+  `pf_harness_msvc_types.h`; `gcc_check_x87_nosse_batch8.exe` built (this
+  pass's own GCC x87 exe, `-mfpmath=387 -mno-sse2 -O2`).
+- `carrier/gen/gen_bindings.py`: `MEMBER_ACCESS_COLLISIONS`'s own comment
+  extended with the `stars` finding (deliberately NOT added to the set --
+  see "two real, out-of-scope gaps" above).
+
+**`carrier/gen/pf_bindings_src.h` intentionally NOT regenerated this
+pass** -- same reasoning as batches 6/7 (another agent's concurrent
+carrier build owns that file). Verified both new functions' carrier-world
+compile against a scratch copy (`scan_src_defs.py`'s auto-scanned 48
+names + `floor_size_modifiers`), built outside `carrier/gen/`, then
+discarded; `draw_scroller`: 0 errors, 0 warnings. `draw_star_field`: see
+"two real gaps" above (does not compile in this world yet, precisely
+documented, not silently skipped).
+
+### Totals (updated)
+
+| | batch 8 (this pass) | cumulative (8 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified, memory and/or call-trace domain) | 1 (`draw_scroller`) | 42 |
+| functions promoted (compile-only, documented domain gap) | 1 (`draw_star_field`) | 2 (`draw_buffer`, `draw_star_field`) |
+| functions skipped (documented, all passes) | 6 newly-documented this pass (5 draw helpers + `draw_frame` itself; the 4 collision variants refine batch 6/7's existing skip rows rather than adding new ones) | 12 distinct (4 collision variants + 6 new this pass + `destroy_game_data`/`get_version_str` carried) |
+| original bytes recovered (offline-verified) | 396 | 5048 |
+
+`git diff --stat`-style file list this pass: `draw_scroller.c` (new file,
+396 original bytes), `draw_star_field.c` (new file, 199 original bytes,
+compile-only), `carrier/lift/harness/lift_check.py` (+~140 lines,
+additive), `carrier/lift/harness/pf_harness_calltrace.h` (+22 lines),
+`carrier/lift/harness/call_trace_stubs.c` (+70 lines),
+`carrier/lift/harness/pf_harness_msvc_types.h` (new file, harness-only),
+`carrier/lift/harness/gcc_check.c` (+12 lines),
+`carrier/lift/harness/build_src_gcc.sh` (+2 lines),
+`carrier/gen/gen_bindings.py` (comment-only, no behaviour change).
+
+## Purity gate (updated)
+
+```
+python scripts/check_native_layer.py
+check_native_layer: scanned 32 file(s) under .../src, 0 violation(s)
+```
+
+## Compile (both worlds, batch 8)
+
+```
+standalone (upstream Allegro, real <allegro.h>):
+  gcc -m32 -mfpmath=387 -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK
+      -Ithird_party/allegro-4.4.3.1/include
+      -Ithird_party/build-allegro-4.4.3.1/include
+      -Ithird_party/allegro-4.4.3.1/addons/logg -Isrc/icytower
+      -c <draw_scroller.c and draw_star_field.c, each with a one-line
+          scratch #include swap '"allegro_api.h"' -> '<allegro.h>'>
+  -- 0 errors, 0 warnings, both files
+  (draw_scroller.c/draw_star_field.c deliberately left OUT of
+  src/build/Makefile.standalone's own SOURCES list, same reasoning
+  draw_buffer.c's own exclusion already established: that target's swap
+  is real but this basic smoke build never performs the allegro_api.h ->
+  <allegro.h> substitution itself)
+
+carrier (scratch bindings, GCC -- no MSVC cl.exe in this sandbox):
+  python carrier/gen/scan_src_defs.py --src-dir src/icytower   (48 function
+      names + floor_size_modifiers, auto-scanned, draw_scroller/
+      draw_star_field included automatically)
+  python carrier/gen/gen_bindings.py --exclude <scanned 48 names> ^
+      --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+      --out <SCRATCH>/pf_bindings_src.h --types-out <SCRATCH>/pf_bindings_src_types.h
+      (scratch copy only -- carrier/gen/pf_bindings_src.h itself
+      intentionally untouched this pass, same reasoning as batches 6/7)
+
+  gcc -m32 -DICYTOWER_BINDINGS_ACTIVE -Icarrier/gen -I<SCRATCH> -Isrc/icytower
+      -include <SCRATCH>/pf_bindings_src.h -include carrier/gen/pf_lib_bindings.h
+      -include carrier/lift/harness/pf_harness_msvc_types.h
+      -c src/icytower/draw_scroller.c
+  -- 0 errors, 0 warnings
+
+  (same command for draw_star_field.c: DOES NOT COMPILE -- see "two real
+  gaps" above; not a passing result, recorded as such)
+
+offline harness (GCC x87 only, no MSVC in this sandbox):
+  python carrier/lift/harness/lift_check.py --form src --toolchain gcc ^
+      --exe harness/gcc_check_x87_nosse_batch8.exe ^
+      --funcs draw_scroller --vectors 20000 --census
+  -- draw_scroller: EQUAL (0/20000)
+
+  negative control: --fault draw_scroller:5:0, 200 vectors -- DIFFER at
+      vector 5, comparator names set_clip_rect_trace(...)+0x0 exactly
+
+full regression (13 GCC-toolchain-verified functions -- every function
+      this sandbox CAN check without MSVC -- default/reduced vector
+      counts): all still EQUAL, 0 regressions from this pass's
+      Oracle._make_call_trace_hook generalization (first-call-capture) or
+      any other change.
+```

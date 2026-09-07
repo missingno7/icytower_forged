@@ -245,6 +245,67 @@
   "result": "EQUAL",
   "vectors": 20000
  },
+ "draw_scroller": {
+  "call_trace_domain": {
+   "known_limitation": "a vertical-branch bug that ONLY affects row 2+ of a multi-row scroller (while row 1 and the call COUNT stay correct) would not be caught -- only the FIRST call to a given callee has its arguments captured; documented, not a silent gap (see draw_scroller.c's own header comment and PROMOTIONS.md batch 8).",
+   "mechanism": "mechanism B (PROMOTIONS.md batch 7) extended this pass to Allegro-family callees (LIB_CALL_TARGETS: set_clip_rect/textout_ex/textout_centre_ex, none previously in the harness) plus a new FIRST-CALL-CAPTURE rule (call_count always increments; the argument slot is written only the first time a given callee is hit per invocation) so a deterministic later call to the same callee -- draw_scroller's own second, restore-to-full-bitmap set_clip_rect -- cannot mask an earlier, argument-dependent one.",
+   "traced_callees": [
+    "set_clip_rect",
+    "textout_ex",
+    "textout_centre_ex"
+   ],
+   "verifies": "the full sequence and first-call arguments of every Allegro drawing call draw_scroller makes: the gating decision (0 calls at all when culled), which of the two draw paths (horizontal single textout_ex vs vertical N*textout_centre_ex) ran, and the always-present clip-rect narrow/restore pair."
+  },
+  "compile": {
+   "carrier_scratch_bindings": "0 errors, 0 warnings (scratch pf_bindings_src.h/pf_bindings_src_types.h regenerated via scan_src_defs.py's auto-scanned 48-name exclude list + floor_size_modifiers, outside carrier/gen/, not committed there; carrier/gen/pf_lib_bindings.h force-included unmodified; gcc -m32 -DICYTOWER_BINDINGS_ACTIVE)",
+   "standalone_upstream_allegro": "0 errors, 0 warnings (scratch copy with #include <allegro.h> in place of allegro_api.h, third_party/allegro-4.4.3.1 headers, gcc -m32 -mfpmath=387 -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK)"
+  },
+  "domain_bytes": 88,
+  "domain_names": [
+   "set_clip_rect_trace(count,bmp,x1,y1,x2,y2)",
+   "textout_ex_trace(count,bmp,fnt,text,x,y,color,bg)",
+   "textout_centre_ex_trace(count,bmp,fnt,text,cx,y,color,bg)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "no floating point of its own (all geometry is plain int); GCC used because this sandbox has no MSVC cl.exe available (PROMOTIONS.md batch 8) -- not a toolchain comparison the way line_intersect/new_rand/update_player are.",
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "msvc": {
+   "note": "no MSVC cl.exe available in this sandbox; see PROMOTIONS.md batch 8's own note on toolchain availability.",
+   "result": "NOT RUN"
+  },
+  "negative_control": {
+   "fault": "draw_scroller:5:0",
+   "first": {
+    "at": "set_clip_rect_trace(count,bmp,x1,y1,x2,y2)+0x0 (VA 0x007c1100)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Writes no game memory of its own (only reads *sc/*bmp fields and calls three Allegro functions) -- its whole comparison domain is the call-trace domain plus EAX. Two harness-generalization bugs found and fixed while verifying this function: (1) Oracle._make_call_trace_hook needed FIRST-CALL-CAPTURE semantics (previously last-call, which would have let the deterministic second set_clip_rect call mask the interesting first one); (2) BITMAP*/FONT* pointer arguments relayed opaquely into a traced call must be reverse-translated host-pointer -> guest-VA before logging (pf_untranslate(), call_trace_stubs.c) -- the driver's own tr() forward-translates them for dereferencing, and the raw host pointer bit-pattern otherwise never matches the guest VA the ORIGINAL (unicorn) side naturally uses. Both fixes are additive/harness-only and backward-compatible (verified: full regression of all other GCC-toolchain-verified functions still EQUAL).",
+  "result": "EQUAL (GCC x87, 20000 vectors)",
+  "va": "0x41f0ec"
+ },
+ "draw_star_field": {
+  "compile": {
+   "carrier_scratch_bindings": "DOES NOT COMPILE -- two real, out-of-scope-for-this-batch gaps found: (1) rectfill/putpixel have no declaration anywhere in the carrier's generated headers (absent from the 100-function allow-list, which only covers callees the game reaches BY NAME, not by inlined vtable dispatch -- a real fix belongs in carrier/gen/gen_lib_bindings.py, not attempted); (2) Tstar_field.stars (an int member) collides with the top-level Tparticle stars[512] global under gen_bindings.py's blunt #define-rewrite (the same bug class already fixed for jump_sound in batch 7), but CANNOT reuse that fix here: start_reward.c (already promoted) reads the top-level stars[512] global bare and needs its own #define to keep resolving, so skipping the define would fix this file and break that one in the same build -- a real fix needs a context-sensitive rewrite the current MEMBER_ACCESS_COLLISIONS mechanism cannot express (see carrier/gen/gen_bindings.py's own comment, batch 8 addendum).",
+   "standalone_upstream_allegro": "0 errors, 0 warnings (scratch copy with #include <allegro.h>, same recipe as draw_scroller's own standalone check)"
+  },
+  "form": "src",
+  "note": "Promoted using the same 'compile only, one world documented as blocked with precise reasons' precedent draw_buffer.c already established (src/icytower/ASSETS.md 'Show the seam') -- not silently skipped: both the missing-domain reasoning and the carrier-world compile blockers are recorded exactly, per win32_pilot.md's 'never a percentage, always the exact byte/reason' rule.",
+  "result": "NOT OFFLINE-VERIFIED (compile-only, one world) -- same class as draw_buffer.c",
+  "va": "0x41f340",
+  "why_no_memory_or_call_trace_domain": "draw_star_field writes only pixels (rectfill/putpixel), never a game global or *sf field, so it has no memory domain; rectfill/putpixel are NOT calls to a fixed, named library entry point (confirmed absent from carrier/gen/pf_lib_bindings.h) -- in real Allegro 4.4 they are AL_INLINE macros expanding directly to bmp->vtable-><method>(...), confirmed by the disassembly itself (0x41f38a/0x41f3f0: `call *0x3c(%ecx)`/`call *0x24(%ecx)` through bmp->vtable, not a `call <fixed VA>`). Mechanism B hooks a callee's own entry VA; there is no such fixed address here to hook -- which concrete routine sits at those vtable slots is a property of the active GFX_DRIVER, not a constant."
+ },
  "fps_counter": {
   "compared_return_value": false,
   "domain_bytes": 16,
@@ -471,6 +532,52 @@
   },
   "result": "EQUAL",
   "vectors": 20000
+ },
+ "handle_player_collision_original": {
+  "call_trace_domain": {
+   "mechanism": "same mechanism B as play_jump_sound (see that entry); traces the sounds[8] handle reaching play_sound's first argument on the status!=0 landing-sound branch.",
+   "traced_callee": "play_sound",
+   "verifies": "whether/which sound handle (sounds[8]) reached play_sound, gated on the status transition (0 vs non-0/1/2) that triggers the landing sound"
+  },
+  "domain_bytes": 220,
+  "domain_names": [
+   "Tplayer",
+   "any11",
+   "any12",
+   "any21",
+   "any22",
+   "any23",
+   "play_sound_trace(count,handle,pitch,pan)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "x87 use is a single fistpl truncation (p->x/p->y, round-to-zero) plus a double-minus-int fisubl -- no accumulated register-resident chain of the line_intersect/update_player kind. EQUAL under both toolchains, no precision gap found.",
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "msvc": {
+   "differing_vectors_total": 0,
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "negative_control": {
+   "fault": "handle_player_collision_original:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Batch 6's skip reason (sound-handle global at 0x4dd300 has no DWARF-recovered name) was incomplete: 0x4dd300 is sounds[8] -- DWARF names `sounds` as SAMPLE *sounds[9] at VA 0x4dd2e0 (already in game_state.h), 0x4dd300 - 0x4dd2e0 == 0x20 == 8*sizeof(SAMPLE*). The real blocker was the call-trace domain (mechanism B), not naming. Both ignored parameters confirmed unread anywhere in 0x407e10-0x407fd7. All five collision_type-dispatched variants (_original/_old/_combo/_vector/_vector_2) confirmed LIVE (jump table at 0x4d60c4, cmpl $0x4,collision_type dispatch) -- batch 6's 'may be dead code' hedge does not hold for any of them; only _original promoted this pass, the other four deferred for headroom.",
+  "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
+  "va": "0x407e10"
  },
  "harness": "carrier/lift/harness/lift_check.py --form src (unicorn ORIGINAL vs carrier/lift/harness/src_check.exe, calling the plain update_frame()/is_solid() symbols compiled straight from src/icytower/*.c)",
  "image": "icytower15.exe sha256=7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
@@ -1046,6 +1153,47 @@
    }
   ]
  },
+ "play_jump_sound": {
+  "call_trace_domain": {
+   "mechanism": "win32_pilot.md task-brief mechanism B (PROMOTIONS.md batch 7): carrier/lift/harness/lift_check.py's Oracle hooks play_sound's entry VA (0x406da4), captures 3 stack args + a call count into a scratch slot (CALLTRACE_PLAY_SOUND_VA=0x7c1000) and stubs a ret; the compiled side redirects play_sound to harness_trace_play_sound (harness/pf_harness_calltrace.h, harness/call_trace_stubs.c) which writes the identical shape. Compared as an ordinary memory-domain entry, no new comparator code.",
+   "traced_callee": "play_sound",
+   "verifies": "which of custom.jump_sound[0..2] reached play_sound's first argument, for every threshold branch"
+  },
+  "domain_bytes": 200,
+  "domain_names": [
+   "Tplayer",
+   "play_sound_trace(count,handle,pitch,pan)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "x87 comparison-only function (Tplayer.sy vs two .rdata float thresholds, no accumulated arithmetic) -- EQUAL under both toolchains, no precision gap found.",
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "msvc": {
+   "differing_vectors_total": 0,
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "negative_control": {
+   "fault": "play_jump_sound:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x32",
+    "original": "0x33",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Batch 2's skip reason (3 sound-handle globals with no DWARF-recovered name) was incomplete: custom.jump_sound[0..2] is a DWARF-named Tcustom struct member (already in game_types.h/game_state.h via the custom global), not a nameless top-level global -- see src/icytower/names.json's _meta note and PROMOTIONS.md batch 7. The real blocker was the call-trace domain (mechanism B above), not naming.",
+  "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
+  "va": "0x406ecc"
+ },
  "purity_gate": {
   "command": "python scripts/check_native_layer.py",
   "files_scanned": 27,
@@ -1221,6 +1369,57 @@
   },
   "result": "EQUAL",
   "vectors": 20000
+ },
+ "start_reward": {
+  "asset_seam": {
+   "computed_index_site": "0x407c7d: data[0x5a + tier] (tier in [0,9])",
+   "offline_verification": "the harness links call_trace_stubs.c's asset_bitmap() (harness-only), which reads through the SAME PF_MEM-redirected data global the vector sets up (a scratch DATAFILE[10] table, gen_start_reward's DATA_TABLE_VA), so reward_bmp's final value is verified via the ordinary memory domain like every other field, not skipped the way draw_buffer.c's pixel-output domain was.",
+   "resolution": "asset_bitmap((asset_id)(ASSET_DATA_REWARD_000 + tier)) -- ASSET_DATA_REWARD_000..009 are 10 contiguously-generated ids (assets_table.inc rows 114-123, object indices 90-99), closing the 10-wide-range gap src/icytower/ASSETS.md's hand-mapped table previously left open (base-object-only)."
+  },
+  "call_trace_domain": {
+   "mechanism": "same mechanism B as play_jump_sound/handle_player_collision_original; traces combo_sound[tier] reaching play_sound's first argument.",
+   "traced_callee": "play_sound",
+   "verifies": "that the correct reward-tier sound handle (combo_sound[tier]) reaches play_sound, unconditionally on every call"
+  },
+  "domain_bytes": 12324,
+  "domain_names": [
+   "reward_time",
+   "reward_scale",
+   "reward_bmp",
+   "stars[512]",
+   "seed",
+   "play_sound_trace(count,handle,pitch,pan)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "Confirms the MSVC DIFFER above is purely new_rand's propagated precision gap: with new_rand (and everything start_reward itself computes -- tier selection, itrcheck/flash gating, the confetti sy/sx formulas, the reward_bmp asset lookup, the play_sound argument) compiled with real x87 arithmetic, EQUAL over all 20000 vectors, 0 differences of any kind.",
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "msvc": {
+   "differing_vectors_total": 1725,
+   "note": "100% of the 1725 differing vectors' FIRST differing byte is inside stars[] (1688) or seed (37) -- both exclusively new_rand()-derived fields (up to 224 new_rand() calls per vector through the confetti particle loop and create_particle's own draws); ZERO of the 1725 first-diverge in reward_time, reward_scale, reward_bmp, or the play_sound call-trace slot -- confirmed by an exhaustive per-vector domain scan (all 20000), not sampling. Same double-vs-80-bit precision gap already documented for new_rand/update_particle/create_particle (propagated transitively); not a logic error in start_reward itself -- see the GCC entry below, which is EQUAL over all 20000.",
+   "result": "DIFFER (precision only, propagates new_rand's -- see note)",
+   "total_vectors": 20000
+  },
+  "negative_control": {
+   "fault": "start_reward:5:0",
+   "first": {
+    "at": "reward_time+0x0 (VA 0x004fec68)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x51",
+    "original": "0x50",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Two recovery mistakes caught by the 20000-vector offline check, each fixed and re-verified in this pass (see PROMOTIONS.md batch 7 for the full derivation): (1) reward_bmp's asset-seam update runs UNCONDITIONALLY whenever itrcheck==0, independent of options.flash/tier -- a first reading had it nested inside the flash!=0 branch. (2) the confetti sy/sx magic-multiply divisors are /100, not /50 (same 0x51eb851f constant as particle.c's create_particle, but shift 5 not shift 4 -- one more correction bit halves the quotient), and sy's correction step is negated relative to sx's (opposite AT&T operand order in the disassembly, sub -0x20(%ebp),%edx vs sub %edx,-0x20(%ebp)) -- both re-derived by directly executing the isolated instruction blocks in unicorn with controlled register input, not by re-reading the mnemonics.",
+  "result": "EQUAL (GCC x87, 20000 vectors); MSVC precision-only (propagates new_rand's gap, 0 logic divergences)",
+  "va": "0x407c38"
  },
  "switchedFromProgram": {
   "compared_return_value": false,
@@ -1411,143 +1610,5 @@
    "vectors": 200
   },
   "result": "EQUAL (GCC x87, modulo the signaling-NaN-payload note below); MSVC precision-only"
- },
- "play_jump_sound": {
-  "va": "0x406ecc",
-  "form": "src",
-  "domain_bytes": 200,
-  "domain_names": [
-   "Tplayer",
-   "play_sound_trace(count,handle,pitch,pan)"
-  ],
-  "msvc": {
-   "result": "EQUAL",
-   "total_vectors": 20000,
-   "differing_vectors_total": 0
-  },
-  "gcc": {
-   "result": "EQUAL",
-   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
-   "total_vectors": 20000,
-   "differing_vectors_total": 0,
-   "note": "x87 comparison-only function (Tplayer.sy vs two .rdata float thresholds, no accumulated arithmetic) -- EQUAL under both toolchains, no precision gap found."
-  },
-  "call_trace_domain": {
-   "mechanism": "win32_pilot.md task-brief mechanism B (PROMOTIONS.md batch 7): carrier/lift/harness/lift_check.py's Oracle hooks play_sound's entry VA (0x406da4), captures 3 stack args + a call count into a scratch slot (CALLTRACE_PLAY_SOUND_VA=0x7c1000) and stubs a ret; the compiled side redirects play_sound to harness_trace_play_sound (harness/pf_harness_calltrace.h, harness/call_trace_stubs.c) which writes the identical shape. Compared as an ordinary memory-domain entry, no new comparator code.",
-   "traced_callee": "play_sound",
-   "verifies": "which of custom.jump_sound[0..2] reached play_sound's first argument, for every threshold branch"
-  },
-  "negative_control": {
-   "fault": "play_jump_sound:5:0",
-   "vectors": 200,
-   "result": "DIFFER",
-   "first": {
-    "vector": 5,
-    "kind": "comparison domain",
-    "at": "Tplayer+0x0 (VA 0x00790000)",
-    "byte_index": 0,
-    "original": "0x33",
-    "lifted": "0x32"
-   }
-  },
-  "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
-  "note": "Batch 2's skip reason (3 sound-handle globals with no DWARF-recovered name) was incomplete: custom.jump_sound[0..2] is a DWARF-named Tcustom struct member (already in game_types.h/game_state.h via the custom global), not a nameless top-level global -- see src/icytower/names.json's _meta note and PROMOTIONS.md batch 7. The real blocker was the call-trace domain (mechanism B above), not naming."
- },
- "handle_player_collision_original": {
-  "va": "0x407e10",
-  "form": "src",
-  "domain_bytes": 220,
-  "domain_names": [
-   "Tplayer",
-   "any11",
-   "any12",
-   "any21",
-   "any22",
-   "any23",
-   "play_sound_trace(count,handle,pitch,pan)"
-  ],
-  "msvc": {
-   "result": "EQUAL",
-   "total_vectors": 20000,
-   "differing_vectors_total": 0
-  },
-  "gcc": {
-   "result": "EQUAL",
-   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
-   "total_vectors": 20000,
-   "differing_vectors_total": 0,
-   "note": "x87 use is a single fistpl truncation (p->x/p->y, round-to-zero) plus a double-minus-int fisubl -- no accumulated register-resident chain of the line_intersect/update_player kind. EQUAL under both toolchains, no precision gap found."
-  },
-  "call_trace_domain": {
-   "mechanism": "same mechanism B as play_jump_sound (see that entry); traces the sounds[8] handle reaching play_sound's first argument on the status!=0 landing-sound branch.",
-   "traced_callee": "play_sound",
-   "verifies": "whether/which sound handle (sounds[8]) reached play_sound, gated on the status transition (0 vs non-0/1/2) that triggers the landing sound"
-  },
-  "negative_control": {
-   "fault": "handle_player_collision_original:5:0",
-   "vectors": 200,
-   "result": "DIFFER",
-   "first": {
-    "vector": 5,
-    "kind": "comparison domain",
-    "at": "Tplayer+0x0 (VA 0x00790000)",
-    "byte_index": 0,
-    "original": "0x00",
-    "lifted": "0x01"
-   }
-  },
-  "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
-  "note": "Batch 6's skip reason (sound-handle global at 0x4dd300 has no DWARF-recovered name) was incomplete: 0x4dd300 is sounds[8] -- DWARF names `sounds` as SAMPLE *sounds[9] at VA 0x4dd2e0 (already in game_state.h), 0x4dd300 - 0x4dd2e0 == 0x20 == 8*sizeof(SAMPLE*). The real blocker was the call-trace domain (mechanism B), not naming. Both ignored parameters confirmed unread anywhere in 0x407e10-0x407fd7. All five collision_type-dispatched variants (_original/_old/_combo/_vector/_vector_2) confirmed LIVE (jump table at 0x4d60c4, cmpl $0x4,collision_type dispatch) -- batch 6's 'may be dead code' hedge does not hold for any of them; only _original promoted this pass, the other four deferred for headroom."
- },
- "start_reward": {
-  "va": "0x407c38",
-  "form": "src",
-  "domain_bytes": 12324,
-  "domain_names": [
-   "reward_time",
-   "reward_scale",
-   "reward_bmp",
-   "stars[512]",
-   "seed",
-   "play_sound_trace(count,handle,pitch,pan)"
-  ],
-  "msvc": {
-   "result": "DIFFER (precision only, propagates new_rand's -- see note)",
-   "total_vectors": 20000,
-   "differing_vectors_total": 1725,
-   "note": "100% of the 1725 differing vectors' FIRST differing byte is inside stars[] (1688) or seed (37) -- both exclusively new_rand()-derived fields (up to 224 new_rand() calls per vector through the confetti particle loop and create_particle's own draws); ZERO of the 1725 first-diverge in reward_time, reward_scale, reward_bmp, or the play_sound call-trace slot -- confirmed by an exhaustive per-vector domain scan (all 20000), not sampling. Same double-vs-80-bit precision gap already documented for new_rand/update_particle/create_particle (propagated transitively); not a logic error in start_reward itself -- see the GCC entry below, which is EQUAL over all 20000."
-  },
-  "gcc": {
-   "result": "EQUAL",
-   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
-   "total_vectors": 20000,
-   "differing_vectors_total": 0,
-   "note": "Confirms the MSVC DIFFER above is purely new_rand's propagated precision gap: with new_rand (and everything start_reward itself computes -- tier selection, itrcheck/flash gating, the confetti sy/sx formulas, the reward_bmp asset lookup, the play_sound argument) compiled with real x87 arithmetic, EQUAL over all 20000 vectors, 0 differences of any kind."
-  },
-  "call_trace_domain": {
-   "mechanism": "same mechanism B as play_jump_sound/handle_player_collision_original; traces combo_sound[tier] reaching play_sound's first argument.",
-   "traced_callee": "play_sound",
-   "verifies": "that the correct reward-tier sound handle (combo_sound[tier]) reaches play_sound, unconditionally on every call"
-  },
-  "asset_seam": {
-   "computed_index_site": "0x407c7d: data[0x5a + tier] (tier in [0,9])",
-   "resolution": "asset_bitmap((asset_id)(ASSET_DATA_REWARD_000 + tier)) -- ASSET_DATA_REWARD_000..009 are 10 contiguously-generated ids (assets_table.inc rows 114-123, object indices 90-99), closing the 10-wide-range gap src/icytower/ASSETS.md's hand-mapped table previously left open (base-object-only).",
-   "offline_verification": "the harness links call_trace_stubs.c's asset_bitmap() (harness-only), which reads through the SAME PF_MEM-redirected data global the vector sets up (a scratch DATAFILE[10] table, gen_start_reward's DATA_TABLE_VA), so reward_bmp's final value is verified via the ordinary memory domain like every other field, not skipped the way draw_buffer.c's pixel-output domain was."
-  },
-  "negative_control": {
-   "fault": "start_reward:5:0",
-   "vectors": 200,
-   "result": "DIFFER",
-   "first": {
-    "vector": 5,
-    "kind": "comparison domain",
-    "at": "reward_time+0x0 (VA 0x004fec68)",
-    "byte_index": 0,
-    "original": "0x50",
-    "lifted": "0x51"
-   }
-  },
-  "result": "EQUAL (GCC x87, 20000 vectors); MSVC precision-only (propagates new_rand's gap, 0 logic divergences)",
-  "note": "Two recovery mistakes caught by the 20000-vector offline check, each fixed and re-verified in this pass (see PROMOTIONS.md batch 7 for the full derivation): (1) reward_bmp's asset-seam update runs UNCONDITIONALLY whenever itrcheck==0, independent of options.flash/tier -- a first reading had it nested inside the flash!=0 branch. (2) the confetti sy/sx magic-multiply divisors are /100, not /50 (same 0x51eb851f constant as particle.c's create_particle, but shift 5 not shift 4 -- one more correction bit halves the quotient), and sy's correction step is negated relative to sx's (opposite AT&T operand order in the disassembly, sub -0x20(%ebp),%edx vs sub %edx,-0x20(%ebp)) -- both re-derived by directly executing the isolated instruction blocks in unicorn with controlled register input, not by re-reading the mnemonics."
  }
 }

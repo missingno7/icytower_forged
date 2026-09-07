@@ -129,6 +129,41 @@ SZ_DATAFILE_ENTRY = 16                 # {void *dat; int type; long size; int fl
 # VA. See PROMOTIONS.md batch 7 "Mechanism B" for the design writeup.
 CALLTRACE_PLAY_SOUND_VA = 0x7c1000     # {call_count, arg0, arg1, arg2} (16 bytes)
 
+# -- batch 8 (2026-09-07) -- extend mechanism B to Allegro-family callees
+# (win32_pilot.md task brief: "the sequence of Allegro calls with arguments
+# IS the effect; the harness stubs them"). These are NOT in
+# interop_index.json (that file is game-scope DWARF only, per
+# carrier/gen/LIB_BINDINGS_NOTES.md); their VA/argc come from the SAME
+# evidence class -- a DWARF-recovered upstream prototype -- just read off
+# carrier/gen/pf_lib_bindings.h's own generated `PFN_LIB_<name>`
+# typedef+`#define` pair instead of a second JSON file (verified by
+# grep, 2026-09-07, quoted here so a future reader does not have to
+# re-derive them):
+#   set_clip_rect       VA=0x44eb70  void(BITMAP*,int,int,int,int)                        argc=5
+#   textout_ex          VA=0x459f0c  void(BITMAP*,const FONT*,const char*,int,int,int,int) argc=7
+#   textout_centre_ex   VA=0x459fcc  void(BITMAP*,const FONT*,const char*,int,int,int,int) argc=7
+LIB_CALL_TARGETS = {
+    "set_clip_rect": {"va": 0x44eb70, "argc": 5},
+    "textout_ex": {"va": 0x459f0c, "argc": 7},
+    "textout_centre_ex": {"va": 0x459fcc, "argc": 7},
+}
+
+CALLTRACE_SET_CLIP_RECT_VA = 0x7c1100      # {call_count, arg0..arg4}   (24 bytes)
+CALLTRACE_TEXTOUT_EX_VA = 0x7c1200         # {call_count, arg0..arg6}   (32 bytes)
+CALLTRACE_TEXTOUT_CENTRE_EX_VA = 0x7c1300  # {call_count, arg0..arg6}   (32 bytes)
+
+SCROLLER_DRAW_VA = 0x7a8000            # same Tscroller scratch VA batch 3's
+                                        # SCROLLER_VA already uses (draw_scroller
+                                        # reads the same struct scroll_scroller/
+                                        # restart_scroller already promoted --
+                                        # reusing the constant, not aliasing two
+                                        # different regions to the same name)
+BMP_VA = 0x7a9000                      # scratch BITMAP for draw_scroller -- only
+                                        # offsets 0/4 (w,h) are ever read by the
+                                        # function itself (the final "restore clip
+                                        # to the whole bitmap" call); no other field
+                                        # is dereferenced by draw_scroller.c
+
 
 def load_call_targets(interop_index_path, names):
     """Table of callee name -> (va, argc), derived from interop_index.json's
@@ -151,6 +186,7 @@ def load_call_targets(interop_index_path, names):
 
 CALL_TARGETS = load_call_targets(
     os.path.join(HERE, '..', '..', 'gen', 'interop_index.json'), ['play_sound'])
+CALL_TARGETS.update(LIB_CALL_TARGETS)
 
 SZ_PLAYER = 184
 SZ_MAP = 772
@@ -744,11 +780,28 @@ def gen_update_player(rng, k):
 _CT_PLAY_SOUND = {"va": CALL_TARGETS["play_sound"]["va"],
                    "argc": CALL_TARGETS["play_sound"]["argc"],
                    "slot": CALLTRACE_PLAY_SOUND_VA}
+_CT_SET_CLIP_RECT = {"va": CALL_TARGETS["set_clip_rect"]["va"],
+                      "argc": CALL_TARGETS["set_clip_rect"]["argc"],
+                      "slot": CALLTRACE_SET_CLIP_RECT_VA}
+_CT_TEXTOUT_EX = {"va": CALL_TARGETS["textout_ex"]["va"],
+                   "argc": CALL_TARGETS["textout_ex"]["argc"],
+                   "slot": CALLTRACE_TEXTOUT_EX_VA}
+_CT_TEXTOUT_CENTRE_EX = {"va": CALL_TARGETS["textout_centre_ex"]["va"],
+                          "argc": CALL_TARGETS["textout_centre_ex"]["argc"],
+                          "slot": CALLTRACE_TEXTOUT_CENTRE_EX_VA}
 
 
 def _blank_call_trace():
     return (CALLTRACE_PLAY_SOUND_VA,
             u32(0) + u32(0xdeadbeef) + u32(0xdeadbeef) + u32(0xdeadbeef))
+
+
+def _blank_trace(slot_va, argc):
+    """Generic form of _blank_call_trace() for an arbitrary argc (batch 8:
+    set_clip_rect/textout_ex/textout_centre_ex need 5/7/7 slots, not
+    play_sound's fixed 3) -- same {count=0, args=sentinel 0xdeadbeef} shape,
+    just sized to argc instead of hardcoded to 3."""
+    return (slot_va, u32(0) + u32(0xdeadbeef) * argc)
 
 
 def gen_play_jump_sound(rng, k):
@@ -1058,6 +1111,77 @@ def gen_line_intersect(rng, k):
         v = [rng.randint(-800, 800) for _ in range(8)] + [OUT_X, OUT_Y]
     return [x & 0xFFFFFFFF for x in v], []
 
+
+# -- batch 8 (2026-09-07) -- drawing layer --
+
+SZ_SCROLLER = 0x24 + 512 * 4           # Tscroller (game_types.h): 9 leading
+                                        # ints/pointers + char *lines[512]
+
+
+def gen_draw_scroller(rng, k):
+    """Tscroller populated with plausible geometry, `offset` biased AT and
+    beside the disassembly's own cull-test boundaries (horizontal branch:
+    -length/width; vertical branch: -rows*font_height/height, artifacts/
+    disasm.txt 0x41f0fa-0x41f135) so all three outcomes get exercised: (a)
+    culled -- returns 0, calls nothing, every call-trace slot stays at
+    count=0; (b) drawn, horizontal -- one set_clip_rect + one textout_ex;
+    (c) drawn, vertical -- one set_clip_rect + zero-or-more
+    textout_centre_ex calls (rows pooled small, including 0, so the
+    "rows<=0, skip the loop entirely" edge and the per-row on/off-screen
+    cull inside the loop, artifacts/disasm.txt 0x41f193/0x41f19f, both get
+    covered), always followed by a second, deterministic set_clip_rect
+    (restore to the whole bitmap) -- captured by call_count (2) but NOT by
+    the argument slot, which the batch 8 first-call-capture rule reserves
+    for the interesting, argument-dependent FIRST call (PROMOTIONS.md
+    batch 8's own note on _make_call_trace_hook explains why).
+
+    sc->text/sc->fnt/sc->lines[i] are opaque sentinel dwords, never
+    dereferenced by draw_scroller itself -- textout_ex/textout_centre_ex
+    are call-trace-stubbed on both sides (real Allegro text rendering never
+    runs), so only the raw bit pattern reaching the call matters, the same
+    "pointer VALUE relayed verbatim" recovery already established for
+    get_demo() (PROMOTIONS.md batch 3)."""
+    horizontal = rng.choice([0, 0, 0, 1, 1, 1, rng.getrandbits(31)])
+    font_height = rng.choice([8, 10, 12, 16])
+    width = rng.randint(10, 400)
+    height = rng.randint(10, 300)
+    rows = rng.choice([0, 0, 1, 2, 5, rng.randint(0, 20)])
+    length = rng.randint(0, 2000)
+    if horizontal:
+        bound_pool = [-length, -length - 1, -length + 1, width, width - 1, width + 1, 0]
+    else:
+        bound_pool = [-rows * font_height, -rows * font_height - 1,
+                      -rows * font_height + 1, height, height - 1, height + 1, 0]
+    offset = bound_pool[k % len(bound_pool)] if k % 3 == 0 else rng.randint(-3000, 3000)
+
+    sc = bytearray(SZ_SCROLLER)
+    struct.pack_into("<i", sc, 0x00, horizontal)
+    struct.pack_into("<I", sc, 0x04, 0xAAAA0000 | (k & 0xFF))     # text (opaque)
+    struct.pack_into("<I", sc, 0x08, 0xBBBB0000 | (k & 0xFF))     # fnt (opaque)
+    struct.pack_into("<i", sc, 0x0c, font_height)
+    struct.pack_into("<i", sc, 0x10, width)
+    struct.pack_into("<i", sc, 0x14, height)
+    struct.pack_into("<i", sc, 0x18, offset)
+    struct.pack_into("<i", sc, 0x1c, rows)
+    struct.pack_into("<i", sc, 0x20, length)
+    for i in range(512):
+        struct.pack_into("<I", sc, 0x24 + 4 * i, 0xCCCC0000 | (i & 0xFF))  # lines[i] (opaque)
+
+    bmp = bytearray(8)
+    struct.pack_into("<i", bmp, 0, rng.randint(1, 2000))          # w
+    struct.pack_into("<i", bmp, 4, rng.randint(1, 2000))          # h
+
+    x = rng.randint(-500, 500) & 0xFFFFFFFF
+    y = rng.randint(-500, 500) & 0xFFFFFFFF
+    color = rng.getrandbits(32)
+
+    writes = [(SCROLLER_DRAW_VA, bytes(sc)), (BMP_VA, bytes(bmp)),
+              _blank_trace(CALLTRACE_SET_CLIP_RECT_VA, 5),
+              _blank_trace(CALLTRACE_TEXTOUT_EX_VA, 7),
+              _blank_trace(CALLTRACE_TEXTOUT_CENTRE_EX_VA, 7)]
+    return [SCROLLER_DRAW_VA, BMP_VA, x, y, color], writes
+
+
 SPECS = {
     "update_frame": {"va": 0x406ac4, "gen": gen_update_frame, "cmp_eax": False,
                      "domain": [(G_REWARD_TIME, 4), (G_REWARD_SCALE, 4),
@@ -1195,6 +1319,19 @@ SPECS = {
                      "domain_names": ["reward_time", "reward_scale", "reward_bmp",
                                        "stars[512]", "seed",
                                        "play_sound_trace(count,handle,pitch,pan)"]},
+    # -- batch 8 (2026-09-07) -- drawing layer, mechanism B extended to
+    # Allegro-family callees (LIB_CALL_TARGETS). draw_scroller writes
+    # nothing to game memory of its own -- its entire comparison domain IS
+    # the three call-trace slots (plus EAX, the cull/drawn 0/-1 result).
+    "draw_scroller": {
+        "va": 0x41f0ec, "gen": gen_draw_scroller, "cmp_eax": True,
+        "call_traces": [_CT_SET_CLIP_RECT, _CT_TEXTOUT_EX, _CT_TEXTOUT_CENTRE_EX],
+        "domain": [(CALLTRACE_SET_CLIP_RECT_VA, 24),
+                   (CALLTRACE_TEXTOUT_EX_VA, 32),
+                   (CALLTRACE_TEXTOUT_CENTRE_EX_VA, 32)],
+        "domain_names": ["set_clip_rect_trace(count,bmp,x1,y1,x2,y2)",
+                          "textout_ex_trace(count,bmp,fnt,text,x,y,color,bg)",
+                          "textout_centre_ex_trace(count,bmp,fnt,text,cx,y,color,bg)"]},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -1210,6 +1347,8 @@ SRC_ADD_FLOOR_FUNCS = "add_floor"
 SRC_BATCH6_FUNCS = "reset_player,update_player"
 
 SRC_BATCH7_FUNCS = "play_jump_sound,handle_player_collision_original,start_reward"
+
+SRC_BATCH8_FUNCS = "draw_scroller"
 
 
 # --------------------------------------------------------------------------
@@ -1264,17 +1403,35 @@ class Oracle(object):
         uc.emu_stop()
 
     def _make_call_trace_hook(self, ct):
+        """batch 8 (2026-09-07): generalized to FIRST-CALL capture -- the
+        slot's args are only ever written the first time this callee is hit
+        during one traced invocation (count == 0 at entry); every
+        subsequent call to the SAME callee only bumps call_count. This is a
+        deliberate, backward-compatible strengthening, not a behaviour
+        change for anything already promoted: every SPECS entry using
+        call_traces before batch 8 (play_jump_sound, handle_player_
+        collision_original, start_reward) calls play_sound at most ONCE per
+        invocation, so "first call" and "last call" were always the same
+        call there -- re-run, unaffected (see PROMOTIONS.md batch 8).
+        It matters starting with draw_scroller, whose own set_clip_rect is
+        called TWICE per drawn invocation (the interesting, argument-
+        clipping call, then a second, always-identical "restore to the
+        whole bitmap" call) -- capturing the LAST call would have masked
+        the first, interesting one behind the deterministic second. The
+        compiled side's stub (harness/call_trace_stubs.c) mirrors this same
+        first-call rule so both sides log identically."""
         slot_va, argc = ct["slot"], ct["argc"]
 
         def hook(uc, address, size, data):
             esp = uc.reg_read(UC_X86_REG_ESP)
             ret_addr = struct.unpack("<I", bytes(uc.mem_read(esp, 4)))[0]
-            args = [struct.unpack("<I", bytes(uc.mem_read(esp + 4 + 4 * i, 4)))[0]
-                    for i in range(argc)]
             count = struct.unpack("<I", bytes(uc.mem_read(slot_va, 4)))[0]
+            if count == 0:
+                args = [struct.unpack("<I", bytes(uc.mem_read(esp + 4 + 4 * i, 4)))[0]
+                        for i in range(argc)]
+                for i, a in enumerate(args):
+                    uc.mem_write(slot_va + 4 + 4 * i, u32(a))
             uc.mem_write(slot_va, u32(count + 1))
-            for i, a in enumerate(args):
-                uc.mem_write(slot_va + 4 + 4 * i, u32(a))
             uc.reg_write(UC_X86_REG_EAX, 0)              # stub return value
             uc.reg_write(UC_X86_REG_ESP, esp + 4)         # pop the return address
             uc.reg_write(UC_X86_REG_EIP, ret_addr)
@@ -1438,7 +1595,8 @@ def main():
                          "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
                          "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
                          "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS +
-                         "," + SRC_BATCH6_FUNCS + "," + SRC_BATCH7_FUNCS)
+                         "," + SRC_BATCH6_FUNCS + "," + SRC_BATCH7_FUNCS +
+                         "," + SRC_BATCH8_FUNCS)
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")

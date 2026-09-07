@@ -35,6 +35,7 @@ mkdir -p obj_gcc
 "$GCC" -m32 "$@" -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
     -I. -I../../gen -I../../../src/icytower \
     -include pf_harness_rand.h -include pf_harness_calltrace.h \
+    -include pf_harness_msvc_types.h \
     gcc_check.c harness_rand.c call_trace_stubs.c \
     ../../../src/icytower/line_intersect.c \
     ../../../src/icytower/jump_player.c \
@@ -49,5 +50,6 @@ mkdir -p obj_gcc
     ../../../src/icytower/start_reward.c \
     ../../../src/icytower/handle_player_collision_original.c \
     ../../../src/icytower/is_solid.c \
+    ../../../src/icytower/draw_scroller.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"

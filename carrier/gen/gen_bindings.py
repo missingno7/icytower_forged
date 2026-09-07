@@ -255,6 +255,18 @@ MEMBER_ACCESS_COLLISIONS = {
     'jump_sound',   # Tcustom.jump_sound[3] (VA 0x4fa738+1212), collides with
                      # the unrelated top-level global `jump_sound` @0x4dd2b0;
                      # play_jump_sound.c writes `custom.jump_sound[i]`.
+    # NOT added: 'stars' -- batch 8 (2026-09-07) found the identical bug
+    # class (draw_star_field.c's `sf->stars`, Tstar_field's int star-count
+    # member, gets rewritten into a syntax error by the top-level
+    # `#define stars (*(Tparticle (*)[512])0x4facc8)`), but unlike
+    # jump_sound this ONE cannot be fixed by adding it here: start_reward.c
+    # (already promoted, PROMOTIONS.md batch 7) uses the top-level `stars`
+    # global BARE and needs its #define to keep resolving -- skipping the
+    # define here (this mechanism's only tool) would fix draw_star_field.c
+    # and silently break start_reward.c in the same build. A real fix needs
+    # a context-sensitive rewrite (skip a `.name`/`->name` occurrence,
+    # rewrite a bare one) this blunt skip-list cannot express; left as a
+    # generator TODO, not attempted this pass -- see PROMOTIONS.md batch 8.
 }
 
 

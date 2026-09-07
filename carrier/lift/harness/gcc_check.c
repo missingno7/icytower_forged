@@ -92,7 +92,14 @@
 #include "pf_harness_calltrace.h"   /* #define play_sound harness_trace_play_sound
                                      * -- batch 7 (2026-09-07), play_jump_sound.c's
                                      * own play_sound() call (mechanism B); see
-                                     * that header's comment. */
+                                     * that header's comment. batch 8 (2026-09-07)
+                                     * extends the same header to redirect
+                                     * set_clip_rect/textout_ex/textout_centre_ex
+                                     * for draw_scroller.c. */
+#include "pf_harness_msvc_types.h"  /* #define __int64 long long -- batch 8, see
+                                     * that header's comment: draw_scroller.c is
+                                     * the first file in this build to itself
+                                     * #include "allegro_api.h". */
 
 #define PF_GUEST_BASE 0x400000u
 #define PF_GUEST_SIZE 0x400000u          /* 0x400000 .. 0x800000 */
@@ -180,6 +187,7 @@ extern void update_player(Tplayer *);
 extern void play_jump_sound(Tplayer *);
 extern int  start_reward(int);
 extern void handle_player_collision_original(int, int);
+extern int  draw_scroller(Tscroller *, BITMAP *, int, int, int);
 
 static unsigned int rd32(FILE *f)
 {
@@ -219,11 +227,13 @@ int main(int argc, char **argv)
         strcmp(fn, "add_floor") != 0 && strcmp(fn, "reset_player") != 0 &&
         strcmp(fn, "update_player") != 0 && strcmp(fn, "play_jump_sound") != 0 &&
         strcmp(fn, "start_reward") != 0 &&
-        strcmp(fn, "handle_player_collision_original") != 0) {
+        strcmp(fn, "handle_player_collision_original") != 0 &&
+        strcmp(fn, "draw_scroller") != 0) {
         fprintf(stderr, "gcc_check only wires up line_intersect/jump_player/"
                         "new_rand/update_particle/create_particle/ok_to_play/"
                         "add_floor/reset_player/update_player/play_jump_sound/"
-                        "start_reward/handle_player_collision_original; got '%s'\n", fn);
+                        "start_reward/handle_player_collision_original/"
+                        "draw_scroller; got '%s'\n", fn);
         return 2;
     }
 
@@ -358,6 +368,14 @@ int main(int argc, char **argv)
             *(BITMAP **)(pf_guest + (G_REWARD_BMP - PF_GUEST_BASE)) = reward_bmp;
             memcpy(pf_guest + (G_STARS - PF_GUEST_BASE), stars, sizeof(stars));
             *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
+        } else if (!strcmp(fn, "draw_scroller")) {
+            /* No game global read or written -- domain is entirely the
+             * three call-trace slots (harness/pf_harness_calltrace.h) plus
+             * EAX; sc/bmp are plain scratch-region pointers, translated the
+             * same way every other pointer-shaped vector argument is. */
+            Tscroller *sc = (Tscroller *)tr(a[0]);
+            BITMAP *bmp = (BITMAP *)tr(a[1]);
+            eax = (unsigned int)draw_scroller(sc, bmp, (int)a[2], (int)a[3], (int)a[4]);
         } else { /* handle_player_collision_original */
             unsigned int pid;
             player_id = *(int *)(pf_guest + (G_PLAYER_ID - PF_GUEST_BASE));

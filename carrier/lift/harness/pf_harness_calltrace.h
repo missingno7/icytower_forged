@@ -60,6 +60,30 @@ void harness_trace_play_sound(SAMPLE *s, int pitch, int please_pan);
 
 #define play_sound harness_trace_play_sound
 
+/* batch 8 (2026-09-07): the same mechanism extended to three Allegro-family
+ * callees draw_scroller.c calls (set_clip_rect/textout_ex/textout_centre_ex)
+ * -- see lift_check.py's LIB_CALL_TARGETS / _make_call_trace_hook header
+ * comment for the FIRST-CALL-CAPTURE rule both sides now share (call_count
+ * increments on every call; the argument slot is only written the first
+ * time, so a deterministic later call -- e.g. draw_scroller's own second,
+ * "restore to the whole bitmap" set_clip_rect -- cannot mask an earlier,
+ * argument-dependent one). Needs allegro_types.h's BITMAP/FONT (already
+ * pulled in transitively by draw_scroller.c's own "allegro_api.h" include,
+ * which this header is force-included ahead of). */
+#define CALLTRACE_SET_CLIP_RECT_VA 0x7c1100u
+#define CALLTRACE_TEXTOUT_EX_VA 0x7c1200u
+#define CALLTRACE_TEXTOUT_CENTRE_EX_VA 0x7c1300u
+
+void harness_trace_set_clip_rect(BITMAP *bmp, int x1, int y1, int x2, int y2);
+void harness_trace_textout_ex(BITMAP *bmp, const FONT *f, const char *s,
+                               int x, int y, int color, int bg);
+void harness_trace_textout_centre_ex(BITMAP *bmp, const FONT *f, const char *s,
+                                      int x, int y, int color, int bg);
+
+#define set_clip_rect harness_trace_set_clip_rect
+#define textout_ex harness_trace_textout_ex
+#define textout_centre_ex harness_trace_textout_centre_ex
+
 /* start_reward.c's own asset_bitmap(ASSET_DATA_REWARD_000 + tier) call
  * (src/icytower/ASSETS.md's "5-function API" seam, used exactly as
  * documented there): assets.h only declares the 5-function API when
