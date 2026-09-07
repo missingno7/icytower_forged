@@ -79,9 +79,21 @@ void bind_report_json(FILE* f);
 // from this constant and static_asserts the GENERATED table's kNumFns
 // against it, so the two can no longer drift apart silently.
 // ---------------------------------------------------------------------
-const unsigned kBindMaxFns = 42;  // >= gen/bind_table.inc's kNumFns; bind.cpp
+const unsigned kBindMaxFns = 60;  // >= gen/bind_table.inc's kNumFns; bind.cpp
                                    // static_asserts that, and asserts it also
-                                   // matches its BIND_STUB(N) count.
+                                   // matches its BIND_STUB(N) count. Raised
+                                   // 42 -> 60 (in-vivo verification pass,
+                                   // 2026-09-07): a concurrently-running
+                                   // batch-8 pass added a new src/icytower
+                                   // function (draw_scroller), pushing
+                                   // gen/bind_table.inc's row count to 43 and
+                                   // tripping bind.cpp's static_assert. Same
+                                   // mechanical bump this constant has taken
+                                   // twice before (8 -> 35 -> 42, this file's
+                                   // own comment above), with headroom this
+                                   // time so a few more concurrently-promoted
+                                   // functions don't immediately trip it
+                                   // again.
 struct BindSavedState {
     long long invocations[kBindMaxFns];
     long long crossings[kBindMaxFns];

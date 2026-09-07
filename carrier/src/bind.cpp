@@ -544,7 +544,10 @@ BIND_STUB(20) BIND_STUB(21) BIND_STUB(22) BIND_STUB(23) BIND_STUB(24)
 BIND_STUB(25) BIND_STUB(26) BIND_STUB(27) BIND_STUB(28) BIND_STUB(29)
 BIND_STUB(30) BIND_STUB(31) BIND_STUB(32) BIND_STUB(33) BIND_STUB(34)
 BIND_STUB(35) BIND_STUB(36) BIND_STUB(37) BIND_STUB(38) BIND_STUB(39)
-BIND_STUB(40) BIND_STUB(41)
+BIND_STUB(40) BIND_STUB(41) BIND_STUB(42) BIND_STUB(43) BIND_STUB(44)
+BIND_STUB(45) BIND_STUB(46) BIND_STUB(47) BIND_STUB(48) BIND_STUB(49)
+BIND_STUB(50) BIND_STUB(51) BIND_STUB(52) BIND_STUB(53) BIND_STUB(54)
+BIND_STUB(55) BIND_STUB(56) BIND_STUB(57) BIND_STUB(58) BIND_STUB(59)
 #undef BIND_STUB
 
 namespace {
@@ -557,7 +560,10 @@ void* const kStubs[kMaxFns] = {
     (void*)bind_stub_25, (void*)bind_stub_26, (void*)bind_stub_27, (void*)bind_stub_28, (void*)bind_stub_29,
     (void*)bind_stub_30, (void*)bind_stub_31, (void*)bind_stub_32, (void*)bind_stub_33, (void*)bind_stub_34,
     (void*)bind_stub_35, (void*)bind_stub_36, (void*)bind_stub_37, (void*)bind_stub_38, (void*)bind_stub_39,
-    (void*)bind_stub_40, (void*)bind_stub_41,
+    (void*)bind_stub_40, (void*)bind_stub_41, (void*)bind_stub_42, (void*)bind_stub_43, (void*)bind_stub_44,
+    (void*)bind_stub_45, (void*)bind_stub_46, (void*)bind_stub_47, (void*)bind_stub_48, (void*)bind_stub_49,
+    (void*)bind_stub_50, (void*)bind_stub_51, (void*)bind_stub_52, (void*)bind_stub_53, (void*)bind_stub_54,
+    (void*)bind_stub_55, (void*)bind_stub_56, (void*)bind_stub_57, (void*)bind_stub_58, (void*)bind_stub_59,
 };
 // A short kStubs initializer would zero-fill silently (a null stub pointer =
 // a crash the first time that row is bound), so pin the count too.

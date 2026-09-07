@@ -3,15 +3,56 @@
 # carrier/NOTES.md "Headless, frame oracle, named globals, .itr workload"
 # item 4.
 #
-# STATUS (this pass): navigation is SOLVED and reproducible - the events
-# below reliably reach "load replay selected" / "opening
-# profiles/MissingNO/replays/" in assets/log.txt every run. Triggering the
-# actual "confirm and play the highlighted entry" action is NOT yet solved;
-# see carrier/NOTES.md for the full writeup and the jump-table evidence.
-# Left checked in (rather than deleted) because the navigation half is real,
-# measured progress over the previous pass's "not attempted, sequence
-# unknown" - a future pass can pick up exactly at "why does the readkey()
-# dispatch at 0x41d9dd not fire".
+# STATUS (in-vivo verification pass, 2026-09-07): navigation is SOLVED and
+# reproducible - the events below reliably reach "load replay selected" /
+# "opening profiles/MissingNO/replays/" in assets/log.txt every run.
+# Triggering the actual "confirm and play the highlighted entry" action is
+# STILL NOT solved; see carrier/NOTES.md "in-vivo pass, batch 7 + .itr
+# workload" and src/icytower/INVIVO.md's same-named section for the full
+# writeup. Left checked in (rather than deleted) because the navigation
+# half is real, measured progress - a future pass can pick up exactly
+# where this one left off:
+#   - A real bug WAS found and fixed this pass: carrier/src/det.cpp's
+#     deliver_due_input() hardcoded _handle_key_press's ASCII argument to 0
+#     for every synthetic key (real Allegro's DirectInput driver only does
+#     that for non-printable keys - ENTER/SPACE/ESC get a real ASCII value,
+#     third_party/allegro-4.4.1/src/win/wkeybd.c). Fixed (ascii_for_
+#     allegro_code()), verified to change nothing about ordinary gameplay
+#     input (G1/human_test.txt gates still EQUAL), but did NOT by itself
+#     make the confirm fire - _replay_selector's dispatch at 0x41d671 turns
+#     out to be indexed purely by readkey()'s SCANCODE half, never the
+#     ASCII half, so this specific mechanism was never the blocker for
+#     DISPATCH (it may still matter elsewhere; the fix is correct
+#     regardless).
+#   - The likely REAL gate, found by disassembling _replay_selector in full
+#     this pass (0x41d330-0x41d9dd): a local debounce counter
+#     (-0x42c(%ebp), init 0x3e8=1000 at entry 0x41d330) decrements once per
+#     loop iteration only while is_any(ctrl) is true (CTRL_ENTER included
+#     in its mask, src/icytower/control.c) and not already exactly 0; the
+#     MOMENT it hits exactly 0 while a button is held, every frame takes
+#     the "movement" branch (0x41d3eb) and NEVER calls keypressed()/
+#     readkey() until the button releases. This script's own key holds
+#     (5 nav taps + a 360-tick KEY_ENTER hold entering the browser) are
+#     very likely enough total held-iterations to drain the counter to 0
+#     well before the second KEY_ENTER at T=2100. A tap (press+release,
+#     not held) variant of the second KEY_ENTER was tried as the cheapest
+#     test of this theory (from a scratch copy, not committed here) and
+#     ALSO did not reach play() - so either the counter was already stuck
+#     at 0 well before that point (consistent with the drain theory) or a
+#     further, not-yet-identified factor is also in play. NOT root-caused
+#     to a working fix within this pass's budget either.
+#   - Candidates for a follow-up, in the order this pass would try them:
+#     (a) re-run the whole sequence with a live single-step trace
+#     (carrier's own --trace-window, milestone 9) watching the -0x42c
+#     counter's actual value at T=2100, rather than inferring it from held-
+#     duration arithmetic; (b) shorten EVERY hold in this script (nav taps
+#     included) to the bare minimum press/release gap, keeping is_any()
+#     true for as few loop iterations as possible before the confirm
+#     attempt, so the counter has no chance to reach exactly 0 before then;
+#     (c) an interaction with clear_keybuf() at replay_selector's own entry
+#     (0x41d312) that this pass did not trace in detail (established that
+#     it exists and runs once at entry, not that it interferes with a T=2100
+#     event queued long after entry).
 #
 # Menu key sequence, found by disassembly (artifacts/disasm.txt) and
 # notes/asset_census.md, not trial-and-error:

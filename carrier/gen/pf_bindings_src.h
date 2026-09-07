@@ -4,8 +4,8 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-07 16:50:35 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
+ * Generated: 2026-09-07 17:36:36 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, draw_scroller, draw_star_field, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -521,12 +521,8 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* draw_reward  VA=0x4070fc  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void draw_reward(BITMAP *) */
 #define draw_reward ((PFN_draw_reward)0x4070fc)
-/* draw_scroller  VA=0x41f0ec  cu=F:\projects\icytower\trunk\source\scroller.c */
-/* prototype: int draw_scroller(Tscroller *, BITMAP *, int, int, int) */
-#define draw_scroller ((PFN_draw_scroller)0x41f0ec)
-/* draw_star_field  VA=0x41f340  cu=F:\projects\icytower\trunk\source\stars.c */
-/* prototype: void draw_star_field(Tstar_field *, BITMAP *, int, int) */
-#define draw_star_field ((PFN_draw_star_field)0x41f340)
+/* excluded by --exclude (compiled natively): draw_scroller */
+/* excluded by --exclude (compiled natively): draw_star_field */
 /* draw_table  VA=0x404a7c  cu=F:\projects\icytower\trunk\source\hisc.c */
 /* prototype: int draw_table(BITMAP *, int, int, char *, Thisc_table *) */
 #define draw_table ((PFN_draw_table)0x404a7c)

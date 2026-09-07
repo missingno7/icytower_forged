@@ -1047,6 +1047,37 @@ static int deliver_sub_slot() {
     return slot;
 }
 
+// .itr workload investigation (2026-09-07): the real DirectInput driver
+// (third_party/allegro-4.4.1/src/win/wkeybd.c handle_key_press, lines
+// ~250-292) does NOT pass a constant 0 as _handle_key_press's first
+// argument ("unicode" in that file, "keycode" here) - it calls
+// ToAscii(vkey,...) and passes the RESULT. For a non-printable key
+// (arrows, function keys: mycode < KEY_MODIFIERS and ToAscii yields
+// nothing) that result IS 0 - exactly what this synthetic injection
+// already sent, which is why ordinary gameplay input (is_left/is_right/...
+// reading the scancode-indexed key[] array, set unconditionally at
+// _handle_key_press's very first line regardless of this argument) was
+// never affected by the shortcut. But for KEY_ENTER/KEY_SPACE/KEY_ESC,
+// real ToAscii() returns a genuine ASCII character ('\r'=13, ' '=32,
+// ESC=27), and this file's own header comment ("keycode feeds Allegro's
+// separate ASCII/readkey() text-entry API, unused here") was wrong for
+// any caller that reads THAT api: Allegro's readkey()-buffered queue
+// (keyboard.c add_key(&key_buffer,...)) receives an event with ascii=0
+// instead of the real one whenever this carrier injects one of those
+// three keys. carrier/scripts/play_itr.txt's replay_selector confirm
+// handler dispatches through exactly that queue (keypressed()/readkey(),
+// not the key[] array) - passing an always-0 ascii is why its confirm
+// never fired. Restores the real value for every key this carrier's
+// script format can name (kKeyNames above); 0 (unchanged) for the rest.
+static int ascii_for_allegro_code(int code) {
+    switch (code) {
+        case 67: return 13;  // KEY_ENTER -> '\r' (ToAscii(VK_RETURN))
+        case 75: return 32;  // KEY_SPACE -> ' '  (ToAscii(VK_SPACE))
+        case 59: return 27;  // KEY_ESC   -> ESC  (ToAscii(VK_ESCAPE))
+        default: return 0;   // arrows/etc: real ToAscii() also yields 0 here
+    }
+}
+
 static void deliver_due_input() {
     if (g_script.empty()) return;
     if (g_sub_in_tick != deliver_sub_slot()) return;
@@ -1119,7 +1150,7 @@ static void deliver_due_input() {
             g_in_delivery = false;
         } else if (press) {
             g_in_delivery = true;
-            ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(0, e.scancode);
+            ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(ascii_for_allegro_code(e.scancode), e.scancode);
             g_in_delivery = false;
         } else {
             g_in_delivery = true;

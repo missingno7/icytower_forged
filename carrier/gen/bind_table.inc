@@ -25,6 +25,9 @@ extern "C" {
     void __cdecl set_control(void*, int, int, int, int, int);
     void __cdecl init_control(void*);
     int __cdecl check_control_key(void*, int);
+    int __cdecl draw_buffer(void*, void*, int, int);
+    int __cdecl draw_scroller(void*, void*, int, int, int);
+    void __cdecl draw_star_field(void*, void*, int, int);
     void __cdecl handle_player_collision_original(int, int);
     int __cdecl is_solid(void*, int, int);
     int __cdecl lifted_is_solid(void*, int, int);
@@ -50,6 +53,7 @@ extern "C" {
     void __cdecl reset_player(void*);
     void __cdecl scroll_scroller(void*, int);
     void __cdecl restart_scroller(void*);
+    int __cdecl start_reward(int);
     void __cdecl cycle_counter(void);
     void __cdecl fps_counter(void);
     void __cdecl update_frame(void);
@@ -191,6 +195,9 @@ static const FnDesc kFns[] = {
     { "set_control", 0x004017d4u, 6, false, nullptr, nullptr, (void*)set_control, regions_set_control, 1, 0 },
     { "init_control", 0x00401790u, 1, false, nullptr, nullptr, (void*)init_control, regions_init_control, 1, 0 },
     { "check_control_key", 0x00401808u, 2, true, nullptr, nullptr, (void*)check_control_key, regions_check_control_key, 1, 0 },
+    { "draw_buffer", 0x004191c8u, 4, true, nullptr, nullptr, (void*)draw_buffer, nullptr, 0, -1 },
+    { "draw_scroller", 0x0041f0ecu, 5, true, nullptr, nullptr, (void*)draw_scroller, nullptr, 0, -1 },
+    { "draw_star_field", 0x0041f340u, 4, false, nullptr, nullptr, (void*)draw_star_field, nullptr, 0, -1 },
     { "handle_player_collision_original", 0x00407e10u, 2, false, nullptr, nullptr, (void*)handle_player_collision_original, nullptr, 0, -1 },
     { "is_solid", 0x004166dcu, 3, true, (void*)lifted_is_solid, (void*)native_is_solid, (void*)is_solid, regions_is_solid, 1, 0 },
     { "jump_player", 0x00418678u, 2, true, (void*)lifted_jump_player, nullptr, (void*)jump_player, regions_jump_player, 1, 0 },
@@ -213,6 +220,7 @@ static const FnDesc kFns[] = {
     { "reset_player", 0x00418550u, 1, false, nullptr, nullptr, (void*)reset_player, regions_reset_player, 1, 0 },
     { "scroll_scroller", 0x0041f0c0u, 2, false, nullptr, nullptr, (void*)scroll_scroller, regions_scroll_scroller, 1, 0 },
     { "restart_scroller", 0x0041f0d0u, 1, false, nullptr, nullptr, (void*)restart_scroller, regions_restart_scroller, 1, 0 },
+    { "start_reward", 0x00407c38u, 1, true, nullptr, nullptr, (void*)start_reward, nullptr, 0, -1 },
     { "cycle_counter", 0x0041fed4u, 0, false, nullptr, nullptr, (void*)cycle_counter, regions_cycle_counter, 1, 0 },
     { "fps_counter", 0x0041fea4u, 0, false, nullptr, nullptr, (void*)fps_counter, regions_fps_counter, 4, 0 },
     { "update_frame", 0x00406ac4u, 0, false, (void*)lifted_update_frame, (void*)native_update_frame, (void*)update_frame, regions_update_frame, 3, 1 },

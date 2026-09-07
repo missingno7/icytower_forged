@@ -10,9 +10,18 @@
 # (notes/living_record.md) fixed its rand() binding, which is why this file
 # only becomes usable now.
 #
-# draw_buffer and start_reward are absent on purpose: they have no src form
-# linked into carrier.exe at all (carrier/gen/build_blockers.json, asset-seam
-# unresolved externals), so naming them here would abort bind_init.
+# draw_buffer and start_reward (in-vivo verification pass, 2026-09-07):
+# build_blockers.json's asset-seam LNK2019 blocker is resolved -
+# carrier/build.cmd now compiles both with pf_lib_bindings.h/
+# pf_asset_bindings.h force-included in addition to pf_bindings_src.h
+# (carrier/gen/scan_src_defs.py --extra-fi, mechanical CALL-syntax scan),
+# so both have a real src form linked into carrier.exe and are listed below.
+#
+# A concurrently-running pass (batch 8) added a further function
+# (draw_scroller) to gen/bind_table.inc after this file's original 40+2
+# rows were fixed; it is deliberately left OUT of this list (out of this
+# pass's own scope - not verified here) rather than guessed into an
+# all-bound run this pass did not test.
 #
 # Order follows bind_table.inc's own row order.
 add_combo=src
@@ -56,3 +65,6 @@ add_floor=src
 play_jump_sound=src
 reset_player=src
 update_player=src
+# --- added by this in-vivo verification pass (asset-seam unblocked) ---
+draw_buffer=src
+start_reward=src

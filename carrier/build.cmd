@@ -106,13 +106,50 @@ if "%MSVC_SRC%"=="" (
   echo FAILED: scan_src_defs.py --list-build-files msvc found no files to compile
   exit /b 1
 )
-cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
-  /I gen /FIpf_bindings_src.h ^
-  /c %MSVC_SRC% ^
-  /Fo:obj\
-if errorlevel 1 (
-  echo FAILED: src\icytower MSVC compile errors above
-  exit /b 1
+
+rem Some src/ files call real Allegro drawing primitives (makecol,
+rem textprintf_ex, ...) or the asset-seam accessors (asset_bitmap,
+rem asset_font, ...) - e.g. draw_buffer.c/start_reward.c. Those names are
+rem NOT resolved by pf_bindings_src.h alone (game-global/game-function
+rem macros only): compiling with only that force-include leaves them as
+rem plain undeclared identifiers (C's implicit-int rule, so it still
+rem COMPILES) that then fail to LINK, LNK2019 - exactly what
+rem carrier/gen/build_blockers.json recorded for both files before this
+rem split existed. scan_src_defs.py --extra-fi partitions MSVC_SRC
+rem mechanically (CALL-syntax scan against pf_lib_bindings.h's bound names
+rem + the 5 asset-seam functions - see its own docstring for why a bare-
+rem token scan is unsafe here: control.c's check_control_key(..., int key)
+rem parameter is also spelled `key`, Allegro's own keyboard array) into
+rem MSVC_SRC_BASE (only pf_bindings_src.h needed) and MSVC_SRC_EXTRA (also
+rem needs pf_lib_bindings.h + pf_asset_bindings.h) so each group gets its
+rem own cl invocation with the right /FI set - draw_buffer.c's and
+rem start_reward.c's own header comments already document and verified
+rem this exact recipe.
+set MSVC_SRC_BASE=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --extra-fi base --prefix "..\src\icytower\\"') do set MSVC_SRC_BASE=%%E
+set MSVC_SRC_EXTRA=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --extra-fi extra --prefix "..\src\icytower\\"') do set MSVC_SRC_EXTRA=%%E
+
+if not "%MSVC_SRC_BASE%"=="" (
+  cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
+    /I gen /FIpf_bindings_src.h ^
+    /c %MSVC_SRC_BASE% ^
+    /Fo:obj\
+  if errorlevel 1 (
+    echo FAILED: src\icytower MSVC compile errors above ^(base group^)
+    exit /b 1
+  )
+)
+
+if not "%MSVC_SRC_EXTRA%"=="" (
+  cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
+    /I gen /FIpf_bindings_src.h /FIpf_lib_bindings.h /FIpf_asset_bindings.h ^
+    /c %MSVC_SRC_EXTRA% ^
+    /Fo:obj\
+  if errorlevel 1 (
+    echo FAILED: src\icytower MSVC compile errors above ^(Allegro/asset-seam group^)
+    exit /b 1
+  )
 )
 
 rem NOTE 1: gcc.exe DOES need its own bin directory on PATH (MEASURED: it

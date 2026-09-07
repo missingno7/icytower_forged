@@ -174,6 +174,156 @@ separately above), 1 DIFFER (`add_jump_sequence`), 8 unverified in vivo
 with no bindable form at all (`draw_buffer`, `start_reward`, asset-seam
 blocked).**
 
+## In-vivo pass, batch 7 + .itr workload (2026-09-07)
+
+Task: verify batch 7's 3 promoted functions (`play_jump_sound`,
+`handle_player_collision_original`, `start_reward` — `src/icytower/
+PROMOTIONS.md` batch 7) in vivo, unblock `draw_buffer`/`start_reward`'s
+`build_blockers.json` entries if the asset-seam wiring can be added
+mechanically, then run `bind_all.py` over every generated-binding-table
+function not yet marked here, trying `newgame.txt`/`menu_idle.txt` for
+anything `human_test.txt` doesn't reach.
+
+### `build_blockers.json` unblocked: `draw_buffer`, `start_reward`
+
+Both files' own header comments already documented and had verified the
+exact carrier-world compile recipe needed
+(`/FIpf_bindings_src.h /FIpf_lib_bindings.h /FIpf_asset_bindings.h`) — what
+was missing was `carrier/build.cmd` actually using it. `carrier/gen/
+scan_src_defs.py` gained `--extra-fi {base,extra}`: it CALL-syntax-scans
+(`name(`, not a bare-token scan — see the function's own docstring for why:
+`control.c`'s `check_control_key(Tcontrol *c, int key)` parameter is
+spelled `key`, which collides with Allegro's own `key[]` keyboard array as
+a bare token, and a naive scan would wrongly force-include
+`pf_lib_bindings.h` into `control.c`, macro-substituting the PARAMETER name
+into a syntax error) each MSVC-list file for pf_lib_bindings.h's bound
+names or the 5 asset-seam accessor functions, and partitions the list into
+files needing only `pf_bindings_src.h` vs files needing all three headers.
+`build.cmd` now runs two `cl` invocations for the MSVC group instead of
+one. Result: exactly `draw_buffer.c`/`start_reward.c` land in the "extra"
+group, `control.c` (and everything else) stays in "base" — MEASURED, both
+compile 0 errors/0 warnings, and `carrier/gen/build_blockers.json`'s
+`"files"` entry is now `{}`. `gen_bind_table.py` picked both up
+automatically on the next build (42 rows, up from 40).
+
+A concurrently-running pass (batch 8) added a 43rd row (`draw_scroller`)
+partway through this one, tripping `bind.cpp`'s
+`kBindMaxFns`-vs-`bind_table.inc` `static_assert` (42 -> 43). Raised
+`kBindMaxFns` 42 -> 60 (`carrier/src/bind.hpp`) with matching
+`BIND_STUB(42..59)` definitions (`carrier/src/bind.cpp`) — the same
+mechanical bump this constant has taken twice before (8 -> 35 -> 42), with
+headroom this time. `draw_scroller` itself is out of this pass's scope
+(batch 8's own function) and is deliberately left out of every bindfile
+this pass touches.
+
+### Batch 7 functions, in vivo
+
+| function | VA | workload | invocations | verdict |
+|---|---|---|---:|---|
+| `play_jump_sound` | 0x406ecc | human_test.txt | 46 | EQUAL, vacuous (see "Binding table generated" above — unchanged this pass) |
+| `handle_player_collision_original` | 0x407e10 | human_test.txt | 0 | UNVERIFIED IN VIVO (unchanged) |
+| `handle_player_collision_original` | 0x407e10 | newgame.txt (876-tick gate recording) | 0 | UNVERIFIED IN VIVO — also tried this pass; the recording's `collision_type` still never selects the `_original` (0) dispatch target within the recording's 500 gameplay ticks. Still unreached by any workload tried across this project; the 4 other `collision_type` variants (`_old`/`_combo`/`_vector`/`_vector_2`) are not promoted at all, so which value the game actually starts with was not independently confirmed. |
+| `start_reward` | 0x407c38 | human_test.txt | 3 | **EQUAL** — `carrier/scripts/bind_all.py --fn start_reward --input-script replays/human_test.txt --stop-at-tick 2528`: 3 invocations, `compare_fn_digests.py` EQUAL, per-tick digest EQUAL (2293 ticks vs `replays/human_test.digest`). The operator's own recording DOES trigger a reward this pass's task brief flagged as possibly absent — MEASURED, not assumed. |
+| `draw_buffer` | 0x4191c8 | human_test.txt, newgame.txt, menu_idle.txt | 0 (all three) | UNVERIFIED IN VIVO — reached by no scripted workload in this project. `draw_buffer`'s own header comment (recovered from `profile.c`) gives the likely reason: it draws a `\n`-separated text buffer via `asset_font(ASSET_DATA_FONT_MONO)`, consistent with a debug/profile text overlay rather than any screen an input script's key sequence (main menu, gameplay, idle menu) passes through. |
+
+### All-bound run, 42 functions (`draw_buffer`/`start_reward` added)
+
+`carrier/scripts/all_src.bindfile` extended with `draw_buffer=src` and
+`start_reward=src` (`draw_scroller` deliberately excluded — batch 8's own
+function, out of this pass's scope):
+
+```
+carrier.exe --det --pace=fast --input=script --input-script ../replays/human_test.txt \
+  --stop-at-tick 2528 --run-seconds 300 \
+  --bind-file <abs>/carrier/scripts/all_src.bindfile --digest-out ticks.txt
+python carrier/scripts/compare_digests.py ticks.txt replays/human_test.digest
+```
+
+Result: **EQUAL (2293 ticks)** — 42 `src/` forms (every generated
+binding-table row this project has verified, including this pass's two)
+replacing the original machine code simultaneously for the entire
+recording.
+
+### `.itr` workload (`carrier/scripts/play_itr.txt`)
+
+Goal: get the game's own replay browser to confirm and play the first
+`.itr` in `assets/profiles/MissingNO/replays/`. Navigation into the
+browser was already solved (a prior pass); this pass's task was the
+still-open "why does the confirm not fire".
+
+**One real bug found and fixed** (`carrier/src/det.cpp`,
+`deliver_due_input()`): every synthetic key press was calling
+`_handle_key_press(0, scancode)` — a HARDCODED `0` for the `keycode`
+(ASCII/unicode) argument. MEASURED against `third_party/allegro-4.4.1/src/
+win/wkeybd.c`'s real DirectInput handler (`handle_key_press`, lines
+250-292): it calls `ToAscii(vkey, ...)` and passes the RESULT, which is 0
+only for non-printable keys (arrows, etc. — matching what the carrier
+already sent) but a real ASCII value for printable ones — 13 (`\r`) for
+`KEY_ENTER`, 32 (`' '`) for `KEY_SPACE`, 27 (ESC) for `KEY_ESC`. Fixed with
+a small `ascii_for_allegro_code()` lookup, used only by the default
+(non-`--inject-real-test`) synthetic press path. Verified this changes
+nothing observable for ordinary gameplay input: `G1` (two `newgame.txt`
+runs, `--stop-at-tick 1000`) still `EQUAL (876 ticks)` against each other,
+and the `human_test.txt` gate still `EQUAL (2293 ticks)` against
+`replays/human_test.digest` — expected, since ordinary movement/action
+input (`is_left`/`is_right`/...) reads the scancode-indexed `key[]` array,
+set unconditionally at `_handle_key_press`'s first line regardless of this
+argument; only Allegro's separate `readkey()`-buffered queue was affected.
+
+**This fix alone did not make the confirm fire.** Disassembling
+`_replay_selector` (0x41d258, `artifacts/disasm.txt` 0x41d330-0x41d9dd)
+found the actual dispatch (`0x41d671: call _readkey; sar $8,%eax; ...; jmp
+*0x4d7b18(,%eax,4)`) is indexed purely by the SCANCODE half of `readkey()`'s
+return value, never the ASCII half — so the keycode argument was never the
+blocker for DISPATCH itself (it may still matter elsewhere; fixing it was
+correct regardless of this specific mechanism). The real gate found:
+`_replay_selector` keeps a local debounce counter (`-0x42c(%ebp)`,
+initialized to `0x3e8` = 1000 at entry, 0x41d330) that is decremented once
+per loop iteration ONLY while `is_any(ctrl)` is true (some tracked control
+button — `CTRL_ENTER` included, `src/icytower/control.c`'s own
+`CTRL_ENTER=0x20` bit is inside `is_any`'s `~CTRL_PAUSE` mask) AND the
+counter is not already exactly 0 (0x41d650-0x41d671); the MOMENT it hits
+exactly 0 while a button is still held, every subsequent frame takes a
+"movement" branch (0x41d3eb `je 41d6a8`, `is_down`/`is_up` handling) that
+never consults `keypressed()`/`readkey()` at all, until the button is
+released (`is_any()` false again resets/keeps the counter at 0 via
+`0x41d40c`, and THAT idle branch unconditionally checks `keypressed()`).
+`carrier/scripts/play_itr.txt`'s script holds keys (5 nav taps plus a
+360-tick `KEY_ENTER` hold entering the browser) for what is very likely
+enough total held-iterations to drain this counter to 0 well before the
+second `KEY_ENTER` at T=2100 — leaving `is_any()`-gated navigation as the
+only reachable branch for the rest of the run. **Not fully confirmed**:
+tried a released (tap, not held) second `KEY_ENTER` (press@2100/
+release@2120) as the cheapest test of "does a clean release-edge reach the
+idle/`keypressed()` branch" — it also did not reach `play()` (still 0
+safepoints, `assets/log.txt` unchanged after "opening
+profiles/MissingNO/replays/"), so either the counter was already stuck at
+0 well before this tap (consistent with the drain theory) or a further,
+not-yet-identified factor is also in play. `carrier/scripts/play_itr.txt`
+itself is left with its original event sequence (the tap experiment was
+run from a scratch copy, not committed) plus this section's findings
+referenced from its own header comment update below.
+
+**Outcome: `.itr` workload still does not reach `play()`; 0 additional
+functions gained coverage from it this pass.** `play()` requires a
+`run_demo()`/gameplay dispatch this pass never reached, so no new function
+verdicts came from this workload — the 3 batch-7 functions and
+`draw_buffer` above were all verified (or found unreachable) via
+`human_test.txt`/`newgame.txt`/`menu_idle.txt` instead.
+
+### Updated summary (this pass)
+
+**31 EQUAL** (29 already listed + `start_reward`; `draw_buffer` still has no
+in-vivo verdict), **1 DIFFER** (`add_jump_sequence`, unchanged, background
+task `task_8dd77dd1`), **9 unverified in vivo** (the 8 already listed +
+`draw_buffer`, now with a workload-reachability explanation rather than a
+missing bind), **0 functions with no bindable form** (both former
+`build_blockers.json` entries are resolved) — **42 of 42** generated
+binding-table rows (as of this pass; `draw_scroller`, batch 8's own 43rd
+row, is out of scope here) now have a `src` form linked and bound, and all
+42 are simultaneously bound EQUAL over `replays/human_test.txt` (previous
+section).
+
 ## Divergence 008 — `add_floor` (2026-09-07), RESOLVED
 
 The DIFFER this table used to carry for `add_floor` was

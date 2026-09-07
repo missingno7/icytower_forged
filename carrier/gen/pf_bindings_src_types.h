@@ -1,6 +1,6 @@
 /* pf_bindings_types.h -- GENERATED FILE. DO NOT EDIT.
  * Produced by carrier/gen/gen_bindings.py.
- * Generated: 2026-09-07 16:50:35 UTC
+ * Generated: 2026-09-07 17:36:36 UTC
  *
  * Carrier-side type provider for pf_bindings.h: the struct/union/enum/
  * typedef layouts every game-scope global and function prototype needs,

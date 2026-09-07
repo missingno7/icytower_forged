@@ -3878,3 +3878,85 @@ never invoked again after T=400 have nothing to check). `carrier.bin` is now
 function `--fn-digest-out` - it assumes a single function's `k` sequence and
 will report a spurious FIRST DIFFERENCE on an interleaved file; use it as
 `gates.ps1` G3b does, on a single `--bind <fn>=src` run.
+
+## In-vivo pass, batch 7 + .itr workload (2026-09-07)
+
+Verifies batch 7's 3 promoted functions (`play_jump_sound`,
+`handle_player_collision_original`, `start_reward`) in vivo, unblocks
+`draw_buffer`/`start_reward` from `build_blockers.json`, runs the generated
+binding table's remaining unverified rows over `replays/human_test.txt` +
+`scripts/newgame.txt`/`scripts/menu_idle.txt`, and investigates
+`scripts/play_itr.txt`. Full detail: `src/icytower/INVIVO.md` "In-vivo
+pass, batch 7 + .itr workload".
+
+**`build_blockers.json` unblocked** (`draw_buffer.c`, `start_reward.c`):
+both files' own header comments already carried the exact carrier-world
+compile recipe that resolves their LNK2019s
+(`/FIpf_bindings_src.h /FIpf_lib_bindings.h /FIpf_asset_bindings.h`) - what
+was missing was `build.cmd` using it. `carrier/gen/scan_src_defs.py` gained
+`--extra-fi {base,extra}`, a CALL-syntax scan (`name(`, not a bare-token
+scan - `control.c`'s `check_control_key(..., int key)` parameter is
+spelled `key`, colliding with Allegro's own `key[]` global as a bare token,
+which a naive scan would wrongly flag) against `pf_lib_bindings.h`'s bound
+names plus the 5 asset-seam accessors; `build.cmd`'s MSVC compile step now
+splits into two `cl` invocations (base: `pf_bindings_src.h` only; extra:
+all three headers) driven by that partition. `build_blockers.json`'s
+`"files"` is now `{}`; `gen_bind_table.py` picked up both functions
+automatically (40 -> 42 rows).
+
+**`kBindMaxFns` raised 42 -> 60** (`carrier/src/bind.hpp`/`bind.cpp`,
+matching `BIND_STUB(42..59)` added): a concurrently-running batch-8 pass
+added a 43rd binding-table row (`draw_scroller`) mid-build, tripping
+`bind.cpp`'s `kNumFns <= kMaxFns` static_assert. Same mechanical bump this
+constant has taken twice before (8 -> 35 -> 42); raised with headroom this
+time. `draw_scroller` itself is batch 8's function, out of this pass's
+scope, and is not in any bindfile this pass touches.
+
+**Results**: `start_reward` EQUAL in vivo (3 invocations, `replays/
+human_test.txt` - the recording DOES trigger a reward, contrary to this
+task's own "if no reward happens" caveat). `draw_buffer` UNVERIFIED IN
+VIVO on all three workloads tried (`human_test.txt`, `newgame.txt`,
+`menu_idle.txt` - 0 invocations each); its own header comment (a debug/
+profile text overlay, not a normal-play screen) is the likely reason no
+scripted key sequence reaches it. `handle_player_collision_original`
+UNVERIFIED IN VIVO on `human_test.txt` (already known) and now also
+`newgame.txt` (tried this pass, still 0 - the recording's `collision_type`
+never selects the `_original` dispatch target within 500 gameplay ticks).
+All-bound run, 42 rows (`carrier/scripts/all_src.bindfile` extended with
+`draw_buffer=src`/`start_reward=src`, `draw_scroller` deliberately
+excluded): **EQUAL (2293 ticks)** against `replays/human_test.digest`.
+
+**`.itr` workload** (`carrier/scripts/play_itr.txt`): one real bug found
+and fixed in `carrier/src/det.cpp` - `deliver_due_input()` hardcoded
+`_handle_key_press`'s ASCII argument to `0` for every synthetic key press;
+real Allegro's DirectInput driver (`third_party/allegro-4.4.1/src/win/
+wkeybd.c`) only does that for non-printable keys, passing a real ASCII
+value (13/32/27) for ENTER/SPACE/ESC via `ToAscii()`. Fixed
+(`ascii_for_allegro_code()`); verified inert for ordinary gameplay input
+(G1 and the `human_test.txt` gate both still EQUAL after the change,
+exactly as expected - `is_left`/`is_right`/... read the scancode-indexed
+`key[]` array, set unconditionally regardless of this argument). This fix
+alone did NOT make the replay-browser confirm fire: disassembling
+`_replay_selector` in full (0x41d330-0x41d9dd) found its dispatch
+(0x41d671) is indexed purely by `readkey()`'s SCANCODE half, never the
+ASCII half. The likely real gate, also found this pass: a local debounce
+counter (`-0x42c(%ebp)`, init 1000 at entry) decrements only while
+`is_any(ctrl)` is true and not already exactly 0; once it hits exactly 0
+while a button is held, every frame takes a "movement" branch that never
+consults `keypressed()`/`readkey()` at all. `play_itr.txt`'s own key holds
+(5 nav taps + a 360-tick first `KEY_ENTER` hold) are very likely enough to
+drain this counter before the second `KEY_ENTER`. Two variants (a released
+tap instead of a held second `KEY_ENTER`; every hold in the script shortened
+to the minimum, tested from scratch copies, not committed) were tried as
+cheap tests of this theory - neither reached `play()` either, so the exact
+mechanism is still not fully confirmed. **Outcome: `play_itr.txt` still
+does not reach `play()`; 0 additional functions gained in-vivo coverage
+from it this pass.** Full disassembly evidence and the candidate follow-ups
+this pass would try next are in `play_itr.txt`'s own header comment and
+`src/icytower/INVIVO.md`.
+
+**Gates re-verified after this pass's `det.cpp`/`bind.hpp`/`bind.cpp`
+changes**: `newgame.txt` two-run determinism EQUAL (876 ticks), `human_test.txt`
+vs `replays/human_test.digest` EQUAL (2293 ticks) - both before and after
+the `.itr` investigation's det.cpp change, and again after the final
+all-bound run.
