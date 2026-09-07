@@ -23,6 +23,14 @@
 
 void add_jump_sequence(Tgame_data *gd, Tgd_jump_sequence *js)
 {
+    /* An empty sequence (num == 0) is ignored. This guard precedes the
+     * capacity check in the original (0x4040f4: test num, je return). It
+     * was missing from the first recovery and was caught in vivo by the
+     * operator's recording (first invocation, T=330), not by the offline
+     * random vectors, which never produced num == 0. */
+    if (js->num == 0)
+        return;
+
     if (gd->jumpPosts > 4999)
         return;                            /* jumps[5000] is full: drop it */
 
