@@ -36,15 +36,22 @@ CFLAGS  := -m32 -mfpmath=387 -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK -W
            -I$(ALLEGRO_SRC)/addons/logg -I$(SRC)
 AR      := ar
 
-# The 16 promoted functions, 9 .c files (game_types_check.c is excluded on
-# purpose -- see STANDALONE.md "game_types_check.c is out of scope here":
+# Every promoted .c file that needs no asset seam, updated through batch 6
+# (2026-09-07 -- reset_player.c/update_player.c added; main_state.c added
+# so map.c's add_floor() -> get_demo() call link-resolves, a link failure
+# this target had picked up silently since batch 5 added that call without
+# updating this hand-maintained list -- see STANDALONE.md). Excluded on
+# purpose: game_types_check.c ("game_types_check.c is out of scope here":
 # its sizeof/offsetof assertions check the DWARF-recovered ADDRESS-BACKED
 # layout of Allegro's internal structs, e.g. LZSS_UNPACK_DATA/
 # _al_normal_packfile_details, which upstream's public <allegro.h> does not
 # even expose -- that check only makes sense against src/icytower's own
-# stand-in, never against upstream).
-SOURCES := add_combo.c control.c is_solid.c jump_player.c line_intersect.c \
-           map.c update_frame.c state.c
+# stand-in, never against upstream); draw_buffer.c/assets_standalone.c
+# (the asset-seam files, out of scope for this basic smoke test).
+SOURCES := add_combo.c add_jump_sequence.c control.c is_solid.c jump_player.c \
+           line_intersect.c map.c main_state.c new_rand.c ok_to_play.c \
+           particle.c reset_player.c scroller.c timer.c update_frame.c \
+           update_player.c state.c
 OBJECTS := $(patsubst %.c,$(OBJDIR)/%.o,$(SOURCES))
 
 LIB       := $(BUILDDIR)/libicytower.a

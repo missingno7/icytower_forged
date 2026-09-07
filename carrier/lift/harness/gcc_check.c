@@ -101,6 +101,7 @@
 #define G_SEED           0x4ff108u
 #define G_DEMO           0x4dd250u
 #define RAND_SEED_VA     0x794020u
+#define G_GRAVITY_MOD    0x4bdba8u
 
 /* storage for game_state.h's extern decls -- the STANDALONE world's
  * contract (win32_pilot.md SS7a: "a state.c defines the globals"); this
@@ -112,7 +113,8 @@
 int collision_type;
 double max_speed[5];
 double seed;
-Treplay *demo;    /* add_floor's get_demo() reads this global directly */
+Treplay *demo;    /* add_floor's/update_player's get_demo() reads this global directly */
+double gravity_modifier[3];   /* update_player.c (batch 6) */
 /* main_state.c (get_demo, linked in for add_floor) also defines
  * get_controls()/switchedFromProgram()/switchedToProgram()/
  * clickedCloseButton(), which this driver never calls but which still
@@ -138,6 +140,8 @@ extern void update_particle(Tparticle *);
 extern int create_particle(Tparticle *, int, int);
 extern int ok_to_play(void);
 extern void add_floor(Tmap *);
+extern void reset_player(Tplayer *);
+extern void update_player(Tplayer *);
 
 static unsigned int rd32(FILE *f)
 {
@@ -174,10 +178,11 @@ int main(int argc, char **argv)
     if (strcmp(fn, "line_intersect") != 0 && strcmp(fn, "jump_player") != 0 &&
         strcmp(fn, "new_rand") != 0 && strcmp(fn, "update_particle") != 0 &&
         strcmp(fn, "create_particle") != 0 && strcmp(fn, "ok_to_play") != 0 &&
-        strcmp(fn, "add_floor") != 0) {
+        strcmp(fn, "add_floor") != 0 && strcmp(fn, "reset_player") != 0 &&
+        strcmp(fn, "update_player") != 0) {
         fprintf(stderr, "gcc_check only wires up line_intersect/jump_player/"
                         "new_rand/update_particle/create_particle/ok_to_play/"
-                        "add_floor; got '%s'\n", fn);
+                        "add_floor/reset_player/update_player; got '%s'\n", fn);
         return 2;
     }
 
@@ -260,11 +265,26 @@ int main(int argc, char **argv)
             *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
         } else if (!strcmp(fn, "ok_to_play")) {
             eax = (unsigned int)ok_to_play();
-        } else { /* add_floor */
+        } else if (!strcmp(fn, "add_floor")) {
             Tmap *m = (Tmap *)tr(a[0]);
             demo = (Treplay *)tr(*(unsigned int *)(pf_guest + (G_DEMO - PF_GUEST_BASE)));
             harness_rand_state = *(unsigned int *)(pf_guest + (RAND_SEED_VA - PF_GUEST_BASE));
             add_floor(m);
+            eax = 0;
+        } else if (!strcmp(fn, "reset_player")) {
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            reset_player(p);
+            eax = 0;
+        } else { /* update_player */
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            /* same globals jump_player.c/add_floor's blocks above sync by
+             * hand: collision_type/max_speed (read-only), gravity_modifier
+             * (read-only), demo (read-only pointer VALUE, translated). */
+            collision_type = *(int *)(pf_guest + (G_COLLISION_TYPE - PF_GUEST_BASE));
+            memcpy(max_speed, pf_guest + (G_MAX_SPEED - PF_GUEST_BASE), sizeof(max_speed));
+            memcpy(gravity_modifier, pf_guest + (G_GRAVITY_MOD - PF_GUEST_BASE), sizeof(gravity_modifier));
+            demo = (Treplay *)tr(*(unsigned int *)(pf_guest + (G_DEMO - PF_GUEST_BASE)));
+            update_player(p);
             eax = 0;
         }
 

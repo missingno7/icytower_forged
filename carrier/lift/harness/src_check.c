@@ -129,6 +129,13 @@ extern int  ok_to_play(void);
  * harness_rand_state needs seeding per vector, from RAND_SEED_VA. */
 extern void add_floor(Tmap *);
 extern unsigned int harness_rand_state;
+/* batch 6 (2026-09-07): reset_player() is a plain Tplayer* leaf, same shape
+ * as jump_player(). update_player() calls get_demo() internally (for
+ * gravity_modifier[get_demo()->gravity]) and dereferences the result, so it
+ * needs the exact same `demo` pointer-VALUE fixup add_floor() already
+ * established above. */
+extern void reset_player(Tplayer *);
+extern void update_player(Tplayer *);
 
 static unsigned int rd32(FILE *f)
 {
@@ -354,6 +361,18 @@ int main(int argc, char **argv)
                 *demo_slot = (unsigned int)(size_t)PF_MEM(*demo_slot);
             harness_rand_state = *(unsigned int *)tr(RAND_SEED_VA);
             add_floor(m);
+            eax = 0;
+        } else if (!strcmp(fn, "reset_player")) {
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            reset_player(p);
+            eax = 0;
+        } else if (!strcmp(fn, "update_player")) {
+            /* same `demo` pointer-VALUE fixup as add_floor() above. */
+            unsigned int *demo_slot = (unsigned int *)PF_MEM(G_DEMO);
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            if (*demo_slot >= PF_GUEST_BASE && *demo_slot < PF_GUEST_BASE + PF_GUEST_SIZE)
+                *demo_slot = (unsigned int)(size_t)PF_MEM(*demo_slot);
+            update_player(p);
             eax = 0;
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);

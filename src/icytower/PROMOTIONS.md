@@ -459,3 +459,193 @@ carrier:    python carrier\gen\scan_src_defs.py --src-dir src\icytower   (40 fun
                src\icytower\new_rand.c src\icytower\ok_to_play.c
             -- 0 errors, 0 warnings (carrier world)
 ```
+
+## Batch 6 (2026-09-07 — player physics core)
+
+Targets, in the task brief's dependency order from `handle_player_input`
+(0x40b3e4) and `play()`: `handle_player_collision_*`, `move_player`/
+`update_player`, floor lookups (already done), combo/score helpers. No
+`move_player` function exists under that name — `player.c`'s physics trio
+is `reset_player`/`jump_player`(done)/`update_player`, so `update_player`
+is the "gravity, dx damping, wall bounce" target the brief describes.
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `reset_player` | 0x418550 | 296 | player.c | EQUAL (20000 MSVC + 80000 GCC x87) | Zero-fills every `Tplayer` field the game considers "reset" (status/velocity/counters/combo state) EXCEPT `x`/`y` (new_game sets those separately, notes/player_start_randomness.md) and `angle` (only jump_player's own field, per its own PROMOTIONS.md entry, sets `angle`/`rotate` together). No x87, no callees, no branches — a straight-line store sequence, same shape as `reset_map`. `ccc[5]`/`jcTop[5]`/`jc[5]` are zeroed in reverse-index order in the disassembly (a scheduling artifact, not meaningful); this file writes them via a plain forward `for` loop, bit-identical either way. | pending |
+| `update_player` | 0x418740 | 651 | player.c | **EQUAL** (GCC `-m32 -mfpmath=387 -mno-sse2 -O2`, modulo a 7/80000 signaling-NaN-payload wrinkle below — not a logic error); MSVC DIFFER 1873/80000, precision-only | The per-tick physics step: clamps `sy` to `[-100.0, max_speed[collision_type]]` and `sx` to `[-max_speed[collision_type], max_speed[collision_type]]`, integrates `x += sx`/`y += sy`, caps `y` at 1000.0, bounces `x` off the two screen edges (85.0/555.0: clamp to the edge, `sx *= -0.9`, and if the rebound speed is `< -4.0` or `> 4.0` record a hard bounce in `p->bounce`, `±20`), then — unless `status == 0` — applies gravity (`sy += 0.8 + gravity_modifier[get_demo()->gravity]`) and, if still in the launch phase (`status == 1`) with `sy` now strictly positive, advances `status` to 2. Recovered by hand-tracing the x87 register-stack traffic in `artifacts/disasm.txt` (0x418740-0x4189cb) instruction by instruction, then validated by directly executing the ORIGINAL bytes in unicorn against a Python double model over 20000 vectors (the new_rand.c/create_particle.c methodology) — this caught two real mistakes before any C source was written, both below. `gravity_modifier[3]` (VA 0x4bdba8, DWARF-confirmed `double[3]`) is a new global this pass starts reading (already declared in `game_state.h`, unused until now). | pending |
+
+Every row's negative control: `--fault <fn>:5:0`, 200 vectors, comparator
+names the exact byte (`Tplayer+0x0 (VA 0x00790000)` for both) — full detail
+in `artifacts/src_equivalence.json`.
+
+### Two real recovery mistakes caught by the unicorn cross-check
+
+1. **Strict vs. non-strict `test $0x45,%ah` reading.** A first hand-trace
+   treated every `fucom(p(p))?`/`fnstsw`/`test $0x45,%ah` pair as the same
+   "unordered-or-less-than" NaN guard divergence 006 (`notes/living_record.md`)
+   already established for `line_intersect`. That reading is right for the
+   `sy`/`sx` clamp thresholds (`-100.0`/`max_speed[collision_type]`, where
+   the clamp target equals the compared constant, so strict-vs-non-strict
+   is unobservable) but **wrong** for the screen-edge `x` thresholds
+   (555.0/85.0) and the `|bounce speed| >= 4.0` threshold: paired with
+   `je`, the 0x45 mask (which includes the C3/equal flag) decodes to
+   **strict** greater-than, not `>=` — the wall-clamp's `sx *= -0.9` side
+   effect only fires on the strict side. The unicorn cross-check's first
+   mismatch landed exactly on an engineered `x_new == 555.0` vector,
+   immediately exposing the wrong reading before it reached `update_player.c`.
+2. **`x_new`/`y_new` compared from the same unrounded x87 register the
+   non-popping `fstl` stored from**, not from a second 64-bit-rounded
+   memory read — the double-vs-80-bit gap already established for
+   `line_intersect`/`new_rand`/`add_floor`, this time in a *comparison*
+   rather than a final truncation. 3 of 20000 cross-check vectors rounded
+   `x + sx` to exactly 555.0/85.0 as a plain `double` while the ORIGINAL
+   still took the wall-bounce branch. Not fixable in a `double`-only Python
+   model; ordinary C (`if (p->x > 555.0)`) reproduces it once compiled with
+   real x87 arithmetic (GCC `-mfpmath=387`), confirmed by the GCC census
+   below finding 0 divergences of this kind.
+
+### Residual GCC-side wrinkle: signaling-NaN payload quieting (reported, not a bug)
+
+7 of 80000 GCC-toolchain vectors (1/1/5/0 across the 4 canonical seeds)
+DIFFER, always at exactly one bit — `Tplayer+0x16` (`sx` byte 6) or `+0x1e`
+(`sy` byte 6), the byte holding bit 51 of that field's IEEE-754 double, the
+mantissa's own top bit (the quiet/signaling flag for a NaN). In every one
+of the 7, `sx` or `sy` was fed a genuine **signaling** NaN by the vector
+generator's random-bit-pattern pool (exponent all-1s, bit 51 clear, some
+other mantissa bit set); the clamp logic correctly leaves the value
+untouched (neither `<` nor `>` is true for NaN, matching plain C semantics
+— confirmed: every OTHER bit of the payload, and every other field, matches
+exactly), but the ORIGINAL binary's specific instruction encoding preserves
+the signaling bit through the comparison chain while GCC `-O2`'s own
+instruction selection for the identical source-level chain quiets it (sets
+bit 51) as an incidental side effect of whichever x87 compare/move sequence
+it picks. A legitimate game double can never *become* a signaling NaN
+through ordinary IEEE-754 arithmetic (only quiet NaNs ever propagate that
+way — an SNaN can only enter memory as a directly-constructed bit pattern),
+so this has no reachable gameplay consequence. Reported per
+win32_pilot.md's "never a percentage, always the exact byte" rule rather
+than chased into GCC's instruction-selection internals, which plain C
+source cannot steer without inline asm (purity-gate-banned). Full detail,
+including the exact per-seed counts, in `artifacts/src_equivalence.json`'s
+`update_player.gcc` entry.
+
+### Skipped this pass
+
+| function | VA | size | CU | why skipped |
+|---|---|---:|---|---|
+| `handle_player_collision_original` | 0x407e10 | 456 | main.c | Fully hand-traced (Tplayer field layout, the two `is_solid()` foot-probe calls at `p->x∓11`, the `any11`/`any12`/`any21`/`any22`/`any23` globals, `sound_landing` gating, and the two-feet-agree edge-detection logic), but calls `play_sound()` with a sound-handle global at VA 0x4dd300 that has **no DWARF-recovered name anywhere** in `artifacts/dwarf_info.txt` (confirmed: zero hits searching for the address directly) and is absent from `carrier/gen/interop_index.json`'s full 156-global list — the same "cannot declare an address-free extern for an unnamed global" class of gap `play_jump_sound` was skipped for in batch 2. Not a call-trace-domain case like `play_jump_sound` (this function's *own* writes — the `any1X`/`any2X` globals and `Tplayer` fields — are a real, harness-expressible comparison domain); the blocker is purely the one unnamed argument to the downstream call. |
+| `handle_player_collision_old` | 0x407fd8 | 894 | main.c | Not attempted this pass (headroom, not difficulty) — same collision-handling family as `_original`, likely shares its unnamed-global dependency; re-triage once that has a general fix. |
+| `handle_player_collision_combo` | 0x408358 | 1390 | main.c | Not attempted this pass (headroom) — largest of the five collision variants; calls `line_intersect` (already promoted) among others. |
+| `handle_player_collision_vector` | 0x408d08 | 1071 | main.c | Not attempted this pass (headroom). |
+| `handle_player_collision_vector_2` | 0x4088c8 | 1086 | main.c | Not attempted this pass (headroom). |
+| `start_reward` | 0x407c38 | 472 | main.c | Reads the named global `DATAFILE *data` (VA 0x4dd23c) at a **computed** index (`data[esi+0x5a].dat`, `esi` derived from the reward-type argument) — one of the asset seam's "7 computed-index sites (2 not yet itemized)" `notes/asset_census.md`/`src/icytower/ASSETS.md` already flag as unmapped to a named `asset_id`. Needs the computed-index range mapped against `assets_table.inc` first (an asset-seam task, not a physics one); its other callees (`create_particle`, `new_rand`, `play_sound`) are already promoted or address-free. Deferred rather than guessed. |
+
+### Call-trace domain
+
+**Not implemented this pass.** `handle_player_collision_original`'s
+blocker (an unnamed sound-handle global reached only through a
+`play_sound()` call, never written by the function itself) is exactly the
+class of problem the call-trace domain (unicorn hooks on calls leaving the
+function under test; harness-side stubs recording the same on the compiled
+side, per this batch's task brief) would solve directly — it would let the
+comparison be "which handle reached `play_sound`'s first argument", the
+same design `notes/promotion_candidates.md` SS5 already sketched for
+`play_jump_sound`, without ever needing the global to have a name. Flagged
+as the natural next step for whichever future pass returns to this
+function family; not built this pass — after the two rounds of unicorn
+cross-checking `update_player` needed to get its x87 semantics right (see
+above), there was no remaining pass budget for a second, comparably-sized
+piece of harness machinery (`harness_rand.c` for `add_floor` in batch 5 is
+the closest precedent for the size of this undertaking).
+
+### Harness changes (additive, none touching `src/`)
+
+- `carrier/lift/harness/lift_check.py`: `gen_reset_player` + `gen_update_player`
+  + their `SPECS` entries (additive); `SRC_BATCH6_FUNCS` added to the `--form
+  src` default `--funcs` list; `--toolchain gcc`'s default `--funcs` gained
+  `update_player`.
+- `carrier/lift/harness/src_check.c`: `reset_player`/`update_player` extern
+  declarations + dispatch branches (the latter reusing `add_floor`'s `demo`
+  pointer-VALUE fixup pattern, since `update_player` also calls `get_demo()`
+  internally and dereferences the result).
+- `carrier/lift/harness/gcc_check.c`: extended to wire `reset_player`/
+  `update_player` — `gravity_modifier[3]` given its own plain-global storage
+  (synced via `tr()`, read-only from `update_player`'s side, same pattern as
+  `max_speed`/`collision_type`); `demo` reused from the `add_floor` wiring.
+- `carrier/lift/harness/build_src.cmd`, `build_src_gcc.sh`: file lists
+  extended with `reset_player.c`/`update_player.c`.
+- `carrier/lift/harness/pf_bindings_harness.h`/`_types.h` (harness-only —
+  **not** `carrier/gen/pf_bindings_src.h`, which this pass deliberately does
+  not touch; see below): regenerated via `scan_src_defs.py`'s auto-scanned
+  `--exclude` list (42 names now, up from 40).
+- `src/build/Makefile.standalone`: `SOURCES` extended to every currently-existing
+  non-asset-seam `src/icytower/*.c` file (`add_jump_sequence.c`,
+  `main_state.c`, `new_rand.c`, `ok_to_play.c`, `particle.c`, `reset_player.c`,
+  `scroller.c`, `timer.c`, `update_player.c`) — this also **fixes a
+  pre-existing link failure** (`undefined reference to get_demo`) that batch
+  5's `add_floor` addition to `map.c` had silently introduced into this
+  target without updating its own hand-maintained `SOURCES` list (found
+  while trying to verify this pass's own standalone-world compile; unrelated
+  to this pass's two promoted functions, fixed as encountered).
+
+**`carrier/gen/pf_bindings_src.h`/`_types.h` intentionally NOT regenerated
+this pass** — another agent is running the carrier build concurrently and
+owns that file; regenerating it here would race that build. Verified the
+carrier-world compile anyway against a scratch copy of the same generated
+header, built into a temp directory outside `carrier/gen/`, with the
+identical `--exclude` list `scan_src_defs.py` would produce (42 names +
+`floor_size_modifiers`) — 0 errors, 0 warnings, then discarded. The exclude
+list is scanned automatically at the next real carrier build per this task's
+own instructions; `reset_player`/`update_player` need no manual listing
+beyond this file existing.
+
+### Totals (updated)
+
+| | batch 6 (this pass) | cumulative (6 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 2 | 38 |
+| functions skipped (documented, all passes) | 6 new this pass (5 `handle_player_collision_*` variants + `start_reward`) | 9 (6 new + `play_jump_sound`/`destroy_game_data`/`get_version_str` still carried) |
+| original bytes recovered | 947 (296 + 651) | 3583 |
+
+## Purity gate (updated)
+
+```
+python scripts/check_native_layer.py
+check_native_layer: scanned 27 file(s) under .../src, 0 violation(s)
+```
+
+## Compile (both worlds, batch 6)
+
+```
+standalone: cl /nologo /c /W3 /TC /Isrc\icytower
+            src\icytower\update_frame.c src\icytower\is_solid.c
+            src\icytower\jump_player.c src\icytower\map.c src\icytower\add_combo.c
+            src\icytower\add_jump_sequence.c src\icytower\line_intersect.c
+            src\icytower\control.c src\icytower\particle.c src\icytower\scroller.c
+            src\icytower\timer.c src\icytower\main_state.c src\icytower\state.c
+            src\icytower\new_rand.c src\icytower\ok_to_play.c src\icytower\reset_player.c
+            src\icytower\update_player.c
+            -- 0 errors, 0 warnings
+
+            mingw32-make -f src\build\Makefile.standalone (upstream Allegro headers/libs,
+            SOURCES list extended -- see "Harness changes" above): libicytower.a +
+            standalone_smoke.exe build clean; standalone_smoke.exe run: 16/16 PASS
+            (also confirms the pre-existing get_demo link regression from batch 5 is fixed)
+
+carrier:    python carrier\gen\scan_src_defs.py --src-dir src\icytower   (42 function
+            names + floor_size_modifiers, auto-scanned)
+            python carrier\gen\gen_bindings.py --exclude <scanned names> ^
+                --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+                --out <SCRATCH>\pf_bindings_src.h --types-out <SCRATCH>\pf_bindings_src_types.h
+            (scratch copy only -- carrier/gen/pf_bindings_src.h itself intentionally
+            untouched this pass, see "Harness changes" above)
+
+            cl /nologo /c /W3 /TC /Icarrier\gen /I<SCRATCH> /FIpf_bindings_src.h
+               src\icytower\update_frame.c src\icytower\is_solid.c src\icytower\jump_player.c
+               src\icytower\map.c src\icytower\add_combo.c src\icytower\add_jump_sequence.c
+               src\icytower\line_intersect.c src\icytower\control.c src\icytower\particle.c
+               src\icytower\scroller.c src\icytower\timer.c src\icytower\main_state.c
+               src\icytower\new_rand.c src\icytower\ok_to_play.c src\icytower\reset_player.c
+               src\icytower\update_player.c
+            -- 0 errors, 0 warnings (carrier world, scratch bindings header)
+```

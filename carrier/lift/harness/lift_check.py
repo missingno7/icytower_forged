@@ -585,6 +585,65 @@ def gen_add_floor(rng, k):
 
 
 # --------------------------------------------------------------------------
+# batch 6 (2026-09-07) -- player physics core: reset_player, update_player
+# --------------------------------------------------------------------------
+
+GRAVITY_MODIFIER_VA = 0x4bdba8         # double[3], Treplay.gravity selects it
+
+
+def gen_reset_player(rng, k):
+    """Every field random -- reset_player() zeroes almost all of them and
+    the offline check's domain is the whole 184-byte struct, so any stale
+    byte pattern that survives (x, y, angle -- see reset_player.c's header
+    comment) has to be reproduced byte-for-byte too."""
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+    return [PLAYER_VA], [(PLAYER_VA, bytes(p))]
+
+
+def gen_update_player(rng, k):
+    """x/y/sx/sy as doubles (rnd_double's special-value pool covers NaN/inf/
+    denormals and the exact +-100.0/+-555.0/+-85.0/+-4.0 boundaries the
+    unicorn cross-check needed to catch the strict-vs-non-strict compare
+    bug -- see update_player.c's header comment), status/bounce pooled
+    around the values the function itself branches on (0/1/2/other),
+    collision_type over its real 0..4 range, demo->gravity over its real
+    0..2 range."""
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+    sx = rnd_double(rng, k)
+    sy = rnd_double(rng, (k * 7 + 1) % len(DBL_SPECIALS) + k // 3)
+    boundary_pool = [85.0, 555.0, 1000.0, -100.0,
+                     84.99999999999999, 555.0000000000001,
+                     999.9999999999999, -99.99999999999999,
+                     4.0, -4.0, 3.9999999999999996, 4.000000000000001]
+    if k % 5 == 0:
+        x = rng.choice(boundary_pool[:8] + [0.0, 640.0])
+    else:
+        x = rng.uniform(-2000.0, 2000.0)
+    if k % 5 == 0:
+        y = rng.choice([1000.0, 999.9999999999999, 1000.0000000000002, 0.0])
+    else:
+        y = rng.uniform(-2000.0, 3000.0)
+    struct.pack_into("<d", p, 0x0, x)
+    struct.pack_into("<d", p, 0x8, y)
+    struct.pack_into("<d", p, 0x10, sx)
+    struct.pack_into("<d", p, 0x18, sy)
+    status_pool = [0, 1, 2, 3, -1, 5, 7]
+    status = status_pool[k % len(status_pool)] if k % 4 else rng.randint(-5, 8)
+    struct.pack_into("<i", p, 0x34, status)
+    bounce = rng.choice([0, 1, -1, 20, -20]) if k % 3 else rng.randint(-1000, 1000)
+    struct.pack_into("<i", p, 0x60, bounce)
+
+    ct = rng.randrange(5)
+    grav_idx = rng.randrange(3)
+    demo = bytearray(SZ_DEMO)
+    struct.pack_into("<i", demo, 0x9c, grav_idx)   # Treplay.gravity
+
+    writes = [(PLAYER_VA, bytes(p)), (G_COLLISION_TYPE, si32(ct)),
+              (DEMO_VA, bytes(demo)), (G_DEMO, u32(DEMO_VA))]
+    return [PLAYER_VA], writes
+
+
+# --------------------------------------------------------------------------
 # line_intersect (0x406b80) -- the x87 discriminator
 #
 #   D  = dx1*dy3 - dx3*dy1        (32-bit IMULs, wrapping)
@@ -842,6 +901,11 @@ SPECS = {
     # -- add_floor pass (2026-09-07) --
     "add_floor": {"va": 0x4167dc, "gen": gen_add_floor, "cmp_eax": False,
                  "domain": [(MAP_VA, SZ_MAP)], "domain_names": ["Tmap"]},
+    # -- batch 6 (2026-09-07) -- player physics core --
+    "reset_player": {"va": 0x418550, "gen": gen_reset_player, "cmp_eax": False,
+                     "domain": [(PLAYER_VA, SZ_PLAYER)], "domain_names": ["Tplayer"]},
+    "update_player": {"va": 0x418740, "gen": gen_update_player, "cmp_eax": False,
+                      "domain": [(PLAYER_VA, SZ_PLAYER)], "domain_names": ["Tplayer"]},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -853,6 +917,8 @@ SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
 SRC_BATCH4_FUNCS = "new_rand,update_particle,create_particle,ok_to_play"
 
 SRC_ADD_FLOOR_FUNCS = "add_floor"
+
+SRC_BATCH6_FUNCS = "reset_player,update_player"
 
 
 # --------------------------------------------------------------------------
@@ -1042,14 +1108,15 @@ def main():
                                             "src": "src_check.exe"}.get(args.form, "lift_check.exe"))
     if args.funcs is None:
         if args.toolchain == "gcc":
-            args.funcs = "line_intersect,jump_player,add_floor"
+            args.funcs = "line_intersect,jump_player,add_floor,update_player"
         elif args.form == "native":
             args.funcs = "update_frame,is_solid"
         elif args.form == "src":
             args.funcs = ("update_frame,is_solid,jump_player,getFloorData,reset_map,"
                          "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
                          "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
-                         "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS)
+                         "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS +
+                         "," + SRC_BATCH6_FUNCS)
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")

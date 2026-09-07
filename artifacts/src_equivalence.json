@@ -166,13 +166,14 @@
  },
  "compile": {
   "carrier_world": {
-   "bindings": "carrier/gen/pf_bindings_src.h (regenerated this pass via carrier/gen/scan_src_defs.py's auto-scanned --exclude list, 41 names -- 40 function names + the file-static data table floor_size_modifiers, which needed the same exclusion treatment as a function name)",
-   "command": "cl /nologo /c /W3 /TC /Icarrier\\gen /Isrc\\icytower /FIpf_bindings_src.h src\\icytower\\update_frame.c src\\icytower\\is_solid.c src\\icytower\\jump_player.c src\\icytower\\map.c src\\icytower\\add_combo.c src\\icytower\\add_jump_sequence.c src\\icytower\\line_intersect.c src\\icytower\\control.c src\\icytower\\particle.c src\\icytower\\scroller.c src\\icytower\\timer.c src\\icytower\\main_state.c src\\icytower\\new_rand.c src\\icytower\\ok_to_play.c",
+   "bindings": "batch 6 verified against a SCRATCH copy of pf_bindings_src.h (carrier/gen/gen_bindings.py, --exclude scan_src_defs.py's 42-name list + floor_size_modifiers), built OUTSIDE carrier/gen/ and not committed there -- this pass deliberately does not touch carrier/gen/pf_bindings_src.h itself (another agent's concurrent carrier build owns and regenerates that file; its exclude-list scan picks up reset_player/update_player automatically at its next run, per src/icytower/PROMOTIONS.md's batch 6 entry).",
+   "command": "cl /nologo /c /W3 /TC /Icarrier\\gen /Isrc\\icytower /FIpf_bindings_src.h src\\icytower\\update_frame.c src\\icytower\\is_solid.c src\\icytower\\jump_player.c src\\icytower\\map.c src\\icytower\\add_combo.c src\\icytower\\add_jump_sequence.c src\\icytower\\line_intersect.c src\\icytower\\control.c src\\icytower\\particle.c src\\icytower\\scroller.c src\\icytower\\timer.c src\\icytower\\main_state.c src\\icytower\\new_rand.c src\\icytower\\ok_to_play.c src\\icytower\\reset_player.c src\\icytower\\update_player.c",
    "result": "0 errors, 0 warnings beyond /W3 baseline"
   },
   "standalone_world": {
    "bindings": "absent -- src/icytower/state.c supplies storage for the extern globals declared in game_state.h",
-   "command": "cl /nologo /c /W3 /TC /Isrc\\icytower src\\icytower\\update_frame.c src\\icytower\\is_solid.c src\\icytower\\jump_player.c src\\icytower\\map.c src\\icytower\\add_combo.c src\\icytower\\add_jump_sequence.c src\\icytower\\line_intersect.c src\\icytower\\control.c src\\icytower\\particle.c src\\icytower\\scroller.c src\\icytower\\timer.c src\\icytower\\main_state.c src\\icytower\\state.c src\\icytower\\new_rand.c src\\icytower\\ok_to_play.c",
+   "command": "cl /nologo /c /W3 /TC /Isrc\\icytower src\\icytower\\update_frame.c src\\icytower\\is_solid.c src\\icytower\\jump_player.c src\\icytower\\map.c src\\icytower\\add_combo.c src\\icytower\\add_jump_sequence.c src\\icytower\\line_intersect.c src\\icytower\\control.c src\\icytower\\particle.c src\\icytower\\scroller.c src\\icytower\\timer.c src\\icytower\\main_state.c src\\icytower\\state.c src\\icytower\\new_rand.c src\\icytower\\ok_to_play.c src\\icytower\\reset_player.c src\\icytower\\update_player.c",
+   "makefile_world": "src/build/Makefile.standalone SOURCES list extended this pass to add add_jump_sequence.c/main_state.c/new_rand.c/ok_to_play.c/particle.c/reset_player.c/scroller.c/timer.c/update_player.c -- also fixes a pre-existing link failure (undefined reference to get_demo) that batch 5's add_floor silently introduced into this target without updating its hand-maintained SOURCES list; mingw32-make -f Makefile.standalone: libicytower.a + standalone_smoke.exe build clean, standalone_smoke.exe run 16/16 PASS.",
    "result": "0 errors, 0 warnings beyond /W3 baseline"
   }
  },
@@ -998,9 +999,56 @@
   "note": "The tower layout generator (map.c, 0x4167dc, 608 bytes) -- is_solid/getFloorData/get_level's producer counterpart, and the subject of notes/layout_determinism.md and notes/layout_rules_1.5.1.md (prose rules + SAME/CHANGED/UNKNOWN comparison against 1.3's new_floor()). The only function this pass targeted.",
   "result": "add_floor: EQUAL over 80000 vectors (4 seeds x 20000) under both MSVC and the GCC -m32 -mfpmath=387 -mno-sse2 -O2 build. Negative control DIFFER named exactly. Two bugs found and fixed during this pass (a harness pointer-translation gap, and two mis-guessed magic-multiply divisors) -- see the add_floor entry's own bugs_found_this_pass and notes/layout_rules_1.5.1.md."
  },
+ "pass_2026-09-07_batch6": {
+  "call_trace_domain": "Not implemented this pass. handle_player_collision_original's blocker (an unnamed sound-handle global reached only through a play_sound() call) is exactly the class of problem the call-trace domain (unicorn hooks on calls leaving the function under test, harness-side stubs recording the same on the compiled side) would solve -- named as a candidate for whichever future pass reaches this family again, since it would unblock handle_player_collision_original immediately without needing the global to ever get a name. Estimated as comparable in scope to the harness_rand.c machinery batch 5 built for add_floor's rand() call, not attempted here for lack of remaining pass budget after the two promoted functions' x87 recovery (which needed two rounds of unicorn cross-checking to get right, see update_player's bugs_found_this_pass above).",
+  "count": 2,
+  "functions": [
+   "reset_player",
+   "update_player"
+  ],
+  "note": "The player physics core (player.c): reset_player (296B, spawn-state zeroing) and update_player (651B, velocity clamp + position integration + screen-edge wall bounce + gravity) -- the function handle_player_input (0x40b3e4) and play() call every tick alongside jump_player (already promoted). Both offline-verified; see each function's own entry above for the two real x87 strict-vs-non-strict/precision bugs update_player's recovery caught (both fixed before this pass's C source was written) and the residual GCC-side signaling-NaN-payload wrinkle (reported, not chased -- no gameplay reachability).",
+  "skipped": [
+   {
+    "function": "handle_player_collision_original",
+    "reason": "Calls play_sound() with a sound-handle global at VA 0x4dd300 that has no DWARF-recovered name anywhere in artifacts/dwarf_info.txt (confirmed: zero hits searching for the address directly) and is absent from carrier/gen/interop_index.json's full 156-global list -- the same 'harness/src cannot declare an address-free extern for an unnamed global' class of gap play_jump_sound was skipped for in batch 2. Everything else in the function (Tplayer field layout, the two is_solid() foot-probe calls, the any11/any12/any21/any22/any23 globals, the edge-detection logic comparing the two feet's is_solid() results) was fully recovered and hand-traced during this pass; only the one unnamed global blocks a clean promotion.",
+    "size": 456,
+    "va": "0x407e10"
+   },
+   {
+    "function": "handle_player_collision_old",
+    "reason": "Not attempted this pass (headroom, not difficulty) -- same collision-handling family as _original, likely shares its unnamed-global dependency and/or others; a future pass should re-triage once the unnamed sound-handle problem has a general fix (naming the global by hand outside DWARF, or the call-trace domain making the call itself the comparison target instead of a memory write).",
+    "size": 894,
+    "va": "0x407fd8"
+   },
+   {
+    "function": "handle_player_collision_combo",
+    "reason": "Not attempted this pass (headroom) -- the largest of the five collision variants, calls line_intersect (already promoted) among others; likely the eventual target once a smaller variant is fully clear.",
+    "size": 1390,
+    "va": "0x408358"
+   },
+   {
+    "function": "handle_player_collision_vector",
+    "reason": "Not attempted this pass (headroom).",
+    "size": 1071,
+    "va": "0x408d08"
+   },
+   {
+    "function": "handle_player_collision_vector_2",
+    "reason": "Not attempted this pass (headroom).",
+    "size": 1086,
+    "va": "0x4088c8"
+   },
+   {
+    "function": "start_reward",
+    "reason": "Reads the global DATAFILE *data (VA 0x4dd23c, named) at a COMPUTED index (data[(esi+0x5a)] .dat, esi derived from the reward-type parameter) -- one of the 'asset seam's 7 computed-index sites (2 not yet itemized)' notes/asset_census.md/src/icytower/ASSETS.md already flag as unmapped to a named asset_id. Recovering this cleanly needs mapping that computed index range against assets_table.inc first (a asset-seam task, not a collision/physics one); calls create_particle/new_rand/play_sound, all already-promoted or address-free, so this is the only remaining blocker. Deferred to a future asset-seam pass rather than guessed.",
+    "size": 472,
+    "va": "0x407c38"
+   }
+  ]
+ },
  "purity_gate": {
   "command": "python scripts/check_native_layer.py",
-  "files_scanned": 25,
+  "files_scanned": 27,
   "result": "PASS",
   "violations": 0
  },
@@ -1054,6 +1102,46 @@
   },
   "result": "EQUAL",
   "vectors": 20000
+ },
+ "reset_player": {
+  "compared_return_value": false,
+  "domain_bytes": 184,
+  "domain_names": [
+   "Tplayer"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors": 0,
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "No FPU instructions at all in this function (confirmed instruction-by-instruction against artifacts/disasm.txt, 0x418550..0x418677) -- included in the GCC pass for cross-toolchain consistency, not because any x87 sensitivity was expected.",
+   "result": "EQUAL",
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000,
+   "vectors_per_seed": 20000
+  },
+  "msvc": {
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "negative_control": {
+   "fault": "reset_player:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0xe3",
+    "original": "0xe2",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "result": "EQUAL"
  },
  "restart_scroller": {
   "compared_return_value": false,
@@ -1250,5 +1338,78 @@
    "vectors": 200
   },
   "result": "EQUAL"
+ },
+ "update_player": {
+  "bugs_found_this_pass": [
+   {
+    "bug": "test $0x45,%ah after fucom/fucomp, paired with je, decodes to STRICT greater-than (C3=1 on the EQUAL case is inside the 0x45 mask), not the non-strict >= a first reading assumed by analogy with line_intersect's NaN guard.",
+    "detail": "Right for the sy/sx clamp thresholds (-100.0/max_speed[collision_type], where the clamp target equals the compared constant so strict-vs-non-strict is unobservable) but wrong for the screen-edge x thresholds (555.0/85.0) and the |bounce speed| >= 4.0 threshold, where the wall-clamp's sx *= -0.9 side effect only fires on the strict side. Caught by cross-checking a Python model against the ORIGINAL bytes executed directly in unicorn over 20000 vectors: the first mismatch landed exactly on x_new == 555.0, an engineered boundary the vector generator's boundary_pool deliberately includes.",
+    "found_by": "unicorn cross-check (scratchpad script, not part of the harness), before any C source was written from the wrong hypothesis."
+   },
+   {
+    "bug": "x_new/y_new (p->x + sx / p->y + sy) are compared against 555.0/1000.0/85.0 in the same 80-bit x87 register the non-popping fstl stored from, not from a second 64-bit-rounded read.",
+    "detail": "Three engineered vectors in the same cross-check rounded x+sx to exactly 555.0/85.0 as a 64-bit double while the ORIGINAL still took the wall-bounce branch -- the double-vs-80-bit gap already established for line_intersect/new_rand/add_floor, reproduced here in a comparison rather than a final truncation. Not fixable in a double-only Python model; GCC -mfpmath=387 keeps p->x + sx in an x87 register across the comparison the same way the original does, so ordinary C (if (p->x > 555.0)) reproduces it once compiled with real x87 arithmetic -- confirmed by the GCC census above finding 0 divergences of this kind.",
+    "found_by": "same unicorn cross-check, 3 of 20000 vectors."
+   }
+  ],
+  "compared_return_value": false,
+  "domain_bytes": 184,
+  "domain_names": [
+   "Tplayer"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors": [
+    1,
+    1,
+    5,
+    0
+   ],
+   "differing_vectors_total": 7,
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "The double-vs-80-bit gravity-sum gap MSVC shows (above) is fully closed under GCC -mfpmath=387 -mno-sse2 -O2 (0 of 80000 differ at Tplayer+0x18/sy's gravity chain). The 7/80000 residual is a DIFFERENT, much narrower wrinkle: in every one of the 7 vectors, sx or sy was fed a genuine SIGNALING NaN (IEEE-754 exponent all-1s, mantissa top bit i.e. bit 51 clear, at least one other mantissa bit set) via the vector generator's random-bit-pattern pool; the clamp chain correctly leaves the value untouched either way (neither '<' nor '>' is true for NaN, matching C semantics), but the ORIGINAL binary's exact instruction encoding preserves the signaling bit while GCC -O2's own instruction selection for the same source-level comparison chain quiets it (sets bit 51) as an incidental side effect of whichever x87 compare/move sequence it chooses -- confirmed byte-for-byte: every differing byte is exactly +8 (a single bit, bit 51) at Tplayer+0x16 (sx byte 6) or +0x1e (sy byte 6), never anywhere else, and every other field (x, y, status, bounce, and the payload's other 63 bits) matches exactly. A legitimate game double can never BECOME a signaling NaN through ordinary IEEE-754 arithmetic (only quiet NaNs ever propagate that way), so this has no reachable gameplay consequence; reported per win32_pilot.md's 'never a percentage, always the exact byte' rule rather than chased into GCC's instruction-selection internals, which plain C source cannot control without inline asm (purity-gate-banned).",
+   "result": "DIFFER (7/80000, all a narrower NaN-payload wrinkle -- see note)",
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000,
+   "vectors_per_seed": 20000
+  },
+  "msvc": {
+   "differing_vectors": [
+    426,
+    495,
+    463,
+    489
+   ],
+   "differing_vectors_total": 1873,
+   "note": "Every MSVC divergence found (1873/80000 = 2.34%) is at Tplayer+0x18 (sy), always the last one or two bits of the p->sy = 0.8 + gravity_modifier[get_demo()->gravity] + p->sy three-term sum -- MSVC's plain double/SSE arithmetic rounds after each add; the original (and GCC -mfpmath=387) keep the whole chain in an 80-bit x87 register and round once at the final store. Same double-vs-80-bit gap already documented for line_intersect/new_rand/add_floor (GCC_X87.md); not a logic error -- no other field (x, y, sx, status, bounce) ever differs under MSVC in 80000 vectors.",
+   "result": "DIFFER (precision only)",
+   "seeds": [
+    20260907,
+    1,
+    424242,
+    987654321
+   ],
+   "total_vectors": 80000,
+   "vectors_per_seed": 20000
+  },
+  "negative_control": {
+   "fault": "update_player:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "result": "EQUAL (GCC x87, modulo the signaling-NaN-payload note below); MSVC precision-only"
  }
 }

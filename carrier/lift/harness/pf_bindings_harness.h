@@ -3,8 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 14:12:51 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle
+ * Generated: 2026-09-07 15:01:20 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Addresses wrapped with --mem-macro: PF_MEM(...)
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
@@ -905,9 +905,7 @@
 /* prototype: void reset_options(Toptions *) */
 #define reset_options ((PFN_reset_options)PF_MEM(0x4182cc))
 /* excluded by --exclude (compiled natively): reset_particles */
-/* reset_player  VA=0x418550  cu=F:\projects\icytower\trunk\source\player.c */
-/* prototype: void reset_player(Tplayer *) */
-#define reset_player ((PFN_reset_player)PF_MEM(0x418550))
+/* excluded by --exclude (compiled natively): reset_player */
 /* excluded by --exclude (compiled natively): restart_scroller */
 /* run_demo  VA=0x415e0c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void run_demo(char *) */
@@ -1017,9 +1015,7 @@
 /* prototype: int update_game_menu(BITMAP *, Tmenu *, Tmenu_params *, Tcontrol *, int, int, void **) */
 #define update_game_menu ((PFN_update_game_menu)PF_MEM(0x417adc))
 /* excluded by --exclude (compiled natively): update_particle */
-/* update_player  VA=0x418740  cu=F:\projects\icytower\trunk\source\player.c */
-/* prototype: void update_player(Tplayer *) */
-#define update_player ((PFN_update_player)PF_MEM(0x418740))
+/* excluded by --exclude (compiled natively): update_player */
 /* update_reward  VA=0x406a8c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void update_reward() */
 #define update_reward ((PFN_update_reward)PF_MEM(0x406a8c))

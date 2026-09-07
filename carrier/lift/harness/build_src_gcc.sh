@@ -43,5 +43,7 @@ mkdir -p obj_gcc
     ../../../src/icytower/ok_to_play.c \
     ../../../src/icytower/map.c \
     ../../../src/icytower/main_state.c \
+    ../../../src/icytower/reset_player.c \
+    ../../../src/icytower/update_player.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"
