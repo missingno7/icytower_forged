@@ -27,6 +27,7 @@ artifacts/. Newest entries at the bottom of each section.
 - 2026-09-07: msvcrt's __getmainargs reads the process command line internally, bypassing the IAT; fixed by launching the child with the guest's own command line and passing carrier options via PF_* env vars (NOTES.md #6).
 
 ## Measurements
+- 2026-09-07: gameplay corpus available without any recording: assets/profiles/MissingNO/replays/*.itr (8 game-native replays, e.g. best_floor_204). Candidate workload for the ORIGINAL vs LIFTED vs NATIVE comparison (win32_pilot.md §4a).
 - .text ownership: Allegro 61.5 %, vorbis/ogg 17.0 %, game 16.5 % (125641 B, 253 functions), CRT 3.6 %.
 
 ## First-divergence investigations

@@ -1,0 +1,35 @@
+# newgame.txt - milestone D (win32_pilot.md sec 8): from the main menu into
+# play() and ~10s (500 ticks) of gameplay. Format: T <press|release> <key>,
+# one event per line, # for comments. Tick numbers calibrated empirically
+# against this build/profile (see carrier/NOTES.md "Milestones 5-7"):
+# - MEASURED: a brief ENTER tap (a few ticks) at the main menu is unreliable
+#   (missed by the menu's own input sampling more often than not); holding
+#   ENTER continuously for hundreds of ticks registers reliably every time.
+#   Gameplay (Tcontrol/poll_control, sampled every consumed tick) does not
+#   have this problem - short taps are fine there.
+# - MEASURED: with ENTER held from T=20, play() first reaches its safepoint
+#   (first digest line) around T=126 in this build/profile.
+20 press KEY_ENTER
+620 release KEY_ENTER
+200 press KEY_RIGHT
+200 press KEY_SPACE
+215 release KEY_SPACE
+250 press KEY_SPACE
+265 release KEY_SPACE
+300 press KEY_SPACE
+315 release KEY_SPACE
+350 press KEY_SPACE
+365 release KEY_SPACE
+400 press KEY_SPACE
+415 release KEY_SPACE
+450 press KEY_SPACE
+465 release KEY_SPACE
+500 press KEY_SPACE
+515 release KEY_SPACE
+550 press KEY_SPACE
+565 release KEY_SPACE
+600 press KEY_SPACE
+615 release KEY_SPACE
+650 press KEY_SPACE
+665 release KEY_SPACE
+700 release KEY_RIGHT

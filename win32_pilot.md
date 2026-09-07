@@ -310,6 +310,23 @@ Replay identity, in PortForge terms (pf/41): the heartbeat is the game tick
 `tick:N`; forwarded host calls whose results reach game state are recorded
 events, never silent passthrough (capsule §J.3).
 
+### 5a. Input source is an exclusive policy (requirement, 2026-09-07)
+
+Observed during milestone 6 work: scripted events and the real keyboard both
+reached Allegro's key state at the same time. Mixing is a defect. The carrier
+must own the input source as one exclusive setting:
+
+```text
+--input=real     real keyboard/joystick only; recording allowed
+--input=script   scripted events only; the DirectInput path is parked
+--input=none     no input (diagnostic)
+```
+
+Every key event delivered to the game is attributable to exactly one source,
+and the recorder logs the source with the event. This generalizes: each
+NONDETERMINISTIC channel (time, input, RNG, network) has exactly one active
+provider per run, host or carrier, never both.
+
 ## 6. Snapshot model (HYPOTHESIS)
 
 Safepoint: VA 0x4124f4, once per tick, no host call in flight on the main
@@ -375,9 +392,9 @@ name it at that tick.
 | 2 | smallest carrier skeleton (loader, IAT, trampolines, VEH) | done — `carrier/`, NOTES.md |
 | 3 | original code executes through the carrier | done — run1 |
 | 4 | visible startup/menu ("MAIN MENU LOOP" in log.txt) | done — run1, log matches baseline except divergence 001 |
-| 5 | gameplay reached | in progress (scripted input) |
-| 6 | time/input/RNG instrumented for determinism | in progress (--det) |
-| 7 | record and replay a short gameplay sequence, digest-equal | in progress |
+| 5 | gameplay reached | done — `carrier/scripts/newgame.txt`, `carrier/NOTES.md` "Milestones 5-7" |
+| 6 | time/input/RNG instrumented for determinism | done — `carrier/src/det.hpp`/`det.cpp` (`--det`), `carrier/NOTES.md` |
+| 7 | record and replay a short gameplay sequence, digest-equal | done — `carrier/scripts/compare_digests.py`: EQUAL across 3 `--det --pace=fast` runs; negative control diverges at the moved tick; non-`--det` runs diverge — `carrier/NOTES.md` |
 | 8 | safepoint snapshot at 0x4124f4 and restore | pending |
 | 9 | inspection/tracing from a snapshot | pending |
 | 10 | pick one small exercised game function | pending |
