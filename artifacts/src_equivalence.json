@@ -533,6 +533,140 @@
   "result": "EQUAL",
   "vectors": 20000
  },
+ "handle_player_collision_combo": {
+  "batch": "pass_2026-09-07_batch9",
+  "call_trace_domain": {
+   "generalises_to": "any bmp->vtable->N(...) call site -- the concrete unblocker for batch 8's drawSlot/draw_reward/draw_results/draw_progress_bar skip reason ('2 indirect bmp->vtable calls, a partially-expressible domain'). draw_progress_bar's two bare `call *%eax` (function-pointer VARIABLES, not vtable slots) are a different, still-open case.",
+   "known_limitation": "first-call capture (batch 8's rule): of the three vtable-line calls the debug overlay makes, only the first (the floor segment) has its arguments compared; the other two are covered by call_count plus the fact that their coordinate arguments are the very same expressions passed to the two line_intersect() calls, whose results ARE fully compared.",
+   "mechanism": "mechanism B (PROMOTIONS.md batch 7), extended twice this pass. (1) `makecol` is an ordinary named Allegro callee added to LIB_CALL_TARGETS (VA 0x450c98, argc 3) -- nothing new. (2) `line` is NOT a named call at all: Allegro 4's line() is an AL_INLINE whose whole body is bmp->vtable->line(bmp, ...), and the original bytes do exactly that (`call *0x34(%ecx)` off BITMAP.vtable at +0x1c), so there is no callee VA in the image to hook. The vectors instead point the guest `screen` global at a scratch BITMAP whose scratch GFX_VTABLE carries a SYNTHETIC, otherwise-unused guest VA (VTABLE_LINE_VA = 0x7c4000) in its +0x34 slot; the ORIGINAL side's indirect call lands there and the existing Oracle._make_call_trace_hook hooks it like any named callee, while the compiled side's dispatch writes the HOST address of harness_trace_line() into the same slot of its own image copy. Both sides log {count, bmp, x1, y1, x2, y2, color}; the ordinary memory-domain diff compares them. No engine change was needed.",
+   "traced_callees": [
+    "play_sound",
+    "makecol",
+    "line (GFX_VTABLE slot +0x34)"
+   ]
+  },
+  "compared_return_value": false,
+  "compile": {
+   "carrier_scratch_bindings": "0 errors, 0 warnings (scratch pf_bindings_src.h/pf_bindings_src_types.h from scan_src_defs.py's auto-scanned 51-name exclude list + floor_size_modifiers, generated outside carrier/gen/ and discarded; carrier/gen/pf_lib_bindings.h force-included unmodified -- its own generated `#define line(a0,...) ((a0)->vtable->line(...))` is what makes the source's plain line(screen, ...) correct here; gcc -m32 -DICYTOWER_BINDINGS_ACTIVE)",
+   "standalone_generated_allegro_api": "0 errors, 0 warnings, as part of build_src_gcc.sh -- but ONLY with the #ifndef-guarded `line` AL_INLINE macro added to carrier/lift/harness/pf_harness_calltrace.h: the generated src/icytower/allegro_api.h supplies neither the macro nor a declaration for `line`, a real gap in port_forge/tools/pf_win32_gen_lib_bindings.py's non-bindings half (reported, not fixed -- PROMOTIONS.md batch 9).",
+   "standalone_upstream_allegro": "0 errors, 0 warnings (gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK, third_party/allegro-4.4.3.1 headers). No #include swap needed, unlike batch 8's two draw files: allegro_api.h's own ICYTOWER_UPSTREAM_ALLEGRO branch pulls in <allegro.h>, whose real AL_INLINE line() supplies what the generated half does not."
+  },
+  "cu": "main.c",
+  "debug_overlay": "The `debug && key[KEY_F2]` overlay branch in all three sweep variants is STATICALLY DEAD in vivo: `debug` (0x4dd160) has no store anywhere in the image -- all 14 references in artifacts/disasm.txt are loads or `cmpl $0x0,...` -- so it is .bss-zero for the life of the process. It is recovered anyway, and verified anyway: 1 vector in 5 sets debug/key[KEY_F2] non-zero. That is not decoration -- _vector is the only variant whose two makecol() calls sit INSIDE the gate, so a debug-always-0 corpus would have compared nothing about its colour handling.",
+  "domain_bytes": 264,
+  "domain_names": [
+   "Tplayer",
+   "any11",
+   "any12",
+   "any21",
+   "any22",
+   "any23",
+   "play_sound_trace(count,handle,pitch,pan)",
+   "makecol_trace(count,r,g,b)",
+   "line_trace(count,bmp,x1,y1,x2,y2,color)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "exe": "carrier/lift/harness/gcc_check_x87_nosse_batch9.exe",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "No accumulated x87 chain anywhere in these 4441 bytes: every FP operation is a fistpl truncation of p->x/p->y under the usual local round-to-zero control word, plus fildl/fisubl on the landing writes. There is therefore no double-vs-80-bit question of the kind line_intersect/new_rand/update_player have -- but the three sweep variants CALL line_intersect, which does, so the GCC x87 build is still the toolchain of record here.",
+   "result": "EQUAL",
+   "seeds": [
+    20260907,
+    424242
+   ],
+   "total_vectors": 40000,
+   "vectors_per_seed": 20000
+  },
+  "msvc": {
+   "note": "no MSVC cl.exe available in this sandbox (checked: not on PATH, no Visual Studio install) -- same as batch 8.",
+   "result": "NOT RUN"
+  },
+  "negative_control": {
+   "fault": "handle_player_collision_combo:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Two algorithms in one: handle_player_collision_original's foot probes verbatim (same any1* writes, same 0x270f snap, same edge rules, same early return on a landing) and, only if those did not land the player, _vector_2's line sweep minus the fy+4 retry and minus _vector's guard. Its two makecol() calls are unconditional AND come first, before even the foot probes, so it calls Allegro twice even on frames where it returns early.",
+  "size_bytes": 1390,
+  "va": "0x408358"
+ },
+ "handle_player_collision_old": {
+  "batch": "pass_2026-09-07_batch9",
+  "call_trace_domain": {
+   "generalises_to": "any bmp->vtable->N(...) call site -- the concrete unblocker for batch 8's drawSlot/draw_reward/draw_results/draw_progress_bar skip reason ('2 indirect bmp->vtable calls, a partially-expressible domain'). draw_progress_bar's two bare `call *%eax` (function-pointer VARIABLES, not vtable slots) are a different, still-open case.",
+   "known_limitation": "first-call capture (batch 8's rule): of the three vtable-line calls the debug overlay makes, only the first (the floor segment) has its arguments compared; the other two are covered by call_count plus the fact that their coordinate arguments are the very same expressions passed to the two line_intersect() calls, whose results ARE fully compared.",
+   "mechanism": "mechanism B (PROMOTIONS.md batch 7), extended twice this pass. (1) `makecol` is an ordinary named Allegro callee added to LIB_CALL_TARGETS (VA 0x450c98, argc 3) -- nothing new. (2) `line` is NOT a named call at all: Allegro 4's line() is an AL_INLINE whose whole body is bmp->vtable->line(bmp, ...), and the original bytes do exactly that (`call *0x34(%ecx)` off BITMAP.vtable at +0x1c), so there is no callee VA in the image to hook. The vectors instead point the guest `screen` global at a scratch BITMAP whose scratch GFX_VTABLE carries a SYNTHETIC, otherwise-unused guest VA (VTABLE_LINE_VA = 0x7c4000) in its +0x34 slot; the ORIGINAL side's indirect call lands there and the existing Oracle._make_call_trace_hook hooks it like any named callee, while the compiled side's dispatch writes the HOST address of harness_trace_line() into the same slot of its own image copy. Both sides log {count, bmp, x1, y1, x2, y2, color}; the ordinary memory-domain diff compares them. No engine change was needed.",
+   "traced_callees": [
+    "play_sound",
+    "makecol",
+    "line (GFX_VTABLE slot +0x34)"
+   ]
+  },
+  "compared_return_value": false,
+  "compile": {
+   "carrier_scratch_bindings": "0 errors, 0 warnings (scratch pf_bindings_src.h/pf_bindings_src_types.h from scan_src_defs.py's auto-scanned 51-name exclude list + floor_size_modifiers, generated outside carrier/gen/ and discarded; carrier/gen/pf_lib_bindings.h force-included unmodified -- its own generated `#define line(a0,...) ((a0)->vtable->line(...))` is what makes the source's plain line(screen, ...) correct here; gcc -m32 -DICYTOWER_BINDINGS_ACTIVE)",
+   "standalone_generated_allegro_api": "0 errors, 0 warnings, as part of build_src_gcc.sh -- but ONLY with the #ifndef-guarded `line` AL_INLINE macro added to carrier/lift/harness/pf_harness_calltrace.h: the generated src/icytower/allegro_api.h supplies neither the macro nor a declaration for `line`, a real gap in port_forge/tools/pf_win32_gen_lib_bindings.py's non-bindings half (reported, not fixed -- PROMOTIONS.md batch 9).",
+   "standalone_upstream_allegro": "0 errors, 0 warnings (gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK, third_party/allegro-4.4.3.1 headers). No #include swap needed, unlike batch 8's two draw files: allegro_api.h's own ICYTOWER_UPSTREAM_ALLEGRO branch pulls in <allegro.h>, whose real AL_INLINE line() supplies what the generated half does not."
+  },
+  "cu": "main.c",
+  "debug_overlay": "The `debug && key[KEY_F2]` overlay branch in all three sweep variants is STATICALLY DEAD in vivo: `debug` (0x4dd160) has no store anywhere in the image -- all 14 references in artifacts/disasm.txt are loads or `cmpl $0x0,...` -- so it is .bss-zero for the life of the process. It is recovered anyway, and verified anyway: 1 vector in 5 sets debug/key[KEY_F2] non-zero. That is not decoration -- _vector is the only variant whose two makecol() calls sit INSIDE the gate, so a debug-always-0 corpus would have compared nothing about its colour handling.",
+  "domain_bytes": 264,
+  "domain_names": [
+   "Tplayer",
+   "any11",
+   "any12",
+   "any21",
+   "any22",
+   "any23",
+   "play_sound_trace(count,handle,pitch,pan)",
+   "makecol_trace(count,r,g,b)",
+   "line_trace(count,bmp,x1,y1,x2,y2,color)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "exe": "carrier/lift/harness/gcc_check_x87_nosse_batch9.exe",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "No accumulated x87 chain anywhere in these 4441 bytes: every FP operation is a fistpl truncation of p->x/p->y under the usual local round-to-zero control word, plus fildl/fisubl on the landing writes. There is therefore no double-vs-80-bit question of the kind line_intersect/new_rand/update_player have -- but the three sweep variants CALL line_intersect, which does, so the GCC x87 build is still the toolchain of record here.",
+   "result": "EQUAL",
+   "seeds": [
+    20260907,
+    424242
+   ],
+   "total_vectors": 40000,
+   "vectors_per_seed": 20000
+  },
+  "msvc": {
+   "note": "no MSVC cl.exe available in this sandbox (checked: not on PATH, no Visual Studio install) -- same as batch 8.",
+   "result": "NOT RUN"
+  },
+  "negative_control": {
+   "fault": "handle_player_collision_old:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Two static foot probes (identical to _original) plus ONE midpoint re-probe, gated on `my > lastY` (the player's integer Y grew by >= 2). CORRECTS batch 8's skip note, which called this 'a genuine iterative bisection loop': the three backward branches it cited (0x408052 from 0x408131, 0x408066 from 0x40813e, and the 0x4081b0/0x4081b8 neg blocks) are GCC tail duplication of two if/else arms plus two inlined abs()es -- no loop-carried variable, no convergence, is_solid() called at most 4 times in two fixed pairs. The midpoint rounds towards (lastX,lastY); the disassembly halves the abs() output with a sign-correcting shr/add/sar in one arm and a bare sar in the other, which agree bit for bit for any non-negative value (and at INT_MIN, which is even). The ONLY variant that writes any21/any22, and the only one that sets any23 = 1.",
+  "size_bytes": 894,
+  "va": "0x407fd8"
+ },
  "handle_player_collision_original": {
   "call_trace_domain": {
    "mechanism": "same mechanism B as play_jump_sound (see that entry); traces the sounds[8] handle reaching play_sound's first argument on the status!=0 landing-sound branch.",
@@ -578,6 +712,140 @@
   "note": "Batch 6's skip reason (sound-handle global at 0x4dd300 has no DWARF-recovered name) was incomplete: 0x4dd300 is sounds[8] -- DWARF names `sounds` as SAMPLE *sounds[9] at VA 0x4dd2e0 (already in game_state.h), 0x4dd300 - 0x4dd2e0 == 0x20 == 8*sizeof(SAMPLE*). The real blocker was the call-trace domain (mechanism B), not naming. Both ignored parameters confirmed unread anywhere in 0x407e10-0x407fd7. All five collision_type-dispatched variants (_original/_old/_combo/_vector/_vector_2) confirmed LIVE (jump table at 0x4d60c4, cmpl $0x4,collision_type dispatch) -- batch 6's 'may be dead code' hedge does not hold for any of them; only _original promoted this pass, the other four deferred for headroom.",
   "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
   "va": "0x407e10"
+ },
+ "handle_player_collision_vector": {
+  "batch": "pass_2026-09-07_batch9",
+  "call_trace_domain": {
+   "generalises_to": "any bmp->vtable->N(...) call site -- the concrete unblocker for batch 8's drawSlot/draw_reward/draw_results/draw_progress_bar skip reason ('2 indirect bmp->vtable calls, a partially-expressible domain'). draw_progress_bar's two bare `call *%eax` (function-pointer VARIABLES, not vtable slots) are a different, still-open case.",
+   "known_limitation": "first-call capture (batch 8's rule): of the three vtable-line calls the debug overlay makes, only the first (the floor segment) has its arguments compared; the other two are covered by call_count plus the fact that their coordinate arguments are the very same expressions passed to the two line_intersect() calls, whose results ARE fully compared.",
+   "mechanism": "mechanism B (PROMOTIONS.md batch 7), extended twice this pass. (1) `makecol` is an ordinary named Allegro callee added to LIB_CALL_TARGETS (VA 0x450c98, argc 3) -- nothing new. (2) `line` is NOT a named call at all: Allegro 4's line() is an AL_INLINE whose whole body is bmp->vtable->line(bmp, ...), and the original bytes do exactly that (`call *0x34(%ecx)` off BITMAP.vtable at +0x1c), so there is no callee VA in the image to hook. The vectors instead point the guest `screen` global at a scratch BITMAP whose scratch GFX_VTABLE carries a SYNTHETIC, otherwise-unused guest VA (VTABLE_LINE_VA = 0x7c4000) in its +0x34 slot; the ORIGINAL side's indirect call lands there and the existing Oracle._make_call_trace_hook hooks it like any named callee, while the compiled side's dispatch writes the HOST address of harness_trace_line() into the same slot of its own image copy. Both sides log {count, bmp, x1, y1, x2, y2, color}; the ordinary memory-domain diff compares them. No engine change was needed.",
+   "traced_callees": [
+    "play_sound",
+    "makecol",
+    "line (GFX_VTABLE slot +0x34)"
+   ]
+  },
+  "compared_return_value": false,
+  "compile": {
+   "carrier_scratch_bindings": "0 errors, 0 warnings (scratch pf_bindings_src.h/pf_bindings_src_types.h from scan_src_defs.py's auto-scanned 51-name exclude list + floor_size_modifiers, generated outside carrier/gen/ and discarded; carrier/gen/pf_lib_bindings.h force-included unmodified -- its own generated `#define line(a0,...) ((a0)->vtable->line(...))` is what makes the source's plain line(screen, ...) correct here; gcc -m32 -DICYTOWER_BINDINGS_ACTIVE)",
+   "standalone_generated_allegro_api": "0 errors, 0 warnings, as part of build_src_gcc.sh -- but ONLY with the #ifndef-guarded `line` AL_INLINE macro added to carrier/lift/harness/pf_harness_calltrace.h: the generated src/icytower/allegro_api.h supplies neither the macro nor a declaration for `line`, a real gap in port_forge/tools/pf_win32_gen_lib_bindings.py's non-bindings half (reported, not fixed -- PROMOTIONS.md batch 9).",
+   "standalone_upstream_allegro": "0 errors, 0 warnings (gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK, third_party/allegro-4.4.3.1 headers). No #include swap needed, unlike batch 8's two draw files: allegro_api.h's own ICYTOWER_UPSTREAM_ALLEGRO branch pulls in <allegro.h>, whose real AL_INLINE line() supplies what the generated half does not."
+  },
+  "cu": "main.c",
+  "debug_overlay": "The `debug && key[KEY_F2]` overlay branch in all three sweep variants is STATICALLY DEAD in vivo: `debug` (0x4dd160) has no store anywhere in the image -- all 14 references in artifacts/disasm.txt are loads or `cmpl $0x0,...` -- so it is .bss-zero for the life of the process. It is recovered anyway, and verified anyway: 1 vector in 5 sets debug/key[KEY_F2] non-zero. That is not decoration -- _vector is the only variant whose two makecol() calls sit INSIDE the gate, so a debug-always-0 corpus would have compared nothing about its colour handling.",
+  "domain_bytes": 264,
+  "domain_names": [
+   "Tplayer",
+   "any11",
+   "any12",
+   "any21",
+   "any22",
+   "any23",
+   "play_sound_trace(count,handle,pitch,pan)",
+   "makecol_trace(count,r,g,b)",
+   "line_trace(count,bmp,x1,y1,x2,y2,color)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "exe": "carrier/lift/harness/gcc_check_x87_nosse_batch9.exe",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "No accumulated x87 chain anywhere in these 4441 bytes: every FP operation is a fistpl truncation of p->x/p->y under the usual local round-to-zero control word, plus fildl/fisubl on the landing writes. There is therefore no double-vs-80-bit question of the kind line_intersect/new_rand/update_player have -- but the three sweep variants CALL line_intersect, which does, so the GCC x87 build is still the toolchain of record here.",
+   "result": "EQUAL",
+   "seeds": [
+    20260907,
+    424242
+   ],
+   "total_vectors": 40000,
+   "vectors_per_seed": 20000
+  },
+  "msvc": {
+   "note": "no MSVC cl.exe available in this sandbox (checked: not on PATH, no Visual Studio install) -- same as batch 8.",
+   "result": "NOT RUN"
+  },
+  "negative_control": {
+   "fault": "handle_player_collision_vector:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "THE VARIANT THE GAME ACTUALLY DISPATCHES TO (collision_type == 2, set unconditionally by new_game() at 0x40dcb0 and never written anywhere else in the image). Pure line sweep: getFloorData() for the floor segment in the player's row (retried at lastY), then line_intersect() of that horizontal segment against each foot's travel segment. Unique among the five in having a +-10000 sanity guard on both intersection X values when BOTH feet cross -- this family's own defence against divergence 006's degenerate line_intersect result; reached 59 times per 1500 directed vectors, not merely inferred. Also the only sweep variant whose two makecol() calls sit inside the debug gate, and the only one that returns early when neither getFloorData() probe finds a floor. Leaves any11..any23 completely untouched -- proved, not assumed: all five are in the comparison domain.",
+  "size_bytes": 1071,
+  "va": "0x408d08"
+ },
+ "handle_player_collision_vector_2": {
+  "batch": "pass_2026-09-07_batch9",
+  "call_trace_domain": {
+   "generalises_to": "any bmp->vtable->N(...) call site -- the concrete unblocker for batch 8's drawSlot/draw_reward/draw_results/draw_progress_bar skip reason ('2 indirect bmp->vtable calls, a partially-expressible domain'). draw_progress_bar's two bare `call *%eax` (function-pointer VARIABLES, not vtable slots) are a different, still-open case.",
+   "known_limitation": "first-call capture (batch 8's rule): of the three vtable-line calls the debug overlay makes, only the first (the floor segment) has its arguments compared; the other two are covered by call_count plus the fact that their coordinate arguments are the very same expressions passed to the two line_intersect() calls, whose results ARE fully compared.",
+   "mechanism": "mechanism B (PROMOTIONS.md batch 7), extended twice this pass. (1) `makecol` is an ordinary named Allegro callee added to LIB_CALL_TARGETS (VA 0x450c98, argc 3) -- nothing new. (2) `line` is NOT a named call at all: Allegro 4's line() is an AL_INLINE whose whole body is bmp->vtable->line(bmp, ...), and the original bytes do exactly that (`call *0x34(%ecx)` off BITMAP.vtable at +0x1c), so there is no callee VA in the image to hook. The vectors instead point the guest `screen` global at a scratch BITMAP whose scratch GFX_VTABLE carries a SYNTHETIC, otherwise-unused guest VA (VTABLE_LINE_VA = 0x7c4000) in its +0x34 slot; the ORIGINAL side's indirect call lands there and the existing Oracle._make_call_trace_hook hooks it like any named callee, while the compiled side's dispatch writes the HOST address of harness_trace_line() into the same slot of its own image copy. Both sides log {count, bmp, x1, y1, x2, y2, color}; the ordinary memory-domain diff compares them. No engine change was needed.",
+   "traced_callees": [
+    "play_sound",
+    "makecol",
+    "line (GFX_VTABLE slot +0x34)"
+   ]
+  },
+  "compared_return_value": false,
+  "compile": {
+   "carrier_scratch_bindings": "0 errors, 0 warnings (scratch pf_bindings_src.h/pf_bindings_src_types.h from scan_src_defs.py's auto-scanned 51-name exclude list + floor_size_modifiers, generated outside carrier/gen/ and discarded; carrier/gen/pf_lib_bindings.h force-included unmodified -- its own generated `#define line(a0,...) ((a0)->vtable->line(...))` is what makes the source's plain line(screen, ...) correct here; gcc -m32 -DICYTOWER_BINDINGS_ACTIVE)",
+   "standalone_generated_allegro_api": "0 errors, 0 warnings, as part of build_src_gcc.sh -- but ONLY with the #ifndef-guarded `line` AL_INLINE macro added to carrier/lift/harness/pf_harness_calltrace.h: the generated src/icytower/allegro_api.h supplies neither the macro nor a declaration for `line`, a real gap in port_forge/tools/pf_win32_gen_lib_bindings.py's non-bindings half (reported, not fixed -- PROMOTIONS.md batch 9).",
+   "standalone_upstream_allegro": "0 errors, 0 warnings (gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK, third_party/allegro-4.4.3.1 headers). No #include swap needed, unlike batch 8's two draw files: allegro_api.h's own ICYTOWER_UPSTREAM_ALLEGRO branch pulls in <allegro.h>, whose real AL_INLINE line() supplies what the generated half does not."
+  },
+  "cu": "main.c",
+  "debug_overlay": "The `debug && key[KEY_F2]` overlay branch in all three sweep variants is STATICALLY DEAD in vivo: `debug` (0x4dd160) has no store anywhere in the image -- all 14 references in artifacts/disasm.txt are loads or `cmpl $0x0,...` -- so it is .bss-zero for the life of the process. It is recovered anyway, and verified anyway: 1 vector in 5 sets debug/key[KEY_F2] non-zero. That is not decoration -- _vector is the only variant whose two makecol() calls sit INSIDE the gate, so a debug-always-0 corpus would have compared nothing about its colour handling.",
+  "domain_bytes": 264,
+  "domain_names": [
+   "Tplayer",
+   "any11",
+   "any12",
+   "any21",
+   "any22",
+   "any23",
+   "play_sound_trace(count,handle,pitch,pan)",
+   "makecol_trace(count,r,g,b)",
+   "line_trace(count,bmp,x1,y1,x2,y2,color)"
+  ],
+  "form": "src",
+  "gcc": {
+   "differing_vectors_total": 0,
+   "exe": "carrier/lift/harness/gcc_check_x87_nosse_batch9.exe",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "note": "No accumulated x87 chain anywhere in these 4441 bytes: every FP operation is a fistpl truncation of p->x/p->y under the usual local round-to-zero control word, plus fildl/fisubl on the landing writes. There is therefore no double-vs-80-bit question of the kind line_intersect/new_rand/update_player have -- but the three sweep variants CALL line_intersect, which does, so the GCC x87 build is still the toolchain of record here.",
+   "result": "EQUAL",
+   "seeds": [
+    20260907,
+    424242
+   ],
+   "total_vectors": 40000,
+   "vectors_per_seed": 20000
+  },
+  "msvc": {
+   "note": "no MSVC cl.exe available in this sandbox (checked: not on PATH, no Visual Studio install) -- same as batch 8.",
+   "result": "NOT RUN"
+  },
+  "negative_control": {
+   "fault": "handle_player_collision_vector_2:5:0",
+   "first": {
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "kind": "comparison domain",
+    "lifted": "0x01",
+    "original": "0x00",
+    "vector": 5
+   },
+   "result": "DIFFER",
+   "vectors": 200
+  },
+  "note": "Line sweep, plus a SECOND sweep against a floor line at fy + 4 when the first missed with both feet (this is why batch 8's call-graph scan counted four line_intersect calls: two probes x two sweeps). Unconditional makecol() at the top, outside the debug gate. No +-10000 guard. One detail that would have been invisible in any vector where the first sweep already hit: the landing still snaps to fy - 1, the FIRST line's Y -- the original increments only its register copy (0x408acc `add $0x4,%ebx`) and re-reads the untouched stack local at 0x408be2.",
+  "size_bytes": 1086,
+  "va": "0x4088c8"
  },
  "harness": "carrier/lift/harness/lift_check.py --form src (unicorn ORIGINAL vs carrier/lift/harness/src_check.exe, calling the plain update_frame()/is_solid() symbols compiled straight from src/icytower/*.c)",
  "image": "icytower15.exe sha256=7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
@@ -1152,6 +1420,43 @@
     "va": "0x407c38"
    }
   ]
+ },
+ "pass_2026-09-07_batch9": {
+  "collision_type": {
+   "conclusion": "replays/human_test.txt, and every other run of this build, dispatches to handle_player_collision_vector. The other four are live in batch 7's sense (distinct, reachable jump-table cases) but the selector is a compile-time-fixed 2.",
+   "jump_table": {
+    "0": "handle_player_collision_original (0x407e10)",
+    "1": "handle_player_collision_old (0x407fd8)",
+    "2": "handle_player_collision_vector (0x408d08)",
+    "3": "handle_player_collision_vector_2 (0x4088c8)",
+    "4": "handle_player_collision_combo (0x408358)"
+   },
+   "jump_table_va": "0x4d60c4 (5 dwords, read out of the image), dispatched at 0x4125a3 `jmp *0x4d60c4(,%eax,4)`, guarded at 0x412591 `cmpl $0x4,collision_type; ja <allegro_message>`",
+   "not_reachable_from": "NOT an options field, NOT a Treplay difficulty field, NOT an .ini key, NOT a command-line switch -- each hypothesis from the task brief checked against the bytes.",
+   "only_store": "new_game() (0x40dc9c) at 0x40dcb0: `movl $0x2,0x4dd140`, unconditional, immediately after its log2file() call. That is the ONLY store to 0x4dd140 in the whole image; every other reference (0x4120e5, 0x412591, 0x41259e, 0x4186d6, 0x418762, 0x418934) is a load."
+  },
+  "generator_gap_found": "carrier/gen/pf_lib_bindings.h emits 23 AL_INLINE vtable-dispatch macros including `line`, so `line(screen, ...)` is correct in the carrier world and real <allegro.h> supplies the same inline upstream -- but the generated, no-bindings src/icytower/allegro_api.h supplies neither macro nor declaration. Real gap in port_forge/tools/pf_win32_gen_lib_bindings.py's non-bindings half; REPORTED, NOT FIXED (port_forge is the shared framework submodule and another agent is working in this tree). Worked around harness-only with an #ifndef-guarded copy of the same macro text in carrier/lift/harness/pf_harness_calltrace.h, so the source under test is byte-identical in every world. Same class and disposition as batch 8's two draw_star_field gaps.",
+  "harness_changes": [
+   "carrier/lift/harness/icytower_specs.py: makecol in LIB_CALL_TARGETS; CALLTRACE_MAKECOL_VA/CALLTRACE_LINE_VA/VTABLE_LINE_VA/SCREEN_BMP_VA/SCREEN_VTABLE_VA/G_DEBUG/G_KEY/G_SCREEN/KEY_F2; _CT_MAKECOL/_CT_LINE; _collision_random_map()/_collision_directed()/gen_collision(); _COLLISION_DOMAIN/_COLLISION_DOMAIN_NAMES/_COLLISION_TRACES; 4 SPECS entries; SRC_BATCH9_FUNCS added to DEFAULT_FUNCS['src'] and ['gcc'].",
+   "carrier/lift/harness/pf_harness_calltrace.h: harness_trace_makecol/harness_trace_line declarations, `#define makecol harness_trace_makecol`, and the #ifndef-guarded `line` AL_INLINE macro (see generator_gap_found).",
+   "carrier/lift/harness/call_trace_stubs.c: the two stub definitions; harness_trace_makecol() returns 0 to match the ORIGINAL-side hook's EAX = 0, harness_trace_line() reverse-translates bmp through the existing pf_untranslate().",
+   "carrier/lift/harness/icytower_harness_project_gcc.c: debug/key[127]/screen storage, collision_pre()/collision_post(), 4 dispatch branches. collision_pre() carries a TWO-LEVEL pointer-value translation (guest screen -> host BITMAP -> host GFX_VTABLE) before overwriting the line slot -- one level deeper than the ply[player_id]/demo/data fixups this project already had.",
+   "carrier/lift/harness/build_src_gcc.sh: collision.c added; gcc_check_x87_nosse_batch9.exe built.",
+   "carrier/gen/pf_bindings_src.h intentionally NOT regenerated (another agent's concurrent carrier build owns it) -- carrier-world compile verified against a scratch copy, then discarded. Same as batches 6/7/8."
+  ],
+  "method": "Unicorn cross-check BEFORE any C, per this project's rule for a novel algorithm: a Python model of each of the four checked against the ORIGINAL bytes executed in unicorn, with the three already-promoted callees (is_solid, getFloorData, line_intersect) delegated back to the ORIGINAL bytes in the same emulator so only this pass's reading of the new control flow was under test. 0 mismatches for all four on the FIRST run -- 200 random then 500 directed boundary vectors each. First time in this project a novel algorithm's first hand-trace survived unchanged; the reason is structural (pure integer control flow around verified callees, no accumulated x87), not a claim of superior tracing.",
+  "purity_gate": "python scripts/check_native_layer.py -- scanned 34 file(s), 8 violation(s), ALL of them in src/build/sha256.h, an untracked file added to this tree by the concurrently-running carrier agent (6 'guest address literal' hits on SHA-256 round constants, 2 'carrier-reserved identifier' hits on its PF_SHA256_H guard). collision.c contributes 0; no file this batch touched appears in the report. Recorded as measured, not as a clean 0.",
+  "regression": "Every other GCC-wired function re-run at 2000 vectors after this pass's pf_harness_calltrace.h changes: line_intersect, jump_player, add_floor, update_player, new_rand, update_particle, create_particle, ok_to_play, reset_player, play_jump_sound, start_reward, handle_player_collision_original, draw_scroller -- all EQUAL, 0 regressions.",
+  "result": "all four promoted, EQUAL over 20000 vectors x 2 seeds each (GCC x87); collision_type question answered from the bytes",
+  "targets": "the four remaining handle_player_collision_* variants (batches 6/7/8 each deferred them) + 'find where collision_type is set and which value the operator's recording used'",
+  "totals": {
+   "functions_promoted_cumulative": 46,
+   "functions_promoted_this_pass": 4,
+   "functions_skipped_cumulative": 8,
+   "original_bytes_cumulative": 9489,
+   "original_bytes_this_pass": 4441
+  },
+  "vector_generator_finding": "A purely random map/position pool is NOT a check for this family: measured, 2-3 of 400 vectors ever produced edge != 0, the sweep landing path essentially never fired, and _vector's +-10000 guard was never reached. _collision_directed() inverts getFloorData()'s own arithmetic (y = 29 - ((cy+1)>>4); fy = ((cy+1)>>4)*16 + offset%16; fx1 = start_tile*16-2; fx2 = end_tile*16+17) to place exactly one floor and put each foot on, one pixel inside and one pixel outside each of its ends. After that: edge=1 and edge=2 each 30-110 per 500 per variant, the landing path 135-255, the guard-reject 59 of 1500."
  },
  "play_jump_sound": {
   "call_trace_domain": {

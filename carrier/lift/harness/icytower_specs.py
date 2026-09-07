@@ -162,10 +162,12 @@ CALLTRACE_PLAY_SOUND_VA = 0x7c1000     # {call_count, arg0, arg1, arg2} (16 byte
 #   set_clip_rect       VA=0x44eb70  void(BITMAP*,int,int,int,int)                        argc=5
 #   textout_ex          VA=0x459f0c  void(BITMAP*,const FONT*,const char*,int,int,int,int) argc=7
 #   textout_centre_ex   VA=0x459fcc  void(BITMAP*,const FONT*,const char*,int,int,int,int) argc=7
+#   makecol             VA=0x450c98  int(int,int,int)                                     argc=3
 LIB_CALL_TARGETS = {
     "set_clip_rect": {"va": 0x44eb70, "argc": 5},
     "textout_ex": {"va": 0x459f0c, "argc": 7},
     "textout_centre_ex": {"va": 0x459fcc, "argc": 7},
+    "makecol": {"va": 0x450c98, "argc": 3},
 }
 
 CALLTRACE_SET_CLIP_RECT_VA = 0x7c1100      # {call_count, arg0..arg4}   (24 bytes)
@@ -178,6 +180,35 @@ SCROLLER_DRAW_VA = 0x7a8000            # same Tscroller scratch VA batch 3's
                                         # restart_scroller already promoted --
                                         # reusing the constant, not aliasing two
                                         # different regions to the same name)
+# -- batch 9 (2026-09-07) -- the four remaining handle_player_collision_*
+# variants (src/icytower/collision.c). Two more call traces:
+#
+#   makecol   an ordinary named Allegro import (LIB_CALL_TARGETS above), the
+#             same shape set_clip_rect/textout_ex already use.
+#   line      NOT a named call: Allegro 4's line() is an AL_INLINE expanding
+#             to `bmp->vtable->line(bmp, ...)`, and the original bytes do
+#             exactly that -- `call *0x34(%ecx)` off BITMAP.vtable (+0x1c).
+#             So there is no callee VA in the image to hook. Instead the
+#             vectors below point the guest `screen` global at a scratch
+#             BITMAP whose scratch GFX_VTABLE carries VTABLE_LINE_VA (a
+#             SYNTHETIC, otherwise-unused guest VA) in its +0x34 `line`
+#             slot; the Oracle hooks that VA like any other traced callee,
+#             and the compiled side's dispatch writes the host address of
+#             harness_trace_line() into the same slot of its own image copy.
+#             Both sides then log {count, bmp, x1, y1, x2, y2, color}.
+CALLTRACE_MAKECOL_VA = 0x7c1400        # {call_count, r, g, b}                  (16 bytes)
+CALLTRACE_LINE_VA = 0x7c1500           # {call_count, bmp, x1, y1, x2, y2, col} (28 bytes)
+VTABLE_LINE_VA = 0x7c4000              # synthetic "callee" the vtable slot points at
+SCREEN_BMP_VA = 0x7c3000               # scratch BITMAP the `screen` global points at
+SCREEN_VTABLE_VA = 0x7c3100            # scratch GFX_VTABLE that BITMAP points at
+G_DEBUG = 0x4dd160                     # int debug -- gates the overlay; NO store
+                                        #   anywhere in the image (all 14 refs in
+                                        #   artifacts/disasm.txt are loads/cmpl),
+                                        #   so it is 0 in vivo forever
+G_KEY = 0x506988                        # Allegro's volatile char key[127]
+G_SCREEN = 0x4dda8c                     # Allegro's BITMAP *screen
+KEY_F2 = 0x30                           # 48 -- 0x5069b8 - 0x506988
+
 BMP_VA = 0x7a9000                      # scratch BITMAP for draw_scroller -- only
                                         # offsets 0/4 (w,h) are ever read by the
                                         # function itself (the final "restore clip
@@ -1180,6 +1211,182 @@ def gen_draw_scroller(rng, k):
     return [SCROLLER_DRAW_VA, BMP_VA, x, y, color], writes
 
 
+_CT_MAKECOL = {"va": CALL_TARGETS["makecol"]["va"],
+                "argc": CALL_TARGETS["makecol"]["argc"],
+                "slot": CALLTRACE_MAKECOL_VA}
+_CT_LINE = {"va": VTABLE_LINE_VA, "argc": 6, "slot": CALLTRACE_LINE_VA}
+
+
+def _collision_random_map(rng):
+    """gen_is_solid's/gen_handle_player_collision_original's own realistic
+    room[] pool, reused verbatim: mostly-solid rows with plausible tile
+    spans, so both the is_solid() foot probes AND getFloorData()'s row
+    lookup see real content."""
+    m = bytearray(SZ_MAP)
+    for r in range(32):
+        b = r * 24
+        struct.pack_into("<i", m, b + 0, rng.choice([0, 0, 0, 1, rng.randint(-3, 3)]))
+        struct.pack_into("<i", m, b + 4, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 8, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 12, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 16, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 20, rng.getrandbits(31))
+    struct.pack_into("<i", m, 768,
+                     rng.choice([0, 1, 7, 15, 16, -1, -9, -16, rng.randint(-100, 100)]))
+    return m
+
+
+def _collision_directed(rng, k):
+    """DIRECTED boundary vectors: one single non-empty room[] row, with the
+    player placed so that a chosen combination of feet crosses that floor's
+    own horizontal segment on the way down.
+
+    A purely random map/position pool reaches the interesting sweep
+    outcomes far too rarely to be a check (measured while developing this
+    batch: 2-3 of 400 vectors ever produced `edge != 0`, and the +-10000
+    guard in `_vector` was never reached at all). This generator inverts
+    getFloorData()'s own arithmetic -- `y = 29 - ((cy+1)>>4)`,
+    `fy = ((cy+1)>>4)*16 + offset%16`, `fx1 = start_tile*16-2`,
+    `fx2 = end_tile*16+17` (src/icytower/map.c) -- to place the floor and
+    then puts the feet exactly on, one pixel inside, and one pixel outside
+    each of its two ends. Measured coverage over 500 of these: edge=1 and
+    edge=2 each 30-110 times per variant, the landing path 135-255 times,
+    and `_vector`'s +-10000 guard-reject 59 of 1500."""
+    ry = rng.randrange(0, 30)
+    base = 16 * (29 - ry)
+    off = rng.randrange(0, 13)
+    offset = off + 16 * rng.choice([0, 1, -1, 2, -2])
+    if k % 7 == 0:
+        # a floor far off to the side: makes line_intersect's own
+        # intersection X exceed _vector's +-10000 sanity guard
+        s_tile = rng.choice([600, 640, 700, 800, -700, -800])
+    else:
+        s_tile = rng.randint(-20, 30)
+    e_tile = s_tile + rng.choice([1, 2, 3, 5, 10])
+    fy = base + off
+    fx1 = s_tile * 16 - 2
+    fx2 = e_tile * 16 + 17
+
+    m = bytearray(SZ_MAP)
+    for r in range(32):
+        struct.pack_into("<i", m, r * 24 + 0, 1)          # empty
+    struct.pack_into("<i", m, ry * 24 + 0, 0)
+    struct.pack_into("<i", m, ry * 24 + 4, s_tile)
+    struct.pack_into("<i", m, ry * 24 + 8, e_tile)
+    struct.pack_into("<i", m, 768, offset)
+
+    mode = k % 6
+    if mode == 0:                                        # both feet on the floor
+        ix = rng.randint(fx1 + 12, max(fx1 + 12, fx2 - 12))
+    elif mode == 1:                                      # left foot only
+        ix = fx2 - 11 + rng.choice([0, 1, 2, -1])
+    elif mode == 2:                                      # right foot only
+        ix = fx1 + 11 + rng.choice([0, 1, 2, -1])
+    elif mode == 3:                                      # exactly on the left end
+        ix = fx1 + 11
+    elif mode == 4:                                      # exactly on the right end
+        ix = fx2 - 11
+    else:                                                # clear of the floor
+        ix = fx2 + rng.randint(20, 200)
+
+    if k % 11 == 0:
+        # crosses fy+4 but NOT fy -- _vector_2's second-sweep-only path
+        iy, y1 = fy + 5, fy + 1
+    else:
+        iy = fy + 2 + rng.choice([0, 0, 1, -3])
+        y1 = fy - rng.choice([1, 2, 5, 20])
+    x1 = ix + rng.choice([0, 0, 1, -1, 4, -4, 30, -30])
+
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+    struct.pack_into("<d", p, 0x0, float(ix))
+    struct.pack_into("<d", p, 0x8, float(iy))
+    struct.pack_into("<d", p, 0x18, rng.uniform(-30.0, 30.0))
+    struct.pack_into("<i", p, 0x34, rng.choice([0, 1, 2, 3, 3, 2, -1, 7]))
+    struct.pack_into("<i", p, 0x50, rng.getrandbits(31))
+    struct.pack_into("<i", p, 0x58, rng.getrandbits(31))
+    return m, p, x1, y1
+
+
+def gen_collision(rng, k):
+    """One generator for all four batch-9 variants: they share a signature
+    (`int lastX, int lastY` -- DWARF-named, the PREVIOUS frame's position),
+    the same `ply[player_id]`/`map` inputs, and the same comparison domain
+    shape, so a single pool exercises all four.
+
+    Half the corpus is the random map/position pool every other Tmap-reading
+    function in this file already uses; half is _collision_directed()'s
+    hand-placed floor-edge boundary family (see its docstring for why a
+    random pool alone is not a check here). One vector in five turns the
+    `debug` + key[KEY_F2] overlay gate ON -- statically dead in vivo (see
+    G_DEBUG's comment) but the only way to compare the three vtable-`line`
+    calls and (for `_vector`, whose two makecol() calls sit INSIDE that
+    gate) the makecol trace at all.
+
+    p->x/p->y are always integer-valued finite doubles: the family's only
+    FP operations are `fistpl` truncations of those two fields under the
+    usual local round-to-zero control word, so there is no x87 precision
+    question of its own to chase, and a NaN there would be C-level UB in
+    the recovered `(int)` cast rather than a modelled behaviour."""
+    if k % 2 == 0:
+        m = _collision_random_map(rng)
+        p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+        x = float(rng.randint(-100, 700))
+        y = float(rng.randint(-60, 520))
+        struct.pack_into("<d", p, 0x0, x)
+        struct.pack_into("<d", p, 0x8, y)
+        struct.pack_into("<d", p, 0x18, rng.uniform(-30.0, 30.0))
+        status_pool = [0, 1, 2, 3, -1, 7]
+        struct.pack_into("<i", p, 0x34,
+                         status_pool[k % len(status_pool)] if k % 3 else rng.randint(-4, 6))
+        struct.pack_into("<i", p, 0x50, rng.getrandbits(31))
+        struct.pack_into("<i", p, 0x58, rng.getrandbits(31))
+        if k % 4 == 0:                      # a short move (the common in-game case)
+            x1, y1 = int(x) + rng.randint(-3, 3), int(y) + rng.randint(-3, 3)
+        else:
+            x1, y1 = int(x) + rng.randint(-60, 60), int(y) + rng.randint(-60, 60)
+    else:
+        m, p, x1, y1 = _collision_directed(rng, k)
+
+    dbg = 1 if k % 5 == 0 else 0
+    sounds8 = 0xDDDD0000 | (k & 0xFF)
+
+    bmp = bytearray(0x40)
+    struct.pack_into("<I", bmp, 0x1c, SCREEN_VTABLE_VA)   # BITMAP.vtable
+    vt = bytearray(0x40)
+    struct.pack_into("<I", vt, 0x34, VTABLE_LINE_VA)      # GFX_VTABLE.line
+
+    writes = [(G_MAP, bytes(m)),                          # the REAL `map` global
+              (PLAYER_VA, bytes(p)),
+              (G_PLAYER_ID, si32(0)), (G_PLY, u32(PLAYER_VA)),
+              (G_SOUNDS + 8 * 4, u32(sounds8)),
+              (G_DEBUG, si32(dbg)), (G_KEY + KEY_F2, bytes([dbg])),
+              (G_SCREEN, u32(SCREEN_BMP_VA)),
+              (SCREEN_BMP_VA, bytes(bmp)), (SCREEN_VTABLE_VA, bytes(vt)),
+              (G_ANY11, u32(0)), (G_ANY12, u32(0)),
+              (G_ANY21, u32(0)), (G_ANY22, u32(0)), (G_ANY23, u32(0)),
+              _blank_call_trace(),
+              _blank_trace(CALLTRACE_MAKECOL_VA, 3),
+              _blank_trace(CALLTRACE_LINE_VA, 6)]
+    return [x1 & 0xFFFFFFFF, y1 & 0xFFFFFFFF], writes
+
+
+# The comparison domain every batch-9 variant shares: the whole Tplayer,
+# all five any1*/any2* globals (listed even for the two variants that never
+# write them -- proving they are LEFT ALONE is as much a result as proving
+# they are set), and the three call-trace slots.
+_COLLISION_DOMAIN = [(PLAYER_VA, SZ_PLAYER),
+                     (G_ANY11, 4), (G_ANY12, 4),
+                     (G_ANY21, 4), (G_ANY22, 4), (G_ANY23, 4),
+                     (CALLTRACE_PLAY_SOUND_VA, 16),
+                     (CALLTRACE_MAKECOL_VA, 16),
+                     (CALLTRACE_LINE_VA, 28)]
+_COLLISION_DOMAIN_NAMES = ["Tplayer", "any11", "any12", "any21", "any22", "any23",
+                            "play_sound_trace(count,handle,pitch,pan)",
+                            "makecol_trace(count,r,g,b)",
+                            "line_trace(count,bmp,x1,y1,x2,y2,color)"]
+_COLLISION_TRACES = [_CT_PLAY_SOUND, _CT_MAKECOL, _CT_LINE]
+
+
 SPECS = {
     "update_frame": {"va": 0x406ac4, "gen": gen_update_frame, "cmp_eax": False,
                      "domain": [(G_REWARD_TIME, 4), (G_REWARD_SCALE, 4),
@@ -1330,6 +1537,25 @@ SPECS = {
         "domain_names": ["set_clip_rect_trace(count,bmp,x1,y1,x2,y2)",
                           "textout_ex_trace(count,bmp,fnt,text,x,y,color,bg)",
                           "textout_centre_ex_trace(count,bmp,fnt,text,cx,y,color,bg)"]},
+    # -- batch 9 (2026-09-07) -- the four remaining collision variants.
+    # All four share gen_collision + _COLLISION_DOMAIN (see those); only the
+    # VA differs. None returns a value (all five are `void(int,int)`).
+    "handle_player_collision_old": {
+        "va": 0x407fd8, "gen": gen_collision, "cmp_eax": False,
+        "call_traces": _COLLISION_TRACES,
+        "domain": _COLLISION_DOMAIN, "domain_names": _COLLISION_DOMAIN_NAMES},
+    "handle_player_collision_vector": {
+        "va": 0x408d08, "gen": gen_collision, "cmp_eax": False,
+        "call_traces": _COLLISION_TRACES,
+        "domain": _COLLISION_DOMAIN, "domain_names": _COLLISION_DOMAIN_NAMES},
+    "handle_player_collision_vector_2": {
+        "va": 0x4088c8, "gen": gen_collision, "cmp_eax": False,
+        "call_traces": _COLLISION_TRACES,
+        "domain": _COLLISION_DOMAIN, "domain_names": _COLLISION_DOMAIN_NAMES},
+    "handle_player_collision_combo": {
+        "va": 0x408358, "gen": gen_collision, "cmp_eax": False,
+        "call_traces": _COLLISION_TRACES,
+        "domain": _COLLISION_DOMAIN, "domain_names": _COLLISION_DOMAIN_NAMES},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -1348,6 +1574,9 @@ SRC_BATCH7_FUNCS = "play_jump_sound,handle_player_collision_original,start_rewar
 
 SRC_BATCH8_FUNCS = "draw_scroller"
 
+SRC_BATCH9_FUNCS = ("handle_player_collision_old,handle_player_collision_vector,"
+                    "handle_player_collision_vector_2,handle_player_collision_combo")
+
 
 # --------------------------------------------------------------------------
 # CLI default-selection data (read by the engine's main() via getattr, so a
@@ -1363,8 +1592,9 @@ DEFAULT_FUNCS = {
             "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
             "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS +
             "," + SRC_BATCH6_FUNCS + "," + SRC_BATCH7_FUNCS +
-            "," + SRC_BATCH8_FUNCS),
-    "gcc": "line_intersect,jump_player,add_floor,update_player",
+            "," + SRC_BATCH8_FUNCS + "," + SRC_BATCH9_FUNCS),
+    "gcc": ("line_intersect,jump_player,add_floor,update_player,"
+            + SRC_BATCH9_FUNCS),
 }
 
 VECTOR_COUNTS = {"jump_player": 4000, "line_intersect": 4000}
