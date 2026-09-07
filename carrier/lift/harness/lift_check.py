@@ -573,7 +573,26 @@ def main():
     ap.add_argument("--exe", default=None,
                     help="default: harness/lift_check.exe, "
                          "harness/native_check.exe or harness/src_check.exe, "
-                         "per --form")
+                         "per --form; overridden by --toolchain gcc's default "
+                         "unless --exe is also given")
+    ap.add_argument("--toolchain", default="msvc", choices=["msvc", "gcc"],
+                    help="msvc (default): unchanged behaviour, --exe as "
+                         "above. gcc: --form must be src; default --exe "
+                         "becomes harness/gcc_check_x87_nosse_O2.exe, the "
+                         "32-bit MinGW GCC build of the SAME src/icytower/"
+                         "line_intersect.c and .../jump_player.c with real "
+                         "x87 arithmetic AND SSE2 disabled (-mfpmath=387 "
+                         "-mno-sse2 -O2) -- the ONLY flag combination "
+                         "harness/GCC_X87.md found bit-equal to the "
+                         "original over 80000 vectors; -mfpmath=387 alone "
+                         "is NOT enough (GCC still truncates through SSE2's "
+                         "cvttsd2sil off a memory-rounded double unless "
+                         "SSE2 itself is disabled -- see GCC_X87.md SS2). "
+                         "--funcs also narrows to line_intersect,jump_player "
+                         "unless given explicitly, since gcc_check.exe only "
+                         "wires up those two. Build the other variants with "
+                         "build_src_gcc.sh/.cmd and pass one via --exe, e.g. "
+                         "--exe harness/gcc_check_x87_O0.exe.")
     ap.add_argument("--funcs", default=None,
                     help="default: update_frame,is_solid,jump_player,"
                          "line_intersect for --form lifted; "
@@ -593,11 +612,20 @@ def main():
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
 
+    if args.toolchain == "gcc" and args.form != "src":
+        raise SystemExit("--toolchain gcc only makes sense with --form src "
+                         "(gcc_check.exe only wires up src/icytower symbols)")
+
     if args.exe is None:
-        args.exe = os.path.join(HERE, {"native": "native_check.exe",
-                                        "src": "src_check.exe"}.get(args.form, "lift_check.exe"))
+        if args.toolchain == "gcc":
+            args.exe = os.path.join(HERE, "gcc_check_x87_nosse_O2.exe")
+        else:
+            args.exe = os.path.join(HERE, {"native": "native_check.exe",
+                                            "src": "src_check.exe"}.get(args.form, "lift_check.exe"))
     if args.funcs is None:
-        if args.form == "native":
+        if args.toolchain == "gcc":
+            args.funcs = "line_intersect,jump_player"
+        elif args.form == "native":
             args.funcs = "update_frame,is_solid"
         elif args.form == "src":
             args.funcs = ("update_frame,is_solid,jump_player,getFloorData,reset_map,"
@@ -605,7 +633,7 @@ def main():
                          "is_right,is_fire,is_pause,is_enter,is_any")
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
-    label = args.form.upper()
+    label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")
 
     guest = build_guest(args.image)
     gpath = os.path.join(HERE, "guest.bin")
@@ -631,7 +659,7 @@ def main():
                            capture_output=True, text=True)
         if r.returncode != 0:
             print("[%s] %s side failed: %s%s" % (name, label, r.stdout, r.stderr))
-            report[name] = {"result": "%s_SIDE_FAILED" % label, "form": args.form,
+            report[name] = {"result": "%s_SIDE_FAILED" % label, "form": args.form, "toolchain": args.toolchain,
                             "detail": r.stderr.strip()}
             rc = 1
             continue
@@ -688,7 +716,7 @@ def main():
         if first_diff is None:
             print("[%s/%s] EQUAL over %d vectors (%d domain bytes + %s)"
                   % (name, label, nvec, domlen, "EAX" if spec["cmp_eax"] else "no return value"))
-            report[name] = {"result": "EQUAL", "form": args.form, "vectors": nvec,
+            report[name] = {"result": "EQUAL", "form": args.form, "toolchain": args.toolchain, "vectors": nvec,
                             "domain_bytes": domlen,
                             "compared_return_value": spec["cmp_eax"]}
         else:
@@ -696,7 +724,7 @@ def main():
                   % (name, label, first_diff["vector"],
                      (" (%d of %d vectors differ)" % (ndiff, nvec)) if args.census else "",
                      first_diff))
-            report[name] = {"result": "DIFFER", "form": args.form, "vectors": nvec,
+            report[name] = {"result": "DIFFER", "form": args.form, "toolchain": args.toolchain, "vectors": nvec,
                             "differing_vectors": ndiff if args.census else None,
                             "first": first_diff}
             rc = 1

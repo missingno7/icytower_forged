@@ -446,6 +446,18 @@ whole-pixel errors); a software 80-bit type is bit-equal. Rules that follow:
 - Every offline oracle must set the FPU control word explicitly (unicorn
   powers up at PC=24 bits).
 
+Measured on the clean `src/icytower/line_intersect.c` (2026-09-07,
+`carrier/lift/harness/GCC_X87.md`): `-mfpmath=387` alone is not enough on a
+GCC that defaults to SSE2, because float-to-int conversions still go through
+SSE2 off a memory-rounded value; **`-m32 -mfpmath=387 -mno-sse2 -O1` or
+`-O2`** is bit-exact with the original over 80 000 vectors. `-O0` and
+`-ffloat-store` defeat it (every named double is rounded to 53 bits at each
+assignment; `-O0` is worse than MSVC's plain double). These are the standalone
+port's float flags. The same harness also exposed a toolchain-independent
+recovery error in the clean function on degenerate inputs (D == 0), caught by
+the oracle and fixed separately; the earlier "997 differ" figure had folded
+that error into the precision count.
+
 ## 7a. Where the clean code lives, and how it stays clean (2026-09-07)
 
 `src/` is the clean port, following the sibling projects' convention
