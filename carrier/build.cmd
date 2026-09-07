@@ -21,12 +21,54 @@ if errorlevel 1 (
 
 if not exist obj mkdir obj
 
+rem --- src/ binding (item 1, "src binding, tick-boundary real input, parked
+rem timer thread" in NOTES.md): derive gen_bindings.py's --exclude list from
+rem whichever functions src\icytower\*.c actually DEFINE, instead of hand-
+rem listing them (carrier\gen\scan_src_defs.py scans the .c files for
+rem function definitions; see its own docstring). This keeps pf_bindings_src.h
+rem from also trying to redirect update_frame/is_solid to their own original
+rem address (BINDINGS_NOTES.md "Exclusion") without anyone having to remember
+rem to update a hand-written list when src\icytower gains a new file.
+set SRC_EXCLUDES=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --src-dir ..\src\icytower') do set SRC_EXCLUDES=%%E
+if "%SRC_EXCLUDES%"=="" (
+  echo FAILED: scan_src_defs.py found no function definitions in src\icytower
+  exit /b 1
+)
+echo src/ functions excluded from pf_bindings_src.h (compiled natively): %SRC_EXCLUDES%
+python gen\gen_bindings.py --exclude %SRC_EXCLUDES% --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+  --out gen\pf_bindings_src.h --types-out gen\pf_bindings_src_types.h
+if errorlevel 1 (
+  echo FAILED: gen_bindings.py --exclude %SRC_EXCLUDES% ^(regenerating pf_bindings_src.h^)
+  exit /b 1
+)
+
+rem --- compile src/ (the clean port, win32_pilot.md SS7a) as its OWN cl
+rem invocation with ONLY pf_bindings_src.h force-included - NOT a global /FI
+rem on the whole build, because pf_bindings_src.h pulls in the carrier's
+rem type provider (it_types.h via pf_bindings_src_types.h), which redefines
+rem BITMAP and collides with windows.h the moment both are seen by one TU
+rem (carrier\src\bind.cpp's own header comment documents this exact
+rem collision). src\icytower\*.c must also never see it_*.h/pf_*.h by name
+rem (src\README.md's purity gate), which force-include already respects: the
+rem macro substitution happens without any #include text appearing in the
+rem source files themselves.
+cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
+  /I gen /FIpf_bindings_src.h ^
+  /c ..\src\icytower\update_frame.c ..\src\icytower\is_solid.c ^
+  /Fo:obj\
+if errorlevel 1 (
+  echo FAILED: src\icytower compile errors above
+  exit /b 1
+)
+
 cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /I lift\lifted ^
   src\main.cpp src\pe_image.cpp src\imports.cpp src\trace.cpp src\wrappers.cpp src\symbols.cpp src\det.cpp src\bind.cpp ^
   gen\import_stubs.cpp ^
   lift\lifted\lifted_update_frame.c lift\lifted\lifted_is_solid.c lift\lifted\lifted_jump_player.c ^
   native\native_update_frame.c native\native_is_solid.c ^
+  obj\update_frame.obj obj\is_solid.obj ^
   /Fe:carrier.exe /Fo:obj\ ^
   /link /DYNAMICBASE:NO /FIXED /BASE:0x10000000 /LARGEADDRESSAWARE:NO /SUBSYSTEM:CONSOLE /DEBUG /MAP:obj\carrier.map kernel32.lib user32.lib psapi.lib
 

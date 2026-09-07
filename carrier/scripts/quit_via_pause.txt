@@ -1,0 +1,17 @@
+# quit_via_pause.txt - item 3 exit test. Reuses newgame.txt's opening, quits
+# the play() session via one ESC tap (matches the log's own
+# "game paused with esc" -> "game quit from esc pause" -> "play ended"
+# sequence, MEASURED to need only a single press+release), waits generously
+# for the return to MAIN MENU LOOP, then taps ESC again to trigger the main
+# menu's own "DO YOU REALLY WANT TO EXIT?" confirm - MEASURED to also need
+# only one press+release (see carrier/NOTES.md "parked timer thread").
+20 press KEY_ENTER
+620 release KEY_ENTER
+200 press KEY_RIGHT
+200 press KEY_SPACE
+215 release KEY_SPACE
+700 release KEY_RIGHT
+750 press KEY_ESC
+751 release KEY_ESC
+2000 press KEY_ESC
+2001 release KEY_ESC

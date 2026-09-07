@@ -1174,3 +1174,341 @@ Result: **`EQUAL (876 ticks, ...)`** against the unbound baseline.
   own stub** (the patch is at the callee). Harmless for these three leaves;
   the record stack overflows loudly (exit 5) rather than silently corrupting
   records if it ever happens.
+
+## src binding, tick-boundary real input, parked timer thread
+
+Follow-up pass (2026-09-07) on top of Milestones 11-12 and "Input policy and
+recording": (1) binds `src/icytower/{update_frame,is_solid}.c` (win32_pilot.md
+SS7a's address-free clean port) into the binding table as a new `src` form;
+(2) fixes first-divergence investigation 002 (real keyboard events recorded
+off-tick, notes/living_record.md) by capturing real DirectInput events at the
+same breakpoint used to neutralize them and redelivering them at the next
+tick boundary, the same way scripted events are delivered; (3) fixes
+first-divergence investigation 003 (the `_tim_win32_exit` join hang) by
+running the virtualized timer thread's ORIGINAL entry point on a real,
+joinable thread whose own `WaitForSingleObject` calls are substituted to
+`INFINITE`; (4) filters spurious release events out of `--record-input`
+recordings. G1/G2 (below) re-verified after every change.
+
+### 1. `src` binding form
+
+`carrier/gen/scan_src_defs.py` (new) scans `src/icytower/*.c` (excluding
+`state.c`, which only supplies standalone storage, never a function body -
+src/README.md) for top-level function DEFINITIONS with a small regex
+(return-type tokens, `name(args)`, then a `{` starting its own line - this
+codebase's uniform style), instead of a hand-maintained exclude list.
+`build.cmd` captures its comma-separated stdout into `SRC_EXCLUDES` and
+passes it to `gen_bindings.py --exclude %SRC_EXCLUDES% --guard-define
+ICYTOWER_BINDINGS_ACTIVE --out gen\pf_bindings_src.h --types-out
+gen\pf_bindings_src_types.h`, reproducing exactly the `is_solid,update_frame`
+exclude set src/README.md's own hand-run command already produced (verified:
+`python gen/gen_bindings.py --exclude is_solid,update_frame ...` and the
+scanner-driven invocation emit byte-identical `pf_bindings_src.h`).
+
+`src\icytower\update_frame.c` and `is_solid.c` are compiled by build.cmd as
+their OWN `cl /c` step - `/I gen /FIpf_bindings_src.h`, NOT folded into the
+main multi-file `cl` invocation - because pf_bindings_src.h pulls in the
+carrier's type provider (it_types.h, which redefines `BITMAP`), which
+collides with `windows.h` the instant both are seen by one TU (bind.cpp's
+own header comment already documents this collision for the carrier-side
+headers; the same fact applies here). **MEASURED build bug, fixed**:
+`/FIgen\pf_bindings_src.h` (a relative path through the `/I gen` directory)
+does NOT work - MSVC's quoted-include search rule appends the
+force-include's own spelling to each `/I` directory in turn, so `/I gen`
++ `/FIgen\pf_bindings_src.h` looks for `gen\gen\pf_bindings_src.h` (doesn't
+exist), and the literal spelling relative to cl's cwd is never tried for a
+quoted include either - `cl` reported "Cannot open include file:
+'gen\pf_bindings_src.h'" even though the file plainly exists at that path
+relative to the invocation directory. Fixed by force-including just the
+bare filename (`/FIpf_bindings_src.h`) and letting `/I gen` supply the
+directory, which is the correct, working spelling.
+
+`is_solid.c`'s own `Tmap *m` parameter and `update_frame.c`'s `void`
+prototype are declared in `carrier/src/bind.cpp` as `void*`/`int` (never the
+real `Tmap*`), the exact same pattern `native_is_solid` already used for the
+same documented reason (bind.cpp cannot see the carrier's `Tmap` without
+`windows.h`-colliding headers): C linkage matches by name only, never by
+parameter type across translation units, so the mismatch is harmless and the
+existing `native_is_solid` binding already proved the pattern works.
+
+`bind.cpp` gained a fourth form, `FORM_SRC`, alongside `FORM_LIFTED`/
+`FORM_NATIVE`; `kFns[]` gained a `src` field (`update_frame`/`is_solid`
+point at the newly-compiled symbols, `jump_player` stays `nullptr` - no
+src/ form exists for it yet, same as its `native` field). `--bind
+name=src` is a new, valid form string alongside `lifted`/`native`/
+`original`.
+
+**"native is transitional" labeling**: per this pass's instruction, `src`
+is now the authoritative address-free NATIVE form (win32_pilot.md SS7a);
+`carrier/native/*.c` (the old hand-written copies still using the carrier
+memory seam) stays bound to the CLI keyword `native` unchanged (backward
+compatible - existing `--bind x=native` commands and scripts keep working),
+but `form_name()` now renders it as `"native(transitional)"` everywhere a
+form is displayed (stderr bind confirmation lines, `--report`'s `"form"`/
+`"binding"` JSON, `--fn-digest-out`'s `form=` field) instead of plain
+`"native"`. `compare_fn_digests.py` never compares this string (`form` is
+deliberately excluded from the verdict - its own docstring), so the
+relabeling cannot change any EQUAL/DIFFERENT result; verified below (G2
+still EQUAL with the new label present in the compared files).
+
+Verified (assets restored before each run, as always in this file):
+
+```
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --bind update_frame=src --fn-digest-out ../artifacts_task/g2_C_src.txt --report ../artifacts_task/g2_C_report.json
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --bind update_frame=original --fn-digest-out ../artifacts_task/g2_B_original.txt
+python carrier/scripts/compare_fn_digests.py ../artifacts_task/g2_C_src.txt ../artifacts_task/g2_B_original.txt
+```
+
+Result: **`EQUAL (877 invocations, ... [src] vs ... [original])`** - the
+address-free `src/icytower/update_frame.c`, compiled straight into the
+carrier and bound at `update_frame`'s original address, is behaviourally
+identical to the original machine code over the full milestone-7 replay.
+stderr confirms the entry patch: `bind: update_frame @0x00406ac4 -> src
+(5-byte jmp rel32 -> stub 0)`.
+
+### 2. Tick-boundary real input (fixes divergence 002)
+
+**Problem, restated with the code evidence**: with `--input=real`, real
+DirectInput events reached Allegro's `key[]` state directly from
+`key_dinput_handle_scancode`, called from the real window thread's message
+pump - an asynchronous instant completely independent of the main thread's
+20ms tick loop. `--record-input`'s breakpoints logged `T =
+det_current_tick()` sampled at that same asynchronous instant. Replay always
+injects at an exact tick boundary (`deliver_due_input`, called from
+`det_wrap_Sleep` on the main thread). Two different delivery mechanisms with
+two different timing sources cannot be reproducible even in principle - this
+is exactly what investigation 002 measured (`replays/first_human`: first
+difference at the very first gameplay tick, off by one; shifting every
+recorded event +1 tick made the first 11 ticks match).
+
+**Fix**: `real_key_capture_hit` (det.cpp), a NEW breakpoint callback at the
+same VA (`key_dinput_handle_scancode`, 0x46d5a8) `neutralize_keyboard_hit`
+already used for Script/None mode, now also installed for
+`input_policy==Real && !inject_real_test` (previously nothing was installed
+there at all). It reads the reg-passed args (EAX=DIK scancode, EDX=pressed),
+translates the DIK code to the Allegro code via `dik_to_allegro` (reads the
+guest's own `hw_to_mycode[256]` table directly - the forward direction of
+the mapping this task's kDikMap-generation ask needed anyway, see below),
+pushes `{allegro_code, press}` onto a small ring buffer guarded by a
+`CRITICAL_SECTION` (`real_queue_push`/`real_queue_pop`), and NEUTRALIZES the
+original call exactly like `neutralize_keyboard_hit` (pop the return address
+into EIP - safe for the same reason already established: args arrive in
+registers, nothing of the caller's is on the stack to clean up).
+
+`drain_real_key_queue()`, called from `det_wrap_Sleep` immediately after
+`deliver_due_input()` (both the det-mode and non-det-mode branches - the
+task's "real must work with or without --det"), drains the queue and calls
+`_handle_key_press`/`_handle_key_release` directly - the EXACT SAME
+function calls, from the EXACT SAME call site, that scripted replay already
+uses. `--record-input`'s breakpoints (unchanged, still at those two
+functions) therefore see the delivery-time T, not the arrival-time T:
+record and replay are now produced by the same path. Worst-case added
+latency is one tick (20ms in `--det`), since the queue is drained once per
+`Sleep` call - satisfies the task's latency requirement.
+
+`--inject-real-test` is UNCHANGED: it is the one case
+(`input_policy==Real && inject_real_test`) that deliberately keeps the real
+`key_dinput_handle_scancode` path unneutralized, since its whole point is
+exercising that function's own body (including its measured OS/Allegro
+auto-repeat behavior, "Input policy and recording" part C above) for the
+synthetic record/replay round trip - re-verified after this pass:
+
+```
+carrier.exe --det --pace=fast --input=real --inject-real-test --input-script scripts/newgame.txt --record-input ../artifacts_task/rt_record.txt --digest-out ../artifacts_task/rt_record_digest.txt --stop-at-tick 1000 --run-seconds 60
+carrier.exe --det --pace=fast --input=script --input-script ../artifacts_task/rt_record.txt --digest-out ../artifacts_task/rt_replay_digest.txt --stop-at-tick 1000 --run-seconds 60
+python carrier/scripts/compare_digests.py ../artifacts_task/rt_record_digest.txt ../artifacts_task/rt_replay_digest.txt
+```
+
+Result: **`EQUAL (876 ticks, ...)`** - unchanged from before this pass.
+
+**Generated DIK<->Allegro table, not hand-listed**: `kDikMap` (7 hand-listed
+entries) is replaced by `build_dik_tables()`, which reads the guest's own
+`hw_to_mycode[256]` byte table directly out of mapped guest memory (VA
+`0x4daf80`, the same table+VA the previous pass's `kDikMap` was manually
+transcribed FROM) and builds the Allegro->DIK inverse (`g_allegro_to_dik[128]`,
+first DIK alias wins) once, lazily, on first use (safe any time after
+`pe_image_load` has mapped the guest, which is true for every tick
+delivered). The forward direction (DIK->Allegro, `dik_to_allegro`) needs no
+table at all - `hw_to_mycode[dik]` already IS that mapping, read directly.
+Superset of the old 7-key table by construction; a future script using any
+other key gets a mapping automatically instead of needing `kDikMap`
+hand-edited (the limitation the previous pass's "Known gap" section
+flagged).
+
+**Human round trip: still to be done by the operator.** This pass's
+automated verification is the synthetic `--inject-real-test` round trip
+above (unchanged, re-verified EQUAL) - proving the mechanism this fix
+shares (delivery through `_handle_key_press`/`_handle_key_release`, recorded
+at the same call site) is sound, but `--inject-real-test` is main-thread-
+synchronous by construction (it calls `key_dinput_handle_scancode` from
+inside `det_wrap_Sleep` itself) and therefore never exercised the actual
+async-arrival race divergence 002 measured. **A genuine human round trip -
+`python scripts/play.py --record-replay NAME` then `python scripts/play.py
+--play-replay NAME` with a real keyboard - is required to close this out**
+and is left for the operator, per the task's own documented fallback for an
+automated pass (no way to press real keys from here).
+
+### 3. Parked timer thread (fixes divergence 003, the exit hang)
+
+**Root cause, from the disassembly** (`artifacts/disasm.txt`): both
+`_tim_win32_high_perf_thread` (0x478584) and `_tim_win32_low_perf_thread`
+(0x4783bc) loop on `WaitForSingleObject(stop_event@0x4ec050, <15 or
+100ms>)` and fall through to `__win_thread_exit` (a normal return) the
+FIRST time that call returns anything other than `WAIT_TIMEOUT` (0x102);
+`_tim_win32_exit` (0x478488) does `SetEvent(stop_event@0x4ec050)` then
+loops `WaitForSingleObject(timer_thread_handle@0x4ec054, 100)` while it
+returns `WAIT_TIMEOUT`. The OLD virtualized timer thread
+(`make_parked_handle`, Milestones 5-7) returned a handle to a thread
+blocked forever on a carrier-private event NOBODY EVER SIGNALED - that
+handle could never become signaled, so `_tim_win32_exit`'s join spun on
+`WAIT_TIMEOUT` forever.
+
+**Generic fix**: `make_parked_real_handle` (det.cpp) now runs the ORIGINAL
+entry point (`tim_win32_high_perf_thread`/`_low_perf_thread`) on a real,
+`CREATE_SUSPENDED` host thread (`parked_real_thread_proc`), registers that
+thread's id as "parked" (`register_parked_thread`/`det_is_parked_thread`,
+a small table guarded by a `CRITICAL_SECTION`) BEFORE resuming it, and
+`det_wrap_WaitForSingleObject` (a new always-installed wrapper, wired the
+same way as `Sleep`/QPC/etc - `imports.cpp`'s `kWrapNames`, `wrappers.cpp`'s
+`wrappers_lookup`) substitutes `ms = INFINITE` whenever the CALLING thread
+is parked and asked for a finite timeout. The thread's own
+`WaitForSingleObject(stop_event, 15-or-100)` call therefore never returns
+`WAIT_TIMEOUT` and never reaches the `_handle_timer_tick` call just above
+it in either loop - tick delivery is UNCHANGED (still only from
+`det_wrap_Sleep` on the main thread, milestone 5-7's design) - the thread
+simply blocks in that one real wait until the guest itself calls
+`SetEvent(stop_event)` at shutdown, at which point the wait returns
+non-timeout, the guest's OWN code falls through to `__win_thread_exit`, and
+the thread function returns for real. `_tim_win32_exit`'s join then
+succeeds by construction - no carrier-side polling, timeout heuristic, or
+special-cased shutdown path needed; the fix is entirely "give the guest's
+own exit code a real thread to actually signal."
+
+**Verified end-to-end**: `scripts/quit_via_menu.txt` (new) holds `KEY_ESC`
+at the main menu (T=20 to T=400) - the same key and the same
+`is_pause()`-driven "DO YOU REALLY WANT TO EXIT?" / "Press ESC to exit"
+mechanism `_play()` itself uses when paused (MEASURED: `handle_menu`
+reaches the identical confirm text at 0x4d5d67/0x4d5d9b that `_play`'s own
+pause-exit path draws - both are reachable this way, only `_play`'s copy
+needed no navigation to reach since it's the same key). Holding (not
+tapping) is required for the same reason `scripts/newgame.txt`'s own
+comment already documents for the menu's ENTER-tap unreliability.
+
+```
+carrier.exe --det --pace=fast --input=script --input-script scripts/quit_via_menu.txt --run-seconds 30
+```
+
+Result: `assets/log.txt` ends `Showing credits / UNINIT / Saving config /
+... / Exiting Allegro / Done...`, stderr shows `carrier_shutdown: guest
+_cexit` (the guest's OWN exit chain, not `--stop-at-tick`/`--run-seconds`
+forcing termination), and the process exits with **code 0 in ~2.0 seconds**
+(measured via `System.Diagnostics.Process.ExitCode`/`Stopwatch`, no
+`--stop-at-tick` given, `--run-seconds 30` never came close to firing) -
+before this fix, this exact scenario hung forever on `_tim_win32_exit`'s
+join. `det: timer thread PARKED (entry=0x00478584): running the ORIGINAL
+entry point on a real thread whose WaitForSingleObject calls are
+substituted to INFINITE` confirms the mechanism engaged.
+
+A companion script, `scripts/quit_via_pause.txt`, quits from WITHIN
+`_play()` (a single `KEY_ESC` press+release while playing - "game paused
+with esc" / "game quit from esc pause" / "play ended" appear immediately,
+matching `artifacts/log_original_baseline.txt`'s own sequence exactly) and
+returns cleanly to `MAIN MENU LOOP` - useful evidence the pause/quit-confirm
+mechanism itself works identically in both places, though this script alone
+does not reach the final Allegro-exit path `quit_via_menu.txt` does.
+
+**`--stop-at-tick`/`--run-seconds` robustness**: both already call
+`TerminateProcess(GetCurrentProcess(), 0)` after `carrier_shutdown` -
+`TerminateProcess` forcibly ends every thread in the process
+unconditionally, never waiting on or joining any of them, so it was already
+robust to a hung/parked thread and remains so; no code change was needed
+here beyond confirming this by inspection and by every `--stop-at-tick` run
+in G1/G2 above continuing to exit cleanly with the new parked-thread
+mechanism in place.
+
+**G1 unaffected** (parking must not change tick delivery - required by this
+task): see "Proof rerun" below, `EQUAL (876 ticks, ...)`, unchanged.
+
+### 4. Recording hygiene
+
+**Problem** (task's own description): at process exit, Allegro's own
+keyboard shutdown releases every scancode it thinks could be down, one
+`_handle_key_release` call per scancode, all observed at a single tick -
+none of them a real gameplay event.
+
+**Rule implemented**: `det.cpp` tracks a per-scancode "currently held" set,
+`g_key_held[256]`, set on a press `--record-input` records, cleared on the
+matching release. `keyrelease_record_hit` now drops (does not write) any
+release whose scancode is NOT currently marked held - i.e. a release that
+was never recorded pressed, or was already recorded released once. Because
+filtered lines are simply never written, the file naturally ends at the
+last GENUINE press/release pair with no separate "trim the tail" pass
+needed. The rule applies uniformly regardless of which mechanism produced
+the underlying `_handle_key_press`/`_handle_key_release` call (script direct
+injection, item 2's real-input capture-and-replay, or `--inject-real-test`'s
+real path) - all three funnel through the same two breakpoints.
+
+**Verified**: a full `--record-input` capture of `scripts/newgame.txt`'s
+gameplay (12 presses/releases of SPACE, plus ENTER's and RIGHT's releases)
+recorded exactly the 12 legitimate releases the script itself produces, in
+the right order, with none dropped - the filter does not touch genuine
+matched pairs (`../artifacts_task/hygiene_test.txt`). A full clean-exit
+capture (`scripts/quit_via_menu.txt` with `--record-input`) recorded ONLY
+`press KEY_ESC` lines and zero releases - the process's own exit-confirm
+polling loop calls `_handle_key_press` repeatedly while the key is held
+(authentic guest behavior: the SAME class of finding "Input policy and
+recording" part C already documented for `--inject-real-test`'s ENTER
+auto-repeat, now also observed via plain Script-mode delivery, at a
+different call site) and the exit chain completed before the scripted
+release event's tick was ever reached, so this particular run did not
+independently reproduce the literal ~120-line release-storm the task
+describes; the filtering rule itself is unconditional (any release without
+a currently-open matching press is dropped, regardless of count or cause)
+and would suppress that storm exactly as described if a future run's exit
+timing exposes it. Flagged as an open item below.
+
+### Proof rerun (this pass)
+
+```
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --digest-out ../artifacts_task/g1_run1.txt
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --digest-out ../artifacts_task/g1_run2.txt
+python carrier/scripts/compare_digests.py ../artifacts_task/g1_run1.txt ../artifacts_task/g1_run2.txt
+```
+
+Result: **`EQUAL (876 ticks, ...)`** - unchanged.
+
+```
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --bind update_frame=native --fn-digest-out ../artifacts_task/g2_A_native.txt
+carrier.exe --det --pace=fast --input=script --input-script scripts/newgame.txt --stop-at-tick 1000 --run-seconds 60 --bind update_frame=original --fn-digest-out ../artifacts_task/g2_B_original.txt
+python carrier/scripts/compare_fn_digests.py ../artifacts_task/g2_A_native.txt ../artifacts_task/g2_B_original.txt
+```
+
+Result: **`EQUAL (877 invocations, ... [native(transitional)] vs ...
+[original])`** - unchanged in substance; the label is new (see item 1
+above), the verdict is not.
+
+`assets/tower.cfg`, `assets/profiles/`, `assets/log.txt` were restored from
+`artifacts/assets_backup/` + `artifacts/log_original_baseline.txt` before
+every run above, per the existing convention in this file.
+
+### Known gaps / open problems (this pass)
+
+- **Human round trip for item 2 not done** (see item 2 above) - operator
+  action required (`scripts/play.py --record-replay NAME` /
+  `--play-replay NAME`), no way to press real keys from this pass.
+- **Item 4's exact ~120-line release storm not independently reproduced** -
+  this build/config's exit path (via `scripts/quit_via_menu.txt`) completes
+  in a couple hundred ticks, before any such storm would occur if one exists
+  in this exit path; the filtering rule is unconditional and generic, not
+  tuned to a specific observed count, so it is expected to suppress it
+  regardless. A slower/different exit path (e.g. a real human quitting via
+  `--pace=real`) is the natural way to observe it directly.
+- **`src` form exists only for `update_frame`/`is_solid`** - `jump_player`
+  has no `src/` implementation yet (same gap it already had for `native`).
+- **The main menu's own repeated-press behavior while a key is held**
+  (item 4's verification) is a newly-observed instance of the same
+  auto-repeat class "Input policy and recording" part C already flagged for
+  `--inject-real-test`'s ENTER key - not investigated further here (does
+  not affect any gate: G1/G2 both stayed EQUAL, and the recording hygiene
+  filter handles its press-only shape correctly by construction, since it
+  only ever filters releases).

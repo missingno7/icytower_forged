@@ -53,6 +53,21 @@ extern "C" {
     int  __cdecl lifted_jump_player(void* p, int forced);
     void __cdecl native_update_frame(void);
     int  __cdecl native_is_solid(void* m, int cx, int cy);
+    // SRC form (item 1, "src binding..." pass): src/icytower/update_frame.c
+    // and is_solid.c, compiled straight into the carrier with
+    // carrier/gen/pf_bindings_src.h force-included (see build.cmd), which
+    // is what leaves their OWN plain names (`update_frame`, `is_solid`)
+    // free instead of macro-redirecting them to their original address
+    // (BINDINGS_NOTES.md "Exclusion"). Declared here with void*/int the same
+    // way native_is_solid is above (never Tmap*) for the identical reason
+    // cited at this file's own header comment: this TU cannot see the
+    // carrier's Tmap (it_types.h, via windows.h-colliding headers) or
+    // src/'s own Tmap (game_types.h) without pulling in one or the other's
+    // transitive dependencies; the mismatch is harmless because C linkage
+    // only matches by name, never by parameter type across translation
+    // units, and native_is_solid already proves the pattern works.
+    void __cdecl update_frame(void);
+    int  __cdecl is_solid(void* m, int cx, int cy);
 }
 
 // pf_rt.h's hard-refusal hook (the LIFTED form calls it for a #DE it would
@@ -98,6 +113,7 @@ struct FnDesc {
     bool        returns_value;
     void*       lifted;    // nullptr = this form does not exist yet
     void*       native;
+    void*       src;       // nullptr = no src/ form exists yet (item 1)
     DomainFn    domain;
     FaultAddrFn fault_addr; // byte flipped by --fault-inject (lowest byte)
 };
@@ -165,22 +181,34 @@ void dom_jump_player(pf::Sha256& s, const unsigned* args) {
 void* fa_jump_player(const unsigned* args) { return (void*)(uintptr_t)args[0]; }
 
 const FnDesc kFns[] = {
-    // name           VA          argc  ret?   lifted                      native                      domain            fault addr
-    { "update_frame", 0x406ac4u,  0,    false, (void*)lifted_update_frame, (void*)native_update_frame, dom_update_frame, fa_update_frame },
-    { "is_solid",     0x4166dcu,  3,    true,  (void*)lifted_is_solid,     (void*)native_is_solid,     dom_is_solid,     fa_is_solid     },
-    { "jump_player",  0x418678u,  2,    true,  (void*)lifted_jump_player,  nullptr,                    dom_jump_player,  fa_jump_player  },
+    // name           VA          argc  ret?   lifted                      native                      src                  domain            fault addr
+    { "update_frame", 0x406ac4u,  0,    false, (void*)lifted_update_frame, (void*)native_update_frame, (void*)update_frame, dom_update_frame, fa_update_frame },
+    { "is_solid",     0x4166dcu,  3,    true,  (void*)lifted_is_solid,     (void*)native_is_solid,     (void*)is_solid,     dom_is_solid,     fa_is_solid     },
+    { "jump_player",  0x418678u,  2,    true,  (void*)lifted_jump_player,  nullptr,                    nullptr,             dom_jump_player,  fa_jump_player  },
 };
 const int kNumFns = (int)(sizeof(kFns) / sizeof(kFns[0]));
 
 // ---------------------------------------------------------------------
 // Per-function state
 // ---------------------------------------------------------------------
-enum Form { FORM_NONE = 0, FORM_ORIGINAL, FORM_LIFTED, FORM_NATIVE };
+enum Form { FORM_NONE = 0, FORM_ORIGINAL, FORM_LIFTED, FORM_NATIVE, FORM_SRC };
+// Display-only labels (report JSON, --fn-digest-out's form= field, stderr
+// confirmation lines): item 1 of "src binding, tick-boundary real input,
+// parked timer thread" (carrier/NOTES.md) makes src/ (win32_pilot.md SS7a's
+// address-free clean port) the authoritative NATIVE form going forward.
+// carrier/native/*.c (FORM_NATIVE) is kept working for backward
+// compatibility - the CLI keyword `native` still binds to it unchanged -
+// but every place this carrier prints the form now spells it out as
+// "native(transitional)" so nothing looks like it is the authoritative
+// native form when it is not. compare_fn_digests.py never compares this
+// string (form is deliberately excluded from the verdict), so changing the
+// label cannot affect any EQUAL/DIFFERENT result.
 const char* form_name(int f) {
     switch (f) {
     case FORM_ORIGINAL: return "original";
     case FORM_LIFTED:   return "lifted";
-    case FORM_NATIVE:   return "native";
+    case FORM_NATIVE:   return "native(transitional)";
+    case FORM_SRC:      return "src";
     default:            return "unbound";
     }
 }
@@ -508,9 +536,13 @@ void apply_one(const char* item) {
     if (id < 0) die("--bind: unknown function '%s' (known: update_frame, is_solid, jump_player)", fname);
     int form;
     if (_stricmp(fform, "lifted") == 0) form = FORM_LIFTED;
+    // `native` keeps pointing at carrier/native (transitional) - see
+    // form_name's comment. `src` is the new, authoritative address-free
+    // form (win32_pilot.md SS7a).
     else if (_stricmp(fform, "native") == 0) form = FORM_NATIVE;
+    else if (_stricmp(fform, "src") == 0) form = FORM_SRC;
     else if (_stricmp(fform, "original") == 0) form = FORM_ORIGINAL;
-    else die("--bind: unknown form '%s' for '%s' (expected lifted|native|original)", fform, fname);
+    else die("--bind: unknown form '%s' for '%s' (expected lifted|native|src|original)", fform, fname);
     if (g_form[id] != FORM_NONE && g_form[id] != form)
         die("--bind: '%s' bound twice, to %s and %s", fname, form_name(g_form[id]), form_name(form));
     g_form[id] = form;
@@ -590,7 +622,13 @@ void bind_init(const BindOptions& opt) {
             g_sense_id = id;
             continue;
         }
-        void* target = (g_form[id] == FORM_LIFTED) ? kFns[id].lifted : kFns[id].native;
+        void* target = nullptr;
+        switch (g_form[id]) {
+        case FORM_LIFTED: target = kFns[id].lifted; break;
+        case FORM_NATIVE: target = kFns[id].native; break;
+        case FORM_SRC:    target = kFns[id].src;    break;
+        default: break;
+        }
         if (!target)
             die("no %s form exists for '%s' (nothing named %s_%s is linked into the carrier)",
                 form_name(g_form[id]), kFns[id].name, form_name(g_form[id]), kFns[id].name);

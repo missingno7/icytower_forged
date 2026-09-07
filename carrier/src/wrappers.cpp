@@ -146,5 +146,6 @@ void* wrappers_lookup(const char* name) {
     if (strcmp(name, "calloc") == 0) return (void*)det_wrap_calloc;
     if (strcmp(name, "realloc") == 0) return (void*)det_wrap_realloc;
     if (strcmp(name, "free") == 0) return (void*)det_wrap_free;
+    if (strcmp(name, "WaitForSingleObject") == 0) return (void*)det_wrap_WaitForSingleObject;
     return nullptr;
 }

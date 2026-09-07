@@ -1,0 +1,14 @@
+# quit_via_menu.txt - item 3 exit test (carrier/NOTES.md "parked timer
+# thread"; divergence 003, notes/living_record.md). Holds ESC at the FRESH
+# main menu (same key, same is_pause()-driven "DO YOU REALLY WANT TO EXIT?"
+# / "Press ESC to exit" overlay play() itself uses when paused - MEASURED:
+# handle_menu checks the same pause/exit state the play() loop does) for
+# long enough to register reliably (per the existing menu-input-timing
+# caution in scripts/newgame.txt: brief taps are unreliable at menu-level
+# input sampling, a held key is not) and to be recognized as the exit
+# confirmation. Drives the game through its OWN full shutdown chain -
+# "Showing credits" -> "UNINIT" -> profile/config save -> "Exiting Allegro"
+# (which is what actually calls _tim_win32_exit, 0x478488) -> "Done..." -
+# exactly the path that used to hang before the parked-timer-thread fix.
+20 press KEY_ESC
+400 release KEY_ESC

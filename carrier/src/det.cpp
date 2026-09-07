@@ -29,6 +29,7 @@
 #define VA_HANDLE_KEY_RELEASE   0x43d8d4u  // keyboard.c: void _handle_key_release(int scancode)
 #define VA_SAFEPOINT            0x4124f4u  // main.c play(): once per consumed game tick
 #define VA_KEY_DINPUT_SCANCODE  0x46d5a8u  // wkeybd.c: key_dinput_handle_scancode(al=scancode,edx=?) - reg-passed args, no stack args
+#define VA_HW_TO_MYCODE         0x4daf80u  // wkeybd.c: unsigned char hw_to_mycode[256] - DIK_* -> Allegro code (item 2)
 
 // KNOWN (task brief + Allegro 4.4 timer.h): timer units/second. Confirmed
 // against tim_win32_high_perf_thread's own disassembly, which multiplies
@@ -85,6 +86,7 @@ static FARPROC g_real_QPC = nullptr, g_real_timeGetTime = nullptr,
 static FARPROC g_real_malloc = nullptr, g_real_calloc = nullptr,
                g_real_realloc = nullptr, g_real_free = nullptr;
 static FARPROC g_real_Sleep = nullptr;
+static FARPROC g_real_WaitForSingleObject = nullptr; // item 3: parked timer thread
 
 // Import ids (see wrappers.hpp/det_bind_real doc), one per always-installed
 // wrapper this file defines - each det_wrap_* below calls pf_count_import
@@ -92,7 +94,8 @@ static FARPROC g_real_Sleep = nullptr;
 // wired directly into the guest IAT, bypassing the counting trampoline).
 static int g_id_Sleep = -1, g_id_QPC = -1, g_id_timeGetTime = -1, g_id_time = -1,
            g_id_clock = -1, g_id_beginthread = -1,
-           g_id_malloc = -1, g_id_calloc = -1, g_id_realloc = -1, g_id_free = -1;
+           g_id_malloc = -1, g_id_calloc = -1, g_id_realloc = -1, g_id_free = -1,
+           g_id_WaitForSingleObject = -1;
 
 void det_bind_real(const char* name, void* real_proc, int id) {
     if (strcmp(name, "QueryPerformanceCounter") == 0) { g_real_QPC = (FARPROC)real_proc; g_id_QPC = id; }
@@ -105,6 +108,7 @@ void det_bind_real(const char* name, void* real_proc, int id) {
     else if (strcmp(name, "realloc") == 0) { g_real_realloc = (FARPROC)real_proc; g_id_realloc = id; }
     else if (strcmp(name, "free") == 0) { g_real_free = (FARPROC)real_proc; g_id_free = id; }
     else if (strcmp(name, "Sleep") == 0) { g_real_Sleep = (FARPROC)real_proc; g_id_Sleep = id; }
+    else if (strcmp(name, "WaitForSingleObject") == 0) { g_real_WaitForSingleObject = (FARPROC)real_proc; g_id_WaitForSingleObject = id; }
 }
 
 // ---------------------------------------------------------------------
@@ -249,15 +253,52 @@ static int resolve_key(const char* tok) {
 // key) and it corrupted enough internal state to leak the deterministic
 // heap arena empty within a few hundred ticks (a real, reproduced failure,
 // not a hypothetical) - fixed by translating to the DIK code here instead.
-struct DikMap { int allegro_code; int dik_code; };
-static const DikMap kDikMap[] = {
-    {59, 0x01}, {67, 0x1C}, {75, 0x39},
-    {82, 0xCB}, {83, 0xCD}, {84, 0xC8}, {85, 0xD0},
-};
+// GENERATED at runtime (item 2, "tick-boundary real input" pass), not
+// hand-listed: read directly out of the mapped guest image's own
+// hw_to_mycode[256] table (VA_HW_TO_MYCODE) the first time it's needed -
+// safe any time after pe_image_load has mapped the guest (main.cpp: always
+// true by the time any tick is delivered). hw_to_mycode[dik] IS the
+// DIK->Allegro direction already, read directly, no table needed for that
+// side (see dik_to_allegro below); allegro_to_dik is built once as its
+// inverse, first occurrence wins for any Allegro code with more than one
+// DIK alias. Superset of the old 7-entry hand-written kDikMap (ESC/ENTER/
+// SPACE/arrows verified to match it exactly - see carrier/NOTES.md), so
+// every existing --inject-real-test script keeps working unchanged, and any
+// OTHER key used in a future script gets a mapping automatically instead of
+// needing kDikMap hand-edited (the old, now-removed limitation).
+static int g_allegro_to_dik[128];
+static bool g_dik_tables_built = false;
+
+static void build_dik_tables() {
+    if (g_dik_tables_built) return;
+    for (int i = 0; i < 128; ++i) g_allegro_to_dik[i] = -1;
+    const unsigned char* hw_to_mycode = (const unsigned char*)(uintptr_t)VA_HW_TO_MYCODE;
+    int mapped = 0;
+    for (int dik = 0; dik < 256; ++dik) {
+        int allegro = hw_to_mycode[dik];
+        if (allegro > 0 && allegro < 128 && g_allegro_to_dik[allegro] < 0) {
+            g_allegro_to_dik[allegro] = dik;
+            ++mapped;
+        }
+    }
+    g_dik_tables_built = true;
+    fprintf(stderr, "det: built Allegro->DIK table from the guest's own hw_to_mycode[256] "
+                     "(VA=0x%08x): %d of 128 possible Allegro codes have a DIK mapping\n",
+            VA_HW_TO_MYCODE, mapped);
+}
+
 static int allegro_to_dik(int allegro_code) {
-    for (const DikMap& m : kDikMap)
-        if (m.allegro_code == allegro_code) return m.dik_code;
-    return -1; // no mapping - see deliver_due_input's inject_real_test branch
+    build_dik_tables();
+    if (allegro_code < 0 || allegro_code >= 128) return -1;
+    return g_allegro_to_dik[allegro_code]; // -1 = no mapping - see deliver_due_input's inject_real_test branch
+}
+
+// Forward direction for item 2's real-input capture path below: the guest's
+// own table gives this directly, no inversion needed.
+static int dik_to_allegro(int dik_code) {
+    if (dik_code < 0 || dik_code > 255) return 0;
+    const unsigned char* hw_to_mycode = (const unsigned char*)(uintptr_t)VA_HW_TO_MYCODE;
+    return hw_to_mycode[dik_code];
 }
 
 // Reverse of resolve_key, for --record-input: emit the same KEY_NAME tokens
@@ -351,7 +392,8 @@ static void deliver_due_input() {
             int dik = allegro_to_dik(e.scancode);
             if (dik < 0) {
                 fprintf(stderr, "det: T=%d --inject-real-test has no DIK mapping for Allegro "
-                                 "scancode=%d, skipping (add it to kDikMap if needed)\n",
+                                 "scancode=%d, skipping (not present in the guest's own "
+                                 "hw_to_mycode[256] table - see build_dik_tables)\n",
                         T, e.scancode);
                 ++g_script_cursor;
                 continue;
@@ -369,6 +411,125 @@ static void deliver_due_input() {
 }
 
 // ---------------------------------------------------------------------
+// Item 2 ("tick-boundary real input" pass, carrier/NOTES.md; divergence 002,
+// notes/living_record.md): with --input=real, real key events used to reach
+// Allegro's key[] state DIRECTLY from key_dinput_handle_scancode, called
+// from the real window thread's message pump - i.e. at whatever real,
+// asynchronous instant DirectInput/the window proc happened to run,
+// completely independent of the main thread's 20ms tick loop. A
+// --record-input recording made that way logs T = det_current_tick() read
+// at that same asynchronous instant, which can land either just BEFORE or
+// just AFTER the main thread's own tick boundary relative to the event's
+// "true" tick - a MEASURED +-1 tick error per event (divergence 002: replay
+// of a real human recording first differed at the very first gameplay
+// tick). Replay, by construction, always injects at an exact tick boundary
+// (deliver_due_input above), so record and replay were using two DIFFERENT
+// delivery mechanisms with two different timing sources - not reproducible
+// even in principle.
+//
+// Fix: capture the raw event at the SAME breakpoint (key_dinput_handle_
+// scancode's entry) instead of letting it run, queue it, and NEUTRALIZE the
+// original call exactly like neutralize_keyboard_hit already does for
+// Script/None mode (same mechanism, different intent: here the event is
+// preserved, not dropped). The queued events are then drained and delivered
+// through _handle_key_press/_handle_key_release - the EXACT SAME function
+// calls, from the EXACT SAME call site (drain_real_key_queue, called
+// immediately after deliver_due_input from det_wrap_Sleep on the main
+// thread) that scripted replay already uses - so the recording is now
+// produced by the very path that replays it, and --record-input's
+// breakpoints (also at _handle_key_press/_handle_key_release, unchanged)
+// see the delivery-time T, not the arrival-time T. Worst-case added
+// latency: one tick (20ms in --det), since the queue is drained once per
+// Sleep call.
+//
+// Only installed for input_policy==Real AND !inject_real_test (det_init
+// below) - --inject-real-test deliberately keeps the OLD unneutralized
+// behavior (its whole point is exercising the real function body's own
+// auto-repeat semantics; carrier/NOTES.md "Input policy and recording" part
+// C documents that finding and it must keep working unchanged - re-verified
+// after this pass, see carrier/NOTES.md).
+struct RealKeyEvent { int allegro_code; bool press; };
+static const int kRealQueueCap = 256;
+static RealKeyEvent g_real_queue[kRealQueueCap];
+static int g_real_queue_head = 0, g_real_queue_tail = 0; // ring buffer, mod kRealQueueCap
+static CRITICAL_SECTION g_real_queue_cs;
+static bool g_real_queue_cs_inited = false;
+
+static void real_queue_init() {
+    if (!g_real_queue_cs_inited) { InitializeCriticalSection(&g_real_queue_cs); g_real_queue_cs_inited = true; }
+}
+
+// Called from the VEH callback on whichever thread hit the breakpoint (the
+// real window thread, measured - carrier/NOTES.md "Milestones 5-7" part B).
+static void real_queue_push(int allegro_code, bool press) {
+    real_queue_init();
+    EnterCriticalSection(&g_real_queue_cs);
+    int next = (g_real_queue_tail + 1) % kRealQueueCap;
+    if (next != g_real_queue_head) {
+        g_real_queue[g_real_queue_tail].allegro_code = allegro_code;
+        g_real_queue[g_real_queue_tail].press = press;
+        g_real_queue_tail = next;
+    } else {
+        fprintf(stderr, "det: WARNING - real-input capture queue full (%d events), dropping one\n", kRealQueueCap);
+    }
+    LeaveCriticalSection(&g_real_queue_cs);
+}
+
+// Called from the main thread only (drain_real_key_queue).
+static bool real_queue_pop(RealKeyEvent* out) {
+    if (!g_real_queue_cs_inited) return false;
+    bool got = false;
+    EnterCriticalSection(&g_real_queue_cs);
+    if (g_real_queue_head != g_real_queue_tail) {
+        *out = g_real_queue[g_real_queue_head];
+        g_real_queue_head = (g_real_queue_head + 1) % kRealQueueCap;
+        got = true;
+    }
+    LeaveCriticalSection(&g_real_queue_cs);
+    return got;
+}
+
+// The breakpoint callback: key_dinput_handle_scancode(scancode, pressed) -
+// reg-passed args (EAX=scancode/DIK, EDX=pressed), KNOWN from its
+// disassembly at entry (0x46d5a8, same fact call_key_dinput_handle_scancode
+// above already relies on). Queues the translated event and neutralizes the
+// call (pop return address into EIP), same technique as
+// neutralize_keyboard_hit below.
+static void real_key_capture_hit(CONTEXT* ctx) {
+    int dik = (int)(unsigned char)ctx->Eax;
+    bool press = ctx->Edx != 0;
+    int allegro_code = dik_to_allegro(dik);
+    if (allegro_code != 0) {
+        real_queue_push(allegro_code, press);
+    } else {
+        fprintf(stderr, "det: T=%d real key event dik=0x%02x has no Allegro mapping "
+                         "(hw_to_mycode[dik]==0), dropped\n", det_current_tick(), dik);
+    }
+    DWORD ret = *(DWORD*)(uintptr_t)ctx->Esp;
+    ctx->Esp += 4;
+    ctx->Eip = ret;
+}
+
+// Called from det_wrap_Sleep on the main thread, right after
+// deliver_due_input - the exact tick-boundary delivery point script mode
+// already uses. This is what makes T at delivery equal T at recording:
+// --record-input's breakpoints sit at _handle_key_press/_handle_key_release,
+// which this function calls directly, synchronously, from the main thread.
+static void drain_real_key_queue() {
+    if (g_input_policy != InputPolicy::Real) return; // nothing was ever queued
+    RealKeyEvent e;
+    int T = det_current_tick();
+    typedef void(__cdecl * PressFn)(int, int);
+    typedef void(__cdecl * ReleaseFn)(int);
+    while (real_queue_pop(&e)) {
+        if (e.press) ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(0, e.allegro_code);
+        else ((ReleaseFn)(void*)VA_HANDLE_KEY_RELEASE)(e.allegro_code);
+        fprintf(stderr, "det: T=%d delivered real %s scancode=%d (captured at tick boundary)\n",
+                T, e.press ? "press" : "release", e.allegro_code);
+    }
+}
+
+// ---------------------------------------------------------------------
 // A. Virtual clock + thread virtualization
 // ---------------------------------------------------------------------
 static DWORD WINAPI parked_thread_proc(LPVOID) {
@@ -378,10 +539,128 @@ static DWORD WINAPI parked_thread_proc(LPVOID) {
 // A fake-but-real thread handle for a virtualized Allegro thread: the guest
 // stores/CloseHandle's/WaitForSingleObject's this normally (all DIRECT,
 // unwrapped imports), so it must be a genuine kernel handle, just one that
-// never does anything.
+// never does anything. Still used for VA_INPUT_THREAD_PROC below (measured,
+// carrier/NOTES.md: never actually spawned in this build, so it is dead
+// code kept only as a guard - not worth the added real-thread machinery
+// item 3 below adds specifically to fix the two timer threads' exit hang).
 static uintptr_t make_parked_handle() {
     HANDLE h = CreateThread(nullptr, 0, parked_thread_proc, nullptr, 0, nullptr);
     return (uintptr_t)h;
+}
+
+// ---------------------------------------------------------------------
+// Item 3 ("parked timer thread" pass, carrier/NOTES.md; divergence 003,
+// notes/living_record.md): _tim_win32_exit (0x478488) does
+// SetEvent(stop_event@0x4ec050) then loops WaitForSingleObject(
+// timer_thread_handle@0x4ec054, 100) while it returns WAIT_TIMEOUT (0x102).
+// The OLD virtualized timer thread (make_parked_handle above) blocked
+// forever on OUR OWN never-signaled event, so that handle never became
+// signaled and the join spun forever - the exit hang.
+//
+// KNOWN (artifacts/disasm.txt, cited in det.hpp's declaration of
+// det_wrap_WaitForSingleObject): both _tim_win32_high_perf_thread (0x478584)
+// and _tim_win32_low_perf_thread (0x4783bc) loop on
+// WaitForSingleObject(stop_event@0x4ec050, <small ms>) and branch to
+// __win_thread_exit (a normal return) the FIRST time that call returns
+// anything other than WAIT_TIMEOUT - i.e. the original code already knows
+// how to exit cleanly the moment its wait is satisfied; it just needs an
+// actual signal to arrive, not a fake handle.
+//
+// Generic fix: run the ORIGINAL entry point on a REAL host thread (so it is
+// a genuine, joinable kernel object - CloseHandle/WaitForSingleObject from
+// guest code keep working exactly as before), but register that thread's id
+// as "parked". det_wrap_WaitForSingleObject (below) substitutes INFINITE
+// for any FINITE timeout a parked thread asks for, so its own
+// WaitForSingleObject(stop_event, 15-or-100) call never returns
+// WAIT_TIMEOUT and therefore never reaches the _handle_timer_tick call just
+// above it in either thread's loop (tick delivery is UNCHANGED: still only
+// from det_wrap_Sleep on the main thread, synchronous, milestone 5-7's
+// design) - the thread simply blocks in that one real wait until the guest
+// itself calls SetEvent(stop_event) at shutdown (_tim_win32_exit), at which
+// point WaitForSingleObject returns non-timeout, the guest's own code falls
+// through to __win_thread_exit, and the thread function returns for real -
+// satisfying _tim_win32_exit's join loop by construction, no carrier-side
+// polling or timeout needed.
+// ---------------------------------------------------------------------
+static const int kMaxParkedThreads = 8;
+static DWORD g_parked_thread_ids[kMaxParkedThreads];
+static int g_parked_thread_count = 0;
+static CRITICAL_SECTION g_parked_cs;
+static bool g_parked_cs_inited = false;
+
+static void ensure_parked_cs() {
+    if (!g_parked_cs_inited) { InitializeCriticalSection(&g_parked_cs); g_parked_cs_inited = true; }
+}
+
+static void register_parked_thread(DWORD tid) {
+    ensure_parked_cs();
+    EnterCriticalSection(&g_parked_cs);
+    if (g_parked_thread_count < kMaxParkedThreads) g_parked_thread_ids[g_parked_thread_count++] = tid;
+    else fprintf(stderr, "det: WARNING - parked-thread table full, thread %lu not tracked\n", tid);
+    LeaveCriticalSection(&g_parked_cs);
+}
+
+// Declared in det.hpp indirectly via det_wrap_WaitForSingleObject; kept
+// file-local since only that wrapper needs it.
+static bool det_is_parked_thread(DWORD tid) {
+    if (!g_parked_cs_inited) return false; // nothing registered yet - cheap common case
+    bool found = false;
+    EnterCriticalSection(&g_parked_cs);
+    for (int i = 0; i < g_parked_thread_count; ++i)
+        if (g_parked_thread_ids[i] == tid) { found = true; break; }
+    LeaveCriticalSection(&g_parked_cs);
+    return found;
+}
+
+struct ParkedRealThreadArgs { void (__cdecl* start)(void*); void* arglist; };
+
+static DWORD WINAPI parked_real_thread_proc(LPVOID pv) {
+    ParkedRealThreadArgs* a = (ParkedRealThreadArgs*)pv;
+    void (__cdecl* start)(void*) = a->start;
+    void* arglist = a->arglist;
+    free(a);
+    start(arglist); // the ORIGINAL guest entry point, called exactly as
+                     // _beginthread itself would (cdecl, one void* arg) -
+                     // real execution, real x87/CRT thread-local init via
+                     // its own __win_thread_init call, real wait loop.
+    return 0;        // reached only after the guest's own code returns
+                      // (i.e. after its WaitForSingleObject was satisfied).
+}
+
+// Creates the thread SUSPENDED, registers its id as parked, THEN resumes -
+// so det_wrap_WaitForSingleObject already knows about it before the thread
+// can possibly make its first (substitutable) wait call. Mirrors
+// make_parked_handle's "must be a genuine kernel handle" requirement above.
+static uintptr_t make_parked_real_handle(void(__cdecl* start)(void*), void* arglist) {
+    ParkedRealThreadArgs* a = (ParkedRealThreadArgs*)malloc(sizeof(ParkedRealThreadArgs));
+    if (!a) { fprintf(stderr, "det: make_parked_real_handle: out of memory\n"); return 0; }
+    a->start = start;
+    a->arglist = arglist;
+    DWORD tid = 0;
+    HANDLE h = CreateThread(nullptr, 0, parked_real_thread_proc, a, CREATE_SUSPENDED, &tid);
+    if (!h) {
+        fprintf(stderr, "det: make_parked_real_handle: CreateThread failed gle=%lu\n", GetLastError());
+        free(a);
+        return 0;
+    }
+    register_parked_thread(tid);
+    ResumeThread(h);
+    return (uintptr_t)h;
+}
+
+extern "C" DWORD __stdcall det_wrap_WaitForSingleObject(HANDLE h, DWORD ms) {
+    pf_count_import(g_id_WaitForSingleObject);
+    if (ms != INFINITE && det_is_parked_thread(GetCurrentThreadId())) {
+        // See the big comment above make_parked_real_handle: a parked
+        // thread's own wait becomes unconditional, so it can only resume
+        // when the guest itself signals the object (real exit), never on a
+        // timeout (which would otherwise run a timer tick from the wrong
+        // thread and reintroduce exactly the race milestone 5-7 removed).
+        ms = INFINITE;
+    }
+    if (g_real_WaitForSingleObject)
+        return ((DWORD(__stdcall*)(HANDLE, DWORD))g_real_WaitForSingleObject)(h, ms);
+    return WAIT_FAILED;
 }
 
 extern "C" uintptr_t __cdecl det_wrap_beginthread(void(__cdecl* start)(void*),
@@ -390,8 +669,11 @@ extern "C" uintptr_t __cdecl det_wrap_beginthread(void(__cdecl* start)(void*),
     uintptr_t start_va = (uintptr_t)(void*)start;
     fprintf(stderr, "det: _beginthread(start=0x%p, stack=%u)\n", (void*)start, stack_size);
     if (g_det_mode && (start_va == VA_TIM_HIGH_PERF_THREAD || start_va == VA_TIM_LOW_PERF_THREAD)) {
-        fprintf(stderr, "det: timer thread virtualized (entry=0x%p)\n", (void*)start);
-        return make_parked_handle();
+        fprintf(stderr, "det: timer thread PARKED (entry=0x%p): running the ORIGINAL entry point "
+                        "on a real thread whose WaitForSingleObject calls are substituted to "
+                        "INFINITE (carrier/NOTES.md 'parked timer thread' - fixes divergence 003, "
+                        "the _tim_win32_exit join hang, generically)\n", (void*)start);
+        return make_parked_real_handle(start, arglist);
     }
     if (g_det_mode && start_va == VA_INPUT_THREAD_PROC) {
         fprintf(stderr, "det: input thread virtualized (entry=0x%p) - synthetic key events drive key[] instead\n",
@@ -473,10 +755,12 @@ extern "C" void __stdcall det_wrap_Sleep(DWORD ms) {
             ((TickFn)(void*)VA_HANDLE_TIMER_TICK)((int)delta);
         }
         deliver_due_input();
+        drain_real_key_queue(); // item 2: real events captured since the last tick
         if (g_pace_real) ::Sleep(ms);
     } else {
         ::Sleep(ms);
         deliver_due_input(); // real-time T, see det_now_ms()
+        drain_real_key_queue();
     }
 }
 
@@ -686,9 +970,27 @@ static void neutralize_keyboard_hit(CONTEXT* ctx) {
     ctx->Eip = ret;
 }
 
+// Item 4 ("recording hygiene" pass, carrier/NOTES.md): at exit, Allegro's
+// own keyboard shutdown path releases every scancode it thinks COULD be
+// down, one release call per scancode, all at one tick - MEASURED: ~120
+// release lines at the tail of a real recording, none of them a real
+// gameplay event. Rule: track which scancodes are "currently held" per our
+// OWN recorded stream (set on a press we recorded, cleared on the matching
+// release); a release for a scancode NOT in that set - never recorded
+// pressed, OR already recorded released once - is not a real event and is
+// dropped rather than written. Because filtered lines are simply never
+// written, the file naturally ends at the last GENUINE press/release pair
+// instead of at Allegro's exit-time flush, with no separate "trim the tail"
+// pass needed. Applies uniformly regardless of which input source produced
+// the press/release call (script direct injection, item 2's real-input
+// capture-and-replay, or --inject-real-test's real path) - all three funnel
+// through this same pair of breakpoints.
+static bool g_key_held[256];
+
 static void keypress_record_hit(CONTEXT* ctx) {
     if (!g_record_file) return;
     int scancode = *(int*)(uintptr_t)(ctx->Esp + 8); // cdecl entry: [esp]=ret,[esp+4]=keycode,[esp+8]=scancode
+    if (scancode >= 0 && scancode < 256) g_key_held[scancode] = true;
     const char* nm = scancode_to_name(scancode);
     if (nm) fprintf(g_record_file, "%d press %s\n", det_current_tick(), nm);
     else fprintf(g_record_file, "%d press %d\n", det_current_tick(), scancode);
@@ -697,6 +999,10 @@ static void keypress_record_hit(CONTEXT* ctx) {
 static void keyrelease_record_hit(CONTEXT* ctx) {
     if (!g_record_file) return;
     int scancode = *(int*)(uintptr_t)(ctx->Esp + 4); // cdecl entry: [esp]=ret,[esp+4]=scancode
+    if (scancode < 0 || scancode >= 256 || !g_key_held[scancode]) {
+        return; // not a real, still-open press of ours - drop it (see comment above)
+    }
+    g_key_held[scancode] = false;
     const char* nm = scancode_to_name(scancode);
     if (nm) fprintf(g_record_file, "%d release %s\n", det_current_tick(), nm);
     else fprintf(g_record_file, "%d release %d\n", det_current_tick(), scancode);
@@ -813,15 +1119,31 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     // and a script to both reach Allegro in a non-det --input-script run -
     // exactly the defect win32_pilot.md sec 5a names. main.cpp's parse_args
     // already resolved/validated the policy (erroring on Real+input-script,
-    // the one case that can't coexist with parking) before this runs; the
-    // Real+inject_real_test diagnostic exception is what leaves the real
-    // path UNparked here on purpose (see call_key_dinput_handle_scancode).
+    // the one case that can't coexist with parking) before this runs.
+    //
+    // Item 2 ("tick-boundary real input" pass): input_policy==Real now gets
+    // its OWN breakpoint at the same VA - real_key_capture_hit - instead of
+    // leaving the real path completely unmonitored. This is what fixes
+    // divergence 002 (see real_key_capture_hit/drain_real_key_queue's own
+    // comments above): the event is captured and queued instead of running
+    // straight through, then redelivered at the next tick boundary through
+    // the SAME call site --input-script uses. The ONE exception is
+    // --inject-real-test, which needs the real function's body to actually
+    // execute (unneutralized) for its synthetic record/replay round trip -
+    // see deliver_due_input's inject_real_test branch and carrier/NOTES.md
+    // "Input policy and recording" part C, re-verified unchanged this pass.
     if (g_input_policy != InputPolicy::Real) {
         register_breakpoint(VA_KEY_DINPUT_SCANCODE, neutralize_keyboard_hit);
         fprintf(stderr, "det: real keyboard PARKED (input=%s; key_dinput_handle_scancode short-circuited)\n",
                 input_policy_name(g_input_policy));
+    } else if (!g_inject_real_test) {
+        register_breakpoint(VA_KEY_DINPUT_SCANCODE, real_key_capture_hit);
+        fprintf(stderr, "det: real keyboard CAPTURED at tick boundaries (input=real; events queued at "
+                        "key_dinput_handle_scancode and delivered from the main thread's tick loop - "
+                        "carrier/NOTES.md 'tick-boundary real input', fixes divergence 002)\n");
     } else {
-        fprintf(stderr, "det: real keyboard ACTIVE (input=real)\n");
+        fprintf(stderr, "det: real keyboard ACTIVE, UNCAPTURED (input=real, --inject-real-test: the real "
+                        "key_dinput_handle_scancode path runs unmodified for the synthetic round trip)\n");
     }
 
     if (opt.record_input && opt.record_input[0]) {

@@ -3,7 +3,7 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 11:01:03 UTC
+ * Generated: 2026-09-07 11:32:43 UTC
  * Excluded (compiled natively, name kept free): is_solid, update_frame
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *

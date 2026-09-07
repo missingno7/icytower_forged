@@ -26,6 +26,11 @@ static const char* kWrapNames[] = {
     // function when not asked to behave differently (see wrappers.cpp).
     "Sleep", "QueryPerformanceCounter", "timeGetTime", "time", "clock", "_beginthread",
     "malloc", "calloc", "realloc", "free",
+    // Item 3 ("parked timer thread" pass): needed so a parked timer
+    // thread's own WaitForSingleObject(stop_event, <finite>) call can be
+    // substituted to INFINITE (carrier/NOTES.md) - forwards to the real
+    // function unchanged for every other thread/caller.
+    "WaitForSingleObject",
 };
 static bool is_wrapped(const char* name) {
     for (const char* w : kWrapNames)

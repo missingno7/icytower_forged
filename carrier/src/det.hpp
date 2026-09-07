@@ -130,6 +130,20 @@ extern "C" {
     DWORD __stdcall det_wrap_timeGetTime();
     long __cdecl det_wrap_time(long* out);
     long __cdecl det_wrap_clock();
+    // Item 3 ("parked timer thread" pass, carrier/NOTES.md): generic fix for
+    // divergence 003 (notes/living_record.md) - _tim_win32_exit's join loop
+    // (WaitForSingleObject(timer_thread_handle, 100) while WAIT_TIMEOUT)
+    // never succeeded because the OLD virtualized timer thread blocked
+    // forever on a carrier-private event nobody ever signaled. Now the
+    // virtualized thread body IS the original entry point (det_wrap_
+    // beginthread), and this wrapper substitutes INFINITE for any FINITE
+    // WaitForSingleObject timeout called FROM that thread (see det.cpp's
+    // det_is_parked_thread) - so the thread parks in its own real wait loop
+    // on the guest's own stop_event and exits cleanly when the guest
+    // signals it, satisfying the join without ever taking the
+    // WAIT_TIMEOUT/_handle_timer_tick branch (tick delivery stays exactly
+    // as before: synchronous, from det_wrap_Sleep on the main thread).
+    DWORD __stdcall det_wrap_WaitForSingleObject(HANDLE h, DWORD ms);
     // Deterministic heap arena (det mode only - see det.cpp), needed because
     // the real msvcrt heap's base address is randomized per-process by
     // Windows and pointers into it get baked directly into .data/.bss
