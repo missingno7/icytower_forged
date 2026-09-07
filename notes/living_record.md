@@ -91,4 +91,5 @@ artifacts/. Newest entries at the bottom of each section.
 - Functions promoted in vivo: 28 verified EQUAL, 35 bound. Next in-vivo candidates: control.c is_* functions (called every tick by the scripted workload). is_solid: src form verified offline only (never called by the scripted workload).
 
 ## Rejected approaches
+- 2026-09-07: a hand-maintained per-function binding table inside carrier/src/bind.cpp (35 entries: name, VA, symbols, arg count, domain) — rejected as scaffolding that grows per promotion; being replaced by a generated bind_table.inc from the src/ scan + interop index, with comparison domains from one declared source. Found when batch-6 functions could not be bound ("unknown function").
 - see win32_pilot.md §10.
