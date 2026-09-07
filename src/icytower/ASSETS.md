@@ -273,35 +273,48 @@ and `draw_buffer.c` too).
 
 ## What remains hand-mapped
 
-**6 of the 7 computed-index sites** (notes/asset_census.md SS3/SS5b/SS8): 7
-code locations compute a `data[N]` index at runtime (`shl $0x4` on a
-variable) rather than using a literal `N`, each with a hard-coded *base*
-object the generator can name but not (for 6 of them) the per-site
-range/stride, which is the author's intent, not a mechanical fact:
+**2 of the 7 computed-index sites** (notes/asset_census.md SS3/SS5b/SS8;
+was 6 before PROMOTIONS.md batch 10): 7 code locations compute a `data[N]`
+index at runtime (`shl $0x4` on a variable) rather than using a literal
+`N`, each with a hard-coded *base* object the generator can name but not
+(for the ones still open) the per-site range/stride, which is the author's
+intent, not a mechanical fact:
 
 | VA | function | expression | base object | generator can name |
 |---|---|---|---|---|
 | 0x407c7d | `start_reward` | `data[0x5a + i]` | 90 = `REWARD000` (`ASSET_DATA_REWARD_000`) | **the full 10-wide range** (`ASSET_DATA_REWARD_000`..`_009`, indices 90-99) — resolved PROMOTIONS.md batch 7: `assets_table.inc` already generates all 10 REWARD ids contiguously from the manifest's own consecutive `REWARD000`..`REWARD009` object names, so `ASSET_DATA_REWARD_000 + i` (i in [0,9], `start_reward`'s own recovered `tier`) is a safe mechanical offset into that one generator-guaranteed contiguous family — see `start_reward.c`'s own header comment for the "why this specific arithmetic is safe, unlike the general asset_id-as-index case" reasoning. |
-| 0x409383 | `draw_frame` | `data[bg_stripe_ids[i] + 1]` | 1 = `BGTILE` (`ASSET_DATA_BGTILE`) | base only, not the 6-wide range (`BGTILE`..`BGTILE_5`) |
-| 0x4095ff | `draw_frame` | `data[v + 2]` | floor/sign strip base | base object identity only |
+| 0x409383 | `draw_frame` | `data[bg_stripe_ids[i] + 1]` | 1 = `BGTILE` (`ASSET_DATA_BGTILE`) | **the full 6-wide range** (`ASSET_DATA_BGTILE`..`_5`, indices 1-6) — resolved PROMOTIONS.md batch 10: the ids come from `new_rand() % max_bg_id` with `max_bg_id <= 5` (2/3/4/5 by the player's floor), so `ASSET_DATA_BGTILE + id` never leaves the one contiguous BGTILE family `assets_table.inc` already generates. |
+| 0x409508 / 0x4095a5 / 0x409605 | `draw_frame` | `data[f]`, `data[f+1]`, `data[f+2]` (one floor's left/middle/right tile) | 17 = `FLOOR01` (`ASSET_DATA_FLOOR_01`) | **the full 33-wide range** (`ASSET_DATA_FLOOR_01`..`FLOOR_27`, indices 17-49 = 11 triples) — resolved batch 10: `f = 17 + 3*(profile->start_floor + room.tiles)`, clamped to 44 and then `+3` when that floor's level is past 4999, so `f+2 <= 49`, the family's last member exactly. |
+| 0x409690 | `draw_frame` | `data[s]` (a floor's number sign) | 101 = `SIGN01` (`ASSET_DATA_SIGN_01`) | **the full 11-wide range** (`ASSET_DATA_SIGN_01`..`SIGN_09`, indices 101-111) — resolved batch 10: `s = 101 + start_floor + room.tiles`, clamped to 110 and then `+1` past level 4999, so `s <= 111`. |
+| 0x409959 | `draw_frame` | `data[stars[i].color + 117]` | 117 = `STAR01` (`ASSET_DATA_STAR_01`) | **the full 8-wide range** (`ASSET_DATA_STAR_01`..`_08`, indices 117-124) — resolved batch 10: `create_particle()` (already promoted) draws `color` as `new_rand() % 8`, so the range is exact. |
 | 0x4146e4 | `play` | `data[local]` | results background | base object identity only |
 | 0x4149e6 | `play` | `data[local]` | results background | base object identity only |
 
-The census's own table (SS3) enumerates exactly these 5 VAs plus one
-explicitly-ruled-out row (`view_profile` 0x419d34, "rank tables, not
-datafile" — not a `data[N]` site at all, listed there only to record that
-it was checked and rejected), while its prose states "**Seven** sites
-compute the index" and SS8 repeats "the 7 computed-index sites need
-per-site ranges". This document does not paper over that remaining gap: 2
-of the 7 are still not individually itemized by VA anywhere in the current
-census, so this generator — correctly — did not attempt to synthesize
-per-index ids for those 2, or for the 4 remaining itemized-but-unresolved
-sites (`draw_frame` ×2, `play` ×2); each needs the range/stride read off
-the loop that drives it before a symbolic constant (or constant range) can
-be emitted, which is future work on `notes/asset_census.md`, not on this
-generator. `start_reward`'s own range/stride (10, contiguous from 90) was
-available directly from `assets_table.inc`'s already-generated output — no
-census update was needed to resolve that one specifically.
+The census's own table (SS3) enumerated 5 VAs plus one explicitly-ruled-out
+row (`view_profile` 0x419d34, "rank tables, not datafile" — not a `data[N]`
+site at all, listed there only to record that it was checked and rejected),
+while its prose states "**Seven** sites compute the index" and SS8 repeats
+"the 7 computed-index sites need per-site ranges".
+
+Reading `draw_frame` in full (PROMOTIONS.md batch 10) both RESOLVED the two
+`draw_frame` rows the census had itemized and found that its "0x4095ff /
+`data[v + 2]`" row was actually the third of a THREE-site tile triple
+(0x409508 / 0x4095a5 / 0x409605) plus a separate, fourth site for the sign
+board (0x409690) and a fifth for the star particles (0x409959) — so the
+table above now lists 4 resolved `draw_frame` entries where the census had
+one. That does not change the census's own count of 7 *code locations*; it
+does mean this document's rows are now read off the disassembly rather than
+off the census summary.
+
+What remains genuinely open: the 2 `play` sites (0x4146e4, 0x4149e6), whose
+range/stride still needs the loop that drives them read off, and the 2 of
+the census's 7 that are still not individually itemized by VA anywhere. As
+before, this generator — correctly — does not synthesize per-index ids for
+any of those four. Every resolved row uses the same argument
+`start_reward`'s did: `assets_table.inc` GENERATES each family contiguously
+from the manifest's own consecutive object names, so `<base id> + k` is a
+mechanical offset inside one generator-guaranteed family, never "an
+asset_id used as a global datafile index".
 
 **Character slot names** are hand-recovered too, but already done and
 reused rather than re-derived: `tools_recon/assets_manifest.py`'s

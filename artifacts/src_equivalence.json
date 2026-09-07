@@ -245,6 +245,87 @@
   "result": "EQUAL",
   "vectors": 20000
  },
+ "draw_frame": {
+  "asset_sites_resolved": {
+   "0x409383": "data[bg_stripe_ids[i]+1] -> ASSET_DATA_BGTILE + id (BGTILE..BGTILE5 = data 1..6; id = new_rand() % max_bg_id, max_bg_id <= 5)",
+   "0x409508 / 0x4095a5 / 0x409605": "data[f], data[f+1], data[f+2] -> ASSET_DATA_FLOOR_01 + (f-17) (FLOOR01..FLOOR27 = data 17..49, 11 triples; f = 17 + 3*(start_floor+tiles), clamped 44 then +3 past level 4999, so f+2 <= 49)",
+   "0x409690": "data[s] -> ASSET_DATA_SIGN_01 + (s-101) (SIGN01..SIGN09 = data 101..111; s clamped 110 then +1, so s <= 111)",
+   "0x409959": "data[stars[i].color+117] -> ASSET_DATA_STAR_01 + color (STAR01..STAR08 = data 117..124; create_particle draws color as new_rand() % 8)"
+  },
+  "carrier_bind": "pending -- in-vivo command in PROMOTIONS.md batch 10",
+  "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+  "domain": "ORDERED call trace (~254 calls/invocation, mean) + 11 memory-domain globals",
+  "domain_calls": [
+   "blit",
+   "draw_sprite",
+   "draw_256_sprite",
+   "draw_sprite_h_flip",
+   "pivot_scaled_sprite_flip (rotate_sprite)",
+   "rect",
+   "makecol",
+   "textout_ex",
+   "textprintf_ex",
+   "textprintf_centre_ex",
+   "text_length",
+   "set_clip_rect",
+   "sprintf",
+   "strcpy",
+   "draw_reward",
+   "new_rand"
+  ],
+  "domain_memory": [
+   "frame_count",
+   "last_stripe_y",
+   "bg_stripe_ids[0..4]",
+   "ply[player_id]->frame",
+   "scroll_count",
+   "scroll_delay",
+   "*allegro_errno"
+  ],
+  "findings_in_the_original": [
+   "the 512 reward star particles (0x409965) and draw_reward (0x40a90d) are drawn onto the GLOBAL swap_screen, not onto draw_frame's own BITMAP* argument -- every other draw in the function targets bmp. Recovered faithfully; the 'stars target swap_screen -> a bitmap' negative control DIFFERs 200/200, so the oracle really does see the destination.",
+   "sprintf(scrollerText, '%s%s%s', demo->name, ' - ', demo->comment) can overflow its own stack buffer by 6 bytes: DWARF gives scrollerText as char[70] (DW_OP_fbreg -102, matching the lea -0x5e(%ebp) at 0x40a3f4) while Treplay.name is char[32] and Treplay.comment char[42], worst case 31+3+41+1 = 76. GCC -Wformat-overflow flags it in the recovered source; left uncorrected, per the same rule draw_buffer.c's dropped-last-line already set. This is this pass's ONLY compiler warning.",
+   "ftofix's *allegro_errno = ERANGE guards are unreachable from draw_clock's call site: (clock_angle % 1500) * 0.1706666 cannot exceed 255.8 in magnitude. Measured (0 of 1500 vectors with clock_angle drawn from a +-100000 pool), not assumed -- *allegro_errno is in the compared memory domain."
+  ],
+  "negative_controls": {
+   "method": "one-token faults injected into src/icytower/draw_frame.c, rebuilt, re-run over the same 200 vectors",
+   "results": {
+    "background blank threshold 40 -> 41": "DIFFER 2/200",
+    "clock hand pivot 34+ox -> 35+ox": "DIFFER 200/200",
+    "clock scale 0.1706666 -> 0.1706667": "DIFFER 113/200",
+    "combo liquid 219-in_combo -> 218-in_combo": "DIFFER 109/200",
+    "floor clamp f>44 -> f>45": "DIFFER 0/200 -- an EQUIVALENT MUTANT, not a miss: f = 17 + 3*(start_floor+tiles) is always == 2 (mod 3), so f is never 45 and the two guards are the same predicate",
+    "floor left cap t*16-5 -> t*16-4": "DIFFER 200/200",
+    "idle window logic_count>24 -> >23": "DIFFER 2/200",
+    "player h-flip test sx>0 -> sx>=0": "DIFFER 4/200",
+    "replay progress bar 117 -> 116": "DIFFER 17/200",
+    "scroller wrap -250 -> -251": "DIFFER 8/200",
+    "side-rail scale 1.476 -> 1.477": "DIFFER 15/200",
+    "sign clamp s>110 -> s>111": "candidate CRASHES (0xC0000005) -- the clamp is load-bearing",
+    "sign outline sy+7 -> sy+8": "DIFFER 200/200",
+    "stars target swap_screen -> a bitmap": "DIFFER 200/200",
+    "stripe loop while -> if": "DIFFER 96/200"
+   }
+  },
+  "normalisation": [
+   "pointer arguments rendered as stable SYMBOLS (data[N] / custom.frame[i] / bmp / swap_screen / font / buf#k) so the guest and host address spaces never have to agree",
+   "const char* arguments resolved to their CONTENT AT CALL TIME, not at comparison time -- myBuf and scrollerText are each reused for several different strings inside one invocation, so a deferred read compares the LAST content written (this produced the first draft's only false DIFFER)"
+  ],
+  "oracle": "carrier/lift/harness/draw_frame_xcheck.py (new) + draw_frame_check.c (new) + draw_frame_model.py (new). NOT a lift_check.py SPECS entry: that engine's call-trace mechanism records per callee only a count plus the FIRST call's arguments (batch 8's documented limitation), which with 15 draw_sprite sites and 12 textprintf_ex sites in one invocation would compare ~15% of what this function does.",
+  "prototype": "void draw_frame(BITMAP *bmp)",
+  "result_gcc_x87": {
+   "directed": "EQUAL, 4 campaigns x 839 = 3356 vectors, 0 differ (seeds 777, 31337, 4242, 999)",
+   "mean_traced_calls_per_vector": 254,
+   "model_crosscheck": "EQUAL, 4 seeds x 1000 = 4000 vectors, 0 differ (ORIGINAL bytes vs draw_frame_model.py -- the 'unicorn cross-check comes first' step)",
+   "random": "EQUAL, 9 seeds x 2000 = 18000 vectors, 0 differ (seeds 20260908, 424242, 1, 987654321, 11, 22, 33, 44, 55)",
+   "toolchain": "MinGW GCC 16.2.0, -m32 -mfpmath=387 -mno-sse2 -O2"
+  },
+  "result_msvc": "NOT RUN -- no cl.exe in this sandbox (same as batches 8 and 9)",
+  "size": 8518,
+  "source": "src/icytower/draw_frame.c (931 lines: 11 static helpers + the composing draw_frame)",
+  "va": "0x40929c",
+  "vtable_trace": "batch 9's synthetic-vtable-VA trick generalised to FIVE slots at once (+0x44 draw_sprite, +0x48 draw_256_sprite, +0x50 draw_sprite_h_flip, +0xa4 pivot_scaled_sprite_flip, +0xbc rect) on TWO scratch GFX_VTABLEs (16bpp and 8bpp), because Allegro's draw_sprite() AL_INLINE branches on the SPRITE's colour depth and dispatches through the DESTINATION's vtable."
+ },
  "draw_scroller": {
   "call_trace_domain": {
    "known_limitation": "a vertical-branch bug that ONLY affects row 2+ of a multi-row scroller (while row 1 and the call COUNT stay correct) would not be caught -- only the FIRST call to a given callee has its arguments captured; documented, not a silent gap (see draw_scroller.c's own header comment and PROMOTIONS.md batch 8).",
@@ -1457,6 +1538,34 @@
    "original_bytes_this_pass": 4441
   },
   "vector_generator_finding": "A purely random map/position pool is NOT a check for this family: measured, 2-3 of 400 vectors ever produced edge != 0, the sweep landing path essentially never fired, and _vector's +-10000 guard was never reached. _collision_directed() inverts getFloorData()'s own arithmetic (y = 29 - ((cy+1)>>4); fy = ((cy+1)>>4)*16 + offset%16; fx1 = start_tile*16-2; fx2 = end_tile*16+17) to place exactly one floor and put each foot on, one pixel inside and one pixel outside each of its ends. After that: edge=1 and edge=2 each 30-110 per 500 per variant, the landing path 135-255, the guard-reject 59 of 1500."
+ },
+ "pass_2026-09-08_batch10": {
+  "carrier_gen_untouched": "carrier/gen/pf_bindings_src.h intentionally NOT regenerated -- same reasoning as batches 6/7/8/9; the carrier-world compile was verified against a scratch copy built outside carrier/gen/ and then discarded.",
+  "compile": {
+   "carrier_scratch_bindings": "0 errors, 1 warning (the same -Wformat-overflow; the 3 -Wunused-function notices belong to the generated pf_asset_bindings.h itself)",
+   "makefile_standalone": "SOURCES deliberately unchanged (asset-seam file, held out like draw_buffer.c/start_reward.c); target still builds clean, standalone_smoke.exe still 0 failure(s)",
+   "standalone_generated_allegro_api": "0 errors, 0 warnings",
+   "standalone_upstream_allegro": "0 errors, 1 warning (-Wformat-overflow on scrollerText: a real defect in the ORIGINAL, see findings_in_the_original)"
+  },
+  "generator_gaps_found": [
+   "MEMBER_ACCESS_COLLISIONS, two more cases, both in one line of the debug overlay: demo->data[rec_pos].key_flags and .cycle_count collide with the top-level globals DATAFILE *data (0x4dd23c) and volatile int cycle_count (0x506938). Same class as batch 7's jump_sound (fixed) and batch 8's stars (unfixable by that mechanism, because other code needs the bare global). Worked around inside draw_frame.c with a guarded #undef data / #undef cycle_count -- legitimate here specifically because ASSETS.md's seam requires this file to reach datafile objects through asset_bitmap()/asset_font(), never through data[N]. REPORTED, NOT FIXED (carrier/gen is another agent's).",
+   "draw_sprite, rotate_sprite, fixtoi and ftofix have no binding in ANY generated header: pf_lib_bindings.h emits the 23 AL_INLINEs that are a straight one-call vtable passthrough (so draw_sprite_h_flip and rect resolve in the carrier world) but by construction emits neither the ones with a branch or arithmetic of their own nor the fixed-point family (the 'inline function' gap LIB_BINDINGS_NOTES.md already documents for itofix); the generated allegro_api.h emits none of the four. Handled as batch 9 handled `line`: #ifndef-guarded upstream-faithful definitions inside draw_frame.c, so the source under test is byte-identical in every world. REPORTED, NOT FIXED (port_forge)."
+  ],
+  "harness_changes": [
+   "carrier/lift/harness/draw_frame_xcheck.py (new, ~1060 lines): ordered-call-trace oracle -- World seeder, unicorn hooks for every library callee VA plus five synthetic vtable-slot VAs on two scratch GFX_VTABLEs, three campaigns (--random, --directed, --model).",
+   "carrier/lift/harness/draw_frame_check.c (new, ~424 lines): the compiled-candidate driver (own main(); reads the vector file, rebuilds the state in host memory, stubs the Allegro entry points and a GFX_VTABLE, writes the same ordered trace).",
+   "carrier/lift/harness/draw_frame_model.py (new, ~397 lines): the Python transliteration used by --model.",
+   "carrier/lift/harness/lift_check.py and icytower_specs.py: NOT touched -- bending the SPECS protocol to an ordered log would have changed a mechanism five already-verified functions depend on."
+  ],
+  "purity_gate": "python scripts/check_native_layer.py -- scanned 38 file(s), 0 violation(s) (clean again; batch 9's 8 violations were all in src/build/sha256.h, an untracked file the concurrent carrier agent had added, no longer in this tree)",
+  "structure_evidence": "DW_AT_decl_line on this subprogram's 23 locals (2491..2786) and DW_AT_call_line on its 30 DW_TAG_inlined_subroutine records (2542..2782) bracket the original C into contiguous, non-overlapping regions -- the decomposition into 11 static helpers is the original file's own paragraph structure read off DWARF, not a readability invention. Batch 8's reading of the BINARY (one .text range, ~2100 lines, one game-scope callee) stands unchanged.",
+  "target": "draw_frame (0x40929c, 8518 bytes, main.c) -- the largest function in the image and batch 8's stop point",
+  "totals": {
+   "cumulative_offline_verified": 47,
+   "cumulative_original_bytes": 18007,
+   "functions_promoted_this_pass": 1,
+   "original_bytes_this_pass": 8518
+  }
  },
  "play_jump_sound": {
   "call_trace_domain": {
