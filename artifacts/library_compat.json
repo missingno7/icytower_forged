@@ -1,0 +1,1319 @@
+{
+ "generated_by": "manual verdict pass, 2026-09-07, headers verified against liballeg/allegro5 tag 4.4.3.1 and adventuregamestudio/lib-allegro tag v4.4.3.1-agspatch-3 (fetched raw.githubusercontent.com + api.github.com)",
+ "totals": {
+  "PUBLIC + AVAILABLE": 97,
+  "INTERNAL NOT EXPORTED": 3,
+  "UNKNOWN": 1,
+  "GLOBAL SHARED STATE": 25,
+  "CALLBACK EDGE": 12
+ },
+ "row_count": 138,
+ "rows": [
+  {
+   "symbol": "__WinMain",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "Allegro 4.4.3.1 source build (src/win/wsystem.c)",
+   "evidence": "platform/alwin.h:32",
+   "adapter": "none",
+   "note": "public by END_OF_MAIN() macro (alwin.h)"
+  },
+  {
+   "symbol": "__color_load_depth",
+   "kind": "function",
+   "classification": "INTERNAL NOT EXPORTED",
+   "candidate": "Allegro 4.4.3.1 source build (internal call within the same static link unit as vendored loadpng.c)",
+   "evidence": "internal/aintern.h:390",
+   "adapter": "none (recommended static/source-build path); DLL-export shim only if Allegro were split into a separate DLL (rejected option)",
+   "note": "internal header (include/allegro/internal/), not reachable via <allegro.h>; upstream loadpng.c calls it too (same-CU/same-link-unit call)"
+  },
+  {
+   "symbol": "__fixup_loaded_bitmap",
+   "kind": "function",
+   "classification": "INTERNAL NOT EXPORTED",
+   "candidate": "Allegro 4.4.3.1 source build (internal call within the same static link unit as vendored loadpng.c)",
+   "evidence": "internal/aintern.h:394",
+   "adapter": "none (recommended static/source-build path); DLL-export shim only if Allegro were split into a separate DLL (rejected option)",
+   "note": "internal header (include/allegro/internal/), not reachable via <allegro.h>; upstream loadpng.c calls it too (same-CU/same-link-unit call)"
+  },
+  {
+   "symbol": "__install_allegro_version_check",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:80",
+   "adapter": "none",
+   "note": "public by allegro_init() macro (system.h)"
+  },
+  {
+   "symbol": "_adjust_sample",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:153",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_alert",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gui.h:217",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_allegro_exit",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:94",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_allegro_message",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:96",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_blit",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "draw.h:55",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_canonicalize_filename",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:30",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_clear_bitmap",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:427",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_clear_keybuf",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "keyboard.h:73",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_create_bitmap",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:419",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_create_bitmap_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:420",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_create_sub_bitmap",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:421",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_delete_file",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:44",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_destroy_bitmap",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:424",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_destroy_midi",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "midi.h:124",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_destroy_sample",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:149",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_drawing_mode",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "draw.h:37",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_enable_hardware_cursor",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:62",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_exists",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:41",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_file_exists",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:40",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_file_select_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gui.h:219",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_file_size_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:42",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_for_each_file_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:45",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_generate_332_palette",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:92",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_get_color_conversion",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:409",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_get_config_string",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "config.h:41",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_get_executable_name",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:97",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_get_extension",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:38",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_get_filename",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:37",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_get_palette",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:78",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_install_int",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "timer.h:59",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_install_joystick",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "joystick.h:128",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_install_keyboard",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "keyboard.h:50",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_install_mouse",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:56",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_install_sound",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "sound.h:34",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_install_timer",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "timer.h:55",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_keypressed",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "keyboard.h:68",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_load_bitmap",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:91",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_load_datafile",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:75",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_load_datafile_callback",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:76",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_load_midi",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "midi.h:122",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_load_sample",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:142",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_load_wav",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:143",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_logg_load",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "logg addon source (Allegro 4.4.3.1 addons/logg) + MSYS2 mingw-w64-i686 libogg/libvorbis",
+   "evidence": "addons/logg/logg.h:35",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_logg_load_memory",
+   "kind": "function",
+   "classification": "UNKNOWN",
+   "candidate": "NONE FOUND -- not in any candidate source",
+   "evidence": "(no header declares this name; see note)",
+   "adapter": "shim: reimplement ~7 functions as a memory-backed ov_open_callbacks() reader against libvorbisfile's public API (upstream has always supported in-memory callbacks; only Icy Tower's own glue is missing)",
+   "note": "NOT declared in Allegro 4.4.1, 4.4.3.1, or AGS lib-allegro v4.4.3.1-agspatch-3 logg.h/logg.c (all three logg.c are byte-identical, 4730 B, 11 functions). Game's logg CU has 18 functions incl. 7 (logg_load_internal, logg_load_memory, logg_vf_memfile_seek/tell/read/close, _ov_header_fseek_wrap = 667 of 2041 B) with no upstream match -- a custom memory-stream extension the Icy Tower developers added to their private logg.c copy."
+  },
+  {
+   "symbol": "_makecol",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:127",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_makecol_depth",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:129",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_masked_blit",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "draw.h:56",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_pack_fclose",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:149",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_pack_fopen",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:147",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_pack_fread",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:165",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_pack_fwrite",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:166",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_packfile_password",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:146",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_play_midi",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "midi.h:125",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_play_sample",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:151",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_poll_joystick",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "joystick.h:131",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_readkey",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "keyboard.h:69",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_register_bitmap_file_type",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:108",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_register_datafile_object",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:87",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_remove_mouse",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:57",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_replace_extension",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:35",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_replace_filename",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:34",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_rest",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "timer.h:68",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_save_bitmap",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:100",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_select_mouse_cursor",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:108",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_select_palette",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:89",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_alpha_blender",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:106",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_clip_rect",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:425",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_close_button_callback",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:98",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_color_conversion",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:408",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_color_depth",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:406",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_config_file",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "config.h:28",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_display_switch_callback",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:453",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_display_switch_mode",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:451",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_gfx_mode",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:412",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_palette",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:74",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_trans_blender",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:108",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_set_volume",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "sound.h:40",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_show_mouse",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:99",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_simulate_keypress",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "keyboard.h:71",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_solid_mode",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "draw.h:39",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_stop_midi",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "midi.h:127",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_stop_sample",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:152",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_stretch_blit",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "Allegro 4.4.3.1 source build (src/c/cstretch.c, C-only blitters)",
+   "evidence": "draw.h:57",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_stretch_sprite",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "Allegro 4.4.3.1 source build (src/c/cstretch.c, C-only blitters)",
+   "evidence": "draw.h:59",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_text_height",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:45",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_text_length",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:44",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_textout_centre_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:37",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_textout_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:36",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_textout_right_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:38",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_textprintf_centre_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:41",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_textprintf_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:40",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_textprintf_right_ex",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:42",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_unload_datafile",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:78",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_voice_get_position",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:172",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_voice_stop",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "digi.h:160",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_vsync",
+   "kind": "function",
+   "classification": "PUBLIC + AVAILABLE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:428",
+   "adapter": "none",
+   "note": ""
+  },
+  {
+   "symbol": "_key",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "keyboard.h:62 (AL_ARRAY)",
+   "adapter": "none",
+   "note": "101 access site(s), reader(s): blit_to_screen, draw_frame, get_string, handle_menu, handle_player_collision_combo, handle_player_collision_vector, handle_player_collision_vector_2, main_menu_callback, my_alert, play, show_credits, show_instructions, take_screenshot, update_game_menu, view_profile, view_scores",
+   "va": "0x506988",
+   "count": 101
+  },
+  {
+   "symbol": "_screen",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:302 (AL_VAR)",
+   "adapter": "none",
+   "note": "67 access site(s), reader(s): blit_to_screen, draw_progress_bar, fadeOut, force_create_profile, handle_player_collision_combo, handle_player_collision_vector, handle_player_collision_vector_2, init_game, line_alert, load_frames, my_alert, play, replay_selector, select_profile, testWindowResolution, view_profile, view_scores",
+   "va": "0x4dda8c",
+   "count": 67
+  },
+  {
+   "symbol": "_font",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "text.h:34 (AL_VAR)",
+   "adapter": "none",
+   "note": "39 access site(s), reader(s): draw_frame, draw_profile_selector, draw_progress_bar, draw_replay_selector, init_game, load_sound, replay_selector, select_profile",
+   "va": "0x4ccc94",
+   "count": 39
+  },
+  {
+   "symbol": "_gfx_driver",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:119 (AL_VAR)",
+   "adapter": "none",
+   "note": "27 access site(s), reader(s): fadeIn, fadeOut, force_create_profile, line_alert, main_menu_callback, my_alert, play, replay_selector, select_profile, view_profile, view_scores",
+   "va": "0x4dda84",
+   "count": 27
+  },
+  {
+   "symbol": "_joy",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "joystick.h:92 (AL_ARRAY)",
+   "adapter": "none",
+   "note": "6 access site(s), reader(s): init_game, poll_control",
+   "va": "0x506a88",
+   "count": 6
+  },
+  {
+   "symbol": "_mouse_b",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:82 (AL_VAR)",
+   "adapter": "none",
+   "note": "4 access site(s), reader(s): main_menu_callback",
+   "va": "0x4e8cf8",
+   "count": 4
+  },
+  {
+   "symbol": "_gui_fg_color",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gui.h:185 (AL_VAR)",
+   "adapter": "none",
+   "note": "3 access site(s), reader(s): custom_alert, my_alert, replay_selector",
+   "va": "0x4cc3a0",
+   "count": 3
+  },
+  {
+   "symbol": "_gui_bg_color",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gui.h:187 (AL_VAR)",
+   "adapter": "none",
+   "note": "3 access site(s), reader(s): custom_alert, my_alert, replay_selector",
+   "va": "0x4ddaa8",
+   "count": 3
+  },
+  {
+   "symbol": "_allegro_errno",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "base.h:94 (AL_VAR)",
+   "adapter": "none",
+   "note": "3 access site(s), reader(s): draw_frame, load_character",
+   "va": "0x4dda78",
+   "count": 3
+  },
+  {
+   "symbol": "_system_driver",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:244 (AL_VAR)",
+   "adapter": "none",
+   "note": "2 access site(s), reader(s): init_game",
+   "va": "0x4dda74",
+   "count": 2
+  },
+  {
+   "symbol": "__win_hcursor",
+   "kind": "global",
+   "classification": "INTERNAL NOT EXPORTED",
+   "candidate": "Allegro 4.4.3.1 source build (platform/aintwin.h, internal)",
+   "evidence": "platform/aintwin.h:129 (AL_VAR)",
+   "adapter": "one-liner: #include <allegro/platform/aintwin.h>, or a 3-line extern HCURSOR shim",
+   "note": "2 access site(s), reader(s): main_menu_callback -- the one genuine internal-symbol edge named in the task",
+   "va": "0x4e8e20",
+   "count": 2
+  },
+  {
+   "symbol": "_mouse_x",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:78 (AL_VAR)",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): main_menu_callback",
+   "va": "0x4e8ce8",
+   "count": 1
+  },
+  {
+   "symbol": "_mouse_y",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "mouse.h:79 (AL_VAR)",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): main_menu_callback",
+   "va": "0x4e8cec",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_r_shift_32",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:57",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4e8674",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_g_shift_32",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:58",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9ec",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_b_shift_32",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:59",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9f0",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_a_shift_32",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:60",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9f4",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_r_shift_24",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:54",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4e8670",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_g_shift_24",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:55",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9e4",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_b_shift_24",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:56",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9e8",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_r_shift_15",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:48",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4e8668",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_g_shift_15",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:49",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9d4",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_b_shift_15",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:50",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9d8",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_r_shift_16",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:51",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4e866c",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_g_shift_16",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:52",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9dc",
+   "count": 1
+  },
+  {
+   "symbol": "__rgb_b_shift_16",
+   "kind": "global",
+   "classification": "GLOBAL SHARED STATE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "color.h:53",
+   "adapter": "none",
+   "note": "1 access site(s), reader(s): really_save_png",
+   "va": "0x4cc9e0",
+   "count": 1
+  },
+  {
+   "symbol": "_set_display_switch_callback",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "gfx.h:453, AL_METHOD(void,cb,(void)) unchanged",
+   "adapter": "none",
+   "note": "6 registration site(s); game functions registered: switchedFromProgram, switchedToProgram",
+   "count": 6
+  },
+  {
+   "symbol": "_png_set_read_fn",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "libpng3.dll 1.2.34 (already shipped)",
+   "evidence": "png_rw_ptr callback, unchanged in libpng 1.2.x (candidates.md sec 4)",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: read_data, read_data_memory",
+   "count": 2
+  },
+  {
+   "symbol": "_for_each_file_ex",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "file.h:45, AL_METHOD(int,callback,(...)) unchanged",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: add_itr_file, add_profile",
+   "count": 2
+  },
+  {
+   "symbol": "_load_datafile_callback",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:76, AL_METHOD(void,callback,(DATAFILE*)) unchanged",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: datafile_callback, datafile_callback_slow",
+   "count": 2
+  },
+  {
+   "symbol": "_register_datafile_object",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:87, AL_METHOD load/destroy unchanged",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: destroy_datafile_png, load_datafile_png",
+   "count": 2
+  },
+  {
+   "symbol": "_register_bitmap_file_type",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "datafile.h:108, AL_METHOD load/save unchanged",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: load_png, save_png",
+   "count": 2
+  },
+  {
+   "symbol": "_png_set_write_fn",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "libpng3.dll 1.2.34 (already shipped)",
+   "evidence": "png_rw_ptr callback, unchanged in libpng 1.2.x (candidates.md sec 4)",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: flush_data, write_data",
+   "count": 2
+  },
+  {
+   "symbol": "_install_int",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "timer.h:59, AL_METHOD(void,proc,(void)) unchanged",
+   "adapter": "none",
+   "note": "2 registration site(s); game functions registered: cycle_counter, fps_counter",
+   "count": 2
+  },
+  {
+   "symbol": "*0x00514a58",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "pthreads-win32 (pthreadGC2.dll, already shipped)",
+   "evidence": "standard POSIX pthread_create signature, ABI-stable",
+   "adapter": "none",
+   "note": "1 registration site(s); game functions registered: fldads_threadmain",
+   "count": 1
+  },
+  {
+   "symbol": "__WinMain",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "platform/alwin.h:32, AL_FUNC(int,_WinMain,(void*,void*,void*,char*,int))",
+   "adapter": "none",
+   "note": "1 registration site(s); game functions registered: _mangled_main",
+   "count": 1
+  },
+  {
+   "symbol": "_set_close_button_callback",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "AGS lib-allegro / upstream Allegro 4.4.3.1 source build",
+   "evidence": "system.h:98, AL_METHOD(void,proc,(void)) unchanged",
+   "adapter": "none",
+   "note": "1 registration site(s); game functions registered: clickedCloseButton",
+   "count": 1
+  },
+  {
+   "symbol": "_qsort",
+   "kind": "callback",
+   "classification": "CALLBACK EDGE",
+   "candidate": "msvcrt.dll (system CRT, already present)",
+   "evidence": "standard C qsort comparator signature",
+   "adapter": "none",
+   "note": "1 registration site(s); game functions registered: my_strcmp",
+   "count": 1
+  }
+ ]
+}
