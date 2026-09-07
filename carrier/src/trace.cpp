@@ -137,6 +137,22 @@ void trace_write_report(const char* report_path) {
     }
     fprintf(f, "{\n  \"input_policy\": \"%s\",\n  \"real_key_violations\": %ld,\n",
             det_input_policy_name(), det_real_key_violations());
+    // Divergence 004: the deterministic heap arena is now a real allocator,
+    // so its high-water mark is a measurement worth reporting (it is also the
+    // size of the snapshot's "arena" component). All zero outside --det.
+    {
+        unsigned top = 0, hwm = 0, live = 0, peak = 0, blocks = 0;
+        det_arena_stats(&top, &hwm, &live, &peak, &blocks);
+        fprintf(f, "  \"arena\": { \"top\": %u, \"high_water\": %u, \"live_bytes\": %u, "
+                   "\"peak_live_bytes\": %u, \"live_blocks\": %u },\n",
+                top, hwm, live, peak, blocks);
+    }
+    // Divergence 005 diagnosis aid: the pinned msvcrt LCG's state and call
+    // count. A record run and its replay must agree on both; a disagreement
+    // says the two runs took different code paths, not that the input
+    // coordinate was wrong.
+    fprintf(f, "  \"rng\": { \"state\": %u, \"calls\": %ld },\n",
+            det_rng_state(), det_rng_calls());
     // Milestones 11-12 migration map (win32_pilot.md SS8a). Emits nothing at
     // all when no function was bound or sensed, so the report shape of every
     // pre-milestone-11 run is unchanged.

@@ -205,6 +205,7 @@ struct Options {
     int  trace_window;                 // --trace-window N
     char trace_window_out[MAX_PATH];   // --trace-window-out PATH
     bool rng_selftest;                 // --rng-selftest (unit check, then exit)
+    char trace_input[MAX_PATH];        // --trace-input PATH ("-" = stderr), divergence 005 diagnostic
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -322,6 +323,7 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->trace_window = 0;
     o->trace_window_out[0] = 0;
     o->rng_selftest = false;
+    o->trace_input[0] = 0;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
@@ -380,6 +382,7 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "restore-fault") == 0) { o->restore_fault = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
         else if (strcmp(name, "trace-window") == 0) { o->trace_window = atoi(value); }
         else if (strcmp(name, "trace-window-out") == 0) { strncpy(o->trace_window_out, value, sizeof(o->trace_window_out) - 1); }
+        else if (strcmp(name, "trace-input") == 0) { strncpy(o->trace_input, value, sizeof(o->trace_input) - 1); }
         else if (strcmp(name, "rng-selftest") == 0) { o->rng_selftest = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
         else { fprintf(stderr, "warning: unknown option --%s\n", name); }
     }
@@ -454,6 +457,7 @@ static void options_to_env(const Options& o) {
     SetEnvironmentVariableA("PF_TRACE_WINDOW", buf);
     SetEnvironmentVariableA("PF_TRACE_WINDOW_OUT", o.trace_window_out);
     SetEnvironmentVariableA("PF_RNG_SELFTEST", o.rng_selftest ? "1" : "0");
+    SetEnvironmentVariableA("PF_TRACE_INPUT", o.trace_input);
 }
 
 static bool is_child_process() {
@@ -532,6 +536,7 @@ static void options_from_env(Options* o) {
     get_env_or("PF_TRACE_WINDOW_OUT", o->trace_window_out, sizeof(o->trace_window_out), "");
     get_env_or("PF_RNG_SELFTEST", snap_buf, sizeof(snap_buf), "0");
     o->rng_selftest = (strcmp(snap_buf, "0") != 0);
+    get_env_or("PF_TRACE_INPUT", o->trace_input, sizeof(o->trace_input), "");
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -647,6 +652,7 @@ int main(int argc, char** argv) {
     det_opt.stop_at_tick = o.stop_at_tick;
     det_opt.image_path = o.image;
     det_opt.inject_real_test = o.inject_real_test;
+    det_opt.trace_input = o.trace_input[0] ? o.trace_input : nullptr;
     // Milestones 8-9: snapshot/restore ride on the same tick safepoint.
     SnapshotOptions snap_opt;
     snap_opt.snapshot_at_tick = o.snapshot_at_tick;

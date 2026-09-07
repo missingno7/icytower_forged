@@ -82,6 +82,50 @@ static FILE* g_digest_file = nullptr;
 static FILE* g_record_file = nullptr;
 static HANDLE g_parked_event = nullptr; // never signaled - park() blocks on it forever
 
+// ---------------------------------------------------------------------
+// --trace-input (divergence 005 instrumentation, notes/living_record.md).
+//
+// Logs every key event in BOTH modes with the full coordinate system the
+// carrier stamps and schedules on, so a record run and a replay run can be
+// diffed side by side instead of guessed at:
+//
+//   ms    virtual clock milliseconds (g_virtual_ms; det_now_ms outside --det)
+//   T     the carrier tick index used for stamping/scheduling (= ms/20)
+//   sub   which Sleep call within tick T this is (0 = the FIRST Sleep call of
+//         the tick, which is where deliver_due_input hands over a scripted
+//         event). This is the coordinate the old code did NOT record and
+//         could not reproduce - see NOTES.md "Divergence 005".
+//   cyc   the guest's OWN tick counter, cycle_count @0x506938 (timer.c,
+//         incremented by cycle_counter() every 20 ms of Allegro timer time);
+//         `pre`/`post` are its values before and after this Sleep call's
+//         _handle_timer_tick, so a delivery can be placed on either side of
+//         the guest's own tick boundary.
+//   sp    number of play() safepoints (digest ticks) seen so far.
+//   site  the exact call site.
+// ---------------------------------------------------------------------
+// True only while the carrier is inside its OWN input handover (see
+// keypress_record_hit for the full rationale - divergence 005 residual 2).
+static bool g_in_delivery = false;
+static FILE* g_trace_input_file = nullptr;
+static long long g_sleep_calls = 0;      // total det_wrap_Sleep calls on the main thread
+static long long g_sub_in_tick = 0;      // Sleep calls so far within the current carrier tick
+static int  g_sub_tick = -1;             // the tick g_sub_in_tick is counting within
+static long g_safepoint_count = 0;       // play() safepoints seen so far
+static int  g_cyc_pre = 0, g_cyc_post = 0; // guest cycle_count around this Sleep's _handle_timer_tick
+#define IT_CYCLE_COUNT (*(volatile int*)(uintptr_t)0x506938u)
+
+static void trace_input(const char* site, const char* what, int code, const char* extra) {
+    if (!g_trace_input_file) return;
+    fprintf(g_trace_input_file,
+            "ms=%lld T=%d sub=%lld sleepn=%lld cyc=%d pre=%d post=%d sp=%ld tid=%lu site=%s %s code=%d%s%s\n",
+            (long long)(g_det_mode ? g_virtual_ms : (LONGLONG)(GetTickCount64() - g_start_tick64)),
+            (int)((g_det_mode ? g_virtual_ms : (LONGLONG)(GetTickCount64() - g_start_tick64)) / 20),
+            g_sub_in_tick, g_sleep_calls, (int)IT_CYCLE_COUNT, g_cyc_pre, g_cyc_post,
+            g_safepoint_count, GetCurrentThreadId(), site, what, code,
+            extra ? " " : "", extra ? extra : "");
+    fflush(g_trace_input_file);
+}
+
 static FARPROC g_real_QPC = nullptr, g_real_timeGetTime = nullptr,
                g_real_time = nullptr, g_real_clock = nullptr, g_real_beginthread = nullptr;
 static FARPROC g_real_malloc = nullptr, g_real_calloc = nullptr,
@@ -216,17 +260,87 @@ int det_rng_selftest() {
 // is pinned, the SEQUENCE of malloc calls is itself deterministic, so the
 // same sequence of bump offsets - hence the same fixed addresses - comes
 // out every run.
+//
+// ---------------------------------------------------------------------
+// Divergence 004 (notes/living_record.md): the bump-only form above is NOT
+// viable for anything that sits in the main MENU, which creates and destroys
+// a full-screen ~800 KB bitmap EVERY FRAME (~40 MB/s). A human recording
+// (replays/second_human) exhausted the whole 256 MiB in ~450 ticks and
+// crashed in main_menu_callback on the first failed allocation. Replaced by
+// a real allocator, with the two properties the rest of this carrier needs:
+//
+//   1. DETERMINISTIC given a deterministic call sequence. Explicit
+//      doubly-linked free list, FIRST FIT from the head, LIFO insertion,
+//      immediate boundary-tag coalescing of both neighbours, and a bump
+//      "top" for memory never handed out before. Every one of those steps is
+//      a pure function of the call sequence: no addresses, no timestamps, no
+//      randomization, no size-class hashing, no per-run policy. Two runs that
+//      make the same malloc/free calls in the same order get byte-identical
+//      block addresses (this is what G1/G2/G3 verify).
+//   2. ALL ALLOCATOR STATE LIVES INSIDE THE ARENA REGION. The control block
+//      (top / free-list head / stats) is at arena offset 0, block headers and
+//      footers are in the blocks themselves, and the free-list links live in
+//      the payload of the free blocks. So the EXISTING snapshot component
+//      ("arena", 0x20000000, `arena_offset` bytes) captures the allocator
+//      whole, unchanged - no new snapshot component, no new carrier global.
+//      `DetSavedState::arena_offset` keeps its meaning ("bytes of the arena
+//      that are live"), it is now just read out of the control block.
+//
+// Layout, all block sizes and block offsets are multiples of 16:
+//
+//   [0 .. 64)              ArenaCtl        (top, free_head, stats)
+//   [64 .. top)            blocks, each:   ArenaHdr(16) payload ArenaFtr(8)
+//   [top .. ARENA_SIZE)    never touched   (bump region)
+//
+// The footer is the Knuth boundary tag that makes backward coalescing O(1);
+// the header is 16 bytes rather than 8 so that every payload is 16-aligned
+// (msvcrt's own x86 malloc guarantees 8; 16 is a strict superset and keeps
+// the arithmetic trivial). Freeing the block that ends exactly at `top` gives
+// its bytes back to the bump region instead of the free list, which is what
+// keeps `top` - and therefore the snapshot's arena component - bounded by the
+// PEAK LIVE footprint rather than by total allocation volume.
 // ---------------------------------------------------------------------
 #define ARENA_BASE  ((uintptr_t)0x20000000u)
 #define ARENA_SIZE  (256u * 1024u * 1024u)
 #define ARENA_ALIGN 16u
-#define ARENA_MAGIC 0x50464152u // 'RAFP'
+#define ARENA_HDR   16u
+#define ARENA_FTR   8u
+#define ARENA_MIN_BLOCK 32u          // hdr(16) + 8 bytes of free-list links + ftr(8)
+#define ARENA_CTL_SIZE  64u
+#define ARENA_MAGIC      0x50464152u // 'RAFP' - a block handed out to the guest
+#define ARENA_MAGIC_FREE 0x46464152u // 'RAFF' - a block on the free list
+#define ARENA_CTL_MAGIC  0x50464143u // 'CAFP'
 
-struct ArenaHeader { uint32_t size; uint32_t magic; };
+struct ArenaHdr { uint32_t size; uint32_t magic; uint32_t user; uint32_t pad; };
+struct ArenaFtr { uint32_t size; uint32_t magic; };
+struct ArenaLink { uint32_t next; uint32_t prev; };   // arena offsets; 0 == null
+struct ArenaCtl {
+    uint32_t magic;
+    uint32_t top;          // first byte of the never-yet-used bump region
+    uint32_t free_head;    // head of the explicit free list, 0 = empty
+    uint32_t hwm;          // high-water mark: the largest `top` ever reached
+    uint32_t live_blocks;
+    uint32_t live_bytes;   // payload bytes currently handed out
+    uint32_t peak_live_bytes;
+    uint32_t n_malloc, n_calloc, n_realloc, n_free, n_free_foreign, n_free_bad;
+    uint32_t pad[3];
+};
 
 static uint8_t* g_arena_base = nullptr;
-static size_t g_arena_offset = 0;
 static CRITICAL_SECTION g_arena_cs;
+
+static inline ArenaCtl*  a_ctl()             { return (ArenaCtl*)g_arena_base; }
+static inline ArenaHdr*  a_hdr(uint32_t off) { return (ArenaHdr*)(g_arena_base + off); }
+static inline ArenaLink* a_link(uint32_t off){ return (ArenaLink*)(g_arena_base + off + ARENA_HDR); }
+static inline ArenaFtr*  a_ftr(uint32_t off, uint32_t size) {
+    return (ArenaFtr*)(g_arena_base + off + size - ARENA_FTR);
+}
+static inline void a_set_block(uint32_t off, uint32_t size, uint32_t magic, uint32_t user) {
+    ArenaHdr* h = a_hdr(off);
+    h->size = size; h->magic = magic; h->user = user; h->pad = 0;
+    ArenaFtr* f = a_ftr(off, size);
+    f->size = size; f->magic = magic;
+}
 
 static void arena_init() {
     g_arena_base = (uint8_t*)VirtualAlloc((void*)ARENA_BASE, ARENA_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
@@ -237,57 +351,213 @@ static void arena_init() {
         return;
     }
     InitializeCriticalSection(&g_arena_cs);
-    fprintf(stderr, "det: deterministic heap arena at %p, size=%uMB\n", g_arena_base, ARENA_SIZE / (1024u * 1024u));
+    ArenaCtl* c = a_ctl();
+    memset(c, 0, sizeof(*c));
+    c->magic = ARENA_CTL_MAGIC;
+    c->top = ARENA_CTL_SIZE;
+    c->free_head = 0;
+    c->hwm = ARENA_CTL_SIZE;
+    fprintf(stderr, "det: deterministic heap arena at %p, size=%uMB (free-list allocator, "
+                     "first-fit + coalescing, state in-arena)\n",
+            g_arena_base, ARENA_SIZE / (1024u * 1024u));
+}
+
+// --- explicit free list (LIFO insert, first-fit search) ------------------
+static void fl_insert(uint32_t off) {
+    ArenaCtl* c = a_ctl();
+    ArenaLink* n = a_link(off);
+    n->prev = 0;
+    n->next = c->free_head;
+    if (n->next) a_link(n->next)->prev = off;
+    c->free_head = off;
+}
+static void fl_remove(uint32_t off) {
+    ArenaCtl* c = a_ctl();
+    ArenaLink* n = a_link(off);
+    if (n->prev) a_link(n->prev)->next = n->next;
+    else         c->free_head = n->next;
+    if (n->next) a_link(n->next)->prev = n->prev;
+}
+
+// Caller holds g_arena_cs.
+static uint32_t arena_carve(size_t n) {
+    ArenaCtl* c = a_ctl();
+    size_t need = ARENA_HDR + n + ARENA_FTR;
+    need = (need + ARENA_ALIGN - 1) & ~(size_t)(ARENA_ALIGN - 1);
+    if (need < ARENA_MIN_BLOCK) need = ARENA_MIN_BLOCK;
+    if (need > ARENA_SIZE) return 0;
+
+    // 1. first fit over the free list
+    for (uint32_t off = c->free_head; off; off = a_link(off)->next) {
+        uint32_t bs = a_hdr(off)->size;
+        if (bs < need) continue;
+        fl_remove(off);
+        if (bs - need >= ARENA_MIN_BLOCK) {          // split; remainder stays free
+            a_set_block(off, (uint32_t)need, ARENA_MAGIC, (uint32_t)n);
+            uint32_t rest = off + (uint32_t)need;
+            a_set_block(rest, bs - (uint32_t)need, ARENA_MAGIC_FREE, 0);
+            if (rest + (bs - (uint32_t)need) == c->top) c->top = rest;  // back to the bump region
+            else fl_insert(rest);
+        } else {
+            a_set_block(off, bs, ARENA_MAGIC, (uint32_t)n);
+        }
+        return off;
+    }
+
+    // 2. nothing fits - take fresh bytes from the bump region
+    if (c->top + need > ARENA_SIZE) return 0;
+    uint32_t off = c->top;
+    c->top += (uint32_t)need;
+    if (c->top > c->hwm) c->hwm = c->top;
+    a_set_block(off, (uint32_t)need, ARENA_MAGIC, (uint32_t)n);
+    return off;
 }
 
 static void* arena_alloc(size_t n) {
     if (!g_arena_base) return nullptr;
-    size_t total = sizeof(ArenaHeader) + n;
-    total = (total + ARENA_ALIGN - 1) & ~(size_t)(ARENA_ALIGN - 1);
     EnterCriticalSection(&g_arena_cs);
-    size_t off = g_arena_offset;
-    if (off + total > ARENA_SIZE) {
+    uint32_t off = arena_carve(n);
+    if (!off) {
+        ArenaCtl* c = a_ctl();
+        unsigned top = c->top, live = c->live_bytes;
         LeaveCriticalSection(&g_arena_cs);
-        fprintf(stderr, "det: arena exhausted (requested %zu, used %zu/%u)\n", n, off, ARENA_SIZE);
+        fprintf(stderr, "det: arena exhausted (requested %zu, top %u/%u, live %u)\n",
+                n, top, ARENA_SIZE, live);
         return nullptr;
     }
-    g_arena_offset = off + total;
+    ArenaCtl* c = a_ctl();
+    c->live_blocks++;
+    c->live_bytes += a_hdr(off)->size;
+    if (c->live_bytes > c->peak_live_bytes) c->peak_live_bytes = c->live_bytes;
     LeaveCriticalSection(&g_arena_cs);
-    ArenaHeader* h = (ArenaHeader*)(g_arena_base + off);
-    h->size = (uint32_t)n;
-    h->magic = ARENA_MAGIC;
-    return (void*)(h + 1);
+    return (void*)(g_arena_base + off + ARENA_HDR);
+}
+
+// True only for a pointer this allocator actually handed out and that is
+// still live. Anything else (NULL, an interior pointer, or a block msvcrt
+// allocated internally and handed to the guest) is NOT ours.
+static bool arena_owns(void* p) {
+    if (!g_arena_base || !p) return false;
+    uintptr_t a = (uintptr_t)p;
+    if (a < (uintptr_t)g_arena_base + ARENA_CTL_SIZE + ARENA_HDR) return false;
+    if (a >= (uintptr_t)g_arena_base + ARENA_SIZE) return false;
+    if ((a - (uintptr_t)g_arena_base - ARENA_HDR) % ARENA_ALIGN != 0) return false;
+    uint32_t off = (uint32_t)(a - (uintptr_t)g_arena_base - ARENA_HDR);
+    return a_hdr(off)->magic == ARENA_MAGIC;
 }
 
 static size_t arena_size_of(void* p) {
-    ArenaHeader* h = ((ArenaHeader*)p) - 1;
-    return (h->magic == ARENA_MAGIC) ? h->size : 0;
+    if (!arena_owns(p)) return 0;
+    uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
+    return a_hdr(off)->user;
 }
+// Payload bytes actually available in p's block (>= the requested size).
+static size_t arena_capacity_of(void* p) {
+    uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
+    return a_hdr(off)->size - ARENA_HDR - ARENA_FTR;
+}
+
+static void arena_free(void* p) {
+    uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
+    EnterCriticalSection(&g_arena_cs);
+    ArenaCtl* c = a_ctl();
+    ArenaHdr* h = a_hdr(off);
+    if (h->magic != ARENA_MAGIC) { c->n_free_bad++; LeaveCriticalSection(&g_arena_cs); return; }
+    uint32_t size = h->size;
+    c->live_blocks--;
+    c->live_bytes -= size;
+
+    // coalesce forward
+    uint32_t nxt = off + size;
+    if (nxt < c->top && a_hdr(nxt)->magic == ARENA_MAGIC_FREE) {
+        fl_remove(nxt);
+        size += a_hdr(nxt)->size;
+    }
+    // coalesce backward through the previous block's boundary tag
+    if (off > ARENA_CTL_SIZE) {
+        ArenaFtr* pf = (ArenaFtr*)(g_arena_base + off - ARENA_FTR);
+        if (pf->magic == ARENA_MAGIC_FREE && pf->size <= off - ARENA_CTL_SIZE) {
+            uint32_t prev = off - pf->size;
+            fl_remove(prev);
+            off = prev;
+            size += pf->size;
+        }
+    }
+    a_set_block(off, size, ARENA_MAGIC_FREE, 0);
+    if (off + size == c->top) c->top = off;   // give the tail back to the bump region
+    else fl_insert(off);
+    LeaveCriticalSection(&g_arena_cs);
+}
+
+// Arena statistics, for the shutdown line and the --report JSON. Zero when
+// the arena is not active (non-det runs).
+void det_arena_stats(unsigned* top, unsigned* hwm, unsigned* live_bytes,
+                     unsigned* peak_live_bytes, unsigned* live_blocks) {
+    unsigned z = 0;
+    if (top) *top = 0; if (hwm) *hwm = 0; if (live_bytes) *live_bytes = 0;
+    if (peak_live_bytes) *peak_live_bytes = 0; if (live_blocks) *live_blocks = 0;
+    if (!g_arena_base) return;
+    ArenaCtl* c = a_ctl();
+    (void)z;
+    if (top) *top = c->top;
+    if (hwm) *hwm = c->hwm;
+    if (live_bytes) *live_bytes = c->live_bytes;
+    if (peak_live_bytes) *peak_live_bytes = c->peak_live_bytes;
+    if (live_blocks) *live_blocks = c->live_blocks;
+}
+unsigned det_arena_top() { return g_arena_base ? a_ctl()->top : 0; }
 
 extern "C" void* __cdecl det_wrap_malloc(size_t n) {
     pf_count_import(g_id_malloc);
-    if (g_det_mode && g_arena_base) return arena_alloc(n);
+    if (g_det_mode && g_arena_base) { a_ctl()->n_malloc++; return arena_alloc(n); }
     return g_real_malloc ? ((void*(__cdecl*)(size_t))g_real_malloc)(n) : nullptr;
 }
 extern "C" void* __cdecl det_wrap_calloc(size_t count, size_t size) {
     pf_count_import(g_id_calloc);
-    if (g_det_mode && g_arena_base) return arena_alloc(count * size); // fresh VirtualAlloc pages are already zero
+    if (g_det_mode && g_arena_base) {
+        a_ctl()->n_calloc++;
+        size_t n = count * size;
+        void* p = arena_alloc(n);
+        // MUST zero explicitly now: unlike the bump-only form, a block can be
+        // recycled memory, not a fresh (already-zero) VirtualAlloc page.
+        if (p && n) memset(p, 0, n);
+        return p;
+    }
     return g_real_calloc ? ((void*(__cdecl*)(size_t, size_t))g_real_calloc)(count, size) : nullptr;
 }
 extern "C" void* __cdecl det_wrap_realloc(void* p, size_t n) {
     pf_count_import(g_id_realloc);
     if (g_det_mode && g_arena_base) {
-        if (!p) return arena_alloc(n);
-        size_t old_size = arena_size_of(p);
+        a_ctl()->n_realloc++;
+        if (!p) return arena_alloc(n);                 // realloc(NULL, n) == malloc(n)
+        if (!arena_owns(p)) return arena_alloc(n);     // foreign pointer: same as before this change
+        size_t cap = arena_capacity_of(p);
+        if (n <= cap) {                                // fits in place - msvcrt may do this too
+            uint32_t off = (uint32_t)((uintptr_t)p - (uintptr_t)g_arena_base - ARENA_HDR);
+            a_hdr(off)->user = (uint32_t)n;
+            return p;
+        }
+        size_t old = arena_size_of(p);
         void* np = arena_alloc(n);
-        if (np && old_size) memcpy(np, p, old_size < n ? old_size : n); // old block intentionally leaked
+        if (!np) return nullptr;                       // msvcrt: original block stays valid
+        if (old) memcpy(np, p, old < n ? old : n);     // growth copies
+        arena_free(p);
         return np;
     }
     return g_real_realloc ? ((void*(__cdecl*)(void*, size_t))g_real_realloc)(p, n) : nullptr;
 }
 extern "C" void __cdecl det_wrap_free(void* p) {
     pf_count_import(g_id_free);
-    if (g_det_mode && g_arena_base) return; // bump allocator: free is a no-op by design
+    if (g_det_mode && g_arena_base) {
+        a_ctl()->n_free++;
+        if (!p) return;                     // free(NULL) is a no-op
+        if (!arena_owns(p)) {               // msvcrt-internal block, or already freed:
+            a_ctl()->n_free_foreign++;      // leak it, exactly as the bump allocator did
+            return;
+        }
+        arena_free(p);
+        return;
+    }
     if (g_real_free) ((void(__cdecl*)(void*))g_real_free)(p);
 }
 
@@ -307,6 +577,15 @@ static int det_current_tick() { return (int)(det_now_ms() / 20); }
 // Public alias (det.hpp) - bind.cpp keys its per-invocation records on the
 // same T the per-tick digest lines use.
 int det_tick() { return det_current_tick(); }
+
+// --trace-input bookkeeping, called from det_wrap_Sleep once the clock for
+// this Sleep call has advanced: `sub` counts Sleep calls within the tick T
+// that this call belongs to (0 == the first Sleep call of a new tick).
+static void sub_tick_advance() {
+    int t_now = det_current_tick();
+    if (t_now != g_sub_tick) { g_sub_tick = t_now; g_sub_in_tick = 0; }
+    else ++g_sub_in_tick;
+}
 
 // ---------------------------------------------------------------------
 // B. Input script
@@ -458,8 +737,26 @@ static void load_script(const char* path) {
 // scancode-indexed key[] array (read by poll_control/is_left/is_right/...,
 // see notes/replay_format.md sec 1) drives menu+gameplay input - keycode
 // feeds Allegro's separate ASCII/readkey() text-entry API, unused here.
+// DET_INPUT_DELIVER_SUB=k (diagnostic env var, same opt-in style as
+// DET_DUMP_MEM_TICK below): hold every scripted event back until Sleep call
+// number k WITHIN its tick instead of the tick's first Sleep call (sub=0).
+// This is the negative control for the divergence-005 root cause: if the
+// SUB-TICK position of the handover - not the tick index - is what decides
+// which game tick sees the key, then k>=1 must move the whole run one game
+// tick later, and k=0 must reproduce the baseline exactly. MEASURED: it does
+// (carrier/NOTES.md "Divergence 005").
+static int deliver_sub_slot() {
+    static int slot = -1;
+    if (slot < 0) {
+        char buf[16];
+        slot = GetEnvironmentVariableA("DET_INPUT_DELIVER_SUB", buf, sizeof(buf)) ? atoi(buf) : 0;
+    }
+    return slot;
+}
+
 static void deliver_due_input() {
     if (g_script.empty()) return;
+    if (g_sub_in_tick != deliver_sub_slot()) return;
     int T = det_current_tick();
     typedef void(__cdecl * PressFn)(int, int);
     typedef void(__cdecl * ReleaseFn)(int);
@@ -484,14 +781,23 @@ static void deliver_due_input() {
                 ++g_script_cursor;
                 continue;
             }
+            g_in_delivery = true;
             call_key_dinput_handle_scancode(dik, e.press ? 1 : 0);
+            g_in_delivery = false;
         } else if (e.press) {
+            g_in_delivery = true;
             ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(0, e.scancode);
+            g_in_delivery = false;
         } else {
+            g_in_delivery = true;
             ((ReleaseFn)(void*)VA_HANDLE_KEY_RELEASE)(e.scancode);
+            g_in_delivery = false;
         }
         fprintf(stderr, "det: T=%d delivered %s scancode=%d%s\n", T, e.press ? "press" : "release", e.scancode,
                 g_inject_real_test ? " (via key_dinput_handle_scancode, --inject-real-test)" : "");
+        trace_input("deliver_due_input(Sleep,after _handle_timer_tick)",
+                    e.press ? "press" : "release", e.scancode,
+                    g_inject_real_test ? "via=key_dinput_handle_scancode" : "via=_handle_key_press/release");
         ++g_script_cursor;
     }
 }
@@ -534,8 +840,87 @@ static void deliver_due_input() {
 // auto-repeat semantics; carrier/NOTES.md "Input policy and recording" part
 // C documents that finding and it must keep working unchanged - re-verified
 // after this pass, see carrier/NOTES.md).
+// ---------------------------------------------------------------------
+// Item C (exit-time storm): Allegro's keyboard shutdown (key_dinput_exit ->
+// its "release everything that could be down" sweep) drives
+// key_dinput_handle_scancode once for EVERY DIK code, all inside a single
+// carrier tick. With --input=real that produced hundreds of individually
+// printed "no Allegro mapping ... dropped" lines plus a burst of "capture
+// queue full" lines - pure noise that buried the real output of a session.
+//
+// The events themselves are still handled exactly as before (unmapped ones
+// dropped, over-capacity ones dropped, the recording-hygiene rule in
+// keyrelease_record_hit unchanged and untouched); only the LOGGING is
+// aggregated: counts are accumulated per tick and emitted as ONE summary
+// line when the tick advances (from drain_real_key_queue, main thread) or at
+// det_shutdown. A single isolated event still prints its own detail, so the
+// diagnostic value of the message is not lost for the non-storm case.
+// ---------------------------------------------------------------------
+static const int kRealQueueCap = 256;   // capacity of the real-key capture ring buffer below
+static CRITICAL_SECTION g_storm_cs;
+static bool g_storm_cs_inited = false;
+static int  g_storm_tick = -1;
+static unsigned g_storm_nomap = 0;      // events with hw_to_mycode[dik]==0
+static unsigned g_storm_qfull = 0;      // events dropped because the ring buffer was full
+static unsigned g_storm_delivered = 0;  // events accepted in the same tick (context for the summary)
+static unsigned char g_storm_seen[256]; // which DIK codes appeared, for the distinct count
+static int g_storm_first_dik = -1, g_storm_last_dik = -1;
+
+static void storm_init() {
+    if (!g_storm_cs_inited) { InitializeCriticalSection(&g_storm_cs); g_storm_cs_inited = true; }
+}
+
+// Emits the summary for whatever tick is currently accumulating, if any.
+// Safe to call from any thread and more than once.
+static void exit_storm_flush() {
+    if (!g_storm_cs_inited) return;
+    EnterCriticalSection(&g_storm_cs);
+    unsigned nomap = g_storm_nomap, qfull = g_storm_qfull, delivered = g_storm_delivered;
+    int T = g_storm_tick, first = g_storm_first_dik, last = g_storm_last_dik;
+    unsigned distinct = 0;
+    for (int i = 0; i < 256; ++i) if (g_storm_seen[i]) ++distinct;
+    g_storm_nomap = g_storm_qfull = g_storm_delivered = 0;
+    g_storm_tick = -1; g_storm_first_dik = g_storm_last_dik = -1;
+    memset(g_storm_seen, 0, sizeof(g_storm_seen));
+    LeaveCriticalSection(&g_storm_cs);
+    if (!nomap && !qfull) return;
+    if (nomap + qfull == 1 && nomap == 1) {
+        fprintf(stderr, "det: T=%d real key event dik=0x%02x has no Allegro mapping "
+                         "(hw_to_mycode[dik]==0), dropped\n", T, (unsigned)first);
+    } else if (nomap + qfull == 1) {
+        fprintf(stderr, "det: T=%d real-input capture queue full (%d events), dropped one\n",
+                T, kRealQueueCap);
+    } else {
+        fprintf(stderr, "det: T=%d real-key event storm collapsed: %u dropped (%u unmapped, "
+                         "%u queue-full), %u delivered, %u distinct DIK codes 0x%02x..0x%02x - "
+                         "this is Allegro's keyboard-shutdown release sweep, not gameplay input\n",
+                T, nomap + qfull, nomap, qfull, delivered, distinct,
+                (unsigned)(first < 0 ? 0 : first), (unsigned)(last < 0 ? 0 : last));
+    }
+}
+
+// kind: 0 = delivered, 1 = no Allegro mapping, 2 = capture queue full.
+static void storm_note(int T, int dik, int kind) {
+    storm_init();
+    bool need_flush = false;
+    EnterCriticalSection(&g_storm_cs);
+    if (g_storm_tick != T && g_storm_tick != -1) need_flush = true;
+    LeaveCriticalSection(&g_storm_cs);
+    if (need_flush) exit_storm_flush();
+    EnterCriticalSection(&g_storm_cs);
+    g_storm_tick = T;
+    if (dik >= 0 && dik < 256) {
+        g_storm_seen[dik] = 1;
+        if (g_storm_first_dik < 0) g_storm_first_dik = dik;
+        g_storm_last_dik = dik;
+    }
+    if (kind == 0) g_storm_delivered++;
+    else if (kind == 1) g_storm_nomap++;
+    else g_storm_qfull++;
+    LeaveCriticalSection(&g_storm_cs);
+}
+
 struct RealKeyEvent { int allegro_code; bool press; };
-static const int kRealQueueCap = 256;
 static RealKeyEvent g_real_queue[kRealQueueCap];
 static int g_real_queue_head = 0, g_real_queue_tail = 0; // ring buffer, mod kRealQueueCap
 static CRITICAL_SECTION g_real_queue_cs;
@@ -547,18 +932,19 @@ static void real_queue_init() {
 
 // Called from the VEH callback on whichever thread hit the breakpoint (the
 // real window thread, measured - carrier/NOTES.md "Milestones 5-7" part B).
-static void real_queue_push(int allegro_code, bool press) {
+static bool real_queue_push(int allegro_code, bool press) {
     real_queue_init();
+    bool ok;
     EnterCriticalSection(&g_real_queue_cs);
     int next = (g_real_queue_tail + 1) % kRealQueueCap;
-    if (next != g_real_queue_head) {
+    ok = (next != g_real_queue_head);
+    if (ok) {
         g_real_queue[g_real_queue_tail].allegro_code = allegro_code;
         g_real_queue[g_real_queue_tail].press = press;
         g_real_queue_tail = next;
-    } else {
-        fprintf(stderr, "det: WARNING - real-input capture queue full (%d events), dropping one\n", kRealQueueCap);
     }
     LeaveCriticalSection(&g_real_queue_cs);
+    return ok; // item C: the caller aggregates the "queue full" report, see storm_note
 }
 
 // Called from the main thread only (drain_real_key_queue).
@@ -585,11 +971,15 @@ static void real_key_capture_hit(CONTEXT* ctx) {
     int dik = (int)(unsigned char)ctx->Eax;
     bool press = ctx->Edx != 0;
     int allegro_code = dik_to_allegro(dik);
-    if (allegro_code != 0) {
-        real_queue_push(allegro_code, press);
+    int T = det_current_tick();
+    trace_input("key_dinput_handle_scancode(capture,window thread)",
+                press ? "press" : "release", allegro_code, "phase=capture");
+    if (allegro_code == 0) {
+        storm_note(T, dik, 1);          // no Allegro mapping - item C aggregates the log line
+    } else if (!real_queue_push(allegro_code, press)) {
+        storm_note(T, dik, 2);          // capture queue full
     } else {
-        fprintf(stderr, "det: T=%d real key event dik=0x%02x has no Allegro mapping "
-                         "(hw_to_mycode[dik]==0), dropped\n", det_current_tick(), dik);
+        storm_note(T, dik, 0);
     }
     DWORD ret = *(DWORD*)(uintptr_t)ctx->Esp;
     ctx->Esp += 4;
@@ -601,15 +991,52 @@ static void real_key_capture_hit(CONTEXT* ctx) {
 // already uses. This is what makes T at delivery equal T at recording:
 // --record-input's breakpoints sit at _handle_key_press/_handle_key_release,
 // which this function calls directly, synchronously, from the main thread.
+// DIVERGENCE 005 FIX (notes/living_record.md; carrier/NOTES.md "Divergence
+// 005"). Item 2 above made record and replay use the same FUNCTION calls
+// (_handle_key_press/_handle_key_release) from the same THREAD (main) - but
+// not from the same POINT IN TIME, and that residue is the whole of 005.
+//
+// MEASURED with --trace-input: the guest's idle loops call rest(1), so
+// det_wrap_Sleep runs ~20 times per carrier tick (T = virtual_ms/20). The old
+// drain ran on EVERY one of those calls, so a real key captured at an
+// arbitrary instant was delivered at the very next Sleep call - i.e. at
+// sub-tick position 0..19 of tick T, wherever the human happened to press.
+// deliver_due_input, in contrast, can only ever fire a scripted event at
+// sub-tick position 0 (the FIRST Sleep call whose T reaches the event's
+// tick). Both stamped and scheduled on T, so the recording looked consistent;
+// but the guest's OWN 20 ms tick (cycle_count @0x506938, incremented inside
+// _handle_timer_tick) lands at ONE specific sub-tick position, so an event
+// delivered at sub=13 of tick T and the same event replayed at sub=0 of tick
+// T fall on OPPOSITE SIDES of the guest's tick boundary - the game consumes
+// it one game tick earlier on replay. That is exactly the observed "recorded
+// first safepoint T=249, replay T=248", and exactly why shifting every event
+// +1 tick over-corrected (it fixed the first 51 ticks and broke T=300).
+//
+// The rule that makes stamp == delivery tick in BOTH modes: deliver a
+// captured real event at the SAME drain point a scripted event uses - the
+// first Sleep call of a new carrier tick - and stamp it there. The tick index
+// then fully determines the delivery point, in both directions, and a
+// recording is replayable by construction. Cost: at most one extra carrier
+// tick (20 ms) of latency for a human, on top of the tick-boundary latency
+// item 2 already introduced.
+static int g_last_drain_tick = -1;
+
 static void drain_real_key_queue() {
     if (g_input_policy != InputPolicy::Real) return; // nothing was ever queued
-    RealKeyEvent e;
     int T = det_current_tick();
+    if (T == g_last_drain_tick) return;   // not the first Sleep call of this tick
+    g_last_drain_tick = T;
+    exit_storm_flush(); // item C: one summary line per tick, from the main thread
+    RealKeyEvent e;
     typedef void(__cdecl * PressFn)(int, int);
     typedef void(__cdecl * ReleaseFn)(int);
     while (real_queue_pop(&e)) {
+        trace_input("drain_real_key_queue(Sleep,after _handle_timer_tick)",
+                    e.press ? "press" : "release", e.allegro_code, "phase=deliver");
+        g_in_delivery = true;
         if (e.press) ((PressFn)(void*)VA_HANDLE_KEY_PRESS)(0, e.allegro_code);
         else ((ReleaseFn)(void*)VA_HANDLE_KEY_RELEASE)(e.allegro_code);
+        g_in_delivery = false;
         fprintf(stderr, "det: T=%d delivered real %s scancode=%d (captured at tick boundary)\n",
                 T, e.press ? "press" : "release", e.allegro_code);
     }
@@ -821,6 +1248,13 @@ extern "C" void __stdcall det_wrap_Sleep(DWORD ms) {
     pf_count_import(g_id_Sleep);
     if (GetCurrentThreadId() != g_main_tid) { ::Sleep(ms); return; }
     try_focus_guest_window_once();
+    // --trace-input bookkeeping: `sub` is which Sleep call within the current
+    // carrier tick this is. T only advances once every ~20 Sleep calls (the
+    // guest calls rest(1) from its idle loops), so "the tick a key event is
+    // stamped with" is a MUCH coarser coordinate than "the point at which the
+    // event is handed to the game" - which is exactly what divergence 005
+    // turned out to be about. See NOTES.md.
+    ++g_sleep_calls;
 
     if (g_det_mode) {
         // KNOWN (disasm of tim_win32_high_perf_thread, carrier/NOTES.md):
@@ -833,18 +1267,26 @@ extern "C" void __stdcall det_wrap_Sleep(DWORD ms) {
         // the same full-precision "no drift" property without a separate
         // remainder variable.
         g_virtual_ms += ms;
+        sub_tick_advance();
         LONGLONG total_units = g_virtual_ms * TIMERS_PER_SECOND / 1000;
         LONGLONG delta = total_units - g_units_reported;
         g_units_reported = total_units;
+        g_cyc_pre = IT_CYCLE_COUNT;
         if (delta > 0) {
             typedef long(__cdecl * TickFn)(int);
             ((TickFn)(void*)VA_HANDLE_TIMER_TICK)((int)delta);
         }
+        g_cyc_post = IT_CYCLE_COUNT;
+        if (g_trace_input_file && g_cyc_post != g_cyc_pre)
+            trace_input("sleep", "guest-tick-boundary", g_cyc_post, nullptr);
+        // Both providers hand over at the SAME point - see deliver_due_input /
+        // drain_real_key_queue (divergence 005 fix).
         deliver_due_input();
         drain_real_key_queue(); // item 2: real events captured since the last tick
         if (g_pace_real) ::Sleep(ms);
     } else {
         ::Sleep(ms);
+        sub_tick_advance();
         deliver_due_input(); // real-time T, see det_now_ms()
         drain_real_key_queue();
     }
@@ -981,6 +1423,7 @@ static void safepoint_hit(CONTEXT* ctx) {
     // from the same memory at the same safepoint.
     snapshot_on_safepoint_pre(ctx);
     int T = det_current_tick();
+    ++g_safepoint_count; // --trace-input: "safepoint count so far" coordinate
     // TEMPORARY diagnostic (see carrier/NOTES.md "Milestones 5-7"): dump raw
     // .data+.bss once, at the tick named by DET_DUMP_MEM_TICK, to the path
     // named by DET_DUMP_MEM_PATH - used to find exactly which bytes differ
@@ -1084,9 +1527,36 @@ static void neutralize_keyboard_hit(CONTEXT* ctx) {
 // through this same pair of breakpoints.
 static bool g_key_held[256];
 
+// DIVERGENCE 005, second residual (MEASURED with --trace-input): the guest
+// itself calls _handle_key_press - Allegro's own KEY REPEAT, driven from
+// _handle_timer_tick (keyboard.c's repeat timer; observed 240 ms after the
+// original press, i.e. Allegro 4's 250 ms default repeat delay). Those calls
+// arrive at ARBITRARY sub-tick positions, because _handle_timer_tick runs on
+// every one of the ~10 Sleep calls per carrier tick. The old recorder stamped
+// them too, so a recording contained events the carrier never delivered - and
+// replaying them as ordinary scripted events put them at sub=0, a DIFFERENT
+// position from where the guest originally generated them. Measured effect: a
+// SendInput session diverged at its very first safepoint.
+//
+// Rule: a recording is a log of what the INPUT PROVIDER handed to the game,
+// not of every _handle_key_press the guest happens to make. Only calls made
+// from inside the carrier's own delivery point are recorded (g_in_delivery).
+// The guest's repeats are a CONSEQUENCE of key[] state plus Allegro's timer,
+// both of which the replay reproduces on its own, so dropping them from the
+// file is not a loss of information.
+//
+// --inject-real-test is unaffected by construction: it calls
+// key_dinput_handle_scancode from INSIDE deliver_due_input, so the real
+// function's own auto-repeat behaviour (carrier/NOTES.md "Input policy and
+// recording" part C) still happens with g_in_delivery set and is still
+// recorded, exactly as before. (g_in_delivery itself is declared near the top
+// of this file, since deliver_due_input sets it long before this point.)
 static void keypress_record_hit(CONTEXT* ctx) {
-    if (!g_record_file) return;
     int scancode = *(int*)(uintptr_t)(ctx->Esp + 8); // cdecl entry: [esp]=ret,[esp+4]=keycode,[esp+8]=scancode
+    trace_input(g_in_delivery ? "_handle_key_press(record stamp)"
+                              : "_handle_key_press(GUEST-INTERNAL, not recorded)",
+                "press", scancode, g_in_delivery ? "phase=stamp" : "phase=guest-repeat");
+    if (!g_record_file || !g_in_delivery) return;
     if (scancode >= 0 && scancode < 256) g_key_held[scancode] = true;
     const char* nm = scancode_to_name(scancode);
     if (nm) fprintf(g_record_file, "%d press %s\n", det_current_tick(), nm);
@@ -1094,8 +1564,15 @@ static void keypress_record_hit(CONTEXT* ctx) {
     fflush(g_record_file);
 }
 static void keyrelease_record_hit(CONTEXT* ctx) {
-    if (!g_record_file) return;
     int scancode = *(int*)(uintptr_t)(ctx->Esp + 4); // cdecl entry: [esp]=ret,[esp+4]=scancode
+    trace_input(g_in_delivery ? "_handle_key_release(record stamp)"
+                              : "_handle_key_release(GUEST-INTERNAL, not recorded)",
+                "release", scancode, g_in_delivery ? "phase=stamp" : "phase=guest-internal");
+    // Item C's exit-time storm is exactly this case: Allegro's keyboard
+    // shutdown releases every scancode from OUTSIDE any delivery, so the
+    // g_in_delivery gate drops the whole sweep on its own; the "currently
+    // held" hygiene rule below is kept unchanged as the second filter.
+    if (!g_record_file || !g_in_delivery) return;
     if (scancode < 0 || scancode >= 256 || !g_key_held[scancode]) {
         return; // not a real, still-open press of ours - drop it (see comment above)
     }
@@ -1281,6 +1758,26 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     }
     if (opt.input_script && opt.input_script[0]) load_script(opt.input_script);
 
+    // --trace-input PATH (divergence 005): the diagnostic that found the
+    // cause. "-" means stderr. Works in BOTH modes and with either input
+    // provider, deliberately: its whole point is a side-by-side diff of a
+    // record run and a replay run.
+    if (opt.trace_input && opt.trace_input[0]) {
+        if (strcmp(opt.trace_input, "-") == 0) {
+            g_trace_input_file = stderr;
+        } else {
+            g_trace_input_file = fopen(opt.trace_input, "w");
+            if (!g_trace_input_file)
+                fprintf(stderr, "det: could not open --trace-input '%s'\n", opt.trace_input);
+        }
+        if (g_trace_input_file)
+            fprintf(g_trace_input_file,
+                    "# --trace-input: ms=virtual clock, T=carrier tick (ms/20), sub=Sleep call within T "
+                    "(0 = the tick's FIRST Sleep, where scripted events are delivered), sleepn=total Sleep "
+                    "calls, cyc/pre/post=guest cycle_count @0x506938 around this Sleep's _handle_timer_tick, "
+                    "sp=play() safepoints so far, tid=thread, site=call site\n");
+    }
+
     fprintf(stderr,
             "det: det_mode=%d pace=%s input=%s inject_real_test=%d stop_at_tick=%d digest_out=%s record_input=%s input_script=%s\n",
             g_det_mode, g_pace_real ? "real" : "fast", input_policy_name(g_input_policy), g_inject_real_test, g_stop_at_tick,
@@ -1303,8 +1800,14 @@ void det_state_save(DetSavedState* s) {
     s->rng_state = g_rng_state;
     s->rng_calls = g_rng_calls;
     s->script_cursor = (unsigned)g_script_cursor;
-    s->arena_offset = (unsigned)g_arena_offset;
+    // "How many bytes of the arena are live" - now read out of the arena's
+    // OWN control block (divergence 004 rewrite): the allocator's whole state
+    // (top, free list, block headers/footers) lives inside [0, top), so the
+    // existing "arena" snapshot component captures the allocator unchanged
+    // and this field keeps its exact old meaning and use (snapshot.cpp).
+    s->arena_offset = det_arena_top();
     s->real_key_violations = g_real_key_violations;
+    s->last_drain_tick = g_last_drain_tick;
     memcpy(s->key_held, g_key_held, sizeof(g_key_held));
     if (g_real_queue_cs_inited) EnterCriticalSection(&g_real_queue_cs);
     s->real_queue_head = g_real_queue_head;
@@ -1322,12 +1825,15 @@ void det_state_load(const DetSavedState* s) {
     g_rng_state = s->rng_state;
     g_rng_calls = (long)s->rng_calls;
     g_script_cursor = (size_t)s->script_cursor;
-    // The arena is bump-only, so rewinding the bump pointer is exactly the
-    // right semantics: every allocation made AFTER the snapshot is simply
-    // forgotten and its bytes will be handed out again in the same order
-    // (carrier/NOTES.md "Milestones 8-9", hazard list).
-    g_arena_offset = (size_t)s->arena_offset;
+    // Nothing to do for the arena: snapshot.cpp has already memcpy'd
+    // [0x20000000, +arena_offset) back, and that range CONTAINS the whole
+    // allocator - control block (top/free_head/stats) at offset 0, block
+    // headers, boundary-tag footers and free-list links inside the blocks.
+    // The rewind therefore restores the allocator exactly, including which
+    // blocks were free and in what free-list order, so the post-restore
+    // allocation sequence reproduces the pre-restore addresses.
     g_real_key_violations = s->real_key_violations;
+    g_last_drain_tick = s->last_drain_tick;
     memcpy(g_key_held, s->key_held, sizeof(g_key_held));
     real_queue_init();
     EnterCriticalSection(&g_real_queue_cs);
@@ -1343,4 +1849,22 @@ void det_state_load(const DetSavedState* s) {
 void det_shutdown() {
     if (g_digest_file) { fflush(g_digest_file); fclose(g_digest_file); g_digest_file = nullptr; }
     if (g_record_file) { fflush(g_record_file); fclose(g_record_file); g_record_file = nullptr; }
+    exit_storm_flush();
+    if (g_trace_input_file && g_trace_input_file != stderr) {
+        fclose(g_trace_input_file); g_trace_input_file = nullptr;
+    }
+    fprintf(stderr, "det: shutdown at T=%d (virtual_ms=%lld, %lld main-thread Sleep calls, "
+                    "%ld safepoints, guest cycle_count=%d)\n",
+            det_current_tick(), (long long)g_virtual_ms, g_sleep_calls, g_safepoint_count,
+            (int)IT_CYCLE_COUNT);
+    if (g_arena_base) {
+        ArenaCtl* c = a_ctl();
+        fprintf(stderr,
+                "det: arena high-water %u bytes (%.2f MB), live %u bytes in %u blocks, "
+                "peak live %u bytes; calls malloc=%u calloc=%u realloc=%u free=%u "
+                "(foreign %u, bad %u)\n",
+                c->hwm, c->hwm / (1024.0 * 1024.0), c->live_bytes, c->live_blocks,
+                c->peak_live_bytes, c->n_malloc, c->n_calloc, c->n_realloc, c->n_free,
+                c->n_free_foreign, c->n_free_bad);
+    }
 }

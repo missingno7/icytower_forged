@@ -2077,3 +2077,349 @@ single highest-value follow-up for snapshot cost.
   shape (notes/portforge_capsule.md SS D). Page-level hashing is what would
   make incremental snapshots cheap; deliberately deferred until the arena's
   size problem is fixed, since paging a 90 MB leak is the wrong optimisation.
+
+## Divergences 004 and 005, and the exit-time key storm
+
+Follow-up pass (2026-09-07) on the three queued carrier problems in
+notes/living_record.md: **004** (the bump-only heap arena exhausts itself in
+the main menu), **005** (a human recording replays one tick early), and the
+exit-time "release every DIK code" log storm. All three gates re-verified with
+the final binary, assets restored from `artifacts/assets_backup/` +
+`artifacts/log_original_baseline.txt` before every run, as everywhere in this
+file (`carrier/scripts/restore_assets.ps1`, `carrier/scripts/gates.ps1`):
+
+```
+G1  compare_digests.py    -> EQUAL (876 ticks)
+G2  compare_fn_digests.py -> EQUAL (877 invocations, [src] vs [original])
+G3  certify_snapshot.py rewind -> EQUAL (301 rows T=400..699) and
+                                  EQUAL (602 rows T=400..1000, cold vs post-rewind)
+    certify_snapshot.py fn     -> EQUAL (301 invocations, k=276..576)
+```
+
+### A. Divergence 004: a real allocator inside the same fixed-address arena
+
+**Problem, restated with the measurement.** `--det` redirected
+`malloc`/`calloc`/`realloc`/`free` to a 256 MiB bump allocator at 0x20000000
+that never reclaimed anything (Milestones 5-7). The main MENU creates and
+destroys a full-screen ~800 KB bitmap every frame, ~40 MB/s, so a human
+sitting at the menu exhausted the arena in ~450 ticks and crashed in
+`main_menu_callback` on the first failed allocation (`replays/second_human`).
+Reproduced on the first run of this pass: `det: arena exhausted (requested
+819200, used 267969472/268435456)`.
+
+**What replaced it** (`det.cpp`, same fixed region, same base, same size):
+an explicit **doubly-linked free list, first fit from the head, LIFO
+insertion, immediate boundary-tag coalescing of both neighbours**, plus a
+bump `top` for bytes never handed out before. Chosen over size-class free
+lists because it is strictly smaller (one list, one search, one merge rule)
+and because every step is a pure function of the call sequence - no
+addresses, no timestamps, no size-class hashing, no per-run policy - which is
+what "provably deterministic given a deterministic call sequence" needs.
+
+Layout; all block offsets and sizes are multiples of 16:
+
+| range | contents |
+|---|---|
+| `[0, 64)` | `ArenaCtl`: `top`, `free_head`, `hwm`, live/peak stats, call counters |
+| `[64, top)` | blocks: `ArenaHdr`(16) + payload + `ArenaFtr`(8); a free block keeps its list links in its own payload |
+| `[top, 256 MiB)` | never touched |
+
+**All allocator state is therefore inside the arena region**, which is what
+makes the snapshot work unchanged: `snapshot.cpp`'s existing "arena"
+component (`0x20000000`, `DetSavedState::arena_offset` bytes) now captures
+the control block, every header/footer and the whole free list as ordinary
+bytes. `det_state_save` reads `arena_offset` out of the control block instead
+of a carrier global; `det_state_load` does **nothing** for the arena, because
+the memcpy of the component has already restored the allocator exactly -
+including which blocks were free and in what free-list order, which is what
+makes the post-rewind allocation sequence reproduce the pre-rewind addresses.
+No new snapshot component and no new carrier global were added. G3 verifies
+this end to end.
+
+Semantics kept exactly (`det_wrap_*`): `free(NULL)` is a no-op; a pointer the
+arena did not hand out is leaked, not passed to the real heap, exactly as the
+bump allocator did (counted as `n_free_foreign`, measured: **1** per run - an
+msvcrt-internal block); `realloc(NULL,n) == malloc(n)`; growth copies
+`min(old,new)` and frees the old block; a shrink that fits stays in place; a
+failed `realloc` leaves the original block valid. Payload alignment is **16**
+(msvcrt's x86 `malloc` guarantees 8; 16 is a strict superset and keeps the
+block arithmetic trivial). **`calloc` now memsets explicitly** - the bump form
+could rely on fresh `VirtualAlloc` pages being zero, a recycled block cannot;
+that one line is load-bearing.
+
+**Proof 2 - the menu no longer exhausts it, and the high-water mark is
+bounded.** `carrier/scripts/menu_idle.txt` (new) never presses ENTER, so
+`play()` is never entered and every tick is a menu tick; UP/DOWN toggles keep
+the menu doing real work.
+
+```
+carrier.exe --det --pace=fast --input=script --input-script scripts/menu_idle.txt --run-seconds 90
+
+det: shutdown at T=101598 (virtual_ms=2031972, 1015986 main-thread Sleep calls, 0 safepoints)
+det: arena high-water 28564816 bytes (27.24 MB), live 23988976 bytes in 2463 blocks,
+     calls malloc=3871328 calloc=3238 realloc=1426 free=3872128 (foreign 1, bad 0)
+```
+
+**101 598 carrier ticks in the main menu** (the bump arena died at ~450),
+3.87 million allocations matched by 3.87 million frees, and the arena
+**high-water mark stayed at 28 564 816 bytes (27.24 MB)** - flat, not
+growing. The same run under the old allocator would have needed ~3.1 GB.
+
+**Proof 3 - snapshot size.** Same `--snapshot-at-tick 400`, same
+`scripts/newgame.txt` workload:
+
+| | arena component | whole snapshot directory |
+|---|---:|---:|
+| before (bump-only) | 89 781 680 B | 90 110 309 B |
+| after (free list) | **28 468 560 B** | **28 797 189 B** |
+
+68.3 % smaller, and now bounded by the peak LIVE footprint instead of by
+total allocation volume. Gameplay high-water for the G1 workload:
+29 697 392 B (28.32 MB), peak live 27 222 320 B in 2 712 blocks. `--report`
+gained an `"arena"` object carrying all of these.
+
+**Proof 4 - `replays/third_human.txt` no longer crashes.**
+`python scripts/play.py --play-replay third_human` runs to the end:
+`det: shutdown at T=1983 ... 810 safepoints`, clean `--stop-at-tick` exit, no
+access violation (it used to die on arena exhaustion). Its digest still starts
+at T=248 against the recorded 249 - expected; see part B's "old recordings are
+invalid".
+
+### B. Divergence 005: the tick index was never the whole coordinate
+
+**The instrument first (`--trace-input PATH`, `-` = stderr).** New diagnostic,
+working in BOTH modes and with either input provider, deliberately, so a
+record run and a replay run are directly diffable. Every captured / delivered
+/ stamped key event logs:
+
+```
+ms=<virtual clock> T=<carrier tick, ms/20> sub=<Sleep call within T>
+sleepn=<total Sleep calls> cyc=<guest cycle_count @0x506938>
+pre=<cycle_count before this Sleep's _handle_timer_tick> post=<after>
+sp=<play() safepoints so far> tid=<thread> site=<exact call site>
+```
+
+plus one line at every guest tick boundary (every `_handle_timer_tick` call
+that moved `cycle_count`).
+
+**What it showed, immediately.** The guest's idle loops call `rest(1)`, so
+`det_wrap_Sleep` runs **~10 times per carrier tick** (measured: 4000 Sleep
+calls for 400 ticks, `Sleep(2)` each). `T = virtual_ms/20` therefore only
+advances once every ten Sleep calls, and the guest's own 20 ms tick
+(`cycle_count` at 0x506938) is incremented at **sub=0** of each carrier tick,
+inside `_handle_timer_tick`, i.e. before the input handover in that same
+Sleep call. The two providers were not using the same handover point:
+
+| provider | where it handed the event over |
+|---|---|
+| `--input=script` (`deliver_due_input`) | can only ever fire at **sub=0** - the first Sleep call whose T reaches the event's tick |
+| `--input=real` (`drain_real_key_queue`, before this pass) | ran on **every** Sleep call, so a real key captured at an arbitrary instant was delivered at whatever sub-tick position 0..9 the human happened to hit |
+
+Both stamped and scheduled on `T` alone, so the recording looked
+self-consistent - but `T` does not determine the handover point, and the
+handover point is what decides which **game** tick sees the key: `play()`
+consumes `cycle_count` as soon as the sub=0 Sleep call returns, so an event
+handed over at sub=0 is seen by game tick T, and the same event handed over at
+sub>=1 is only seen by game tick T+1. A human's key, captured 9 times out of
+10 at sub>=1, was therefore stamped T and acted on at T+1 during recording,
+and acted on at T during replay: gameplay starts one tick early. That is
+exactly the measured 249 vs 248.
+
+**Negative control (measured, not argued).** `DET_INPUT_DELIVER_SUB=k`
+(diagnostic env var, same opt-in style as the pre-existing
+`DET_DUMP_MEM_TICK`) holds every scripted event back to Sleep call `k` of its
+tick:
+
+```
+DET_INPUT_DELIVER_SUB=0 -> first digest 01510fe913396b61...  (identical to the G1 baseline)
+DET_INPUT_DELIVER_SUB=1 -> first digest 8d016be773357ec1...
+DET_INPUT_DELIVER_SUB=5 -> first digest 8d016be773357ec1...
+DET_INPUT_DELIVER_SUB=9 -> first digest 8d016be773357ec1...
+```
+
+k=0 reproduces the baseline byte for byte; k=1/5/9 all differ from it **at the
+very first digest line (T=126)** and agree with each other there. The sub-tick
+position of the handover, not the tick index, is the coordinate that was
+missing. This also explains the two experiments living_record.md 005 already
+had: shifting *every* recorded event +1 tick matched 51 ticks and then broke
+at T=300 (it corrects the 9-in-10 events captured at sub>=1 and breaks the
+1-in-10 captured at sub=0), and pace-independence of a scripted run is
+expected, since both paces deliver at sub=0.
+
+**Fix 1 - one handover point for both providers.** `drain_real_key_queue` now
+returns immediately unless this is the FIRST Sleep call of a new carrier tick
+(`g_last_drain_tick`, part of `DetSavedState`), i.e. exactly the point
+`deliver_due_input` uses. Stamp and delivery are then the same event at the
+same place in both modes, and the tick index fully determines the handover in
+both directions. Cost: at most one extra carrier tick (20 ms) of latency for a
+human. Verified with `--trace-input` on a genuine SendInput session:
+**capture** sub positions are spread uniformly over 0..9
+(50/47/52/52/51/47/39/48/50/60 - the async race is real and still there),
+**delivery** is 496/496 at sub=0.
+
+**Fix 2 - a recording is what the provider handed over, not every
+`_handle_key_press` the guest makes.** `--trace-input` on the first fixed
+SendInput session showed stamps at sub>0 with no matching capture or delivery:
+**the guest itself calls `_handle_key_press`** - Allegro's own key repeat,
+driven from `_handle_timer_tick`, observed 240 ms after the original press
+(Allegro 4's 250 ms default repeat delay). Those were being recorded, and
+replaying them as ordinary scripted events put them at sub=0, a different
+position from where the guest generated them. Measured effect: a session
+diverged at its very first safepoint. `keypress_record_hit` /
+`keyrelease_record_hit` now record only calls made from inside the carrier's
+own handover (`g_in_delivery`). The guest's repeats are a *consequence* of
+`key[]` plus Allegro's timer, both of which a replay reproduces on its own, so
+dropping them loses no information - measured: the same session's recording
+went from 365 to 172 events and became replay-EQUAL. `--inject-real-test` is
+unaffected by construction (it calls `key_dinput_handle_scancode` from inside
+`deliver_due_input`, so the real function's own behaviour stays inside the
+flag) - re-verified: `EQUAL (876 ticks)` for the synthetic round trip, with a
+24-event recording.
+
+**OLD RECORDINGS ARE INVALID.** The stamping rule changed meaning: under the
+old rule an event stamped `T` was acted on by the game at game tick `T+1`
+whenever it happened to be captured at sub>=1, and at `T` when captured at
+sub=0. No uniform shift repairs that, because the per-event sub-position was
+never recorded. `replays/first_human.txt`, `replays/second_human.txt` and
+`replays/third_human.txt` therefore cannot replay bit-exactly and should be
+treated as historical artefacts, not regression fixtures. Recordings made
+after this pass are replayable by construction.
+
+**Proof - a genuine real-keyboard round trip.**
+`carrier/scripts/sendinput_session.py` (new). A helper *thread* cannot post
+into DirectInput, so the session uses **SendInput**, which injects at the
+Win32 input-stack level: the events reach the focused guest window's
+DirectInput keyboard exactly like a physical key press, on the guest's own
+window thread, at whatever real instant they are sent. **MEASURED: SendInput
+does reach this build's DirectInput path** - `key_dinput_handle_scancode`
+fires for every injected key (496 captures in one 20 s session), so the
+fallback the task allowed for was not needed. The script launches
+`--det --pace=real --input=real --record-input R --digest-out D`, waits for
+the guest's `AllegroWindow`, forces it to the foreground (AttachThreadInput,
+since `SetForegroundWindow` from a background process is restricted), holds
+ENTER to start a game, then presses/releases LEFT/RIGHT/SPACE at randomized
+real times (`random.uniform(0.012, 0.19)` s) for ~20-30 s, and refuses to send
+anything while the foreground window is not the guest's.
+
+```
+python carrier/scripts/sendinput_session.py --tag rt1 --seconds 20 --run-seconds 50 --seed 101
+python carrier/scripts/sendinput_session.py --tag rt2 --seconds 24 --run-seconds 55 --seed 909090
+```
+
+Each then replays the recording with `--det --pace=fast --input=script`,
+bounded by the record digest's last tick, and compares:
+
+```
+rt1: recorded 403 events, 1442 digest ticks (T=351..1801) -> EQUAL (1442 ticks)
+rt2: recorded 524 events, 1914 digest ticks (T=194..2106) -> EQUAL (1914 ticks)
+```
+
+Two further sessions with the final binary were also EQUAL (1421 ticks / 172
+events; 801 ticks), and one session run before fix 2 was EQUAL over 1549
+ticks. In every EQUAL run the record and replay `--report` JSONs agree exactly
+on the arena (`top`, `high_water`, `live_bytes`, `peak_live_bytes`,
+`live_blocks`) and on the pinned RNG (`state`, `calls`).
+
+**What did NOT come out equal, and what that is (honest).** Four of the eight
+post-fix sessions diverged. They are not an input-coordinate failure:
+
+- replaying the same recording twice is EQUAL to itself (`si2_rp1` vs
+  `si2_rp2`: `EQUAL (1311 ticks)`), so the replay side is deterministic;
+- in the one diverging session that had the new instrumentation (`rt3`,
+  divergence at T=2468), the record and replay runs agree **exactly** on the
+  pinned RNG state and call count (1623840384 / 50) and on every arena
+  statistic - so neither the allocator nor a different RNG code path is
+  involved;
+- every diverging session had the desktop stealing the foreground from the
+  guest repeatedly (rt3: **20** times, as Chrome and Explorer windows opened
+  during the run; the script logs each one). A foreign window taking the
+  foreground makes the guest's window thread run Allegro's DirectDraw
+  switch-out/switch-in handling, and moves the real mouse over the guest
+  window - two live channels that `--input=real` does **not** park and that a
+  key recording does not capture.
+
+So the residue correlates with an uncontrolled *desktop* channel, not with the
+key coordinate; it is characterised, not root-caused. See "Known gaps" below.
+
+### C. The exit-time key storm, collapsed
+
+At process exit Allegro's keyboard shutdown drives
+`key_dinput_handle_scancode` once for **every** DIK code, all inside a single
+carrier tick. With `--input=real` that produced hundreds of individual "no
+Allegro mapping ... dropped" and "capture queue full" lines. The handling is
+unchanged (unmapped events dropped, over-capacity events dropped, and the
+recording-hygiene rule in `keyrelease_record_hit` untouched); only the LOGGING
+is aggregated: counts accumulate per tick and are emitted as ONE summary line
+when the tick advances (from `drain_real_key_queue`, main thread) or at
+`det_shutdown`. A single isolated event still prints its own detailed line, so
+the diagnostic is not lost for the non-storm case.
+
+Reproduced deliberately, with a real ESC hold through SendInput so the guest
+reaches its OWN clean shutdown (`assets/log.txt` ends `Exiting Allegro` /
+`Done...`, stderr shows `carrier_shutdown: guest _cexit`):
+
+```
+python carrier/scripts/sendinput_session.py --tag storm2 --quit-via-menu --run-seconds 90
+
+det: T=254 real-key event storm collapsed: 510 dropped (417 unmapped, 93 queue-full),
+     255 delivered, 255 distinct DIK codes 0x00..0xff - this is Allegro's
+     keyboard-shutdown release sweep, not gameplay input
+```
+
+**One line instead of 510**, and zero remaining raw "no Allegro mapping" /
+"queue full" lines in the whole run's stderr. The recording-hygiene rule held:
+the file contains only the three genuine ESC events and none of the 255
+shutdown releases (part B's `g_in_delivery` gate drops the whole sweep on its
+own, because the sweep happens outside any carrier handover; the "currently
+held" filter is kept unchanged as the second line of defence).
+
+### New/changed options and files (this pass)
+
+| what | where |
+|---|---|
+| `--trace-input PATH` (`-` = stderr) | `main.cpp`, `det.hpp`, `det.cpp` |
+| `DET_INPUT_DELIVER_SUB=k` diagnostic env var | `det.cpp`, `deliver_sub_slot` |
+| `"arena"` and `"rng"` objects in `--report` | `trace.cpp`, `det_arena_stats` |
+| `scripts/menu_idle.txt` | 3600 ticks of pure menu, no ENTER |
+| `scripts/sendinput_session.py` | genuine real-keyboard record/replay round trip |
+| `scripts/restore_assets.ps1`, `scripts/gates.ps1` | the asset restore + G1/G2/G3 runners this file's convention describes |
+| `DetSavedState.last_drain_tick` | new field (carrier.bin grows by 4 bytes; snapshot directories written by older builds are not readable by this one) |
+
+### Known gaps / open problems (this pass)
+
+- **A genuine-keyboard session is only EQUAL when the desktop leaves the guest
+  alone.** Four of eight sessions diverged, always ones where the foreground
+  was taken from the guest repeatedly. Not root-caused; the measurements above
+  rule out the input coordinate, the allocator and the RNG. The two concrete
+  suspects are Allegro's `WM_ACTIVATEAPP` switch-out/switch-in path and the
+  **real mouse**, which `--input=real` never parks (only the keyboard is).
+  Parking the DirectInput mouse the same way the keyboard is parked, and
+  recording/replaying activation events, is the obvious next step.
+- **Old recordings are invalid** (part B) - `replays/*.txt` from before this
+  pass cannot replay bit-exactly, by design of the fix, not by defect.
+- **`--trace-input` writes one line per guest tick boundary** as well as per
+  key event, so a long run's trace is large (~440 KB for 1900 ticks). Fine as
+  a diagnostic, not something to leave on.
+- **The arena never returns pages to the OS.** `top` shrinks when the tail
+  block is freed, but the 256 MiB reservation stays committed for the whole
+  run. Irrelevant for determinism; relevant if a future pass wants the
+  carrier's RSS to follow the game's.
+- **First fit is O(free-list length).** Measured fine here (3.87 M allocations
+  in the menu-idle run with no observable slowdown), because coalescing keeps
+  the free list short. A workload that fragments badly would want size
+  classes; the interface would not change.
+
+### One harness trap worth recording: the asset-restore race
+
+A gate run of this pass reported a single G3 "cold vs post-rewind" difference
+at T=400 that did not reproduce. Cause: `carrier.exe` relaunches itself as a
+child (fix #3 above), so a just-finished run can still be tearing down - and
+still rewriting `assets/profiles/` - when the next run's restore starts, which
+leaves a slightly different profile on disk and therefore a different game
+state at `play()` entry. G1 was byte-stable across the same pair of runs, and
+the identical G3 command re-run on its own was EQUAL, which is what identified
+it as a harness race rather than a carrier defect.
+`carrier/scripts/restore_assets.ps1` now waits for the whole `carrier`
+process tree to be gone and retries the copy before returning. Anything that
+scripts these runs back to back needs the same wait.
+

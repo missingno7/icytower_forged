@@ -44,6 +44,12 @@ struct DetOptions {
     // --digest-out / --stop-at-tick. main.cpp sets this from the snapshot
     // options; det_init ORs it into its own need_safepoint decision.
     bool force_safepoint;
+    // --trace-input PATH ("-" = stderr), divergence 005 diagnostic: logs every
+    // delivered/captured/stamped key event in BOTH modes with the virtual
+    // clock ms, the carrier tick T, the sub-tick Sleep index, the guest's own
+    // cycle_count (0x506938) before and after _handle_timer_tick, the
+    // safepoint count and the exact call site. See det.cpp's trace_input.
+    const char* trace_input;
 };
 
 typedef void (*DetShutdownFn)(const char* reason);
@@ -144,6 +150,7 @@ struct DetSavedState {
     unsigned char real_queue_press[256];
     unsigned char key_held[256];      // --record-input hygiene filter state
     long      real_key_violations;
+    int       last_drain_tick;        // divergence 005: the tick the real-key queue was last drained at
 };
 
 void det_state_save(DetSavedState* s);
@@ -167,6 +174,16 @@ void det_set_rng_state(unsigned s);
 long det_rng_calls();
 void det_set_rng_calls(long n);
 int det_rng_selftest();
+
+// Deterministic heap arena statistics (divergence 004: the bump-only arena
+// was replaced by a first-fit + coalescing free-list allocator whose whole
+// state lives inside the arena region). `top` is the number of arena bytes
+// that are live - the same value the snapshot's "arena" component stores -
+// and `hwm` is the high-water mark of that value over the whole run. All
+// zero when the arena is not active (non-det runs).
+void det_arena_stats(unsigned* top, unsigned* hwm, unsigned* live_bytes,
+                     unsigned* peak_live_bytes, unsigned* live_blocks);
+unsigned det_arena_top();
 
 // --report JSON accessors (trace.cpp's trace_write_report calls these).
 const char* det_input_policy_name(); // "real" | "script" | "none" | "(unset)" before det_init runs
