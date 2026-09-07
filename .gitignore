@@ -1,0 +1,35 @@
+# regenerable dumps (tools_recon/*.py regenerate them from assets/icytower15.exe)
+artifacts/disasm.txt
+artifacts/icytower_disasm.txt
+artifacts/dwarf_info.txt
+artifacts/objdump_*.txt
+artifacts/coff_symbols.json
+artifacts/dwarf_subprograms.json
+artifacts/*.log
+# build outputs
+carrier/build/
+*.obj
+*.pdb
+*.ilk
+*.exe.log
+# game data, binaries and the player's mutable files: not committed (owner's call)
+assets/
+artifacts/assets_backup/
+# carrier build outputs and regenerable test dirs
+carrier/*.exe
+carrier/*.pdb
+carrier/*.ilk
+carrier/obj/
+carrier/cache/
+carrier/log.txt
+carrier/gen_all_test/
+carrier/gen/*.obj
+carrier/gen/*.exe
+carrier/gen/*_output.txt
+carrier/lift/**/*.obj
+carrier/lift/**/*.exe
+tools_recon/_probe.*
+artifacts/repro_backup_*/
+artifacts/*.bin
+artifacts/dump_digest*.txt
+artifacts/.repro_backup_path.txt

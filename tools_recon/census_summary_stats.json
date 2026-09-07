@@ -1,0 +1,77 @@
+{
+ "class_counts": {
+  "SHIM": 4,
+  "DIRECT": 123,
+  "WRAP": 162,
+  "DETERMINISTIC": 31
+ },
+ "dll_counts": {
+  "DDRAW.dll": 1,
+  "dinput.dll": 1,
+  "dsound.dll": 2,
+  "GDI32.dll": 21,
+  "KERNEL32.dll": 43,
+  "msvcrt.dll": 114,
+  "OLE32.dll": 3,
+  "libpng3.dll": 35,
+  "pthreadGC2.dll": 3,
+  "SHELL32.DLL": 1,
+  "USER32.dll": 56,
+  "WINMM.DLL": 30,
+  "WSOCK32.DLL": 10
+ },
+ "class_by_dll": {
+  "DDRAW.dll": {
+   "SHIM": 1
+  },
+  "dinput.dll": {
+   "SHIM": 1
+  },
+  "dsound.dll": {
+   "SHIM": 2
+  },
+  "GDI32.dll": {
+   "DIRECT": 11,
+   "WRAP": 10
+  },
+  "KERNEL32.dll": {
+   "WRAP": 21,
+   "DIRECT": 17,
+   "DETERMINISTIC": 5
+  },
+  "msvcrt.dll": {
+   "WRAP": 48,
+   "DIRECT": 58,
+   "DETERMINISTIC": 8
+  },
+  "OLE32.dll": {
+   "WRAP": 3
+  },
+  "libpng3.dll": {
+   "DIRECT": 35
+  },
+  "pthreadGC2.dll": {
+   "DETERMINISTIC": 1,
+   "WRAP": 2
+  },
+  "SHELL32.DLL": {
+   "WRAP": 1
+  },
+  "USER32.dll": {
+   "WRAP": 43,
+   "DETERMINISTIC": 11,
+   "DIRECT": 2
+  },
+  "WINMM.DLL": {
+   "WRAP": 28,
+   "DETERMINISTIC": 2
+  },
+  "WSOCK32.DLL": {
+   "WRAP": 6,
+   "DETERMINISTIC": 4
+  }
+ },
+ "pct_direct_wrap": 89.0625,
+ "game_surface_count": 102,
+ "callback_bearing_count": 17
+}

@@ -1,0 +1,737 @@
+[
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+  "low": 4199192,
+  "high": 4200333
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\control.c",
+  "low": 4200336,
+  "high": 4201086
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+  "low": 4201088,
+  "high": 4201768
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+  "low": 4201768,
+  "high": 4209044
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+  "low": 4209044,
+  "high": 4209351
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+  "low": 4209352,
+  "high": 4210931
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+  "low": 4210932,
+  "high": 4213139
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+  "low": 4213140,
+  "high": 4216976
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+  "low": 4216976,
+  "high": 4219311
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+  "low": 4219312,
+  "high": 4221279
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\main.c",
+  "low": 4221280,
+  "high": 4286114
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\map.c",
+  "low": 4286116,
+  "high": 4287036
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+  "low": 4287036,
+  "high": 4292996
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\options.c",
+  "low": 4292996,
+  "high": 4293662
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\particle.c",
+  "low": 4293664,
+  "high": 4293968
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\player.c",
+  "low": 4293968,
+  "high": 4295115
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+  "low": 4295116,
+  "high": 4307134
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+  "low": 4307136,
+  "high": 4307371
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+  "low": 4307372,
+  "high": 4319400
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+  "low": 4319400,
+  "high": 4321472
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+  "low": 4321472,
+  "high": 4322112
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\stars.c",
+  "low": 4322112,
+  "high": 4322755
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+  "low": 4322756,
+  "high": 4324943
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\timecompat.c",
+  "low": 4324944,
+  "high": 4325028
+ },
+ {
+  "name": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+  "low": 4325028,
+  "high": 4325180
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\addons\\logg\\logg.c",
+  "low": 4325180,
+  "high": 4327241
+ },
+ {
+  "name": "framing.c",
+  "low": 4438816,
+  "high": 4443496
+ },
+ {
+  "name": "bitwise.c",
+  "low": 4443504,
+  "high": 4446166
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\keyboard.c",
+  "low": 4446176,
+  "high": 4449857
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\joystick.c",
+  "low": 4449860,
+  "high": 4451822
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\allegro.c",
+  "low": 4451824,
+  "high": 4453984
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\sound.c",
+  "low": 4453984,
+  "high": 4465230
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\midi.c",
+  "low": 4465232,
+  "high": 4473365
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\readsmp.c",
+  "low": 4473368,
+  "high": 4474148
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\file.c",
+  "low": 4474148,
+  "high": 4489558
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\gui.c",
+  "low": 4489560,
+  "high": 4505427
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\gfx.c",
+  "low": 4505428,
+  "high": 4516148
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\graphics.c",
+  "low": 4516148,
+  "high": 4523817
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\color.c",
+  "low": 4523820,
+  "high": 4533529
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\readbmp.c",
+  "low": 4533532,
+  "high": 4534852
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\datafile.c",
+  "low": 4534852,
+  "high": 4546807
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\blit.c",
+  "low": 4546808,
+  "high": 4562698
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\text.c",
+  "low": 4562700,
+  "high": 4564631
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\colblend.c",
+  "low": 4564632,
+  "high": 4576965
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\timer.c",
+  "low": 4576968,
+  "high": 4579011
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\font.c",
+  "low": 4579012,
+  "high": 4584573
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\math.c",
+  "low": 4584576,
+  "high": 4585354
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\mouse.c",
+  "low": 4585356,
+  "high": 4592044
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wmouse.c",
+  "low": 4592044,
+  "high": 4596189
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wsystem.c",
+  "low": 4596192,
+  "high": 4598412
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cstretch.c",
+  "low": 4598412,
+  "high": 4600805
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\config.c",
+  "low": 4600808,
+  "high": 4609736
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\dispsw.c",
+  "low": 4609736,
+  "high": 4611685
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\dataregi.c",
+  "low": 4611688,
+  "high": 4611811
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\fsel.c",
+  "low": 4611812,
+  "high": 4618016
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\stream.c",
+  "low": 4618016,
+  "high": 4618881
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\unicode.c",
+  "low": 4618884,
+  "high": 4640082
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wkeybd.c",
+  "low": 4640084,
+  "high": 4643365
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wjoydrv.c",
+  "low": 4643368,
+  "high": 4643368
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\ccpu.c",
+  "low": 4643368,
+  "high": 4643403
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wfile.c",
+  "low": 4643404,
+  "high": 4645002
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wsnddrv.c",
+  "low": 4645004,
+  "high": 4645004
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\lzss.c",
+  "low": 4645004,
+  "high": 4647554
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\libc.c",
+  "low": 4647556,
+  "high": 4647769
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\guiproc.c",
+  "low": 4647772,
+  "high": 4666249
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\vtable.c",
+  "low": 4666252,
+  "high": 4666252
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wgfxdrv.c",
+  "low": 4666252,
+  "high": 4666252
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cmisc.c",
+  "low": 4666252,
+  "high": 4666381
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\quantize.c",
+  "low": 4666384,
+  "high": 4669312
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\bmp.c",
+  "low": 4669312,
+  "high": 4674655
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\lbm.c",
+  "low": 4674656,
+  "high": 4677263
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\pcx.c",
+  "low": 4677264,
+  "high": 4680023
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\tga.c",
+  "low": 4680024,
+  "high": 4684243
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\ccsprite.c",
+  "low": 4684244,
+  "high": 4684288
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\rle.c",
+  "low": 4684288,
+  "high": 4686317
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\dither.c",
+  "low": 4686320,
+  "high": 4686672
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wtimer.c",
+  "low": 4686672,
+  "high": 4687469
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wwnd.c",
+  "low": 4687472,
+  "high": 4691728
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\winput.c",
+  "low": 4691728,
+  "high": 4692646
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wjoydx.c",
+  "low": 4692648,
+  "high": 4694866
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wdispsw.c",
+  "low": 4694868,
+  "high": 4695401
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wdsound.c",
+  "low": 4695404,
+  "high": 4701571
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wmidi.c",
+  "low": 4701572,
+  "high": 4703016
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wthread.c",
+  "low": 4703016,
+  "high": 4703378
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wdxver.c",
+  "low": 4703380,
+  "high": 4704211
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wjoyw32.c",
+  "low": 4704212,
+  "high": 4705333
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\vtable8.c",
+  "low": 4705336,
+  "high": 4705336
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\vtable15.c",
+  "low": 4705336,
+  "high": 4705336
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\vtable16.c",
+  "low": 4705336,
+  "high": 4705336
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\vtable24.c",
+  "low": 4705336,
+  "high": 4705336
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\vtable32.c",
+  "low": 4705336,
+  "high": 4705336
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+  "low": 4705336,
+  "high": 4705782
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddwin.c",
+  "low": 4705784,
+  "high": 4709705
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddovl.c",
+  "low": 4709708,
+  "high": 4711586
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wgdi.c",
+  "low": 4711588,
+  "high": 4714537
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wjoyhelp.c",
+  "low": 4714540,
+  "high": 4716167
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\drvlist.c",
+  "low": 4716168,
+  "high": 4716600
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wdsndmix.c",
+  "low": 4716600,
+  "high": 4720001
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wsndwo.c",
+  "low": 4720004,
+  "high": 4721543
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wdsinput.c",
+  "low": 4721544,
+  "high": 4723778
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\digmid.c",
+  "low": 4723780,
+  "high": 4731227
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cgfx8.c",
+  "low": 4731228,
+  "high": 4732559
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\polygon.c",
+  "low": 4732560,
+  "high": 4734026
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cspr8.c",
+  "low": 4734028,
+  "high": 4741372
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\glyph.c",
+  "low": 4741372,
+  "high": 4743559
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cblit8.c",
+  "low": 4743560,
+  "high": 4744188
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\rotate.c",
+  "low": 4744188,
+  "high": 4754343
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\gsprite.c",
+  "low": 4754344,
+  "high": 4755711
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\spline.c",
+  "low": 4755712,
+  "high": 4757109
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\flood.c",
+  "low": 4757112,
+  "high": 4759221
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\poly3d.c",
+  "low": 4759224,
+  "high": 4782103
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cgfx16.c",
+  "low": 4782104,
+  "high": 4783539
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cgfx15.c",
+  "low": 4783540,
+  "high": 4784975
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cspr16.c",
+  "low": 4784976,
+  "high": 4795379
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cspr15.c",
+  "low": 4795380,
+  "high": 4805591
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cblit16.c",
+  "low": 4805592,
+  "high": 4806264
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cgfx24.c",
+  "low": 4806264,
+  "high": 4808147
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cspr24.c",
+  "low": 4808148,
+  "high": 4820229
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cblit24.c",
+  "low": 4820232,
+  "high": 4821020
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cgfx32.c",
+  "low": 4821020,
+  "high": 4822443
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cspr32.c",
+  "low": 4822444,
+  "high": 4831045
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cblit32.c",
+  "low": 4831048,
+  "high": 4831720
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddbmpl.c",
+  "low": 4831720,
+  "high": 4832153
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddraw.c",
+  "low": 4832156,
+  "high": 4834783
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddaccel.c",
+  "low": 4834784,
+  "high": 4838300
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddbmp.c",
+  "low": 4838300,
+  "high": 4840715
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddmode.c",
+  "low": 4840716,
+  "high": 4842529
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\wddlock.c",
+  "low": 4842532,
+  "high": 4843949
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\misc\\colconv.c",
+  "low": 4843952,
+  "high": 4845652
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\win\\gdi.c",
+  "low": 4845652,
+  "high": 4850624
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\mixer.c",
+  "low": 4850624,
+  "high": 4865680
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\czscan32.c",
+  "low": 4865680,
+  "high": 4869411
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\czscan24.c",
+  "low": 4869412,
+  "high": 4873707
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\czscan16.c",
+  "low": 4873708,
+  "high": 4877503
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\czscan15.c",
+  "low": 4877504,
+  "high": 4881299
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\czscan8.c",
+  "low": 4881300,
+  "high": 4884584
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cscan32.c",
+  "low": 4884584,
+  "high": 4889647
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cscan24.c",
+  "low": 4889648,
+  "high": 4895767
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cscan16.c",
+  "low": 4895768,
+  "high": 4900883
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cscan15.c",
+  "low": 4900884,
+  "high": 4905999
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\c\\cscan8.c",
+  "low": 4906000,
+  "high": 4910632
+ },
+ {
+  "name": "C:\\Lib\\allegro4\\src\\misc\\ccolconv.c",
+  "low": 4910632,
+  "high": 4915052
+ },
+ {
+  "name": "../../../../gcc-4.4.1/libgcc/../gcc/config/i386/cygming-shared-data.c",
+  "low": 4925536,
+  "high": 4926010
+ },
+ {
+  "name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+  "low": 4926064,
+  "high": 4926398
+ },
+ {
+  "name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+  "low": 4926400,
+  "high": 4926664
+ },
+ {
+  "name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+  "low": 4926664,
+  "high": 4926934
+ },
+ {
+  "name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+  "low": 4926936,
+  "high": 4926936
+ }
+]

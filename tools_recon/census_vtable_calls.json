@@ -1,0 +1,1416 @@
+[
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_dinput_acquire",
+  "va": "0x4611d3",
+  "offset": "0x1c",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_dinput_unacquire",
+  "va": "0x4611f4",
+  "offset": "0x20",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_dinput_grab",
+  "va": "0x46140f",
+  "offset": "0x34",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_dinput_exit",
+  "va": "0x4617cf",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_dinput_exit",
+  "va": "0x4617eb",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_directx_init",
+  "va": "0x461927",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_directx_init",
+  "va": "0x46196b",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_directx_init",
+  "va": "0x46199d",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_directx_init",
+  "va": "0x4619c1",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_directx_init",
+  "va": "0x461a0a",
+  "offset": "0x30",
+  "reg": "ecx"
+ },
+ {
+  "file": "wmouse.c",
+  "func": "_mouse_dinput_handle",
+  "va": "0x461aa0",
+  "offset": "0x28",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_dinput_exit",
+  "va": "0x46ce6f",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_dinput_exit",
+  "va": "0x46ce8b",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_directx_init",
+  "va": "0x46cf80",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_directx_init",
+  "va": "0x46cfa0",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_directx_init",
+  "va": "0x46cfc4",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_directx_init",
+  "va": "0x46cfeb",
+  "offset": "0x34",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_directx_init",
+  "va": "0x46d034",
+  "offset": "0x30",
+  "reg": "ecx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_dinput_acquire",
+  "va": "0x46d506",
+  "offset": "0x1c",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_dinput_handle",
+  "va": "0x46d968",
+  "offset": "0x28",
+  "reg": "edx"
+ },
+ {
+  "file": "wkeybd.c",
+  "func": "_key_dinput_unacquire",
+  "va": "0x46d9e6",
+  "offset": "0x20",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_acquire",
+  "va": "0x479ad3",
+  "offset": "0x1c",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_unacquire",
+  "va": "0x479b1b",
+  "offset": "0x20",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_poll",
+  "va": "0x479b67",
+  "offset": "0x64",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_poll",
+  "va": "0x479b82",
+  "offset": "0x24",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_exit",
+  "va": "0x479d17",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_exit",
+  "va": "0x479da2",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_init",
+  "va": "0x479e3e",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_dinput_init",
+  "va": "0x479e6c",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479edb",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479f0f",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479f32",
+  "offset": "0x34",
+  "reg": "eax"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479f76",
+  "offset": "0x10",
+  "reg": "eax"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479f91",
+  "offset": "0x2c",
+  "reg": "eax"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479fb3",
+  "offset": "0x18",
+  "reg": "eax"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x479fce",
+  "offset": "0x18",
+  "reg": "eax"
+ },
+ {
+  "file": "wjoydx.c",
+  "func": "_joystick_enum_callback@8",
+  "va": "0x47a029",
+  "offset": "0x8",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_mixer_volume",
+  "va": "0x47a59a",
+  "offset": "0x3c",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_start_voice",
+  "va": "0x47a5f4",
+  "offset": "0x30",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_start_voice",
+  "va": "0x47a624",
+  "offset": "0x30",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_stop_voice",
+  "va": "0x47a654",
+  "offset": "0x48",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_stop_voice",
+  "va": "0x47a668",
+  "offset": "0x48",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_unlock_voice",
+  "va": "0x47a6bc",
+  "offset": "0x4c",
+  "reg": "esi"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_release_voice",
+  "va": "0x47a733",
+  "offset": "0x8",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_release_voice",
+  "va": "0x47a751",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_lock_voice",
+  "va": "0x47a7db",
+  "offset": "0x2c",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_lock_voice",
+  "va": "0x47a815",
+  "offset": "0x50",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_lock_voice",
+  "va": "0x47a84c",
+  "offset": "0x2c",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_get_position",
+  "va": "0x47a88d",
+  "offset": "0x24",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_get_position",
+  "va": "0x47a8b7",
+  "offset": "0x24",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_get_position",
+  "va": "0x47a8e3",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_get_position",
+  "va": "0x47a92e",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_position",
+  "va": "0x47a9bb",
+  "offset": "0x34",
+  "reg": "edi"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_position",
+  "va": "0x47a9e3",
+  "offset": "0x34",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_volume",
+  "va": "0x47aa65",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_volume",
+  "va": "0x47aa81",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_frequency",
+  "va": "0x47aae2",
+  "offset": "0x44",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_frequency",
+  "va": "0x47aafe",
+  "offset": "0x44",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_pan",
+  "va": "0x47ab61",
+  "offset": "0x40",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_set_pan",
+  "va": "0x47ab7d",
+  "offset": "0x40",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_create_dsound_buffer",
+  "va": "0x47ae40",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_create_dsound_buffer",
+  "va": "0x47ae77",
+  "offset": "0x3c",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_create_dsound_buffer",
+  "va": "0x47ae9e",
+  "offset": "0x40",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_fill_dsound_buffer",
+  "va": "0x47afa1",
+  "offset": "0x2c",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_fill_dsound_buffer",
+  "va": "0x47afee",
+  "offset": "0x4c",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_fill_dsound_buffer",
+  "va": "0x47b127",
+  "offset": "0x50",
+  "reg": "eax"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_fill_dsound_buffer",
+  "va": "0x47b164",
+  "offset": "0x2c",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_loop_voice",
+  "va": "0x47b21a",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_loop_voice",
+  "va": "0x47b2ca",
+  "offset": "0x34",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_loop_voice",
+  "va": "0x47b328",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_get_mixer_volume",
+  "va": "0x47b563",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_exit",
+  "va": "0x47b6da",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_exit",
+  "va": "0x47b6ea",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_exit",
+  "va": "0x47b706",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b799",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b7bd",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b870",
+  "offset": "0xc",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b89f",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b8f9",
+  "offset": "0x38",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b91d",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_init",
+  "va": "0x47b935",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsound.c",
+  "func": "_digi_directsound_detect",
+  "va": "0x47bce0",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_wnd_set_windowed_coop",
+  "va": "0x47d12a",
+  "offset": "0x50",
+  "reg": "ecx"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_matching_window",
+  "va": "0x47d34e",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_colorconv_window",
+  "va": "0x47d4e0",
+  "offset": "0x64",
+  "reg": "eax"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_colorconv_window",
+  "va": "0x47d514",
+  "offset": "0x64",
+  "reg": "eax"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_colorconv_window",
+  "va": "0x47d574",
+  "offset": "0x80",
+  "reg": "eax"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_colorconv_window",
+  "va": "0x47d58a",
+  "offset": "0x80",
+  "reg": "eax"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_colorconv_window",
+  "va": "0x47d5c3",
+  "offset": "0x44",
+  "reg": "edx"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_update_colorconv_window",
+  "va": "0x47d640",
+  "offset": "0x68",
+  "reg": "edx"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_init_directx_win",
+  "va": "0x47d837",
+  "offset": "0x70",
+  "reg": "edx"
+ },
+ {
+  "file": "wddwin.c",
+  "func": "_paint_win",
+  "va": "0x47dd0a",
+  "offset": "0x60",
+  "reg": "edx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_update_overlay",
+  "va": "0x47dd9b",
+  "offset": "0x84",
+  "reg": "edx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_update_overlay",
+  "va": "0x47dde4",
+  "offset": "0x84",
+  "reg": "edx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_hide_overlay",
+  "va": "0x47de4a",
+  "offset": "0x84",
+  "reg": "edx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_wnd_set_windowed_coop",
+  "va": "0x47df1a",
+  "offset": "0x50",
+  "reg": "ecx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_paint_overlay",
+  "va": "0x47e0e2",
+  "offset": "0x60",
+  "reg": "edx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_init_directx_ovl",
+  "va": "0x47e28c",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddovl.c",
+  "func": "_init_directx_ovl",
+  "va": "0x47e354",
+  "offset": "0x74",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_set_mixer_volume",
+  "va": "0x47f870",
+  "offset": "0x3c",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_get_mixer_volume",
+  "va": "0x47f9fd",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_exit",
+  "va": "0x47fb56",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_exit",
+  "va": "0x47fb7c",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_exit",
+  "va": "0x47fb8c",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_exit",
+  "va": "0x47fba8",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fc26",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fcb6",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fd7e",
+  "offset": "0x48",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fd99",
+  "offset": "0x24",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fdd9",
+  "offset": "0x30",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fe32",
+  "offset": "0x4c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fe4a",
+  "offset": "0x50",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_mixer_callback",
+  "va": "0x47fe6a",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_detect",
+  "va": "0x47fee4",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x47ff69",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x47ff8d",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x480060",
+  "offset": "0xc",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x48008f",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x4800e8",
+  "offset": "0x38",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x48010c",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x4802c4",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x4802e4",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x48041b",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x48047d",
+  "offset": "0x4c",
+  "reg": "esi"
+ },
+ {
+  "file": "wdsndmix.c",
+  "func": "_digi_dsoundmix_init",
+  "va": "0x480543",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_read",
+  "va": "0x480bda",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_read",
+  "va": "0x480c2f",
+  "offset": "0x20",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_read",
+  "va": "0x480c97",
+  "offset": "0x2c",
+  "reg": "ecx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_stop",
+  "va": "0x480d8c",
+  "offset": "0x28",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_stop",
+  "va": "0x480d9a",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_exit",
+  "va": "0x480de1",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_get_capture_format_support",
+  "va": "0x480eda",
+  "offset": "0x10",
+  "reg": "esi"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_get_capture_format_support",
+  "va": "0x480fce",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_get_capture_format_support",
+  "va": "0x480fe4",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_start",
+  "va": "0x48121e",
+  "offset": "0xc",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_start",
+  "va": "0x48123e",
+  "offset": "0x24",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_rec_start",
+  "va": "0x48127f",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_detect",
+  "va": "0x481304",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_detect",
+  "va": "0x481318",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_detect",
+  "va": "0x48133a",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_init",
+  "va": "0x4813ae",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_init",
+  "va": "0x4813d0",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wdsinput.c",
+  "func": "_digi_directsound_capture_init",
+  "va": "0x48142e",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmpl.c",
+  "func": "_restore_all_ddraw_surfaces",
+  "va": "0x49ba1e",
+  "offset": "0x6c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_create_clipper",
+  "va": "0x49bbc4",
+  "offset": "0x10",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_create_clipper",
+  "va": "0x49bbf1",
+  "offset": "0x20",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_create_palette",
+  "va": "0x49bc46",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_create_palette",
+  "va": "0x49bc6b",
+  "offset": "0x7c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_sync",
+  "va": "0x49bc9c",
+  "offset": "0x58",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_set_palette",
+  "va": "0x49bd4b",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_exit_directx",
+  "va": "0x49be51",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_set_mouse_sprite",
+  "va": "0x49c0a1",
+  "offset": "0x20",
+  "reg": "eax"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_finalize_directx_init",
+  "va": "0x49c18b",
+  "offset": "0x3c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_exit",
+  "va": "0x49c225",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_exit",
+  "va": "0x49c241",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_exit",
+  "va": "0x49c27b",
+  "offset": "0x34",
+  "reg": "eax"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_gfx_directx_setup_driver",
+  "va": "0x49c2f0",
+  "offset": "0x5c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_init_directx",
+  "va": "0x49c414",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_init_directx",
+  "va": "0x49c42e",
+  "offset": "0x50",
+  "reg": "edx"
+ },
+ {
+  "file": "wddraw.c",
+  "func": "_init_directx",
+  "va": "0x49c45c",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_gfx_directx_enable_triple_buffering",
+  "va": "0x49c759",
+  "offset": "0x48",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_masked_blit",
+  "va": "0x49c85f",
+  "offset": "0x74",
+  "reg": "ecx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_masked_blit",
+  "va": "0x49c899",
+  "offset": "0x14",
+  "reg": "ecx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_masked_blit",
+  "va": "0x49c8d8",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_vline",
+  "va": "0x49cb46",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_vline",
+  "va": "0x49cbd0",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_hline",
+  "va": "0x49ccca",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_hline",
+  "va": "0x49cd54",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_rectfill",
+  "va": "0x49cea7",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_rectfill",
+  "va": "0x49cf14",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_clear_to_color",
+  "va": "0x49d033",
+  "offset": "0x14",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_clear_to_color",
+  "va": "0x49d074",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_do_stretch_blit",
+  "va": "0x49d17d",
+  "offset": "0x74",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_do_stretch_blit",
+  "va": "0x49d1f9",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_blit_to_self",
+  "va": "0x49d32c",
+  "offset": "0x1c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddaccel.c",
+  "func": "_ddraw_blit_to_self",
+  "va": "0x49d389",
+  "offset": "0x1c",
+  "reg": "eax"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_win_release_dc",
+  "va": "0x49d3de",
+  "offset": "0x68",
+  "reg": "eax"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_win_release_dc",
+  "va": "0x49d3fd",
+  "offset": "0x68",
+  "reg": "eax"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_win_get_dc",
+  "va": "0x49d43a",
+  "offset": "0x44",
+  "reg": "eax"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_win_get_dc",
+  "va": "0x49d462",
+  "offset": "0x44",
+  "reg": "eax"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_gfx_directx_poll_scroll",
+  "va": "0x49d486",
+  "offset": "0x48",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_gfx_directx_poll_scroll",
+  "va": "0x49d4c0",
+  "offset": "0x48",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_flip_with_forefront_bitmap",
+  "va": "0x49d51d",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_flip_with_forefront_bitmap",
+  "va": "0x49d56b",
+  "offset": "0x2c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_create_directdraw2_surface",
+  "va": "0x49d66c",
+  "offset": "0x18",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_create_directdraw2_surface",
+  "va": "0x49d758",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_recreate_flipping_chain",
+  "va": "0x49d791",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_recreate_flipping_chain",
+  "va": "0x49d804",
+  "offset": "0x7c",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_recreate_flipping_chain",
+  "va": "0x49d831",
+  "offset": "0x30",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_recreate_flipping_chain",
+  "va": "0x49d879",
+  "offset": "0x30",
+  "reg": "edx"
+ },
+ {
+  "file": "wddbmp.c",
+  "func": "_gfx_directx_destroy_surface",
+  "va": "0x49d959",
+  "offset": "0x8",
+  "reg": "edx"
+ },
+ {
+  "file": "wddmode.c",
+  "func": "_gfx_directx_compare_color_depth",
+  "va": "0x49dd36",
+  "offset": "0x30",
+  "reg": "edx"
+ },
+ {
+  "file": "wddmode.c",
+  "func": "_gfx_directx_update_color_format",
+  "va": "0x49de57",
+  "offset": "0x54",
+  "reg": "edx"
+ },
+ {
+  "file": "wddmode.c",
+  "func": "_wnd_set_video_mode",
+  "va": "0x49df9a",
+  "offset": "0x50",
+  "reg": "ecx"
+ },
+ {
+  "file": "wddmode.c",
+  "func": "_wnd_set_video_mode",
+  "va": "0x49dfe8",
+  "offset": "0x54",
+  "reg": "edx"
+ },
+ {
+  "file": "wddmode.c",
+  "func": "_gfx_directx_fetch_mode_list",
+  "va": "0x49e250",
+  "offset": "0x20",
+  "reg": "edx"
+ },
+ {
+  "file": "wddlock.c",
+  "func": "_gfx_directx_unlock",
+  "va": "0x49e517",
+  "offset": "0x80",
+  "reg": "edx"
+ },
+ {
+  "file": "wddlock.c",
+  "func": "_gfx_directx_unlock",
+  "va": "0x49e544",
+  "offset": "0x80",
+  "reg": "edx"
+ },
+ {
+  "file": "wddlock.c",
+  "func": "_gfx_directx_release_lock",
+  "va": "0x49e677",
+  "offset": "0x80",
+  "reg": "edx"
+ },
+ {
+  "file": "wddlock.c",
+  "func": "_gfx_directx_release_lock",
+  "va": "0x49e69f",
+  "offset": "0x80",
+  "reg": "edx"
+ },
+ {
+  "file": "wddlock.c",
+  "func": "_gfx_directx_lock",
+  "va": "0x49e79f",
+  "offset": "0x64",
+  "reg": "edx"
+ },
+ {
+  "file": "wddlock.c",
+  "func": "_gfx_directx_lock",
+  "va": "0x49e853",
+  "offset": "0x64",
+  "reg": "edx"
+ }
+]

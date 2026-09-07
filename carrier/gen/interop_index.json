@@ -1,0 +1,3759 @@
+{
+ "counts": {
+  "enums": 0,
+  "functions": 242,
+  "globals": 156,
+  "structs_unions": 70,
+  "typedefs": 109
+ },
+ "dwarf_source": "artifacts/dwarf_info.txt",
+ "functions": [
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "HTTPFetchInternal",
+   "evidence": "KNOWN (COFF symbol _HTTPFetchInternal)",
+   "name": "HTTPFetchInternal",
+   "prototype": "HTTPResponse * HTTPFetchInternal(const char *, int, const char *, const char *)",
+   "size": 594,
+   "va": "0x405e9c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "HTTPGet",
+   "evidence": "KNOWN (COFF symbol _HTTPGet)",
+   "name": "HTTPGet",
+   "prototype": "HTTPResponse * HTTPGet(const char *)",
+   "size": 27,
+   "va": "0x406194"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "HTTPHead",
+   "evidence": "KNOWN (COFF symbol _HTTPHead)",
+   "name": "HTTPHead",
+   "prototype": "HTTPResponse * HTTPHead(const char *)",
+   "size": 27,
+   "va": "0x406178"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "HTTPRequest",
+   "evidence": "KNOWN (COFF symbol _HTTPRequest)",
+   "name": "HTTPRequest",
+   "prototype": "HTTPResponse * HTTPRequest(const char *, const char *)",
+   "size": 136,
+   "va": "0x4060f0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "SplitURL",
+   "evidence": "KNOWN (COFF symbol _SplitURL)",
+   "name": "SplitURL",
+   "prototype": "int SplitURL(const char *, char **, char **, int *)",
+   "size": 267,
+   "va": "0x405984"
+  },
+  {
+   "calling_convention": "stdcall",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "WinMain",
+   "evidence": "KNOWN (COFF symbol _WinMain@16)",
+   "name": "WinMain",
+   "prototype": "int WinMain(void *, void *, char *, int)",
+   "size": 50,
+   "va": "0x406cb0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "_mangled_main",
+   "evidence": "KNOWN (COFF symbol __mangled_main)",
+   "name": "_mangled_main",
+   "prototype": "int _mangled_main(int, char **)",
+   "size": 1938,
+   "va": "0x415f10"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "_strptime",
+   "evidence": "KNOWN (COFF symbol __strptime)",
+   "name": "_strptime",
+   "prototype": "char * _strptime(const char *, const char *, struct it_orig_tm *, int *)",
+   "size": 2028,
+   "va": "0x41f640"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+   "dwarf_name": "add_combo",
+   "evidence": "KNOWN (COFF symbol _add_combo)",
+   "name": "add_combo",
+   "prototype": "void add_combo(Tgame_data *, Tgd_combo *)",
+   "size": 62,
+   "va": "0x40414c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\map.c",
+   "dwarf_name": "add_floor",
+   "evidence": "KNOWN (COFF symbol _add_floor)",
+   "name": "add_floor",
+   "prototype": "void add_floor(Tmap *)",
+   "size": 608,
+   "va": "0x4167dc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "add_itr_file",
+   "evidence": "KNOWN (COFF symbol _add_itr_file)",
+   "name": "add_itr_file",
+   "prototype": "int add_itr_file(const char *, int, void *)",
+   "size": 360,
+   "va": "0x41e740"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+   "dwarf_name": "add_jump_sequence",
+   "evidence": "KNOWN (COFF symbol _add_jump_sequence)",
+   "name": "add_jump_sequence",
+   "prototype": "void add_jump_sequence(Tgame_data *, Tgd_jump_sequence *)",
+   "size": 87,
+   "va": "0x4040f4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "add_profile",
+   "evidence": "KNOWN (COFF symbol _add_profile)",
+   "name": "add_profile",
+   "prototype": "int add_profile(const char *, int, void *)",
+   "size": 195,
+   "va": "0x40c8c0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "blit_to_screen",
+   "evidence": "KNOWN (COFF symbol _blit_to_screen)",
+   "name": "blit_to_screen",
+   "prototype": "void blit_to_screen(BITMAP *)",
+   "size": 1415,
+   "va": "0x40b6bc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "build_menu_string",
+   "evidence": "KNOWN (COFF symbol _build_menu_string)",
+   "name": "build_menu_string",
+   "prototype": "void build_menu_string(Tmenu *, char *)",
+   "size": 415,
+   "va": "0x4174dc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "calc_replay_checksum",
+   "evidence": "KNOWN (COFF symbol _calc_replay_checksum)",
+   "name": "calc_replay_checksum",
+   "prototype": "int calc_replay_checksum(Treplay *)",
+   "size": 676,
+   "va": "0x41bac4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "calc_replay_checksum_131",
+   "evidence": "KNOWN (COFF symbol _calc_replay_checksum_131)",
+   "name": "calc_replay_checksum_131",
+   "prototype": "int calc_replay_checksum_131(Treplay *)",
+   "size": 177,
+   "va": "0x41ba10"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "change_profile",
+   "evidence": "KNOWN (COFF symbol _change_profile)",
+   "name": "change_profile",
+   "prototype": "void change_profile()",
+   "size": 188,
+   "va": "0x40e1cc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "checkMenuFocus",
+   "evidence": "KNOWN (COFF symbol _checkMenuFocus)",
+   "name": "checkMenuFocus",
+   "prototype": "void checkMenuFocus()",
+   "size": 59,
+   "va": "0x406f78"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "check_beta_tester",
+   "evidence": "KNOWN (COFF symbol _check_beta_tester)",
+   "name": "check_beta_tester",
+   "prototype": "int check_beta_tester()",
+   "size": 254,
+   "va": "0x40e580"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "check_characters",
+   "evidence": "KNOWN (COFF symbol _check_characters)",
+   "name": "check_characters",
+   "prototype": "int check_characters()",
+   "size": 345,
+   "va": "0x40e680"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "check_control_key",
+   "evidence": "KNOWN (COFF symbol _check_control_key)",
+   "name": "check_control_key",
+   "prototype": "int check_control_key(Tcontrol *, int)",
+   "size": 58,
+   "va": "0x401808"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "check_dir",
+   "evidence": "KNOWN (COFF symbol _check_dir)",
+   "name": "check_dir",
+   "prototype": "int check_dir(const char *, int, void *)",
+   "size": 103,
+   "va": "0x40ffc4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "clear_trailing_whitespace",
+   "evidence": "KNOWN (COFF symbol _clear_trailing_whitespace)",
+   "name": "clear_trailing_whitespace",
+   "prototype": "void clear_trailing_whitespace(char *)",
+   "size": 90,
+   "va": "0x402078"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "clickedCloseButton",
+   "evidence": "KNOWN (COFF symbol _clickedCloseButton)",
+   "name": "clickedCloseButton",
+   "prototype": "void clickedCloseButton()",
+   "size": 15,
+   "va": "0x406a7c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "color_map_callback",
+   "evidence": "KNOWN (COFF symbol _color_map_callback)",
+   "name": "color_map_callback",
+   "prototype": "void color_map_callback(int)",
+   "size": 22,
+   "va": "0x407c20"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+   "dwarf_name": "create_game_data",
+   "evidence": "KNOWN (COFF symbol _create_game_data)",
+   "name": "create_game_data",
+   "prototype": "Tgame_data * create_game_data()",
+   "size": 186,
+   "va": "0x404198"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\particle.c",
+   "dwarf_name": "create_particle",
+   "evidence": "KNOWN (COFF symbol _create_particle)",
+   "name": "create_particle",
+   "prototype": "int create_particle(Tparticle *, int, int)",
+   "size": 192,
+   "va": "0x418490"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "create_post",
+   "evidence": "KNOWN (COFF symbol _create_post)",
+   "name": "create_post",
+   "prototype": "Tbeta * create_post()",
+   "size": 157,
+   "va": "0x4014ec"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "create_profile",
+   "evidence": "KNOWN (COFF symbol _create_profile)",
+   "name": "create_profile",
+   "prototype": "Tprofile * create_profile(char *, int)",
+   "size": 823,
+   "va": "0x41a988"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "create_replay",
+   "evidence": "KNOWN (COFF symbol _create_replay)",
+   "name": "create_replay",
+   "prototype": "Treplay * create_replay(int)",
+   "size": 254,
+   "va": "0x41cce8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+   "dwarf_name": "csv_add_field",
+   "evidence": "KNOWN (COFF symbol _csv_add_field)",
+   "name": "csv_add_field",
+   "prototype": "void csv_add_field(CSVParseContext *, char *)",
+   "size": 86,
+   "va": "0x401a98"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+   "dwarf_name": "csv_begin",
+   "evidence": "KNOWN (COFF symbol _csv_begin)",
+   "name": "csv_begin",
+   "prototype": "CSVParseContext * csv_begin(const unsigned char *, it_orig_size_t)",
+   "size": 106,
+   "va": "0x401bf0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+   "dwarf_name": "csv_destroy",
+   "evidence": "KNOWN (COFF symbol _csv_destroy)",
+   "name": "csv_destroy",
+   "prototype": "void csv_destroy(CSVParseContext *)",
+   "size": 54,
+   "va": "0x401bb8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+   "dwarf_name": "csv_next",
+   "evidence": "KNOWN (COFF symbol _csv_next)",
+   "name": "csv_next",
+   "prototype": "int csv_next(CSVParseContext *)",
+   "size": 197,
+   "va": "0x401af0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+   "dwarf_name": "csv_open",
+   "evidence": "KNOWN (COFF symbol _csv_open)",
+   "name": "csv_open",
+   "prototype": "CSVParseContext * csv_open(const char *)",
+   "size": 204,
+   "va": "0x401c5c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+   "dwarf_name": "csv_rewind",
+   "evidence": "KNOWN (COFF symbol _csv_rewind)",
+   "name": "csv_rewind",
+   "prototype": "void csv_rewind(CSVParseContext *)",
+   "size": 24,
+   "va": "0x401a80"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "custom_alert",
+   "evidence": "KNOWN (COFF symbol _custom_alert)",
+   "name": "custom_alert",
+   "prototype": "void custom_alert(char *, char *)",
+   "size": 132,
+   "va": "0x4027f0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "cycle_counter",
+   "evidence": "KNOWN (COFF symbol _cycle_counter)",
+   "name": "cycle_counter",
+   "prototype": "void cycle_counter()",
+   "size": 16,
+   "va": "0x41fed4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "datafile_callback",
+   "evidence": "KNOWN (COFF symbol _datafile_callback)",
+   "name": "datafile_callback",
+   "prototype": "void datafile_callback(DATAFILE *)",
+   "size": 12,
+   "va": "0x407c14"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "datafile_callback_slow",
+   "evidence": "KNOWN (COFF symbol _datafile_callback_slow)",
+   "name": "datafile_callback_slow",
+   "prototype": "void datafile_callback_slow(DATAFILE *)",
+   "size": 33,
+   "va": "0x407bf0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "delete_profile",
+   "evidence": "KNOWN (COFF symbol _delete_profile)",
+   "name": "delete_profile",
+   "prototype": "void delete_profile(char *)",
+   "size": 222,
+   "va": "0x41a8a8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "destroyHTTPResponse",
+   "evidence": "KNOWN (COFF symbol _destroyHTTPResponse)",
+   "name": "destroyHTTPResponse",
+   "prototype": "void destroyHTTPResponse(HTTPResponse *)",
+   "size": 116,
+   "va": "0x405910"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "destroy_all",
+   "evidence": "KNOWN (COFF symbol _destroy_all)",
+   "name": "destroy_all",
+   "prototype": "void destroy_all(Tbeta *)",
+   "size": 59,
+   "va": "0x4014b0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "destroy_custom_data",
+   "evidence": "KNOWN (COFF symbol _destroy_custom_data)",
+   "name": "destroy_custom_data",
+   "prototype": "int destroy_custom_data(Tcustom *)",
+   "size": 486,
+   "va": "0x401dd8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+   "dwarf_name": "destroy_datafile_png",
+   "evidence": "KNOWN (COFF symbol _destroy_datafile_png)",
+   "name": "destroy_datafile_png",
+   "prototype": "void destroy_datafile_png(void *)",
+   "size": 22,
+   "va": "0x41b8e4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+   "dwarf_name": "destroy_game_data",
+   "evidence": "KNOWN (COFF symbol _destroy_game_data)",
+   "name": "destroy_game_data",
+   "prototype": "void destroy_game_data(Tgame_data *)",
+   "size": 12,
+   "va": "0x40418c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "destroy_hisc_table",
+   "evidence": "KNOWN (COFF symbol _destroy_hisc_table)",
+   "name": "destroy_hisc_table",
+   "prototype": "void destroy_hisc_table(Thisc_table *)",
+   "size": 34,
+   "va": "0x405818"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "destroy_replay",
+   "evidence": "KNOWN (COFF symbol _destroy_replay)",
+   "name": "destroy_replay",
+   "prototype": "void destroy_replay(Treplay *)",
+   "size": 54,
+   "va": "0x41bd68"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "do_replay_menu",
+   "evidence": "KNOWN (COFF symbol _do_replay_menu)",
+   "name": "do_replay_menu",
+   "prototype": "int do_replay_menu()",
+   "size": 2661,
+   "va": "0x410f98"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "drawSlot",
+   "evidence": "KNOWN (COFF symbol _drawSlot)",
+   "name": "drawSlot",
+   "prototype": "void drawSlot(BITMAP *, int, int, char *, char *, int)",
+   "size": 328,
+   "va": "0x406fb4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "draw_buffer",
+   "evidence": "KNOWN (COFF symbol _draw_buffer)",
+   "name": "draw_buffer",
+   "prototype": "int draw_buffer(BITMAP *, char *, int, int)",
+   "size": 185,
+   "va": "0x4191c8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "draw_frame",
+   "evidence": "KNOWN (COFF symbol _draw_frame)",
+   "name": "draw_frame",
+   "prototype": "void draw_frame(BITMAP *)",
+   "size": 8518,
+   "va": "0x40929c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "draw_menu",
+   "evidence": "KNOWN (COFF symbol _draw_menu)",
+   "name": "draw_menu",
+   "prototype": "void draw_menu(BITMAP *, Tmenu *, Tmenu_params *, int, int, int)",
+   "size": 1118,
+   "va": "0x41767c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "draw_profile_selector",
+   "evidence": "KNOWN (COFF symbol _draw_profile_selector)",
+   "name": "draw_profile_selector",
+   "prototype": "void draw_profile_selector(BITMAP *, Tprofile *, Tavailable_profile *, int, int, int, int, int, int)",
+   "size": 1268,
+   "va": "0x418cd4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "draw_progress_bar",
+   "evidence": "KNOWN (COFF symbol _draw_progress_bar)",
+   "name": "draw_progress_bar",
+   "prototype": "void draw_progress_bar()",
+   "size": 486,
+   "va": "0x407a08"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "draw_replay_selector",
+   "evidence": "KNOWN (COFF symbol _draw_replay_selector)",
+   "name": "draw_replay_selector",
+   "prototype": "void draw_replay_selector(BITMAP *, Treplay *, Treplay_post *, int, int, int, int, int)",
+   "size": 3726,
+   "va": "0x41be58"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "draw_results",
+   "evidence": "KNOWN (COFF symbol _draw_results)",
+   "name": "draw_results",
+   "prototype": "void draw_results(BITMAP *, BITMAP *, int, int *, int *, int)",
+   "size": 839,
+   "va": "0x4076c0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "draw_reward",
+   "evidence": "KNOWN (COFF symbol _draw_reward)",
+   "name": "draw_reward",
+   "prototype": "void draw_reward(BITMAP *)",
+   "size": 581,
+   "va": "0x4070fc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+   "dwarf_name": "draw_scroller",
+   "evidence": "KNOWN (COFF symbol _draw_scroller)",
+   "name": "draw_scroller",
+   "prototype": "int draw_scroller(Tscroller *, BITMAP *, int, int, int)",
+   "size": 396,
+   "va": "0x41f0ec"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\stars.c",
+   "dwarf_name": "draw_star_field",
+   "evidence": "KNOWN (COFF symbol _draw_star_field)",
+   "name": "draw_star_field",
+   "prototype": "void draw_star_field(Tstar_field *, BITMAP *, int, int)",
+   "size": 199,
+   "va": "0x41f340"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "draw_table",
+   "evidence": "KNOWN (COFF symbol _draw_table)",
+   "name": "draw_table",
+   "prototype": "int draw_table(BITMAP *, int, int, char *, Thisc_table *)",
+   "size": 441,
+   "va": "0x404a7c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "dumpHTTPResponse",
+   "evidence": "KNOWN (COFF symbol _dumpHTTPResponse)",
+   "name": "dumpHTTPResponse",
+   "prototype": "void dumpHTTPResponse(it_orig_FILE *, HTTPResponse *)",
+   "size": 99,
+   "va": "0x405e2c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "end_game",
+   "evidence": "KNOWN (COFF symbol _end_game)",
+   "name": "end_game",
+   "prototype": "void end_game()",
+   "size": 32,
+   "va": "0x40e110"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "enter_hisc_table",
+   "evidence": "KNOWN (COFF symbol _enter_hisc_table)",
+   "name": "enter_hisc_table",
+   "prototype": "void enter_hisc_table(Thisc_table *, int, char *)",
+   "size": 136,
+   "va": "0x405790"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "extractHTTPResponse",
+   "evidence": "KNOWN (COFF symbol _extractHTTPResponse)",
+   "name": "extractHTTPResponse",
+   "prototype": "HTTPResponse * extractHTTPResponse(const unsigned char *, int)",
+   "size": 923,
+   "va": "0x405a90"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "fadeIn",
+   "evidence": "KNOWN (COFF symbol _fadeIn)",
+   "name": "fadeIn",
+   "prototype": "void fadeIn(BITMAP *, int)",
+   "size": 424,
+   "va": "0x40c1c0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "fadeOut",
+   "evidence": "KNOWN (COFF symbol _fadeOut)",
+   "name": "fadeOut",
+   "prototype": "void fadeOut(int)",
+   "size": 609,
+   "va": "0x40bf5c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "first_day",
+   "evidence": "KNOWN (COFF symbol _first_day)",
+   "name": "first_day",
+   "prototype": "int first_day(int)",
+   "size": 20,
+   "va": "0x41f5c4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_destroy_cache",
+   "evidence": "KNOWN (COFF symbol _fldads_destroy_cache)",
+   "name": "fldads_destroy_cache",
+   "prototype": "void fldads_destroy_cache()",
+   "size": 138,
+   "va": "0x403bb8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_dump_local_cache",
+   "evidence": "KNOWN (COFF symbol _fldads_dump_local_cache)",
+   "name": "fldads_dump_local_cache",
+   "prototype": "void fldads_dump_local_cache()",
+   "size": 156,
+   "va": "0x403c84"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_get_local_cache_name",
+   "evidence": "KNOWN (COFF symbol _fldads_get_local_cache_name)",
+   "name": "fldads_get_local_cache_name",
+   "prototype": "const char * fldads_get_local_cache_name(const char *)",
+   "size": 64,
+   "va": "0x403c44"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_get_local_filename_from_url",
+   "evidence": "KNOWN (COFF symbol _fldads_get_local_filename_from_url)",
+   "name": "fldads_get_local_filename_from_url",
+   "prototype": "const char * fldads_get_local_filename_from_url(const char *)",
+   "size": 26,
+   "va": "0x403d4c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_get_random_ad",
+   "evidence": "KNOWN (COFF symbol _fldads_get_random_ad)",
+   "name": "fldads_get_random_ad",
+   "prototype": "const FLDAdSpot * fldads_get_random_ad()",
+   "size": 192,
+   "va": "0x403af8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_load_cache_from_csv",
+   "evidence": "KNOWN (COFF symbol _fldads_load_cache_from_csv)",
+   "name": "fldads_load_cache_from_csv",
+   "prototype": "void fldads_load_cache_from_csv(CSVParseContext *)",
+   "size": 282,
+   "va": "0x403d68"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_load_local_cache",
+   "evidence": "KNOWN (COFF symbol _fldads_load_local_cache)",
+   "name": "fldads_load_local_cache",
+   "prototype": "void fldads_load_local_cache()",
+   "size": 55,
+   "va": "0x403e84"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_start",
+   "evidence": "KNOWN (COFF symbol _fldads_start)",
+   "name": "fldads_start",
+   "prototype": "void fldads_start()",
+   "size": 45,
+   "va": "0x403ac8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_threadmain",
+   "evidence": "KNOWN (COFF symbol _fldads_threadmain)",
+   "name": "fldads_threadmain",
+   "prototype": "void * fldads_threadmain(void *)",
+   "size": 223,
+   "va": "0x404014"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_update_cache",
+   "evidence": "KNOWN (COFF symbol _fldads_update_cache)",
+   "name": "fldads_update_cache",
+   "prototype": "void fldads_update_cache(unsigned char *, it_orig_size_t)",
+   "size": 110,
+   "va": "0x403fa4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "fldads_update_local_adimg",
+   "evidence": "KNOWN (COFF symbol _fldads_update_local_adimg)",
+   "name": "fldads_update_local_adimg",
+   "prototype": "void fldads_update_local_adimg(const char *)",
+   "size": 230,
+   "va": "0x403ebc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+   "dwarf_name": "flush_data",
+   "evidence": "KNOWN (COFF symbol _flush_data)",
+   "name": "flush_data",
+   "prototype": "void flush_data(png_structp)",
+   "size": 5,
+   "va": "0x41e8a8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "for_each_directory",
+   "evidence": "KNOWN (COFF symbol _for_each_directory)",
+   "name": "for_each_directory",
+   "prototype": "void for_each_directory(const char *, int (__cdecl *)(const char *, int, void *))",
+   "size": 109,
+   "va": "0x40cbc0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "force_create_profile",
+   "evidence": "KNOWN (COFF symbol _force_create_profile)",
+   "name": "force_create_profile",
+   "prototype": "void force_create_profile()",
+   "size": 1538,
+   "va": "0x40d454"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "fps_counter",
+   "evidence": "KNOWN (COFF symbol _fps_counter)",
+   "name": "fps_counter",
+   "prototype": "void fps_counter()",
+   "size": 45,
+   "va": "0x41fea4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "garble_string",
+   "evidence": "KNOWN (COFF symbol _garble_string)",
+   "name": "garble_string",
+   "prototype": "void garble_string(char *, int)",
+   "size": 41,
+   "va": "0x401318"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\options.c",
+   "dwarf_name": "generate_options_checksum",
+   "evidence": "KNOWN (COFF symbol _generate_options_checksum)",
+   "name": "generate_options_checksum",
+   "prototype": "int generate_options_checksum(Toptions *)",
+   "size": 254,
+   "va": "0x4181cc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "generate_profile_checksum",
+   "evidence": "KNOWN (COFF symbol _generate_profile_checksum)",
+   "name": "generate_profile_checksum",
+   "prototype": "int generate_profile_checksum(Tprofile *)",
+   "size": 112,
+   "va": "0x418a14"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\map.c",
+   "dwarf_name": "getFloorData",
+   "evidence": "KNOWN (COFF symbol _getFloorData)",
+   "name": "getFloorData",
+   "prototype": "void getFloorData(Tmap *, int, int *, int *, int *)",
+   "size": 107,
+   "va": "0x416770"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+   "dwarf_name": "getGameDataXML",
+   "evidence": "KNOWN (COFF symbol _getGameDataXML)",
+   "name": "getGameDataXML",
+   "prototype": "char * getGameDataXML(Tgame_data *)",
+   "size": 1855,
+   "va": "0x404254"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "getSampleFromOggDatafile",
+   "evidence": "KNOWN (COFF symbol _getSampleFromOggDatafile)",
+   "name": "getSampleFromOggDatafile",
+   "prototype": "SAMPLE * getSampleFromOggDatafile(DATAFILE *, int)",
+   "size": 32,
+   "va": "0x40ca2c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "getSocketError",
+   "evidence": "KNOWN (COFF symbol _getSocketError)",
+   "name": "getSocketError",
+   "prototype": "int getSocketError()",
+   "size": 12,
+   "va": "0x405e90"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_adcache_dir",
+   "evidence": "KNOWN (COFF symbol _get_adcache_dir)",
+   "name": "get_adcache_dir",
+   "prototype": "int get_adcache_dir(char *, it_orig_size_t)",
+   "size": 39,
+   "va": "0x4039a4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_character_dir",
+   "evidence": "KNOWN (COFF symbol _get_character_dir)",
+   "name": "get_character_dir",
+   "prototype": "int get_character_dir(char *, it_orig_size_t, const char *)",
+   "size": 67,
+   "va": "0x403a84"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_configfile_path",
+   "evidence": "KNOWN (COFF symbol _get_configfile_path)",
+   "name": "get_configfile_path",
+   "prototype": "int get_configfile_path(char *, it_orig_size_t)",
+   "size": 39,
+   "va": "0x4039cc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "get_controls",
+   "evidence": "KNOWN (COFF symbol _get_controls)",
+   "name": "get_controls",
+   "prototype": "Tcontrol * get_controls()",
+   "size": 10,
+   "va": "0x406978"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_custom_characters_dir",
+   "evidence": "KNOWN (COFF symbol _get_custom_characters_dir)",
+   "name": "get_custom_characters_dir",
+   "prototype": "int get_custom_characters_dir(char *, it_orig_size_t)",
+   "size": 13,
+   "va": "0x403994"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "get_demo",
+   "evidence": "KNOWN (COFF symbol _get_demo)",
+   "name": "get_demo",
+   "prototype": "Treplay * get_demo()",
+   "size": 10,
+   "va": "0x40696c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "get_gamepad",
+   "evidence": "KNOWN (COFF symbol _get_gamepad)",
+   "name": "get_gamepad",
+   "prototype": "Tgamepad * get_gamepad()",
+   "size": 10,
+   "va": "0x4017fc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "get_gamepad_value",
+   "evidence": "KNOWN (COFF symbol _get_gamepad_value)",
+   "name": "get_gamepad_value",
+   "prototype": "int get_gamepad_value(char *)",
+   "size": 166,
+   "va": "0x40c984"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\map.c",
+   "dwarf_name": "get_level",
+   "evidence": "KNOWN (COFF symbol _get_level)",
+   "name": "get_level",
+   "prototype": "int get_level(Tmap *, int)",
+   "size": 40,
+   "va": "0x416748"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_logfile_path",
+   "evidence": "KNOWN (COFF symbol _get_logfile_path)",
+   "name": "get_logfile_path",
+   "prototype": "int get_logfile_path(char *, it_orig_size_t)",
+   "size": 39,
+   "va": "0x4039f4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_profile_dir_for_profile",
+   "evidence": "KNOWN (COFF symbol _get_profile_dir_for_profile)",
+   "name": "get_profile_dir_for_profile",
+   "prototype": "int get_profile_dir_for_profile(char *, it_orig_size_t, const char *)",
+   "size": 63,
+   "va": "0x403a44"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+   "dwarf_name": "get_profiles_dir",
+   "evidence": "KNOWN (COFF symbol _get_profiles_dir)",
+   "name": "get_profiles_dir",
+   "prototype": "int get_profiles_dir(char *, it_orig_size_t)",
+   "size": 39,
+   "va": "0x403a1c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "get_replay_property",
+   "evidence": "KNOWN (COFF symbol _get_replay_property)",
+   "name": "get_replay_property",
+   "prototype": "int get_replay_property(const char *, int)",
+   "size": 1147,
+   "va": "0x41e244"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "get_selection_value",
+   "evidence": "KNOWN (COFF symbol _get_selection_value)",
+   "name": "get_selection_value",
+   "prototype": "int get_selection_value(Tmenu_selection *)",
+   "size": 10,
+   "va": "0x416a6c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "get_slider_value",
+   "evidence": "KNOWN (COFF symbol _get_slider_value)",
+   "name": "get_slider_value",
+   "prototype": "int get_slider_value(Tmenu_slider *)",
+   "size": 10,
+   "va": "0x416a3c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "get_sort_method",
+   "evidence": "KNOWN (COFF symbol _get_sort_method)",
+   "name": "get_sort_method",
+   "prototype": "int get_sort_method()",
+   "size": 10,
+   "va": "0x41b9ac"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "get_string",
+   "evidence": "KNOWN (COFF symbol _get_string)",
+   "name": "get_string",
+   "prototype": "int get_string(BITMAP *, char *, int, int, FONT *, int, int, int, int)",
+   "size": 790,
+   "va": "0x40bc44"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "get_string_data",
+   "evidence": "KNOWN (COFF symbol _get_string_data)",
+   "name": "get_string_data",
+   "prototype": "char * get_string_data(char *, char *)",
+   "size": 86,
+   "va": "0x4020d4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "get_url_filename",
+   "evidence": "KNOWN (COFF symbol _get_url_filename)",
+   "name": "get_url_filename",
+   "prototype": "const char * get_url_filename(const char *)",
+   "size": 42,
+   "va": "0x403d20"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "get_version_str",
+   "evidence": "KNOWN (COFF symbol _get_version_str)",
+   "name": "get_version_str",
+   "prototype": "char * get_version_str()",
+   "size": 10,
+   "va": "0x406960"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "handle_menu",
+   "evidence": "KNOWN (COFF symbol _handle_menu)",
+   "name": "handle_menu",
+   "prototype": "int handle_menu(Tmenu *, Tmenu_params *, Tcontrol *, BITMAP *, void (__cdecl *)(void), int, int, int)",
+   "size": 1120,
+   "va": "0x417d24"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "handle_player_collision_combo",
+   "evidence": "KNOWN (COFF symbol _handle_player_collision_combo)",
+   "name": "handle_player_collision_combo",
+   "prototype": "void handle_player_collision_combo(int, int)",
+   "size": 1390,
+   "va": "0x408358"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "handle_player_collision_old",
+   "evidence": "KNOWN (COFF symbol _handle_player_collision_old)",
+   "name": "handle_player_collision_old",
+   "prototype": "void handle_player_collision_old(int, int)",
+   "size": 894,
+   "va": "0x407fd8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "handle_player_collision_original",
+   "evidence": "KNOWN (COFF symbol _handle_player_collision_original)",
+   "name": "handle_player_collision_original",
+   "prototype": "void handle_player_collision_original(int, int)",
+   "size": 456,
+   "va": "0x407e10"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "handle_player_collision_vector",
+   "evidence": "KNOWN (COFF symbol _handle_player_collision_vector)",
+   "name": "handle_player_collision_vector",
+   "prototype": "void handle_player_collision_vector(int, int)",
+   "size": 1071,
+   "va": "0x408d08"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "handle_player_collision_vector_2",
+   "evidence": "KNOWN (COFF symbol _handle_player_collision_vector_2)",
+   "name": "handle_player_collision_vector_2",
+   "prototype": "void handle_player_collision_vector_2(int, int)",
+   "size": 1086,
+   "va": "0x4088c8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "handle_player_input",
+   "evidence": "KNOWN (COFF symbol _handle_player_input)",
+   "name": "handle_player_input",
+   "prototype": "void handle_player_input(Tcontrol *)",
+   "size": 728,
+   "va": "0x40b3e4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+   "dwarf_name": "httpGetLastModified",
+   "evidence": "KNOWN (COFF symbol _httpGetLastModified)",
+   "name": "httpGetLastModified",
+   "prototype": "it_orig_time_t httpGetLastModified(HTTPResponse *)",
+   "size": 126,
+   "va": "0x405890"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "init_control",
+   "evidence": "KNOWN (COFF symbol _init_control)",
+   "name": "init_control",
+   "prototype": "void init_control(Tcontrol *)",
+   "size": 67,
+   "va": "0x401790"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "init_custom",
+   "evidence": "KNOWN (COFF symbol _init_custom)",
+   "name": "init_custom",
+   "prototype": "int init_custom(Tcustom *, const char *, int)",
+   "size": 175,
+   "va": "0x401d28"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "init_game",
+   "evidence": "KNOWN (COFF symbol _init_game)",
+   "name": "init_game",
+   "prototype": "int init_game(int, char **)",
+   "size": 5788,
+   "va": "0x40e7dc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+   "dwarf_name": "init_scroller",
+   "evidence": "KNOWN (COFF symbol _init_scroller)",
+   "name": "init_scroller",
+   "prototype": "void init_scroller(Tscroller *, FONT *, char *, int, int, int)",
+   "size": 200,
+   "va": "0x41f278"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\stars.c",
+   "dwarf_name": "init_star_field",
+   "evidence": "KNOWN (COFF symbol _init_star_field)",
+   "name": "init_star_field",
+   "prototype": "void init_star_field(Tstar_field *, int, int, int, int, int, int, int)",
+   "size": 151,
+   "va": "0x41f52c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "install_timers",
+   "evidence": "KNOWN (COFF symbol _install_timers)",
+   "name": "install_timers",
+   "prototype": "int install_timers()",
+   "size": 88,
+   "va": "0x41fee4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_any",
+   "evidence": "KNOWN (COFF symbol _is_any)",
+   "name": "is_any",
+   "prototype": "int is_any(Tcontrol *)",
+   "size": 22,
+   "va": "0x4018e8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_down",
+   "evidence": "KNOWN (COFF symbol _is_down)",
+   "name": "is_down",
+   "prototype": "int is_down(Tcontrol *)",
+   "size": 22,
+   "va": "0x40185c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_enter",
+   "evidence": "KNOWN (COFF symbol _is_enter)",
+   "name": "is_enter",
+   "prototype": "int is_enter(Tcontrol *)",
+   "size": 22,
+   "va": "0x4018d0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_fire",
+   "evidence": "KNOWN (COFF symbol _is_fire)",
+   "name": "is_fire",
+   "prototype": "int is_fire(Tcontrol *)",
+   "size": 22,
+   "va": "0x4018a0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_left",
+   "evidence": "KNOWN (COFF symbol _is_left)",
+   "name": "is_left",
+   "prototype": "int is_left(Tcontrol *)",
+   "size": 17,
+   "va": "0x401874"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_pause",
+   "evidence": "KNOWN (COFF symbol _is_pause)",
+   "name": "is_pause",
+   "prototype": "int is_pause(Tcontrol *)",
+   "size": 22,
+   "va": "0x4018b8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_right",
+   "evidence": "KNOWN (COFF symbol _is_right)",
+   "name": "is_right",
+   "prototype": "int is_right(Tcontrol *)",
+   "size": 22,
+   "va": "0x401888"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\map.c",
+   "dwarf_name": "is_solid",
+   "evidence": "KNOWN (COFF symbol _is_solid)",
+   "name": "is_solid",
+   "prototype": "int is_solid(Tmap *, int, int)",
+   "size": 107,
+   "va": "0x4166dc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "is_up",
+   "evidence": "KNOWN (COFF symbol _is_up)",
+   "name": "is_up",
+   "prototype": "int is_up(Tcontrol *)",
+   "size": 22,
+   "va": "0x401844"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\player.c",
+   "dwarf_name": "jump_player",
+   "evidence": "KNOWN (COFF symbol _jump_player)",
+   "name": "jump_player",
+   "prototype": "int jump_player(Tplayer *, int)",
+   "size": 198,
+   "va": "0x418678"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "key_to_str",
+   "evidence": "KNOWN (COFF symbol _key_to_str)",
+   "name": "key_to_str",
+   "prototype": "void key_to_str(int, char *)",
+   "size": 2543,
+   "va": "0x416a9c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "line_alert",
+   "evidence": "KNOWN (COFF symbol _line_alert)",
+   "name": "line_alert",
+   "prototype": "void line_alert(char *)",
+   "size": 353,
+   "va": "0x409138"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "line_intersect",
+   "evidence": "KNOWN (COFF symbol _line_intersect)",
+   "name": "line_intersect",
+   "prototype": "int line_intersect(int, int, int, int, int, int, int, int, int *, int *)",
+   "size": 302,
+   "va": "0x406b80"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "loadCustomSoundDF",
+   "evidence": "KNOWN (COFF symbol _loadCustomSoundDF)",
+   "name": "loadCustomSoundDF",
+   "prototype": "SAMPLE * loadCustomSoundDF(DATAFILE *, int)",
+   "size": 54,
+   "va": "0x402040"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "loadCustomSoundFILE",
+   "evidence": "KNOWN (COFF symbol _loadCustomSoundFILE)",
+   "name": "loadCustomSoundFILE",
+   "prototype": "SAMPLE * loadCustomSoundFILE(char *, char *)",
+   "size": 128,
+   "va": "0x401fc0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "loadScrambled",
+   "evidence": "KNOWN (COFF symbol _loadScrambled)",
+   "name": "loadScrambled",
+   "prototype": "BITMAP * loadScrambled(char *)",
+   "size": 247,
+   "va": "0x40cc30"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "load_character",
+   "evidence": "KNOWN (COFF symbol _load_character)",
+   "name": "load_character",
+   "prototype": "int load_character(const char *, int, void *)",
+   "size": 330,
+   "va": "0x40fe78"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "load_character_bmp",
+   "evidence": "KNOWN (COFF symbol _load_character_bmp)",
+   "name": "load_character_bmp",
+   "prototype": "BITMAP * load_character_bmp(const char *, int *, RGB *)",
+   "size": 1992,
+   "va": "0x4031cc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "load_control",
+   "evidence": "KNOWN (COFF symbol _load_control)",
+   "name": "load_control",
+   "prototype": "void load_control(Tcontrol *, it_orig_FILE *)",
+   "size": 42,
+   "va": "0x401900"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+   "dwarf_name": "load_datafile_png",
+   "evidence": "KNOWN (COFF symbol _load_datafile_png)",
+   "name": "load_datafile_png",
+   "prototype": "void * load_datafile_png(PACKFILE *, long)",
+   "size": 109,
+   "va": "0x41b8fc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "load_frames",
+   "evidence": "KNOWN (COFF symbol _load_frames)",
+   "name": "load_frames",
+   "prototype": "int load_frames(Tcustom *)",
+   "size": 2392,
+   "va": "0x402874"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "load_garbled_data",
+   "evidence": "KNOWN (COFF symbol _load_garbled_data)",
+   "name": "load_garbled_data",
+   "prototype": "Tbeta * load_garbled_data(char *)",
+   "size": 313,
+   "va": "0x40158c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "load_hisc_table",
+   "evidence": "KNOWN (COFF symbol _load_hisc_table)",
+   "name": "load_hisc_table",
+   "prototype": "int load_hisc_table(Thisc_table *, PACKFILE *)",
+   "size": 155,
+   "va": "0x4056b4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "load_memory_png",
+   "evidence": "KNOWN (COFF symbol _load_memory_png)",
+   "name": "load_memory_png",
+   "prototype": "BITMAP * load_memory_png(const void *, int, RGB *)",
+   "size": 308,
+   "va": "0x406604"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "load_new_ad_image",
+   "evidence": "KNOWN (COFF symbol _load_new_ad_image)",
+   "name": "load_new_ad_image",
+   "prototype": "void load_new_ad_image()",
+   "size": 100,
+   "va": "0x415eac"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\options.c",
+   "dwarf_name": "load_options",
+   "evidence": "KNOWN (COFF symbol _load_options)",
+   "name": "load_options",
+   "prototype": "void load_options(Toptions *, PACKFILE *)",
+   "size": 70,
+   "va": "0x41839c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "load_plain_data",
+   "evidence": "KNOWN (COFF symbol _load_plain_data)",
+   "name": "load_plain_data",
+   "prototype": "Tbeta * load_plain_data(char *)",
+   "size": 197,
+   "va": "0x4016c8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "load_png",
+   "evidence": "KNOWN (COFF symbol _load_png)",
+   "name": "load_png",
+   "prototype": "BITMAP * load_png(const char *, RGB *)",
+   "size": 79,
+   "va": "0x406910"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "load_png_pf",
+   "evidence": "KNOWN (COFF symbol _load_png_pf)",
+   "name": "load_png_pf",
+   "prototype": "BITMAP * load_png_pf(PACKFILE *, RGB *)",
+   "size": 316,
+   "va": "0x406788"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "load_profile",
+   "evidence": "KNOWN (COFF symbol _load_profile)",
+   "name": "load_profile",
+   "prototype": "Tprofile * load_profile(char *)",
+   "size": 188,
+   "va": "0x41a7ec"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "load_replay",
+   "evidence": "KNOWN (COFF symbol _load_replay)",
+   "name": "load_replay",
+   "prototype": "Treplay * load_replay(const char *)",
+   "size": 1136,
+   "va": "0x41cde8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "load_sound",
+   "evidence": "KNOWN (COFF symbol _load_sound)",
+   "name": "load_sound",
+   "prototype": "void load_sound(SAMPLE **, char *, BITMAP *, int)",
+   "size": 166,
+   "va": "0x40ca4c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "load_sounds",
+   "evidence": "KNOWN (COFF symbol _load_sounds)",
+   "name": "load_sounds",
+   "prototype": "int load_sounds(Tcustom *)",
+   "size": 1729,
+   "va": "0x40212c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+   "dwarf_name": "loadpng_init",
+   "evidence": "KNOWN (COFF symbol _loadpng_init)",
+   "name": "loadpng_init",
+   "prototype": "int loadpng_init()",
+   "size": 27,
+   "va": "0x41b990"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "log2file",
+   "evidence": "KNOWN (COFF symbol _log2file)",
+   "name": "log2file",
+   "prototype": "void log2file(const char *, ...)",
+   "size": 189,
+   "va": "0x40da58"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "main_menu_callback",
+   "evidence": "KNOWN (COFF symbol _main_menu_callback)",
+   "name": "main_menu_callback",
+   "prototype": "void main_menu_callback()",
+   "size": 3741,
+   "va": "0x4100f8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "make_hisc_table",
+   "evidence": "KNOWN (COFF symbol _make_hisc_table)",
+   "name": "make_hisc_table",
+   "prototype": "Thisc_table * make_hisc_table(char *)",
+   "size": 84,
+   "va": "0x40583c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "match_string",
+   "evidence": "KNOWN (COFF symbol _match_string)",
+   "name": "match_string",
+   "prototype": "int match_string(const char **, const char **)",
+   "size": 103,
+   "va": "0x41f5d8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "myDeleteFile",
+   "evidence": "KNOWN (COFF symbol _myDeleteFile)",
+   "name": "myDeleteFile",
+   "prototype": "void myDeleteFile(char *, char *)",
+   "size": 63,
+   "va": "0x40cd28"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "my_alert",
+   "evidence": "KNOWN (COFF symbol _my_alert)",
+   "name": "my_alert",
+   "prototype": "int my_alert(char *, char *, int, int)",
+   "size": 1770,
+   "va": "0x40cd68"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "my_strcmp",
+   "evidence": "KNOWN (COFF symbol _my_strcmp)",
+   "name": "my_strcmp",
+   "prototype": "int my_strcmp(const void *, const void *)",
+   "size": 128,
+   "va": "0x41e6c0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "new_game",
+   "evidence": "KNOWN (COFF symbol _new_game)",
+   "name": "new_game",
+   "prototype": "int new_game()",
+   "size": 1139,
+   "va": "0x40dc9c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "new_rand",
+   "evidence": "KNOWN (COFF symbol _new_rand)",
+   "name": "new_rand",
+   "prototype": "int new_rand()",
+   "size": 128,
+   "va": "0x406984"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "ok_to_play",
+   "evidence": "KNOWN (COFF symbol _ok_to_play)",
+   "name": "ok_to_play",
+   "prototype": "int ok_to_play()",
+   "size": 10,
+   "va": "0x406a50"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "open_web_browser",
+   "evidence": "KNOWN (COFF symbol _open_web_browser)",
+   "name": "open_web_browser",
+   "prototype": "void open_web_browser(const char *)",
+   "size": 111,
+   "va": "0x40e510"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play",
+   "evidence": "KNOWN (COFF symbol _play)",
+   "name": "play",
+   "prototype": "int play()",
+   "size": 17420,
+   "va": "0x411a00"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play_jump_sound",
+   "evidence": "KNOWN (COFF symbol _play_jump_sound)",
+   "name": "play_jump_sound",
+   "prototype": "void play_jump_sound(Tplayer *)",
+   "size": 141,
+   "va": "0x406ecc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play_menu_move",
+   "evidence": "KNOWN (COFF symbol _play_menu_move)",
+   "name": "play_menu_move",
+   "prototype": "void play_menu_move()",
+   "size": 37,
+   "va": "0x406ea4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play_menu_select",
+   "evidence": "KNOWN (COFF symbol _play_menu_select)",
+   "name": "play_menu_select",
+   "prototype": "void play_menu_select()",
+   "size": 37,
+   "va": "0x406e7c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play_sound",
+   "evidence": "KNOWN (COFF symbol _play_sound)",
+   "name": "play_sound",
+   "prototype": "void play_sound(SAMPLE *, int, int)",
+   "size": 215,
+   "va": "0x406da4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "poll_control",
+   "evidence": "KNOWN (COFF symbol _poll_control)",
+   "name": "poll_control",
+   "prototype": "void poll_control(Tcontrol *, int)",
+   "size": 294,
+   "va": "0x401958"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "profile_data_page_advanced",
+   "evidence": "KNOWN (COFF symbol _profile_data_page_advanced)",
+   "name": "profile_data_page_advanced",
+   "prototype": "char * profile_data_page_advanced(Tprofile *)",
+   "size": 332,
+   "va": "0x419284"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "profile_data_page_basic",
+   "evidence": "KNOWN (COFF symbol _profile_data_page_basic)",
+   "name": "profile_data_page_basic",
+   "prototype": "char * profile_data_page_basic(Tprofile *)",
+   "size": 637,
+   "va": "0x4193d0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "profile_data_page_extra",
+   "evidence": "KNOWN (COFF symbol _profile_data_page_extra)",
+   "name": "profile_data_page_extra",
+   "prototype": "char * profile_data_page_extra(Tprofile *)",
+   "size": 85,
+   "va": "0x419650"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "profile_data_page_general",
+   "evidence": "KNOWN (COFF symbol _profile_data_page_general)",
+   "name": "profile_data_page_general",
+   "prototype": "char * profile_data_page_general(Tprofile *, char *)",
+   "size": 1091,
+   "va": "0x4196a8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "pwd_garble_string",
+   "evidence": "KNOWN (COFF symbol _pwd_garble_string)",
+   "name": "pwd_garble_string",
+   "prototype": "void pwd_garble_string(char *, int)",
+   "size": 52,
+   "va": "0x4073c4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "qualify_hisc_table",
+   "evidence": "KNOWN (COFF symbol _qualify_hisc_table)",
+   "name": "qualify_hisc_table",
+   "prototype": "int qualify_hisc_table(Thisc_table *, int)",
+   "size": 39,
+   "va": "0x404994"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "read_data",
+   "evidence": "KNOWN (COFF symbol _read_data)",
+   "name": "read_data",
+   "prototype": "void read_data(png_structp, png_bytep, png_uint_32)",
+   "size": 76,
+   "va": "0x4068c4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "read_data_memory",
+   "evidence": "KNOWN (COFF symbol _read_data_memory)",
+   "name": "read_data_memory",
+   "prototype": "void read_data_memory(png_structp, png_bytep, png_uint_32)",
+   "size": 80,
+   "va": "0x406738"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "read_line",
+   "evidence": "KNOWN (COFF symbol _read_line)",
+   "name": "read_line",
+   "prototype": "void read_line(char *, it_orig_FILE *)",
+   "size": 80,
+   "va": "0x401460"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "really_load_png",
+   "evidence": "KNOWN (COFF symbol _really_load_png)",
+   "name": "really_load_png",
+   "prototype": "BITMAP * really_load_png(png_structp, png_infop, RGB *)",
+   "size": 1106,
+   "va": "0x4061b0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+   "dwarf_name": "really_save_png",
+   "evidence": "KNOWN (COFF symbol _really_save_png)",
+   "name": "really_save_png",
+   "prototype": "int really_save_png(PACKFILE *, BITMAP *, const RGB *)",
+   "size": 1870,
+   "va": "0x41e8b0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "rebuild_profile_list",
+   "evidence": "KNOWN (COFF symbol _rebuild_profile_list)",
+   "name": "rebuild_profile_list",
+   "prototype": "int rebuild_profile_list(Tavailable_profile **)",
+   "size": 198,
+   "va": "0x40c758"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+   "dwarf_name": "register_png_datafile_object",
+   "evidence": "KNOWN (COFF symbol _register_png_datafile_object)",
+   "name": "register_png_datafile_object",
+   "prototype": "void register_png_datafile_object(int)",
+   "size": 35,
+   "va": "0x41b8c0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+   "dwarf_name": "register_png_file_type",
+   "evidence": "KNOWN (COFF symbol _register_png_file_type)",
+   "name": "register_png_file_type",
+   "prototype": "void register_png_file_type()",
+   "size": 36,
+   "va": "0x41b96c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "replaceBadCharacters",
+   "evidence": "KNOWN (COFF symbol _replaceBadCharacters)",
+   "name": "replaceBadCharacters",
+   "prototype": "void replaceBadCharacters(char *, char)",
+   "size": 125,
+   "va": "0x407344"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "replay_menu_callback",
+   "evidence": "KNOWN (COFF symbol _replay_menu_callback)",
+   "name": "replay_menu_callback",
+   "prototype": "void replay_menu_callback()",
+   "size": 712,
+   "va": "0x4073f8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "replay_selector",
+   "evidence": "KNOWN (COFF symbol _replay_selector)",
+   "name": "replay_selector",
+   "prototype": "Treplay * replay_selector(Tcontrol *, char *)",
+   "size": 2845,
+   "va": "0x41d258"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "reset_hisc_table",
+   "evidence": "KNOWN (COFF symbol _reset_hisc_table)",
+   "name": "reset_hisc_table",
+   "prototype": "void reset_hisc_table(Thisc_table *, char *, int, int)",
+   "size": 64,
+   "va": "0x405750"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\map.c",
+   "dwarf_name": "reset_map",
+   "evidence": "KNOWN (COFF symbol _reset_map)",
+   "name": "reset_map",
+   "prototype": "void reset_map(Tmap *)",
+   "size": 53,
+   "va": "0x4166a4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "reset_menu",
+   "evidence": "KNOWN (COFF symbol _reset_menu)",
+   "name": "reset_menu",
+   "prototype": "void reset_menu(Tmenu *, Tmenu_params *, int)",
+   "size": 79,
+   "va": "0x41748c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\options.c",
+   "dwarf_name": "reset_options",
+   "evidence": "KNOWN (COFF symbol _reset_options)",
+   "name": "reset_options",
+   "prototype": "void reset_options(Toptions *)",
+   "size": 205,
+   "va": "0x4182cc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\particle.c",
+   "dwarf_name": "reset_particles",
+   "evidence": "KNOWN (COFF symbol _reset_particles)",
+   "name": "reset_particles",
+   "prototype": "void reset_particles(Tparticle *)",
+   "size": 27,
+   "va": "0x418420"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\player.c",
+   "dwarf_name": "reset_player",
+   "evidence": "KNOWN (COFF symbol _reset_player)",
+   "name": "reset_player",
+   "prototype": "void reset_player(Tplayer *)",
+   "size": 296,
+   "va": "0x418550"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+   "dwarf_name": "restart_scroller",
+   "evidence": "KNOWN (COFF symbol _restart_scroller)",
+   "name": "restart_scroller",
+   "prototype": "void restart_scroller(Tscroller *)",
+   "size": 28,
+   "va": "0x41f0d0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "run_demo",
+   "evidence": "KNOWN (COFF symbol _run_demo)",
+   "name": "run_demo",
+   "prototype": "void run_demo(char *)",
+   "size": 159,
+   "va": "0x415e0c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "save_config",
+   "evidence": "KNOWN (COFF symbol _save_config)",
+   "name": "save_config",
+   "prototype": "void save_config()",
+   "size": 154,
+   "va": "0x40e130"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "save_control",
+   "evidence": "KNOWN (COFF symbol _save_control)",
+   "name": "save_control",
+   "prototype": "void save_control(Tcontrol *, it_orig_FILE *)",
+   "size": 42,
+   "va": "0x40192c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+   "dwarf_name": "save_garbled_data",
+   "evidence": "KNOWN (COFF symbol _save_garbled_data)",
+   "name": "save_garbled_data",
+   "prototype": "int save_garbled_data(Tbeta *, char *)",
+   "size": 283,
+   "va": "0x401344"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "save_hisc_table",
+   "evidence": "KNOWN (COFF symbol _save_hisc_table)",
+   "name": "save_hisc_table",
+   "prototype": "void save_hisc_table(Thisc_table *, PACKFILE *)",
+   "size": 129,
+   "va": "0x405630"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\options.c",
+   "dwarf_name": "save_options",
+   "evidence": "KNOWN (COFF symbol _save_options)",
+   "name": "save_options",
+   "prototype": "void save_options(Toptions *, PACKFILE *)",
+   "size": 58,
+   "va": "0x4183e4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+   "dwarf_name": "save_png",
+   "evidence": "KNOWN (COFF symbol _save_png)",
+   "name": "save_png",
+   "prototype": "int save_png(const char *, BITMAP *, const RGB *)",
+   "size": 115,
+   "va": "0x41f000"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "save_profile",
+   "evidence": "KNOWN (COFF symbol _save_profile)",
+   "name": "save_profile",
+   "prototype": "int save_profile(Tprofile *)",
+   "size": 1073,
+   "va": "0x41a3b8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "save_replay",
+   "evidence": "KNOWN (COFF symbol _save_replay)",
+   "name": "save_replay",
+   "prototype": "int save_replay(const char *, const char *, Treplay *, int, int)",
+   "size": 1227,
+   "va": "0x41dd78"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+   "dwarf_name": "scroll_scroller",
+   "evidence": "KNOWN (COFF symbol _scroll_scroller)",
+   "name": "scroll_scroller",
+   "prototype": "void scroll_scroller(Tscroller *, int)",
+   "size": 14,
+   "va": "0x41f0c0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\stars.c",
+   "dwarf_name": "scroll_star_field",
+   "evidence": "KNOWN (COFF symbol _scroll_star_field)",
+   "name": "scroll_star_field",
+   "prototype": "void scroll_star_field(Tstar_field *, double, double)",
+   "size": 290,
+   "va": "0x41f408"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "select_profile",
+   "evidence": "KNOWN (COFF symbol _select_profile)",
+   "name": "select_profile",
+   "prototype": "Tprofile * select_profile(Tprofile *, Tavailable_profile *, int, Tcontrol *)",
+   "size": 3070,
+   "va": "0x41acc0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "set_current_avatar",
+   "evidence": "KNOWN (COFF symbol _set_current_avatar)",
+   "name": "set_current_avatar",
+   "prototype": "void set_current_avatar()",
+   "size": 96,
+   "va": "0x406ce4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "set_next_rank_message",
+   "evidence": "KNOWN (COFF symbol _set_next_rank_message)",
+   "name": "set_next_rank_message",
+   "prototype": "void set_next_rank_message(char *, Tprofile *)",
+   "size": 431,
+   "va": "0x418b24"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "set_selection_value",
+   "evidence": "KNOWN (COFF symbol _set_selection_value)",
+   "name": "set_selection_value",
+   "prototype": "int set_selection_value(Tmenu_selection *, int)",
+   "size": 33,
+   "va": "0x416a78"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "set_slider_value",
+   "evidence": "KNOWN (COFF symbol _set_slider_value)",
+   "name": "set_slider_value",
+   "prototype": "int set_slider_value(Tmenu_slider *, int)",
+   "size": 33,
+   "va": "0x416a48"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "set_sort_method",
+   "evidence": "KNOWN (COFF symbol _set_sort_method)",
+   "name": "set_sort_method",
+   "prototype": "void set_sort_method(int)",
+   "size": 13,
+   "va": "0x41b9b8"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "show_credits",
+   "evidence": "KNOWN (COFF symbol _show_credits)",
+   "name": "show_credits",
+   "prototype": "void show_credits()",
+   "size": 634,
+   "va": "0x40c4dc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "show_instructions",
+   "evidence": "KNOWN (COFF symbol _show_instructions)",
+   "name": "show_instructions",
+   "prototype": "void show_instructions()",
+   "size": 370,
+   "va": "0x40c368"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "show_name",
+   "evidence": "KNOWN (COFF symbol _show_name)",
+   "name": "show_name",
+   "prototype": "int show_name(const char *, int, void *)",
+   "size": 36,
+   "va": "0x406d44"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "sort_hisc_table",
+   "evidence": "KNOWN (COFF symbol _sort_hisc_table)",
+   "name": "sort_hisc_table",
+   "prototype": "void sort_hisc_table(Thisc_table *)",
+   "size": 147,
+   "va": "0x4049bc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "startGameMusic",
+   "evidence": "KNOWN (COFF symbol _startGameMusic)",
+   "name": "startGameMusic",
+   "prototype": "void startGameMusic()",
+   "size": 144,
+   "va": "0x40cb30"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "startMenuMusic",
+   "evidence": "KNOWN (COFF symbol _startMenuMusic)",
+   "name": "startMenuMusic",
+   "prototype": "void startMenuMusic()",
+   "size": 59,
+   "va": "0x406d68"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "start_reward",
+   "evidence": "KNOWN (COFF symbol _start_reward)",
+   "name": "start_reward",
+   "prototype": "int start_reward(int)",
+   "size": 472,
+   "va": "0x407c38"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "stopGameMusic",
+   "evidence": "KNOWN (COFF symbol _stopGameMusic)",
+   "name": "stopGameMusic",
+   "prototype": "void stopGameMusic()",
+   "size": 58,
+   "va": "0x40caf4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "stopMenuMusic",
+   "evidence": "KNOWN (COFF symbol _stopMenuMusic)",
+   "name": "stopMenuMusic",
+   "prototype": "void stopMenuMusic()",
+   "size": 25,
+   "va": "0x406f5c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "strptime",
+   "evidence": "KNOWN (COFF symbol _strptime)",
+   "name": "strptime",
+   "prototype": "char * strptime(const char *, const char *, struct it_orig_tm *)",
+   "size": 35,
+   "va": "0x41fe2c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "switchedFromProgram",
+   "evidence": "KNOWN (COFF symbol _switchedFromProgram)",
+   "name": "switchedFromProgram",
+   "prototype": "void switchedFromProgram()",
+   "size": 15,
+   "va": "0x406a5c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "switchedToProgram",
+   "evidence": "KNOWN (COFF symbol _switchedToProgram)",
+   "name": "switchedToProgram",
+   "prototype": "void switchedToProgram()",
+   "size": 15,
+   "va": "0x406a6c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "syncOptionsFromProfile",
+   "evidence": "KNOWN (COFF symbol _syncOptionsFromProfile)",
+   "name": "syncOptionsFromProfile",
+   "prototype": "void syncOptionsFromProfile()",
+   "size": 157,
+   "va": "0x40c820"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "take_screenshot",
+   "evidence": "KNOWN (COFF symbol _take_screenshot)",
+   "name": "take_screenshot",
+   "prototype": "void take_screenshot(BITMAP *)",
+   "size": 203,
+   "va": "0x41002c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "testWindowResolution",
+   "evidence": "KNOWN (COFF symbol _testWindowResolution)",
+   "name": "testWindowResolution",
+   "prototype": "void testWindowResolution()",
+   "size": 388,
+   "va": "0x40db18"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timecompat.c",
+   "dwarf_name": "timegm",
+   "evidence": "KNOWN (COFF symbol _timegm)",
+   "name": "timegm",
+   "prototype": "it_orig_time_t timegm(struct it_orig_tm *)",
+   "size": 84,
+   "va": "0x41fe50"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "uninit_game",
+   "evidence": "KNOWN (COFF symbol _uninit_game)",
+   "name": "uninit_game",
+   "prototype": "void uninit_game()",
+   "size": 646,
+   "va": "0x40e288"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "update_file_list",
+   "evidence": "KNOWN (COFF symbol _update_file_list)",
+   "name": "update_file_list",
+   "prototype": "void update_file_list(char *)",
+   "size": 184,
+   "va": "0x41bda0"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "update_frame",
+   "evidence": "KNOWN (COFF symbol _update_frame)",
+   "name": "update_frame",
+   "prototype": "void update_frame()",
+   "size": 120,
+   "va": "0x406ac4"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "update_game_menu",
+   "evidence": "KNOWN (COFF symbol _update_game_menu)",
+   "name": "update_game_menu",
+   "prototype": "int update_game_menu(BITMAP *, Tmenu *, Tmenu_params *, Tcontrol *, int, int, void **)",
+   "size": 583,
+   "va": "0x417adc"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\particle.c",
+   "dwarf_name": "update_particle",
+   "evidence": "KNOWN (COFF symbol _update_particle)",
+   "name": "update_particle",
+   "prototype": "void update_particle(Tparticle *)",
+   "size": 83,
+   "va": "0x41843c"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\player.c",
+   "dwarf_name": "update_player",
+   "evidence": "KNOWN (COFF symbol _update_player)",
+   "name": "update_player",
+   "prototype": "void update_player(Tplayer *)",
+   "size": 651,
+   "va": "0x418740"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "view_profile",
+   "evidence": "KNOWN (COFF symbol _view_profile)",
+   "name": "view_profile",
+   "prototype": "int view_profile(Tprofile *)",
+   "size": 2249,
+   "va": "0x419aec"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+   "dwarf_name": "view_scores",
+   "evidence": "KNOWN (COFF symbol _view_scores)",
+   "name": "view_scores",
+   "prototype": "void view_scores(Thisc_table **, char **)",
+   "size": 2552,
+   "va": "0x404c38"
+  },
+  {
+   "calling_convention": "cdecl",
+   "cu": "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+   "dwarf_name": "write_data",
+   "evidence": "KNOWN (COFF symbol _write_data)",
+   "name": "write_data",
+   "prototype": "void write_data(png_structp, png_bytep, png_uint_32)",
+   "size": 76,
+   "va": "0x41f074"
+  }
+ ],
+ "functions_source": "artifacts/functions.json",
+ "globals": [
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "REPLAY_HEADER",
+   "external": false,
+   "name": "REPLAY_HEADER",
+   "type": "const char [6]",
+   "va": "0x4d7dd0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "_png_compression_level",
+   "external": true,
+   "name": "_png_compression_level",
+   "type": "int",
+   "va": "0x4bc010"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+   "dwarf_name": "_png_screen_gamma",
+   "external": true,
+   "name": "_png_screen_gamma",
+   "type": "double",
+   "va": "0x4bc008"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "abb_month",
+   "external": false,
+   "name": "abb_month",
+   "type": "const char *[13]",
+   "va": "0x4bde00"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "abb_weekdays",
+   "external": false,
+   "name": "abb_weekdays",
+   "type": "const char *[8]",
+   "va": "0x4bdda0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "ampm",
+   "external": false,
+   "name": "ampm",
+   "type": "const char *[3]",
+   "va": "0x4bde34"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "any11",
+   "external": true,
+   "name": "any11",
+   "type": "int",
+   "va": "0x4dd170"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "any12",
+   "external": true,
+   "name": "any12",
+   "type": "int",
+   "va": "0x4dd174"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "any13",
+   "external": true,
+   "name": "any13",
+   "type": "int",
+   "va": "0x4dd178"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "any21",
+   "external": true,
+   "name": "any21",
+   "type": "int",
+   "va": "0x4dd17c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "any22",
+   "external": true,
+   "name": "any22",
+   "type": "int",
+   "va": "0x4dd180"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "any23",
+   "external": true,
+   "name": "any23",
+   "type": "int",
+   "va": "0x4dd184"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "bg_beat",
+   "external": true,
+   "name": "bg_beat",
+   "type": "SAMPLE *",
+   "va": "0x4dd2a8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "bg_menu",
+   "external": true,
+   "name": "bg_menu",
+   "type": "SAMPLE *",
+   "va": "0x4dd2ac"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "bg_stripe_ids",
+   "external": true,
+   "name": "bg_stripe_ids",
+   "type": "int [5]",
+   "va": "0x4dd19c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "black",
+   "external": true,
+   "name": "black",
+   "type": "RGB",
+   "va": "0x4dd008"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "blit_mode",
+   "external": false,
+   "name": "blit_mode__blit_to_screen",
+   "type": "int",
+   "va": "0x4dd324"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "category_names",
+   "external": true,
+   "name": "category_names",
+   "type": "char *[15]",
+   "va": "0x4bc080"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "characters",
+   "external": true,
+   "name": "characters",
+   "type": "Tcharacter *",
+   "va": "0x4fdcc8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "checkMusicVoiceID",
+   "external": true,
+   "name": "checkMusicVoiceID",
+   "type": "int",
+   "va": "0x4bc174"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "clock_angle",
+   "external": true,
+   "name": "clock_angle",
+   "type": "int",
+   "va": "0x4dd248"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "closeButtonClicked",
+   "external": true,
+   "name": "closeButtonClicked",
+   "type": "int",
+   "va": "0x4dd264"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "cmdline",
+   "external": true,
+   "name": "cmdline",
+   "type": "Tcommandline",
+   "va": "0x4dd14c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "collision_type",
+   "external": true,
+   "name": "collision_type",
+   "type": "int",
+   "va": "0x4dd140"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "comboNames",
+   "external": true,
+   "name": "comboNames",
+   "type": "char *[10]",
+   "va": "0x4bdd20"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "combo_sound",
+   "external": true,
+   "name": "combo_sound",
+   "type": "SAMPLE *[10]",
+   "va": "0x4dd280"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "count",
+   "external": false,
+   "name": "count__load_character",
+   "type": "int",
+   "va": "0x4dd330"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "count",
+   "external": false,
+   "name": "count__main_menu_callback",
+   "type": "int",
+   "va": "0x4dd318"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "ctrl",
+   "external": true,
+   "name": "ctrl",
+   "type": "Tcontrol",
+   "va": "0x5000c8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "ctrl_menu",
+   "external": true,
+   "name": "ctrl_menu",
+   "type": "Tmenu [6]",
+   "va": "0x4bc1c0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "curr_char",
+   "external": true,
+   "name": "curr_char",
+   "type": "int",
+   "va": "0x4dd270"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "custom",
+   "external": true,
+   "name": "custom",
+   "type": "Tcustom",
+   "va": "0x4fa738"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "custom_menu",
+   "external": true,
+   "name": "custom_menu",
+   "type": "Tmenu [5]",
+   "va": "0x4bcec0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "cycle_count",
+   "external": true,
+   "name": "cycle_count",
+   "type": "volatile int",
+   "va": "0x506938"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "cycle_loops",
+   "external": true,
+   "name": "cycle_loops",
+   "type": "int",
+   "va": "0x4dd24c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "data",
+   "external": true,
+   "name": "data",
+   "type": "DATAFILE *",
+   "va": "0x4dd23c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "debug",
+   "external": true,
+   "name": "debug",
+   "type": "int",
+   "va": "0x4dd160"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "demo",
+   "external": true,
+   "name": "demo",
+   "type": "Treplay *",
+   "va": "0x4dd250"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "dropped_file_is_not_a_replay",
+   "external": true,
+   "name": "dropped_file_is_not_a_replay",
+   "type": "int",
+   "va": "0x4dd16c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "eyecandy_selection",
+   "external": true,
+   "name": "eyecandy_selection",
+   "type": "Tmenu_selection",
+   "va": "0x4fa278"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "face",
+   "external": false,
+   "name": "face__main_menu_callback",
+   "type": "int",
+   "va": "0x4dd31c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "fall_count",
+   "external": true,
+   "name": "fall_count",
+   "type": "int",
+   "va": "0x4dd244"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "fast_fast_forward",
+   "external": true,
+   "name": "fast_fast_forward",
+   "type": "int",
+   "va": "0x4dd258"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "fast_forward",
+   "external": true,
+   "name": "fast_forward",
+   "type": "int",
+   "va": "0x4dd254"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\map.c",
+   "dwarf_name": "floor_size_modifiers",
+   "external": true,
+   "name": "floor_size_modifiers",
+   "type": "int [5]",
+   "va": "0x4bdb60"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "floor_size_selection",
+   "external": true,
+   "name": "floor_size_selection",
+   "type": "Tmenu_selection",
+   "va": "0x4fe7b8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "floors",
+   "external": true,
+   "name": "floors",
+   "type": "Tmenu_floor_selection",
+   "va": "0x4dd304"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "fps",
+   "external": true,
+   "name": "fps",
+   "type": "volatile int",
+   "va": "0x506948"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "frame_count",
+   "external": true,
+   "name": "frame_count",
+   "type": "volatile int",
+   "va": "0x506978"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "full_month",
+   "external": false,
+   "name": "full_month",
+   "type": "const char *[13]",
+   "va": "0x4bddc0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "full_weekdays",
+   "external": false,
+   "name": "full_weekdays",
+   "type": "const char *[8]",
+   "va": "0x4bdd80"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "gFLDADMutex",
+   "external": true,
+   "name": "gFLDADMutex",
+   "type": "pthread_mutex_t",
+   "va": "0x4bc004"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "gFLDADThread",
+   "external": true,
+   "name": "gFLDADThread",
+   "type": "pthread_t",
+   "va": "0x4f87d8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gameData",
+   "external": true,
+   "name": "gameData",
+   "type": "Tgame_data *",
+   "va": "0x4dd260"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gameMusicVoiceID",
+   "external": true,
+   "name": "gameMusicVoiceID",
+   "type": "int",
+   "va": "0x4bc178"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "game_menu",
+   "external": true,
+   "name": "game_menu",
+   "type": "Tmenu [1]",
+   "va": "0x4bca00"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gameover_bmp",
+   "external": true,
+   "name": "gameover_bmp",
+   "type": "BITMAP *",
+   "va": "0x5000f8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\control.c",
+   "dwarf_name": "gamepad",
+   "external": true,
+   "name": "gamepad",
+   "type": "Tgamepad",
+   "va": "0x4f8748"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gdComboStart",
+   "external": true,
+   "name": "gdComboStart",
+   "type": "int",
+   "va": "0x4dd190"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gdLastJumpDiff",
+   "external": true,
+   "name": "gdLastJumpDiff",
+   "type": "int",
+   "va": "0x4dd18c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gfx_menu",
+   "external": true,
+   "name": "gfx_menu",
+   "type": "Tmenu [5]",
+   "va": "0x4bc700"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "giAdCacheSize",
+   "external": true,
+   "name": "giAdCacheSize",
+   "type": "int",
+   "va": "0x4dd020"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "got_joystick",
+   "external": true,
+   "name": "got_joystick",
+   "type": "int",
+   "va": "0x4f8b08"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "gpAdCache",
+   "external": true,
+   "name": "gpAdCache",
+   "type": "FLDAdSpot *",
+   "va": "0x4dd024"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\player.c",
+   "dwarf_name": "gravity_modifier",
+   "external": true,
+   "name": "gravity_modifier",
+   "type": "double [3]",
+   "va": "0x4bdba8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "gravity_selection",
+   "external": true,
+   "name": "gravity_selection",
+   "type": "Tmenu_selection",
+   "va": "0x4fac38"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "greeting_scroller",
+   "external": true,
+   "name": "greeting_scroller",
+   "type": "Tscroller",
+   "va": "0x4fdce8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "hasFocus",
+   "external": true,
+   "name": "hasFocus",
+   "type": "int",
+   "va": "0x4bc020"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "hints",
+   "external": true,
+   "name": "hints",
+   "type": "char *[45]",
+   "va": "0x4bc0c0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "hisc_names",
+   "external": true,
+   "name": "hisc_names",
+   "type": "char *[15]",
+   "va": "0x4bc040"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "hisc_tables",
+   "external": true,
+   "name": "hisc_tables",
+   "type": "Thisc_table *[15]",
+   "va": "0x4dd1c0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "hurry_y",
+   "external": true,
+   "name": "hurry_y",
+   "type": "int",
+   "va": "0x4ff118"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "in_replay_menu",
+   "external": true,
+   "name": "in_replay_menu",
+   "type": "int",
+   "va": "0x4dd314"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "init_ok",
+   "external": true,
+   "name": "init_ok",
+   "type": "int",
+   "va": "0x4dd164"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "init_string",
+   "external": true,
+   "name": "init_string",
+   "type": "char [7]",
+   "va": "0x4bdb3c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "is_playing_custom_game",
+   "external": true,
+   "name": "is_playing_custom_game",
+   "type": "int",
+   "va": "0x4dd188"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "itr_file_list",
+   "external": true,
+   "name": "itr_file_list",
+   "type": "Treplay_post [1024]",
+   "va": "0x500938"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "itrcheck",
+   "external": true,
+   "name": "itrcheck",
+   "type": "int",
+   "va": "0x4dd168"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "jcLabels",
+   "external": true,
+   "name": "jcLabels",
+   "type": "char *[5]",
+   "va": "0x4bdbc0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "jumpSequence",
+   "external": true,
+   "name": "jumpSequence",
+   "type": "Tgd_jump_sequence",
+   "va": "0x4fa728"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "jump_sound",
+   "external": true,
+   "name": "jump_sound",
+   "type": "SAMPLE *[3]",
+   "va": "0x4dd2b0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "lastFocus",
+   "external": true,
+   "name": "lastFocus",
+   "type": "int",
+   "va": "0x4bc024"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "lastMouseB",
+   "external": true,
+   "name": "lastMouseB",
+   "type": "int",
+   "va": "0x4dd268"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "last_log",
+   "external": true,
+   "name": "last_log",
+   "type": "char [256]",
+   "va": "0x4f89e8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "last_stripe_y",
+   "external": true,
+   "name": "last_stripe_y",
+   "type": "int",
+   "va": "0x4fa308"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+   "dwarf_name": "localFilename",
+   "external": false,
+   "name": "localFilename__fldads_get_local_cache_name",
+   "type": "char [256]",
+   "va": "0x4dd040"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "logfilename",
+   "external": false,
+   "name": "logfilename__log2file",
+   "type": "char [1024]",
+   "va": "0x4dd340"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "logic_count",
+   "external": true,
+   "name": "logic_count",
+   "type": "volatile int",
+   "va": "0x506958"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+   "dwarf_name": "lps",
+   "external": true,
+   "name": "lps",
+   "type": "volatile int",
+   "va": "0x506968"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "main_menu",
+   "external": true,
+   "name": "main_menu",
+   "type": "Tmenu [7]",
+   "va": "0x4bd380"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "map",
+   "external": true,
+   "name": "map",
+   "type": "Tmap",
+   "va": "0x4f8b18"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\player.c",
+   "dwarf_name": "max_speed",
+   "external": true,
+   "name": "max_speed",
+   "type": "double [5]",
+   "va": "0x4bdb80"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "menu_params",
+   "external": true,
+   "name": "menu_params",
+   "type": "Tmenu_params",
+   "va": "0x4f8e38"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "menu_sounds",
+   "external": true,
+   "name": "menu_sounds",
+   "type": "SAMPLE *[2]",
+   "va": "0x4dd2c8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "msc_volume_slider",
+   "external": true,
+   "name": "msc_volume_slider",
+   "type": "Tmenu_slider",
+   "va": "0x4bc1a8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "new_personal_best",
+   "external": true,
+   "name": "new_personal_best",
+   "type": "int [15]",
+   "va": "0x4dd200"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "numProfiles",
+   "external": true,
+   "name": "numProfiles",
+   "type": "int",
+   "va": "0x4dd278"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "num_chars",
+   "external": true,
+   "name": "num_chars",
+   "type": "int",
+   "va": "0x4dd26c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "num_itr_files",
+   "external": true,
+   "name": "num_itr_files",
+   "type": "int",
+   "va": "0x4dd744"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "number",
+   "external": false,
+   "name": "number__take_screenshot",
+   "type": "int",
+   "va": "0x4dd334"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "opt_menu",
+   "external": true,
+   "name": "opt_menu",
+   "type": "Tmenu [4]",
+   "va": "0x4bcc60"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "options",
+   "external": true,
+   "name": "options",
+   "type": "Toptions",
+   "va": "0x4fe528"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "pFLDAd",
+   "external": true,
+   "name": "pFLDAd",
+   "type": "const FLDAdSpot *",
+   "va": "0x4dd310"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "pFLDAdBitmap",
+   "external": true,
+   "name": "pFLDAdBitmap",
+   "type": "BITMAP *",
+   "va": "0x4dd30c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "p",
+   "external": false,
+   "name": "p__datafile_callback_slow",
+   "type": "int",
+   "va": "0x4dd328"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+   "dwarf_name": "pink",
+   "external": true,
+   "name": "pink",
+   "type": "RGB",
+   "va": "0x4bc000"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play_char",
+   "external": true,
+   "name": "play_char",
+   "type": "Tmenu_char_selection",
+   "va": "0x4fa318"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "play_menu",
+   "external": true,
+   "name": "play_menu",
+   "type": "Tmenu [3]",
+   "va": "0x4bd1c0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "player_id",
+   "external": true,
+   "name": "player_id",
+   "type": "int",
+   "va": "0x4fe518"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "ply",
+   "external": true,
+   "name": "ply",
+   "type": "Tplayer *[1000]",
+   "va": "0x4ff128"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "poster",
+   "external": true,
+   "name": "poster",
+   "type": "BITMAP *",
+   "va": "0x4dd198"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "profile",
+   "external": true,
+   "name": "profile",
+   "type": "Tprofile *",
+   "va": "0x4dd27c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "profile_menu",
+   "external": true,
+   "name": "profile_menu",
+   "type": "Tmenu [3]",
+   "va": "0x4bcaa0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "profiles",
+   "external": true,
+   "name": "profiles",
+   "type": "Tavailable_profile *",
+   "va": "0x4dd274"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "rankCCCs",
+   "external": true,
+   "name": "rankCCCs",
+   "type": "int [12]",
+   "va": "0x4bdca0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "rankCombos",
+   "external": true,
+   "name": "rankCombos",
+   "type": "int [12]",
+   "va": "0x4bdc60"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "rankFloors",
+   "external": true,
+   "name": "rankFloors",
+   "type": "int [12]",
+   "va": "0x4bdc20"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "rankLables",
+   "external": true,
+   "name": "rankLables",
+   "type": "char *[12]",
+   "va": "0x4bdbe0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+   "dwarf_name": "rankNMLs",
+   "external": true,
+   "name": "rankNMLs",
+   "type": "int [12]",
+   "va": "0x4bdce0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "rec_pos",
+   "external": true,
+   "name": "rec_pos",
+   "type": "int",
+   "va": "0x4fec58"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "rec_seed",
+   "external": true,
+   "name": "rec_seed",
+   "type": "int",
+   "va": "0x4fe7a8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "recording",
+   "external": true,
+   "name": "recording",
+   "type": "int",
+   "va": "0x4f8e28"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "rejump",
+   "external": true,
+   "name": "rejump",
+   "type": "int",
+   "va": "0x4fdcd8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "replay_directory",
+   "external": true,
+   "name": "replay_directory",
+   "type": "char [1024]",
+   "va": "0x4fe848"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "replay_menu",
+   "external": true,
+   "name": "replay_menu",
+   "type": "Tmenu [5]",
+   "va": "0x4bd7a0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "reward_bmp",
+   "external": true,
+   "name": "reward_bmp",
+   "type": "BITMAP *",
+   "va": "0x4f8af8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "reward_scale",
+   "external": true,
+   "name": "reward_scale",
+   "type": "fixed",
+   "va": "0x4fac28"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "reward_time",
+   "external": true,
+   "name": "reward_time",
+   "type": "int",
+   "va": "0x4fec68"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "sLogMutex",
+   "external": false,
+   "name": "sLogMutex__log2file",
+   "type": "pthread_mutex_t",
+   "va": "0x4bdb44"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "scroll_count",
+   "external": true,
+   "name": "scroll_count",
+   "type": "int",
+   "va": "0x4fec48"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "scroll_delay",
+   "external": true,
+   "name": "scroll_delay",
+   "type": "int",
+   "va": "0x4f8ae8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "scroll_speed_selection",
+   "external": true,
+   "name": "scroll_speed_selection",
+   "type": "Tmenu_selection",
+   "va": "0x4fec78"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "scroller_greetings",
+   "external": true,
+   "name": "scroller_greetings",
+   "type": "char [156]",
+   "va": "0x4bdaa0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "seed",
+   "external": true,
+   "name": "seed",
+   "type": "double",
+   "va": "0x4ff108"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "sfx",
+   "external": true,
+   "name": "sfx",
+   "type": "DATAFILE *",
+   "va": "0x4dd240"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "sfx_file",
+   "external": true,
+   "name": "sfx_file",
+   "type": "char [512]",
+   "va": "0x4f87e8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "snd_menu",
+   "external": true,
+   "name": "snd_menu",
+   "type": "Tmenu [3]",
+   "va": "0x4bc540"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "snd_volume_slider",
+   "external": true,
+   "name": "snd_volume_slider",
+   "type": "Tmenu_slider",
+   "va": "0x4bc198"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "someCounter",
+   "external": false,
+   "name": "someCounter__play",
+   "type": "int",
+   "va": "0x4dd320"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+   "dwarf_name": "sort_method",
+   "external": true,
+   "name": "sort_method",
+   "type": "int",
+   "va": "0x4bdd60"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "sounds",
+   "external": true,
+   "name": "sounds",
+   "type": "SAMPLE *[9]",
+   "va": "0x4dd2e0"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "speaker",
+   "external": true,
+   "name": "speaker",
+   "type": "SAMPLE *[3]",
+   "va": "0x4dd2bc"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "stars",
+   "external": true,
+   "name": "stars",
+   "type": "Tparticle [512]",
+   "va": "0x4facc8"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "start_speeds",
+   "external": true,
+   "name": "start_speeds",
+   "type": "int [6]",
+   "va": "0x4bc17c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+   "dwarf_name": "stepIn",
+   "external": true,
+   "name": "stepIn",
+   "type": "int",
+   "va": "0x4dd740"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "summary_scroller",
+   "external": true,
+   "name": "summary_scroller",
+   "type": "Tscroller",
+   "va": "0x500108"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "summary_scroller_message",
+   "external": true,
+   "name": "summary_scroller_message",
+   "type": "char [5120]",
+   "va": "0x4f8e78"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "swap_screen",
+   "external": true,
+   "name": "swap_screen",
+   "type": "BITMAP *",
+   "va": "0x4dd194"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "testers",
+   "external": true,
+   "name": "testers",
+   "type": "Tbeta *",
+   "va": "0x4dd144"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "the_tester",
+   "external": true,
+   "name": "the_tester",
+   "type": "Tbeta *",
+   "va": "0x4dd148"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+   "dwarf_name": "tm_year_base",
+   "external": true,
+   "name": "tm_year_base",
+   "type": "const int",
+   "va": "0x4d80cc"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "uberChecksum",
+   "external": true,
+   "name": "uberChecksum",
+   "type": "int",
+   "va": "0x4dd25c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "value",
+   "external": false,
+   "name": "value__draw_progress_bar",
+   "type": "int",
+   "va": "0x4dd32c"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "version_str",
+   "external": true,
+   "name": "version_str",
+   "type": "char *",
+   "va": "0x4bc194"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "window",
+   "external": true,
+   "name": "window",
+   "type": "int",
+   "va": "0x4bc028"
+  },
+  {
+   "cu": "F:\\projects\\icytower\\trunk\\source\\main.c",
+   "dwarf_name": "working_directory",
+   "external": true,
+   "name": "working_directory",
+   "type": "char [1024]",
+   "va": "0x4fed08"
+  }
+ ],
+ "long_double_substitutions": [],
+ "name_collisions": {
+  "functions": [],
+  "globals": []
+ },
+ "opaque_types": [
+  {
+   "member": "line",
+   "name": "BITMAP",
+   "reason": "array member with unknown bound (C flexible array, DWARF contributes 0 bytes to the struct)"
+  },
+  {
+   "member": "dat",
+   "name": "RLE_SPRITE",
+   "reason": "array member with unknown bound (C flexible array, DWARF contributes 0 bytes to the struct)"
+  },
+  {
+   "member": "dat",
+   "name": "FONT_GLYPH",
+   "reason": "array member with unknown bound (C flexible array, DWARF contributes 0 bytes to the struct)"
+  },
+  {
+   "kind": "struct",
+   "name": "pthread_mutex_t_",
+   "reason": "no DW_AT_byte_size (declaration-only, never fully defined in scope)"
+  }
+ ],
+ "scope": "game",
+ "topo_cycle_anomalies": [],
+ "type_conflicts": [
+  {
+   "canonical_offset": "0x8d099",
+   "canonical_size": "24",
+   "conflict_offset": "0xd9d90",
+   "conflict_size": "44",
+   "kind": "DW_TAG_structure_type",
+   "name": "DIDEVCAPS"
+  },
+  {
+   "canonical_offset": "0x8d270",
+   "canonical_size": "292",
+   "conflict_offset": "0xd9ffd",
+   "conflict_size": "316",
+   "kind": "DW_TAG_structure_type",
+   "name": "DIDEVICEOBJECTINSTANCEA"
+  },
+  {
+   "canonical_offset": "0x8d2e7",
+   "conflict_offset": "0xda14f",
+   "kind": "DW_TAG_typedef",
+   "name": "DIDEVICEOBJECTINSTANCEA",
+   "note": "typedef targets are both DW_TAG_structure_type but disagree on byte_size (292 vs 316)"
+  },
+  {
+   "canonical_offset": "0x8d543",
+   "canonical_size": "560",
+   "conflict_offset": "0xda41e",
+   "conflict_size": "580",
+   "kind": "DW_TAG_structure_type",
+   "name": "DIDEVICEINSTANCEA"
+  },
+  {
+   "canonical_offset": "0x8d5d5",
+   "conflict_offset": "0xda4ec",
+   "kind": "DW_TAG_typedef",
+   "name": "DIDEVICEINSTANCEA",
+   "note": "typedef targets are both DW_TAG_structure_type but disagree on byte_size (560 vs 580)"
+  },
+  {
+   "canonical_offset": "0xc2f70",
+   "conflict_offset": "0x17300f",
+   "kind": "DW_TAG_typedef",
+   "name": "BITMAPINFOHEADER",
+   "note": "typedef targets are both DW_TAG_structure_type but disagree on byte_size (16 vs 40)"
+  }
+ ]
+}

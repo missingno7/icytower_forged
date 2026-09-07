@@ -1,0 +1,112 @@
+Icy Tower v1.5.1 - log file
+----------------------------
+Game started with the following commands:
+   D:\Games\icytower151\icytower15.exe
+Working directory is:
+   D:\Games\icytower151\
+
+INIT GAME
+Creating hiscore tables
+Initiating controls
+Loading config file
+Game started 13 times
+Setting fullscreen mode 640x480
+Downloading ad listing
+Malformed HTTP response:
+
+Could not fetch ad listing from http://www.icytower.com/icytower_pc.csv (0), skipping ad update
+There are 0 available ad spots.
+Graphics mode set. (screen = 76152904)
+Loading loader
+Putting FLD Logo on screen
+Setting focus modes
+Setting focus callbacks
+Installing timers
+Installing keyboard
+Installing sound
+Installing joystick/gamepad
+ gamepad has 0 buttons
+ getting values from gamepad.txt
+Reserving memory
+Loading data
+Initiating player
+Checking profile directory
+Checking available profiles
+Loading profile
+ loading 'MissingNO'
+Checking available characters
+Searching D:\Games\icytower151/characters/ for characters
+D:\Games\icytower151/characters/.
+D:\Games\icytower151/characters/..
+D:\Games\icytower151/characters/disco_dave
+D:\Games\icytower151/characters/harold_the_homeboy
+D:\Games\icytower151/characters/jungle_jane
+D:\Games\icytower151/characters/wild_wendy
+D:\Games\icytower151/characters/_template
+ disco_dave (D:\Games\icytower151/characters/disco_dave/disco_dave.txt): ok
+ harold_the_homeboy (D:\Games\icytower151/characters/harold_the_homeboy/harold_the_homeboy.txt): ok
+ jungle_jane (D:\Games\icytower151/characters/jungle_jane/jungle_jane.txt): ok
+ wild_wendy (D:\Games\icytower151/characters/wild_wendy/wild_wendy.txt): ok
+ _template (D:\Games\icytower151/characters/_template/_template.txt): ok
+Loading SFX
+ loading sounds
+ sfx15.dat loaded
+Getting sounds from data file
+Releasing ogg datafile.
+Setting menu values
+Cleaning up
+Welcome to Icy Tower
+Initiating scroller
+Initiating menu controls
+Resetting menu
+
+MAIN MENU LOOP
+ new game selected
+ init new game
+ setting up for replay recording
+ creating map layout
+ loading custom character: harold_the_homeboy
+  loading from datafile
+    loading jump lo
+    loading jump med
+    loading jump hi
+    loading yo
+    loading wazup
+    loading falling
+    loading edge
+ cc done
+ setting up play data
+ play started
+  game paused with esc
+  game unpaused
+  game paused with esc
+  game unpaused
+  game paused with esc
+  game quit from esc pause
+  game unpaused
+ play ended
+ freeing custom data
+    destroying datafile
+    destroying jump lo
+    destroying jump med
+    destroying jump hi
+    destroying fall
+    destroying edge
+    destroying yo
+    destroying wazup
+
+Showing credits
+
+UNINIT
+Saving config
+  saving config and scores
+Saving profile 'MissingNO'
+Freeing sound memory
+Freeing custom character memory
+Unloading datafile
+Free buffer memory
+Free highscore tables
+Free player
+Exiting Allegro
+
+Done...

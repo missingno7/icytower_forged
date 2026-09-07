@@ -1,0 +1,203 @@
+CU source path                                                         origin       producer
+F:\projects\icytower\trunk\source\beta.c                               game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\control.c                            game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\csv.c                                game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\custom.c                             game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\directories.c                        game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\fld_adspot.c                         game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\game_data.c                          game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\hisc.c                               game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\httpget.c                            game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\loadpng.c                            game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\main.c                               game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\map.c                                game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\menu.c                               game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\options.c                            game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\particle.c                           game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\player.c                             game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\profile.c                            game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\regpng.c                             game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\replay.c                             game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\savepng.c                            game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\scroller.c                           game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\stars.c                              game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\strptime.c                           game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\timecompat.c                         game         GNU C 4.4.1
+F:\projects\icytower\trunk\source\timer.c                              game         GNU C 4.4.1
+C:\Lib\allegro4\addons\logg\logg.c                                     allegro      GNU C 4.4.1
+framing.c                                                              other        GNU C 4.2.1-sjlj (mingw32-2)
+bitwise.c                                                              other        GNU C 4.2.1-sjlj (mingw32-2)
+C:\Lib\allegro4\src\keyboard.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\joystick.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\allegro.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\sound.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\midi.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\readsmp.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\file.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\gui.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\gfx.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\graphics.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\color.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\readbmp.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\datafile.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\blit.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\text.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\colblend.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\timer.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\font.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\math.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\mouse.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wmouse.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wsystem.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cstretch.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\config.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\dispsw.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\dataregi.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\fsel.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\stream.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\unicode.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wkeybd.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wjoydrv.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\ccpu.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wfile.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wsnddrv.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\lzss.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\libc.c                                             allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\guiproc.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\vtable.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wgfxdrv.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cmisc.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\quantize.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\bmp.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\lbm.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\pcx.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\tga.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\ccsprite.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\rle.c                                              allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\dither.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wtimer.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wwnd.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\winput.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wjoydx.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wdispsw.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wdsound.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wmidi.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wthread.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wdxver.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wjoyw32.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\vtable8.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\vtable15.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\vtable16.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\vtable24.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\vtable32.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddfull.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddwin.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddovl.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wgdi.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wjoyhelp.c                                     allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\drvlist.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wdsndmix.c                                     allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wsndwo.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wdsinput.c                                     allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\digmid.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cgfx8.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\polygon.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cspr8.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\glyph.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cblit8.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\rotate.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\gsprite.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\spline.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\flood.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\poly3d.c                                           allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cgfx16.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cgfx15.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cspr16.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cspr15.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cblit16.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cgfx24.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cspr24.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cblit24.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cgfx32.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cspr32.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cblit32.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddbmpl.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddraw.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddaccel.c                                     allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddbmp.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddmode.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\wddlock.c                                      allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\misc\colconv.c                                     allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\win\gdi.c                                          allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\mixer.c                                            allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\czscan32.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\czscan24.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\czscan16.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\czscan15.c                                       allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\czscan8.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cscan32.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cscan24.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cscan16.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cscan15.c                                        allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\c\cscan8.c                                         allegro      GNU C 4.4.1
+C:\Lib\allegro4\src\misc\ccolconv.c                                    allegro      GNU C 4.4.1
+../../../../gcc-4.4.1/libgcc/../gcc/config/i386/cygming-shared-data.c  libgcc/crt   GNU C 4.4.1
+../../../../gcc-4.4.1/libgcc/../gcc/config/i386/cygwin.asm             libgcc/crt   GNU AS 2.19.1
+../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c                          libgcc/crt   GNU C 4.4.1
+../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c                          libgcc/crt   GNU C 4.4.1
+../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c                          libgcc/crt   GNU C 4.4.1
+../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c                          libgcc/crt   GNU C 4.4.1
+
+-- COFF 'File' entries with no corresponding DWARF compile_unit (no -g debug info) --
+CRT_fp10.c                               libgcc/crt
+CRTfmode.c                               other
+CRTglob.c                                other
+analysis.c                               other
+bitrate.c                                other
+block.c                                  other
+codebook.c                               other
+cpu_features.c                           libgcc/crt
+crt1.c                                   libgcc/crt
+cygming-crtbegin.c                       libgcc/crt
+cygming-crtend.c                         libgcc/crt
+dinput.c                                 other
+dmisc.c                                  libgcc/crt
+dxguid.c                                 other
+envelope.c                               other
+fake                                     libgcc/crt
+floor0.c                                 other
+floor1.c                                 other
+fpclassify.c                             libgcc/crt
+gccmain.c                                libgcc/crt
+gdtoa.c                                  libgcc/crt
+gethex.c                                 libgcc/crt
+gmisc.c                                  libgcc/crt
+hd_init.c                                libgcc/crt
+hexnan.c                                 libgcc/crt
+info.c                                   other
+lpc.c                                    other
+lsp.c                                    other
+mapping0.c                               other
+mbrtowc.c                                libgcc/crt
+mdct.c                                   other
+misc.c                                   other
+pformat.c                                other
+pseudo-reloc-list.c                      other
+pseudo-reloc.c                           libgcc/crt
+psy.c                                    other
+registry.c                               other
+res0.c                                   other
+sharedbook.c                             other
+smallft.c                                other
+smisc.c                                  libgcc/crt
+snprintf.c                               libgcc/crt
+strtodg.c                                libgcc/crt
+strtodnrp.c                              libgcc/crt
+strtof.c                                 libgcc/crt
+sum.c                                    libgcc/crt
+synthesis.c                              other
+txtmode.c                                other
+vorbisfile.c                             other
+vsnprintf.c                              libgcc/crt
+wcrtomb.c                                libgcc/crt
+window.c                                 other

@@ -1,0 +1,1038 @@
+[
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\beta.c",
+"low_pc": "0x401318",
+"high_pc": "0x40178d",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\control.c",
+"low_pc": "0x401790",
+"high_pc": "0x401a7e",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\csv.c",
+"low_pc": "0x401a80",
+"high_pc": "0x401d28",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\custom.c",
+"low_pc": "0x401d28",
+"high_pc": "0x403994",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\directories.c",
+"low_pc": "0x403994",
+"high_pc": "0x403ac7",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+"low_pc": "0x403ac8",
+"high_pc": "0x4040f3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+"low_pc": "0x4040f4",
+"high_pc": "0x404993",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+"low_pc": "0x404994",
+"high_pc": "0x405890",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+"low_pc": "0x405890",
+"high_pc": "0x4061af",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+"low_pc": "0x4061b0",
+"high_pc": "0x40695f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\main.c",
+"low_pc": "0x406960",
+"high_pc": "0x4166a2",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\map.c",
+"low_pc": "0x4166a4",
+"high_pc": "0x416a3c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\menu.c",
+"low_pc": "0x416a3c",
+"high_pc": "0x418184",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\options.c",
+"low_pc": "0x418184",
+"high_pc": "0x41841e",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\particle.c",
+"low_pc": "0x418420",
+"high_pc": "0x418550",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\player.c",
+"low_pc": "0x418550",
+"high_pc": "0x4189cb",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\profile.c",
+"low_pc": "0x4189cc",
+"high_pc": "0x41b8be",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+"low_pc": "0x41b8c0",
+"high_pc": "0x41b9ab",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\replay.c",
+"low_pc": "0x41b9ac",
+"high_pc": "0x41e8a8",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+"low_pc": "0x41e8a8",
+"high_pc": "0x41f0c0",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+"low_pc": "0x41f0c0",
+"high_pc": "0x41f340",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\stars.c",
+"low_pc": "0x41f340",
+"high_pc": "0x41f5c3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+"low_pc": "0x41f5c4",
+"high_pc": "0x41fe4f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\timecompat.c",
+"low_pc": "0x41fe50",
+"high_pc": "0x41fea4",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "F:\\projects\\icytower\\trunk\\source\\timer.c",
+"low_pc": "0x41fea4",
+"high_pc": "0x41ff3c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\addons\\logg\\logg.c",
+"low_pc": "0x41ff3c",
+"high_pc": "0x420749",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.2.1-sjlj (mingw32-2)",
+"name": "framing.c",
+"low_pc": "0x43bb20",
+"high_pc": "0x43cd68",
+"comp_dir": "c:\\Documents and Settings\\Trent Gamblin\\libogg-1.1.3\\src"
+},
+{
+"producer": "GNU C 4.2.1-sjlj (mingw32-2)",
+"name": "bitwise.c",
+"low_pc": "0x43cd70",
+"high_pc": "0x43d7d6",
+"comp_dir": "c:\\Documents and Settings\\Trent Gamblin\\libogg-1.1.3\\src"
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\keyboard.c",
+"low_pc": "0x43d7e0",
+"high_pc": "0x43e641",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\joystick.c",
+"low_pc": "0x43e644",
+"high_pc": "0x43edee",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\allegro.c",
+"low_pc": "0x43edf0",
+"high_pc": "0x43f660",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\sound.c",
+"low_pc": "0x43f660",
+"high_pc": "0x44224e",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\midi.c",
+"low_pc": "0x442250",
+"high_pc": "0x444215",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\readsmp.c",
+"low_pc": "0x444218",
+"high_pc": "0x444524",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\file.c",
+"low_pc": "0x444524",
+"high_pc": "0x448156",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\gui.c",
+"low_pc": "0x448158",
+"high_pc": "0x44bf53",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\gfx.c",
+"low_pc": "0x44bf54",
+"high_pc": "0x44e934",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\graphics.c",
+"low_pc": "0x44e934",
+"high_pc": "0x450729",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\color.c",
+"low_pc": "0x45072c",
+"high_pc": "0x452d19",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\readbmp.c",
+"low_pc": "0x452d1c",
+"high_pc": "0x453244",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\datafile.c",
+"low_pc": "0x453244",
+"high_pc": "0x4560f7",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\blit.c",
+"low_pc": "0x4560f8",
+"high_pc": "0x459f0a",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\text.c",
+"low_pc": "0x459f0c",
+"high_pc": "0x45a697",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\colblend.c",
+"low_pc": "0x45a698",
+"high_pc": "0x45d6c5",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\timer.c",
+"low_pc": "0x45d6c8",
+"high_pc": "0x45dec3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\font.c",
+"low_pc": "0x45dec4",
+"high_pc": "0x45f47d",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\math.c",
+"low_pc": "0x45f480",
+"high_pc": "0x45f78a",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\mouse.c",
+"low_pc": "0x45f78c",
+"high_pc": "0x4611ac",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wmouse.c",
+"low_pc": "0x4611ac",
+"high_pc": "0x4621dd",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wsystem.c",
+"low_pc": "0x4621e0",
+"high_pc": "0x462a8c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cstretch.c",
+"low_pc": "0x462a8c",
+"high_pc": "0x4633e5",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\config.c",
+"low_pc": "0x4633e8",
+"high_pc": "0x4656c8",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\dispsw.c",
+"low_pc": "0x4656c8",
+"high_pc": "0x465e65",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\dataregi.c",
+"low_pc": "0x465e68",
+"high_pc": "0x465ee3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\fsel.c",
+"low_pc": "0x465ee4",
+"high_pc": "0x467720",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\stream.c",
+"low_pc": "0x467720",
+"high_pc": "0x467a81",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\unicode.c",
+"low_pc": "0x467a84",
+"high_pc": "0x46cd52",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wkeybd.c",
+"low_pc": "0x46cd54",
+"high_pc": "0x46da25",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wjoydrv.c",
+"low_pc": "0x46da28",
+"high_pc": "0x46da28",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\ccpu.c",
+"low_pc": "0x46da28",
+"high_pc": "0x46da4b",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wfile.c",
+"low_pc": "0x46da4c",
+"high_pc": "0x46e08a",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wsnddrv.c",
+"low_pc": "0x46e08c",
+"high_pc": "0x46e08c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\lzss.c",
+"low_pc": "0x46e08c",
+"high_pc": "0x46ea82",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\libc.c",
+"low_pc": "0x46ea84",
+"high_pc": "0x46eb59",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\guiproc.c",
+"low_pc": "0x46eb5c",
+"high_pc": "0x473389",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\vtable.c",
+"low_pc": "0x47338c",
+"high_pc": "0x47338c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wgfxdrv.c",
+"low_pc": "0x47338c",
+"high_pc": "0x47338c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cmisc.c",
+"low_pc": "0x47338c",
+"high_pc": "0x47340d",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\quantize.c",
+"low_pc": "0x473410",
+"high_pc": "0x473f80",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\bmp.c",
+"low_pc": "0x473f80",
+"high_pc": "0x47545f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\lbm.c",
+"low_pc": "0x475460",
+"high_pc": "0x475e8f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\pcx.c",
+"low_pc": "0x475e90",
+"high_pc": "0x476957",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\tga.c",
+"low_pc": "0x476958",
+"high_pc": "0x4779d3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\ccsprite.c",
+"low_pc": "0x4779d4",
+"high_pc": "0x477a00",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\rle.c",
+"low_pc": "0x477a00",
+"high_pc": "0x4781ed",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\dither.c",
+"low_pc": "0x4781f0",
+"high_pc": "0x478350",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wtimer.c",
+"low_pc": "0x478350",
+"high_pc": "0x47866d",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wwnd.c",
+"low_pc": "0x478670",
+"high_pc": "0x479710",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\winput.c",
+"low_pc": "0x479710",
+"high_pc": "0x479aa6",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wjoydx.c",
+"low_pc": "0x479aa8",
+"high_pc": "0x47a352",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wdispsw.c",
+"low_pc": "0x47a354",
+"high_pc": "0x47a569",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wdsound.c",
+"low_pc": "0x47a56c",
+"high_pc": "0x47bd83",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wmidi.c",
+"low_pc": "0x47bd84",
+"high_pc": "0x47c328",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wthread.c",
+"low_pc": "0x47c328",
+"high_pc": "0x47c492",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wdxver.c",
+"low_pc": "0x47c494",
+"high_pc": "0x47c7d3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wjoyw32.c",
+"low_pc": "0x47c7d4",
+"high_pc": "0x47cc35",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\vtable8.c",
+"low_pc": "0x47cc38",
+"high_pc": "0x47cc38",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\vtable15.c",
+"low_pc": "0x47cc38",
+"high_pc": "0x47cc38",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\vtable16.c",
+"low_pc": "0x47cc38",
+"high_pc": "0x47cc38",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\vtable24.c",
+"low_pc": "0x47cc38",
+"high_pc": "0x47cc38",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\vtable32.c",
+"low_pc": "0x47cc38",
+"high_pc": "0x47cc38",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+"low_pc": "0x47cc38",
+"high_pc": "0x47cdf6",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddwin.c",
+"low_pc": "0x47cdf8",
+"high_pc": "0x47dd49",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddovl.c",
+"low_pc": "0x47dd4c",
+"high_pc": "0x47e4a2",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wgdi.c",
+"low_pc": "0x47e4a4",
+"high_pc": "0x47f029",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wjoyhelp.c",
+"low_pc": "0x47f02c",
+"high_pc": "0x47f687",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\drvlist.c",
+"low_pc": "0x47f688",
+"high_pc": "0x47f838",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wdsndmix.c",
+"low_pc": "0x47f838",
+"high_pc": "0x480581",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wsndwo.c",
+"low_pc": "0x480584",
+"high_pc": "0x480b87",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wdsinput.c",
+"low_pc": "0x480b88",
+"high_pc": "0x481442",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\digmid.c",
+"low_pc": "0x481444",
+"high_pc": "0x48315b",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cgfx8.c",
+"low_pc": "0x48315c",
+"high_pc": "0x48368f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\polygon.c",
+"low_pc": "0x483690",
+"high_pc": "0x483c4a",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cspr8.c",
+"low_pc": "0x483c4c",
+"high_pc": "0x4858fc",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\glyph.c",
+"low_pc": "0x4858fc",
+"high_pc": "0x486187",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cblit8.c",
+"low_pc": "0x486188",
+"high_pc": "0x4863fc",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\rotate.c",
+"low_pc": "0x4863fc",
+"high_pc": "0x488ba7",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\gsprite.c",
+"low_pc": "0x488ba8",
+"high_pc": "0x4890ff",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\spline.c",
+"low_pc": "0x489100",
+"high_pc": "0x489675",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\flood.c",
+"low_pc": "0x489678",
+"high_pc": "0x489eb5",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\poly3d.c",
+"low_pc": "0x489eb8",
+"high_pc": "0x48f817",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cgfx16.c",
+"low_pc": "0x48f818",
+"high_pc": "0x48fdb3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cgfx15.c",
+"low_pc": "0x48fdb4",
+"high_pc": "0x49034f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cspr16.c",
+"low_pc": "0x490350",
+"high_pc": "0x492bf3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cspr15.c",
+"low_pc": "0x492bf4",
+"high_pc": "0x4953d7",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cblit16.c",
+"low_pc": "0x4953d8",
+"high_pc": "0x495678",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cgfx24.c",
+"low_pc": "0x495678",
+"high_pc": "0x495dd3",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cspr24.c",
+"low_pc": "0x495dd4",
+"high_pc": "0x498d05",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cblit24.c",
+"low_pc": "0x498d08",
+"high_pc": "0x49901c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cgfx32.c",
+"low_pc": "0x49901c",
+"high_pc": "0x4995ab",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cspr32.c",
+"low_pc": "0x4995ac",
+"high_pc": "0x49b745",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cblit32.c",
+"low_pc": "0x49b748",
+"high_pc": "0x49b9e8",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddbmpl.c",
+"low_pc": "0x49b9e8",
+"high_pc": "0x49bb99",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddraw.c",
+"low_pc": "0x49bb9c",
+"high_pc": "0x49c5df",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddaccel.c",
+"low_pc": "0x49c5e0",
+"high_pc": "0x49d39c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddbmp.c",
+"low_pc": "0x49d39c",
+"high_pc": "0x49dd0b",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddmode.c",
+"low_pc": "0x49dd0c",
+"high_pc": "0x49e421",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\wddlock.c",
+"low_pc": "0x49e424",
+"high_pc": "0x49e9ad",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\misc\\colconv.c",
+"low_pc": "0x49e9b0",
+"high_pc": "0x49f054",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\win\\gdi.c",
+"low_pc": "0x49f054",
+"high_pc": "0x4a03c0",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\mixer.c",
+"low_pc": "0x4a03c0",
+"high_pc": "0x4a3e90",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\czscan32.c",
+"low_pc": "0x4a3e90",
+"high_pc": "0x4a4d23",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\czscan24.c",
+"low_pc": "0x4a4d24",
+"high_pc": "0x4a5deb",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\czscan16.c",
+"low_pc": "0x4a5dec",
+"high_pc": "0x4a6cbf",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\czscan15.c",
+"low_pc": "0x4a6cc0",
+"high_pc": "0x4a7b93",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\czscan8.c",
+"low_pc": "0x4a7b94",
+"high_pc": "0x4a8868",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cscan32.c",
+"low_pc": "0x4a8868",
+"high_pc": "0x4a9c2f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cscan24.c",
+"low_pc": "0x4a9c30",
+"high_pc": "0x4ab417",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cscan16.c",
+"low_pc": "0x4ab418",
+"high_pc": "0x4ac813",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cscan15.c",
+"low_pc": "0x4ac814",
+"high_pc": "0x4adc0f",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\c\\cscan8.c",
+"low_pc": "0x4adc10",
+"high_pc": "0x4aee28",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "C:\\Lib\\allegro4\\src\\misc\\ccolconv.c",
+"low_pc": "0x4aee28",
+"high_pc": "0x4aff6c",
+"comp_dir": null
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "../../../../gcc-4.4.1/libgcc/../gcc/config/i386/cygming-shared-data.c",
+"low_pc": "0x4b2860",
+"high_pc": "0x4b2a3a",
+"comp_dir": "c:\\crossdev\\b4.4.1-tdm-1\\build-sjlj\\mingw32\\libgcc"
+},
+{
+"producer": "GNU AS 2.19.1",
+"name": "../../../../gcc-4.4.1/libgcc/../gcc/config/i386/cygwin.asm",
+"low_pc": "0x4b2a3c",
+"high_pc": "0x4b2a6d",
+"comp_dir": "c:\\crossdev\\b4.4.1-tdm-1\\build-sjlj\\mingw32\\libgcc"
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+"low_pc": "0x4b2a70",
+"high_pc": "0x4b2bbe",
+"comp_dir": "c:\\crossdev\\b4.4.1-tdm-1\\build-sjlj\\mingw32\\libgcc"
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+"low_pc": "0x4b2bc0",
+"high_pc": "0x4b2cc8",
+"comp_dir": "c:\\crossdev\\b4.4.1-tdm-1\\build-sjlj\\mingw32\\libgcc"
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+"low_pc": "0x4b2cc8",
+"high_pc": "0x4b2dd6",
+"comp_dir": "c:\\crossdev\\b4.4.1-tdm-1\\build-sjlj\\mingw32\\libgcc"
+},
+{
+"producer": "GNU C 4.4.1",
+"name": "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+"low_pc": "0x4b2dd8",
+"high_pc": "0x4b2dd8",
+"comp_dir": "c:\\crossdev\\b4.4.1-tdm-1\\build-sjlj\\mingw32\\libgcc"
+}
+]
