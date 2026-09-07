@@ -9,6 +9,7 @@ artifacts/. Newest entries at the bottom of each section.
 - 2026-09-07: isolated native execution carrier (see win32_pilot.md §3). Code in carrier/.
 
 ## What executes successfully
+- 2026-09-07: milestones 5–7 done. `carrier.exe --det --pace=fast --input-script scripts/newgame.txt` reaches play() at tick 126 and runs 876 gameplay ticks; per-tick sha256 of the 151 game-owned globals is byte-identical across 5 independent runs (3 by the implementing agent, 2 re-verified by the supervisor with nobody at the keyboard). Negative control (one jump moved 300→301) first differs at T=301. Real-time runs diverge at once. Evidence: carrier/NOTES.md 'Milestones 5-7', artifacts/verify_det_run{1,2}.txt.
 - 2026-09-07 run1: carrier/carrier.exe maps icytower15.exe at 0x400000, resolves all 320 imports through counting trampolines, runs the original code natively to MAIN MENU LOOP (assets/log.txt matches the baseline line-for-line except divergence 001). Milestones 2, 3, 4 done. Hand-written 1476 lines, generated 2266 lines (carrier/NOTES.md).
 
 ## Import/API classification
@@ -16,11 +17,13 @@ artifacts/. Newest entries at the bottom of each section.
 - 2026-09-07 runtime census (artifacts/run1_report.json, 15 s to menu): 163 of 320 imports called; 4 threads make imports: main (all game logic, file I/O, rand/srand, Sleep 5184x), Allegro window thread (message pump only), ad-fetch pthread (WSOCK32 + file writes), Allegro high-perf timer thread (QPC 1901 + WaitForSingleObject 1900 + critical sections only). The DirectInput input thread makes no imports (COM only). GetProcAddress called 3x (targets not yet decoded). Wrappers needed so far: ExitProcess/exit/_cexit/abort (regain control), GetModuleFileNameA(NULL or carrier handle) → guest path, GetCommandLineA → guest path.
 
 ## Determinism model
+- 2026-09-07 IMPLEMENTED (KNOWN by measurement): virtual clock driven from the main thread's Sleep wrapper; the two Allegro timer threads are never created (_beginthread wrapper by entry address) and _handle_timer_tick is called synchronously; QPC/timeGetTime/time/clock return virtual values; input injected through Allegro's _handle_key_press/_release at tick T; real keyboard parked via a hardware breakpoint on key_dinput_handle_scancode; malloc family → fixed-address bump arena at 0x20000000. Sensors are hardware breakpoints (DR0-3 + VEH), no code patching.
+- 2026-09-07 FINDING (KNOWN): hashing raw .data+.bss never converges even with a deterministic heap: ~20–30 Allegro/CRT/DirectX globals hold host object identities (COM pointers, HANDLEs, HWND) that vary per process. The comparison domain is therefore the game-owned globals (generated list, carrier/gen/gen_game_globals.py). Consequence for the framework: the verdict domain must be generated from ownership (DWARF CU), not from section ranges.
 - 2026-09-07: HYPOTHESIS in win32_pilot.md §5. 
 - 2026-09-07: RESOLVED (notes/replay_format.md, KNOWN): the QPC/clock/time calls in play() are anti-cheat slow-down telemetry, not simulation inputs; the 20 ms tick global 0x506938 is the only pacing source. The game's own replay = Treplay.random_seed (offset 164, from rand() after srand(time)) + RLE Trecord{key_flags:u8, cycle_count:int} stream; only left/right/fire survive (mask 0x93). Gameplay input surface = seed + per-tick left/right/fire. Menu/profile/character choice precede recording and are outside it.
 
 ## Snapshot model
-- 2026-09-07: HYPOTHESIS in win32_pilot.md §6. Nothing implemented.
+- 2026-09-07: HYPOTHESIS in win32_pilot.md §6. Nothing implemented. Evidence so far supports in-process rewind: guest globals + arena + guest stack + main-thread CONTEXT at the safepoint; rand() state lives in msvcrt (host) and must be externalized by pinning the LCG in the carrier.
 
 ## Unsupported / problematic behaviours
 - 2026-09-07: 0x400000 range is occupied by NLS mappings before any user code runs; TEMPORARY fix = self-relaunch as suspended child + VirtualAllocEx (carrier/NOTES.md #3). Generic Win32 fact; belongs in the framework loader.

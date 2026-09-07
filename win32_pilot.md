@@ -397,6 +397,7 @@ name it at that tick.
 | 7 | record and replay a short gameplay sequence, digest-equal | done — `carrier/scripts/compare_digests.py`: EQUAL across 3 `--det --pace=fast` runs; negative control diverges at the moved tick; non-`--det` runs diverge — `carrier/NOTES.md` |
 | 8 | safepoint snapshot at 0x4124f4 and restore | pending |
 | 9 | inspection/tracing from a snapshot | pending |
+| 9a | presentation-independent frame oracle (digest of the game's back buffer at `blit_to_screen`) and headless run (Allegro GDI driver into a hidden window, no sound device) | planned; feasibility: the game selects Allegro's config via `set_config_file` at 0x40f03a, so the driver choice can be overridden by an argument sensor at `set_gfx_mode` or `override_config_file`; a window handle is still required by Win32 (hidden, not absent) |
 | 10 | pick one small exercised game function | pending |
 | 11a | LIFTED form: generate C from its bytes, bind it, verify replay-equal | pending |
 | 11b | NATIVE form: readable C, bind it, verify replay-equal | pending |
