@@ -261,6 +261,14 @@ asset census
 standalone transition
 ```
 
+Queued from external research (notes/external_research.md): archive the
+original toolchain (TDM-GCC 4.4.1-tdm-1 SJLJ, KNOWN from the binary's libgcc
+build path) and run a code-generation fingerprint experiment against the
+embedded Allegro; treat Allegro 4.4.1 + that toolchain as the reference and
+4.4.3.1 as the standalone candidate proven by replay; classify
+`logg_load_memory` as a small local extension; keep headless control above
+the graphics/input backends.
+
 Decisions made now only have to avoid closing the doors above. Concretely,
 constraints already honoured or to honour: address-free `src/` with a
 purity gate; generated bindings outside the source; library API by upstream
