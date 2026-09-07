@@ -1,0 +1,66 @@
+{
+  "_purpose": "Single place holding icytower_forged's own Win32-carrier literals for port_forge's framework tools/pf_win32_*.py (notes/extraction_plan.md S1). Every value here was previously hardcoded inside carrier/gen/*.py; each field is cited by the tool that consumes it.",
+
+  "cu_prefix": "f:\\projects\\icytower\\trunk\\source\\",
+  "names_json": "src/icytower/names.json",
+  "src_dir": "src/icytower",
+  "gen_dir": "carrier/gen",
+  "link_manifest": "carrier/build.cmd",
+
+  "bindings_guard": "ICYTOWER_BINDINGS_ACTIVE",
+  "upstream_guard": "ICYTOWER_UPSTREAM_ALLEGRO",
+  "src_headers_include_guard_prefix": "ICYTOWER",
+  "lib_bindings_include_guard": "ICYTOWER_ALLEGRO_API_H",
+
+  "param_renames": {
+    "key": "key_arg"
+  },
+
+  "purity_banned_prefixes": ["PF_", "IT_G_", "IT_F_", "PFN_", "lifted_"],
+  "orig_prefix": "icy_orig_",
+
+  "guest_crt_imports": {
+    "rand": ["msvcrt.dll", "rand", "int", "(void)"],
+    "srand": ["msvcrt.dll", "srand", "void", "(unsigned)"]
+  },
+  "guest_crt_pre_includes": ["<stdlib.h>"],
+
+  "member_access_collisions": ["jump_sound"],
+  "_member_access_collisions_note": "carrier/gen/gen_bindings.py's own MEMBER_ACCESS_COLLISIONS comment (PROMOTIONS.md batch 8, 2026-09-07) also investigated and deliberately did NOT add 'stars': draw_star_field.c's `sf->stars` collides with the same bug class, but start_reward.c already relies on the bare top-level `stars` #define, so a flat skip-list would fix one file and break the other. Needs a context-sensitive rewrite (skip a .name/->name occurrence, rewrite a bare one) this generator's mechanism can't express yet -- left as a TODO there, not as a policy value here. gen_bindings.py itself is NOT shimmed in S1 (see notes/extraction_plan.md and the S1 completion report) precisely because this list is under active hand-curation by the concurrently-running src-promotion work; re-evaluate at S2.",
+
+  "scan_exclude": ["state.c"],
+  "asset_seam_funcs": ["asset_bitmap", "asset_font", "asset_palette", "asset_object", "asset_sample"],
+
+  "digest_domain": {
+    "data_va": "0x4bc000",
+    "data_size": "0x176f4",
+    "bss_va": "0x4dd000",
+    "bss_size": "0x36978",
+    "exclude_names": ["gFLDADMutex", "sLogMutex__log2file", "gFLDADThread"],
+    "size_override": {
+      "eyecandy_selection": 8,
+      "scroll_speed_selection": 8,
+      "floor_size_selection": 8,
+      "gravity_selection": 8
+    }
+  },
+
+  "purity_gate": {
+    "guest_ranges": [
+      ["0x00400000", "0x0078c000"],
+      ["0x20000000", "0x2fffffff"],
+      ["0x0e000000", "0x0e1fffff"]
+    ],
+    "banned_include_substr": [
+      "carrier/", "gen/", "port_forge",
+      "it_types.h", "it_globals.h", "it_funcs.h", "pf_rt.h", "pf_bindings",
+      "pf_harness"
+    ],
+    "banned_ident_patterns": [
+      "PF_[A-Za-z0-9_]*", "pf_rt", "pf_x87_t", "pf_bindings[A-Za-z0-9_]*",
+      "pf_harness[A-Za-z0-9_]*", "pf_lift[A-Za-z0-9_]*", "pf_import[A-Za-z0-9_]*",
+      "pf_on_[A-Za-z0-9_]*", "IT_G_[A-Za-z0-9_]*", "IT_F_[A-Za-z0-9_]*",
+      "PFN_[A-Za-z0-9_]*", "lifted_[A-Za-z0-9_]*"
+    ]
+  }
+}

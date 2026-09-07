@@ -1070,6 +1070,9 @@ static int deliver_sub_slot() {
 // never fired. Restores the real value for every key this carrier's
 // script format can name (kKeyNames above); 0 (unchanged) for the rest.
 static int ascii_for_allegro_code(int code) {
+    // Diagnostic: PF_KEY_ASCII=0 restores the pre-2026-09-07 behaviour (ascii
+    // always 0) so a recording digest made under it can be re-attributed.
+    { static int mode = -1; if (mode < 0) { char b[8]; mode = (GetEnvironmentVariableA("PF_KEY_ASCII", b, sizeof b) > 0 && b[0] == '0') ? 0 : 1; } if (mode == 0) return 0; }
     switch (code) {
         case 67: return 13;  // KEY_ENTER -> '\r' (ToAscii(VK_RETURN))
         case 75: return 32;  // KEY_SPACE -> ' '  (ToAscii(VK_SPACE))
