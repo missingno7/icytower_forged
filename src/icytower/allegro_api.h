@@ -1,8 +1,8 @@
 /* allegro_api.h -- GENERATED FILE. DO NOT EDIT.
- * Produced by carrier/gen/gen_lib_bindings.py from:
+ * Produced by tools/pf_win32_gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model)
- * Generated: 2026-09-07 12:23:06 UTC
+ * Generated: 2026-09-07 21:05:01 UTC
  *
  * This port's STAND-IN for <allegro.h>, address-free, upstream spelling
  * only (win32_pilot.md SS7b): declares exactly the 100 functions and 26

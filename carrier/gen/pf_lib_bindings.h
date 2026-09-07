@@ -1,8 +1,8 @@
 /* pf_lib_bindings.h -- GENERATED FILE. DO NOT EDIT.
- * Produced by carrier/gen/gen_lib_bindings.py from:
+ * Produced by tools/pf_win32_gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json (allow-list: summary.allegro_family_api_names + shared_globals.lib_globals_touched_by_game.globals)
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model, reused from gen_interop.py)
- * Generated: 2026-09-07 12:23:06 UTC
+ * Generated: 2026-09-07 21:05:01 UTC
  *
  * win32_pilot.md SS7b "NEXT": the library-call layer game-scope
  * pf_bindings.h does not cover. One #define per allow-listed name,
@@ -400,6 +400,64 @@ typedef void (__cdecl *PFN_LIB_vsync)(void);
 #define screen (*(BITMAP **)0x4dda8c)
 /* system_driver  raw=_system_driver  VA=0x4dda74  type=SYSTEM_DRIVER *  cu=C:\Lib\allegro4\src\allegro.c */
 #define system_driver (*(SYSTEM_DRIVER **)0x4dda74)
+
+/* ------------------------------------------------------------------ */
+/* AL_INLINE vtable-dispatch macros (23): <name> -> one call through   */
+/* the first argument's OWN bmp->vtable-><slot>(...) -- these have NO  */
+/* VA of their own (upstream `static inline` in allegro/inline/        */
+/* {gfx,draw}.inl compiles them directly into the CALLER's .text, so   */
+/* no distinct callee address can ever appear in a call-edge census)   */
+/* -- see this generator's AL_INLINE_VTABLE_DISPATCH comment for       */
+/* exactly which upstream names qualify (a straight one-call passthrough */
+/* with no branch/rounding to reproduce) and which do not.              */
+/* ------------------------------------------------------------------ */
+
+/* getpixel  GFX_VTABLE slot=getpixel  argc=3  (no VA -- inlined vtable dispatch, not a call target) */
+#define getpixel(a0, a1, a2) ((a0)->vtable->getpixel((a0), (a1), (a2)))
+/* putpixel  GFX_VTABLE slot=putpixel  argc=4  (no VA -- inlined vtable dispatch, not a call target) */
+#define putpixel(a0, a1, a2, a3) ((a0)->vtable->putpixel((a0), (a1), (a2), (a3)))
+/* vline  GFX_VTABLE slot=vline  argc=5  (no VA -- inlined vtable dispatch, not a call target) */
+#define vline(a0, a1, a2, a3, a4) ((a0)->vtable->vline((a0), (a1), (a2), (a3), (a4)))
+/* hline  GFX_VTABLE slot=hline  argc=5  (no VA -- inlined vtable dispatch, not a call target) */
+#define hline(a0, a1, a2, a3, a4) ((a0)->vtable->hline((a0), (a1), (a2), (a3), (a4)))
+/* line  GFX_VTABLE slot=line  argc=6  (no VA -- inlined vtable dispatch, not a call target) */
+#define line(a0, a1, a2, a3, a4, a5) ((a0)->vtable->line((a0), (a1), (a2), (a3), (a4), (a5)))
+/* fastline  GFX_VTABLE slot=fastline  argc=6  (no VA -- inlined vtable dispatch, not a call target) */
+#define fastline(a0, a1, a2, a3, a4, a5) ((a0)->vtable->fastline((a0), (a1), (a2), (a3), (a4), (a5)))
+/* rectfill  GFX_VTABLE slot=rectfill  argc=6  (no VA -- inlined vtable dispatch, not a call target) */
+#define rectfill(a0, a1, a2, a3, a4, a5) ((a0)->vtable->rectfill((a0), (a1), (a2), (a3), (a4), (a5)))
+/* triangle  GFX_VTABLE slot=triangle  argc=8  (no VA -- inlined vtable dispatch, not a call target) */
+#define triangle(a0, a1, a2, a3, a4, a5, a6, a7) ((a0)->vtable->triangle((a0), (a1), (a2), (a3), (a4), (a5), (a6), (a7)))
+/* polygon  GFX_VTABLE slot=polygon  argc=4  (no VA -- inlined vtable dispatch, not a call target) */
+#define polygon(a0, a1, a2, a3) ((a0)->vtable->polygon((a0), (a1), (a2), (a3)))
+/* rect  GFX_VTABLE slot=rect  argc=6  (no VA -- inlined vtable dispatch, not a call target) */
+#define rect(a0, a1, a2, a3, a4, a5) ((a0)->vtable->rect((a0), (a1), (a2), (a3), (a4), (a5)))
+/* circle  GFX_VTABLE slot=circle  argc=5  (no VA -- inlined vtable dispatch, not a call target) */
+#define circle(a0, a1, a2, a3, a4) ((a0)->vtable->circle((a0), (a1), (a2), (a3), (a4)))
+/* circlefill  GFX_VTABLE slot=circlefill  argc=5  (no VA -- inlined vtable dispatch, not a call target) */
+#define circlefill(a0, a1, a2, a3, a4) ((a0)->vtable->circlefill((a0), (a1), (a2), (a3), (a4)))
+/* ellipse  GFX_VTABLE slot=ellipse  argc=6  (no VA -- inlined vtable dispatch, not a call target) */
+#define ellipse(a0, a1, a2, a3, a4, a5) ((a0)->vtable->ellipse((a0), (a1), (a2), (a3), (a4), (a5)))
+/* ellipsefill  GFX_VTABLE slot=ellipsefill  argc=6  (no VA -- inlined vtable dispatch, not a call target) */
+#define ellipsefill(a0, a1, a2, a3, a4, a5) ((a0)->vtable->ellipsefill((a0), (a1), (a2), (a3), (a4), (a5)))
+/* arc  GFX_VTABLE slot=arc  argc=7  (no VA -- inlined vtable dispatch, not a call target) */
+#define arc(a0, a1, a2, a3, a4, a5, a6) ((a0)->vtable->arc((a0), (a1), (a2), (a3), (a4), (a5), (a6)))
+/* spline  GFX_VTABLE slot=spline  argc=3  (no VA -- inlined vtable dispatch, not a call target) */
+#define spline(a0, a1, a2) ((a0)->vtable->spline((a0), (a1), (a2)))
+/* floodfill  GFX_VTABLE slot=floodfill  argc=4  (no VA -- inlined vtable dispatch, not a call target) */
+#define floodfill(a0, a1, a2, a3) ((a0)->vtable->floodfill((a0), (a1), (a2), (a3)))
+/* clear_to_color  GFX_VTABLE slot=clear_to_color  argc=2  (no VA -- inlined vtable dispatch, not a call target) */
+#define clear_to_color(a0, a1) ((a0)->vtable->clear_to_color((a0), (a1)))
+/* draw_sprite_v_flip  GFX_VTABLE slot=draw_sprite_v_flip  argc=4  (no VA -- inlined vtable dispatch, not a call target) */
+#define draw_sprite_v_flip(a0, a1, a2, a3) ((a0)->vtable->draw_sprite_v_flip((a0), (a1), (a2), (a3)))
+/* draw_sprite_h_flip  GFX_VTABLE slot=draw_sprite_h_flip  argc=4  (no VA -- inlined vtable dispatch, not a call target) */
+#define draw_sprite_h_flip(a0, a1, a2, a3) ((a0)->vtable->draw_sprite_h_flip((a0), (a1), (a2), (a3)))
+/* draw_sprite_vh_flip  GFX_VTABLE slot=draw_sprite_vh_flip  argc=4  (no VA -- inlined vtable dispatch, not a call target) */
+#define draw_sprite_vh_flip(a0, a1, a2, a3) ((a0)->vtable->draw_sprite_vh_flip((a0), (a1), (a2), (a3)))
+/* draw_lit_sprite  GFX_VTABLE slot=draw_lit_sprite  argc=5  (no VA -- inlined vtable dispatch, not a call target) */
+#define draw_lit_sprite(a0, a1, a2, a3, a4) ((a0)->vtable->draw_lit_sprite((a0), (a1), (a2), (a3), (a4)))
+/* draw_gouraud_sprite  GFX_VTABLE slot=draw_gouraud_sprite  argc=8  (no VA -- inlined vtable dispatch, not a call target) */
+#define draw_gouraud_sprite(a0, a1, a2, a3, a4, a5, a6, a7) ((a0)->vtable->draw_gouraud_sprite((a0), (a1), (a2), (a3), (a4), (a5), (a6), (a7)))
 
 /* ------------------------------------------------------------------ */
 /* constants (150): KEY_*, GFX_*, DRAW_MODE_*, MASK_COLOR_* -- hand-    */

@@ -1,99 +1,68 @@
-# play_itr.txt - drive the game's OWN replay browser to play the first
-# .itr in profiles/MissingNO/replays/ through the carrier, per
-# carrier/NOTES.md "Headless, frame oracle, named globals, .itr workload"
-# item 4.
+# play_itr.txt - drives the game's OWN replay browser to play the first
+# .itr in profiles/MissingNO/replays/ through the carrier.
 #
-# STATUS (in-vivo verification pass, 2026-09-07): navigation is SOLVED and
-# reproducible - the events below reliably reach "load replay selected" /
-# "opening profiles/MissingNO/replays/" in assets/log.txt every run.
-# Triggering the actual "confirm and play the highlighted entry" action is
-# STILL NOT solved; see carrier/NOTES.md "in-vivo pass, batch 7 + .itr
-# workload" and src/icytower/INVIVO.md's same-named section for the full
-# writeup. Left checked in (rather than deleted) because the navigation
-# half is real, measured progress - a future pass can pick up exactly
-# where this one left off:
-#   - A real bug WAS found and fixed this pass: carrier/src/det.cpp's
-#     deliver_due_input() hardcoded _handle_key_press's ASCII argument to 0
-#     for every synthetic key (real Allegro's DirectInput driver only does
-#     that for non-printable keys - ENTER/SPACE/ESC get a real ASCII value,
-#     third_party/allegro-4.4.1/src/win/wkeybd.c). Fixed (ascii_for_
-#     allegro_code()), verified to change nothing about ordinary gameplay
-#     input (G1/human_test.txt gates still EQUAL), but did NOT by itself
-#     make the confirm fire - _replay_selector's dispatch at 0x41d671 turns
-#     out to be indexed purely by readkey()'s SCANCODE half, never the
-#     ASCII half, so this specific mechanism was never the blocker for
-#     DISPATCH (it may still matter elsewhere; the fix is correct
-#     regardless).
-#   - The likely REAL gate, found by disassembling _replay_selector in full
-#     this pass (0x41d330-0x41d9dd): a local debounce counter
-#     (-0x42c(%ebp), init 0x3e8=1000 at entry 0x41d330) decrements once per
-#     loop iteration only while is_any(ctrl) is true (CTRL_ENTER included
-#     in its mask, src/icytower/control.c) and not already exactly 0; the
-#     MOMENT it hits exactly 0 while a button is held, every frame takes
-#     the "movement" branch (0x41d3eb) and NEVER calls keypressed()/
-#     readkey() until the button releases. This script's own key holds
-#     (5 nav taps + a 360-tick KEY_ENTER hold entering the browser) are
-#     very likely enough total held-iterations to drain the counter to 0
-#     well before the second KEY_ENTER at T=2100. A tap (press+release,
-#     not held) variant of the second KEY_ENTER was tried as the cheapest
-#     test of this theory (from a scratch copy, not committed here) and
-#     ALSO did not reach play() - so either the counter was already stuck
-#     at 0 well before that point (consistent with the drain theory) or a
-#     further, not-yet-identified factor is also in play. NOT root-caused
-#     to a working fix within this pass's budget either.
-#   - Candidates for a follow-up, in the order this pass would try them:
-#     (a) re-run the whole sequence with a live single-step trace
-#     (carrier's own --trace-window, milestone 9) watching the -0x42c
-#     counter's actual value at T=2100, rather than inferring it from held-
-#     duration arithmetic; (b) shorten EVERY hold in this script (nav taps
-#     included) to the bare minimum press/release gap, keeping is_any()
-#     true for as few loop iterations as possible before the confirm
-#     attempt, so the counter has no chance to reach exactly 0 before then;
-#     (c) an interaction with clear_keybuf() at replay_selector's own entry
-#     (0x41d312) that this pass did not trace in detail (established that
-#     it exists and runs once at entry, not that it interferes with a T=2100
-#     event queued long after entry).
+# STATUS (2026-09-07, "Allegro inline primitives; .itr workload" pass):
+# SOLVED. play() is reached, digest lines appear (157 safepoints, T=394..
+# T=550 this run), and assets/log.txt shows "preparing to show replay" ->
+# "play started" -> "replay ended after death" -> "play ended". Root cause
+# and fix below; carrier/NOTES.md has the full writeup plus the live-trace
+# evidence (DET_TRACE_REPLAY_SELECTOR=1, carrier/src/det.cpp) that found it.
 #
-# Menu key sequence, found by disassembly (artifacts/disasm.txt) and
-# notes/asset_census.md, not trial-and-error:
-#   - main_menu (0x4bd380, asset_census.md): "Play Game / Instructions /
-#     Profile / High Scores / Load Replay / Options / Exit". Item 0 ("Play
-#     Game") is the default selection (same as scripts/newgame.txt).
-#     MEASURED: 4x KEY_DOWN only reaches item 3 ("High Scores") - one tap is
-#     evidently absorbed somewhere (assets/log.txt showed " high scores
-#     selected" with only 4 taps); 5x KEY_DOWN reaches item 4 ("Load Replay")
-#     reliably, confirmed repeatedly by "load replay selected" in the log.
-#   - __mangled_main's own dispatch (artifacts/disasm.txt VA 0x4163f4-0x416403)
-#     calls replay_selector(ctrl=0x5000c8) DIRECTLY when "Load Replay" is
-#     confirmed - not a separate file-browser menu screen. --print-globals
-#     num_itr_files (VA 0x4dd744, it_globals.h) read back 3 on this profile,
-#     confirming the file list is populated, not empty.
-#   - replay_selector (0x41d258) does NOT use the poll_control()/is_any()
-#     path for confirmation, despite appearances - that path (0x41d3d1-
-#     0x41d423) decrements a counter while a control key is held and is some
-#     OTHER, still-unidentified mechanism (an idle/attract-mode timeout is
-#     the working hypothesis, not confirmed). The REAL confirm path is
-#     Allegro's buffered keypress queue: keypressed()/readkey() (0x41d416/
-#     0x41d664/0x41d671), dispatched through a scancode-indexed jump table
-#     at VA 0x4d7b18. Both KEY_ENTER(67) and KEY_SPACE(75) dispatch to
-#     0x41d9dd, which is the "confirm the highlighted entry" handler (checks
-#     a per-entry "is this a directory" byte at 0x50093c+cursor*24, then
-#     calls play_menu_select()/sets the loop's own "done" flag at -0x444).
-#     Our direct-injection _handle_key_press(keycode=0, scancode) SHOULD
-#     populate this same buffer (real Allegro's _handle_key_press is the
-#     canonical entry point regardless of caller) but was NOT observed to
-#     trigger 0x41d9dd in this pass's runs (virtual T advanced into the tens
-#     of thousands with zero safepoints, i.e. play() via run_demo() was
-#     never reached) - NOT root-caused further within this pass's budget.
-#     Candidates for a follow-up: (a) keycode=0 not being what readkey()'s
-#     packing expects even though the jump table only inspects the scancode
-#     half; (b) an interaction with clear_keybuf() at replay_selector's own
-#     entry (0x41d312) that this pass did not trace; (c) the still-
-#     unexplained poll_control/is_any counter path being a PRECONDITION
-#     (e.g. must reach 0) before keypressed()/readkey() are even consulted -
-#     re-reading 0x41d40c-0x41d423 with a live single-step trace (carrier's
-#     own --trace-window, milestone 9) would settle this faster than static
-#     disassembly.
+# ROOT CAUSE (corrects every earlier pass's "debounce counter permanently
+# blocks keypressed()" theory - that theory was WRONG, disproved by a live
+# breakpoint at _replay_selector's own `call _readkey` site, VA 0x41d671):
+# keypressed()/readkey() fire constantly regardless of the counter. The REAL
+# problem is entry 0 of the replay browser's own file list is the ".."
+# parent-directory entry (MEASURED: cursor=0, is_dir_byte=1, num_itr_files=
+# 14 = 13 real .itr files + 1 ".."). A held KEY_ENTER (this script's own
+# earlier 360-tick hold, used to confirm "Load Replay" from the main menu)
+# triggers Allegro's real keyboard-repeat mechanism, which queues MANY
+# repeat keypresses into the SAME buffer _replay_selector later drains one
+# read-key at a time - so its very first keypressed() call already finds a
+# BACKLOG of queued repeats and "confirms" entry 0 (".. ") over and over,
+# each confirm re-scanning a directory ONE LEVEL FURTHER UP the real
+# filesystem (MEASURED: num_itr_files climbing 14 -> 2 -> 3 -> 8 -> 23 ->
+# 103 -> ... as it walks up past profiles/MissingNO -> profiles ->
+# assets -> ... on the real disk) and never landing on a real .itr file.
+#
+# FIX: every press+release in this script is now the shortest possible
+# hold (1 tick) so Allegro's repeat-delay never has a chance to queue a
+# second event from the same physical press, plus one extra KEY_DOWN tap
+# after opening the browser to move the cursor off the ".." entry (index
+# 0) onto the first real file (index 1, MEASURED is_dir_byte=0 there).
+# A 20-tick hold (still short of the earlier passes' 360) was tried first
+# and still let repeat queue 3-4 events before release - 1 tick is what
+# actually worked, MEASURED zero extra CONFIRM hits before release.
+#
+# In-vivo coverage this workload reaches (carrier/scripts/all_src.bindfile,
+# --report's binding.functions[].crossings_original_to_form, this run):
+# is_fire, cycle_counter, is_left, is_right, update_frame (very high counts
+# - menu idle polling, not just gameplay), update_particle, fps_counter,
+# is_any, getFloorData, new_rand, is_up, is_down, line_intersect,
+# scroll_scroller, update_player, is_enter, create_particle, add_floor,
+# get_level, jump_player, add_jump_sequence, init_control, get_controls,
+# play_jump_sound, get_gamepad, reset_map, reset_particles, reset_player -
+# 28 of 42 bound src/ functions invoked at least once.
+#
+# Menu key sequence (unchanged navigation half, found by disassembly -
+# artifacts/disasm.txt and notes/asset_census.md, not trial-and-error):
+#   - main_menu (0x4bd380): "Play Game / Instructions / Profile / High
+#     Scores / Load Replay / Options / Exit", item 0 default-selected.
+#     5x KEY_DOWN reliably reaches item 4 ("Load Replay").
+#   - __mangled_main's dispatch (0x4163f4-0x416403) calls
+#     replay_selector(ctrl=0x5000c8) DIRECTLY - no separate file-browser
+#     menu screen. run_demo() (which replay_selector's caller invokes with
+#     the loaded replay) calls new_game() then play() directly (0x415e96) -
+#     the existing safepoint/tick-sensor/digest infrastructure applies to
+#     .itr playback completely unchanged, no new plumbing needed.
+#   - replay_selector (0x41d258) confirms via Allegro's buffered keypress
+#     queue: keypressed()/readkey() (0x41d416/0x41d664/0x41d671), dispatched
+#     through a scancode-indexed jump table at VA 0x4d7b18. Both
+#     KEY_ENTER(67) and KEY_SPACE(75) dispatch to 0x41d9dd, the "confirm
+#     the highlighted entry" handler (checks the per-entry "is this a
+#     directory" byte at 0x50093c+cursor*24 before calling
+#     play_menu_select()). KEY_DOWN(85) dispatches to a different jump
+#     table entry that moves the cursor.
 20 press KEY_DOWN
 40 release KEY_DOWN
 60 press KEY_DOWN
@@ -105,8 +74,8 @@
 180 press KEY_DOWN
 200 release KEY_DOWN
 240 press KEY_ENTER
-600 release KEY_ENTER
-2000 press KEY_DOWN
-2020 release KEY_DOWN
-2100 press KEY_ENTER
-2400 release KEY_ENTER
+241 release KEY_ENTER
+300 press KEY_DOWN
+301 release KEY_DOWN
+360 press KEY_ENTER
+361 release KEY_ENTER

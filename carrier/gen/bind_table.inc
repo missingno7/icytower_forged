@@ -27,6 +27,7 @@ extern "C" {
     int __cdecl check_control_key(void*, int);
     int __cdecl draw_buffer(void*, void*, int, int);
     int __cdecl draw_scroller(void*, void*, int, int, int);
+    void __cdecl draw_star_field(void*, void*, int, int);
     void __cdecl handle_player_collision_original(int, int);
     int __cdecl is_solid(void*, int, int);
     int __cdecl lifted_is_solid(void*, int, int);
@@ -196,6 +197,7 @@ static const FnDesc kFns[] = {
     { "check_control_key", 0x00401808u, 2, true, nullptr, nullptr, (void*)check_control_key, regions_check_control_key, 1, 0 },
     { "draw_buffer", 0x004191c8u, 4, true, nullptr, nullptr, (void*)draw_buffer, nullptr, 0, -1 },
     { "draw_scroller", 0x0041f0ecu, 5, true, nullptr, nullptr, (void*)draw_scroller, nullptr, 0, -1 },
+    { "draw_star_field", 0x0041f340u, 4, false, nullptr, nullptr, (void*)draw_star_field, nullptr, 0, -1 },
     { "handle_player_collision_original", 0x00407e10u, 2, false, nullptr, nullptr, (void*)handle_player_collision_original, nullptr, 0, -1 },
     { "is_solid", 0x004166dcu, 3, true, (void*)lifted_is_solid, (void*)native_is_solid, (void*)is_solid, regions_is_solid, 1, 0 },
     { "jump_player", 0x00418678u, 2, true, (void*)lifted_jump_player, nullptr, (void*)jump_player, regions_jump_player, 1, 0 },

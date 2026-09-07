@@ -1793,6 +1793,50 @@ static void keyrelease_record_hit(CONTEXT* ctx) {
     fflush(g_record_file);
 }
 
+// TEMPORARY diagnostic (".itr workload" investigation, carrier/NOTES.md
+// "Allegro inline primitives; .itr workload") - env-var-only, opt-in, same
+// convention as DET_DUMP_MEM_TICK/DET_INPUT_DELIVER_SUB above. Two fixed
+// VAs inside _replay_selector (0x41d258, artifacts/disasm.txt), hand-
+// disassembled, not guessed:
+//   0x41d671 - the `call _readkey` site reached ONLY when either of
+//              _replay_selector's two `call _keypressed(); test eax,eax`
+//              checks (0x41d416/0x41d41d and 0x41d664/0x41d669) found a
+//              nonzero result - i.e. a breakpoint here proves keypressed()
+//              actually returned true at least once, independent of the
+//              local debounce counter's exact value (which this sensor
+//              does NOT need to read - both call sites converge on this
+//              one address only on the "true" edge).
+//   0x41d9dd - the jump table's own "confirm the highlighted entry"
+//              handler (checks the per-entry directory byte, calls
+//              play_menu_select() - carrier/scripts/play_itr.txt's header
+//              comment). A hit here proves the scancode-indexed dispatch
+//              at 0x41d685 actually landed on the confirm handler, not
+//              just that SOME key was read back.
+// Neither VA is a function entry (mid-function addresses), which is fine -
+// pf::win32::register_breakpoint only needs an instruction boundary, and
+// both were read directly off disasm.txt's own byte columns to confirm one.
+// -0x424(%ebp) is the loop's own "cursor" local (indexes both
+// itr_file_list, VA 0x500938, stride 0x18=24 bytes, and the per-entry
+// directory-flag byte array at 0x50093c, same stride - both read directly
+// off ctx->Ebp, no CONTEXT trickery needed since these breakpoints fire
+// INSIDE _replay_selector's own frame). num_itr_files (VA 0x4dd744) is a
+// plain global, read the same way --print-globals would.
+static void trace_replay_selector_readkey_hit(CONTEXT* ctx) {
+    int cursor = *(int*)(uintptr_t)(ctx->Ebp - 0x424);
+    int num_itr = *(volatile int*)(uintptr_t)0x4dd744u;
+    fprintf(stderr, "det: TRACE _replay_selector: keypressed()==true, about to call readkey() "
+                    "(VA=0x41d671, T=%d, cursor=%d, num_itr_files=%d)\n",
+            det_current_tick(), cursor, num_itr);
+}
+static void trace_replay_selector_confirm_hit(CONTEXT* ctx) {
+    int cursor = *(int*)(uintptr_t)(ctx->Ebp - 0x424);
+    int num_itr = *(volatile int*)(uintptr_t)0x4dd744u;
+    unsigned char is_dir = *(unsigned char*)(uintptr_t)(0x50093cu + (uint32_t)cursor * 24u);
+    fprintf(stderr, "det: TRACE _replay_selector: CONFIRM HANDLER REACHED (VA=0x41d9dd, T=%d, "
+                    "cursor=%d, num_itr_files=%d, is_dir_byte=%d)\n",
+            det_current_tick(), cursor, num_itr, (int)is_dir);
+}
+
 void det_arm_thread(HANDLE thread) { pf::win32::arm_thread(thread); }
 
 void det_arm_main_thread() { pf::win32::arm_thread_by_id(g_main_tid); }
@@ -1920,6 +1964,21 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
         register_breakpoint(icytower::kInputBinding.deliver_release_va, keyrelease_record_hit);
     }
     if (opt.input_script && opt.input_script[0]) load_script(opt.input_script);
+
+    // DET_TRACE_REPLAY_SELECTOR=1 (temporary diagnostic, see the two
+    // callbacks' own comment above): 2 extra breakpoints, opt-in only -
+    // every OTHER run in this project registers at most 2 of the 4 DR
+    // slots (safepoint + one input hook), leaving headroom for exactly
+    // these two without touching the normal option surface.
+    {
+        char buf[8];
+        if (GetEnvironmentVariableA("DET_TRACE_REPLAY_SELECTOR", buf, sizeof(buf)) && buf[0] == '1') {
+            register_breakpoint(0x0041d671u, trace_replay_selector_readkey_hit);
+            register_breakpoint(0x0041d9ddu, trace_replay_selector_confirm_hit);
+            fprintf(stderr, "det: DET_TRACE_REPLAY_SELECTOR=1 - armed 2 diagnostic breakpoints "
+                            "inside _replay_selector (0x41d671, 0x41d9dd)\n");
+        }
+    }
 
     // --trace-input PATH (divergence 005): the diagnostic that found the
     // cause. "-" means stderr. Works in BOTH modes and with either input

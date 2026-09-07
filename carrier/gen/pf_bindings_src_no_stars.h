@@ -5,7 +5,7 @@
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
  * Generated: 2026-09-07 21:29:52 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, draw_scroller, draw_star_field, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, draw_scroller, draw_star_field, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -325,8 +325,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 #define sounds (*(SAMPLE *(*)[9])0x4dd2e0)
 /* speaker  VA=0x4dd2bc  type=SAMPLE *[3]  cu=F:\projects\icytower\trunk\source\main.c */
 #define speaker (*(SAMPLE *(*)[3])0x4dd2bc)
-/* stars  VA=0x4facc8  type=Tparticle [512]  cu=F:\projects\icytower\trunk\source\main.c */
-#define stars (*(Tparticle (*)[512])0x4facc8)
+/* excluded by --exclude: stars */
 /* start_speeds  VA=0x4bc17c  type=int [6]  cu=F:\projects\icytower\trunk\source\main.c */
 #define start_speeds (*(int (*)[6])0x4bc17c)
 /* stepIn  VA=0x4dd740  type=int  cu=F:\projects\icytower\trunk\source\menu.c */

@@ -4269,3 +4269,139 @@ G4: EQUAL (2293 ticks, human_test all-bound vs replays/human_test.digest)
 PURITY: exit 0 (32 files under src/, 0 violations)
 --rng-selftest: OK (5000 values across 5 seeds, 0 mismatches)
 ```
+
+## Allegro inline primitives; .itr workload (2026-09-07)
+
+Two carrier-side items, both resolved this pass.
+
+### 1. Allegro AL_INLINE vtable-dispatch primitives (rectfill/putpixel/...)
+
+**Generic fix, in the framework** (`port_forge/tools/pf_win32_gen_lib_bindings.py`,
+branch `experimental/win32`). Upstream Allegro 4.4's `allegro/inline/
+{gfx,draw}.inl` define ~50 functions as `static inline`, so a game CU
+calling `rectfill()`/`putpixel()` never appears as a named call-edge (no
+distinct callee, no `call VA` instruction - the "call" is the caller's own
+inlined `bmp->vtable-><slot>(...)` dispatch) - structurally invisible to
+the existing 100-function allow-list machinery (`carrier/gen/
+LIB_BINDINGS_NOTES.md` "Inline functions"), which is a call-edge census by
+construction. Hand-read both `.inl` files end to end (both
+`third_party/allegro-4.4.1` and `-4.4.3.1` copies) and curated
+`AL_INLINE_VTABLE_DISPATCH` (23 names) to exactly the subset whose entire
+body is `ASSERT(bmp)` plus ONE call through `bmp->vtable-><slot>(...)` with
+every argument passed through unchanged - no branch, no rounding, nothing
+this generator could get subtly wrong the way a novel algorithm could
+(`draw_sprite`/`draw_trans_sprite`/... branch on color depth and are
+deliberately NOT in the list). `pf_lib_bindings.h` now emits one
+function-like macro per curated name, e.g. `rectfill(a0,a1,a2,a3,a4,a5)`
+-> `((a0)->vtable->rectfill((a0),(a1),(a2),(a3),(a4),(a5)))` - no VA, no
+typedef, just the vtable dispatch upstream's own inline body does.
+Verified with a scratch compile (rectfill/putpixel calls against
+`pf_lib_bindings_types.h`+`pf_lib_bindings.h`, 0 errors) before touching
+`draw_star_field.c`. 0 collisions this run (checked against
+RESERVED_CRT_WINDOWS_IDENTS, game-scope names, the allow-list's own
+VA-bound names - `LIB_BINDINGS_NOTES.md`'s new "AL_INLINE vtable-dispatch
+macros" section has the counts).
+
+**`sf->stars` member/global collision - the SECOND, independent blocker**
+PROMOTIONS.md batch 8 found. `Tstar_field.stars` (an int star-count
+member) collides textually with the top-level `Tparticle stars[512]`
+global's own `#define`; `start_reward.c` needs `stars` bound BARE,
+`draw_star_field.c` needs it left alone so `sf->stars` parses as ordinary
+member access - one `#define` cannot serve both. Two options were on the
+table: add `stars` to `gen_bindings.py`'s MEMBER_ACCESS_COLLISIONS
+(blanket skip - rejected, already shown to break `start_reward.c`), or
+make the generator auto-detect and emit a member-safe form generically.
+Neither was mechanically attractive here: the blanket skip is wrong by
+construction, and a fully automatic context-sensitive rewrite (skip a
+`.name`/`->name` occurrence, rewrite a bare one) needs a real C tokenizer
+over `src/*.c` text this generator deliberately does not carry. **Chosen
+instead**: a SECOND generated header, `pf_bindings_src_no_stars.h`
+(`gen_bindings.py --exclude ...,stars` - no framework change needed,
+`--exclude` already works uniformly for globals and functions),
+force-included instead of the normal `pf_bindings_src.h` for exactly the
+one file that uses `stars` only via member access (`carrier/build.cmd`'s
+new MEMBER_SAFE_FILES list, currently just `draw_star_field.c`, pulled
+out of MSVC_SRC_EXTRA into its own third `cl` invocation). Not fully
+automatic, but a real, working, narrowly-scoped fix that cannot silently
+regress `start_reward.c` (verified: both compile clean, both in the gates
+below) - a deliberate, lower-risk choice over the fully-generic rewrite.
+
+`build_blockers.json`'s `draw_star_field.c` entry removed (both gaps now
+resolved). Full rebuild, gates re-verified:
+
+```
+G1: EQUAL (876 ticks)
+G2: EQUAL (877 invocations, src vs original)
+G3a: EQUAL (301 rows T=400..699) and EQUAL (602 rows T=400..1000)
+G3b: EQUAL (301 invocations, k=276..576)
+all-bound (scripts/all_src.bindfile) vs replays/human_test.digest: EQUAL (2293 ticks)
+```
+
+**In vivo** (`bind_all.py --fn draw_star_field,draw_scroller` + a manual
+A/B pass over `scripts/newgame.txt`): `draw_scroller` **EQUAL** (50
+invocations, human_test.txt; 88 invocations, newgame.txt) - batch 8's own
+promotion confirmed in vivo, not just offline. `draw_star_field`
+**UNVERIFIED IN VIVO** on both workloads (0 invocations each) - compiles,
+links and binds cleanly, but neither scripted recording's key sequence
+reaches whatever draws a star field (consistent with an eye-candy/
+background effect); the same class of gap already documented for
+draw_buffer/handle_player_collision_original.
+
+### 2. .itr workload: SOLVED - play() reached, 157-tick digest produced
+
+Full writeup and the fixed script: `carrier/scripts/play_itr.txt`. Every
+earlier pass's "debounce counter permanently blocks keypressed()" theory
+was **wrong** - disproved with a live hardware-breakpoint trace (new,
+temporary, env-var-gated instrumentation in `carrier/src/det.cpp`:
+`DET_TRACE_REPLAY_SELECTOR=1` arms 2 diagnostic breakpoints at
+`_replay_selector`'s own `call _readkey` site, VA 0x41d671, and its
+"confirm the highlighted entry" handler, VA 0x41d9dd, reading the local
+`cursor`/global `num_itr_files`/per-entry directory-byte straight out of
+guest memory via `ctx->Ebp` - 2 of the 4 hardware-breakpoint slots were
+free on every prior run in this project). **MEASURED**: keypressed()/
+readkey() fire constantly and the confirm handler IS reached, repeatedly -
+the counter never blocks it. The REAL problem: entry 0 of the replay
+browser's own file list is the `..` parent-directory entry (cursor=0,
+is_dir_byte=1, num_itr_files=14 = 13 real .itr files + 1 `..`). The
+script's own 360-tick KEY_ENTER hold (confirming "Load Replay" from the
+main menu) triggers Allegro's real keyboard-repeat mechanism, which queues
+MANY repeat keypresses into the SAME buffer `_replay_selector` later
+drains one at a time - so its first keypressed() call already finds a
+backlog and "confirms" the `..` entry over and over, each confirm
+re-scanning ONE DIRECTORY LEVEL FURTHER UP the real filesystem (MEASURED:
+num_itr_files climbing 14 -> 2 -> 3 -> 8 -> 23 -> 103 -> ... walking
+profiles/MissingNO/replays -> profiles/MissingNO -> profiles -> assets ->
+... on the real disk) and never landing on a file.
+
+**Fix**: every press+release in play_itr.txt is now a 1-tick hold (a
+20-tick hold was tried first and still let 3-4 repeats queue before
+release - only 1 tick MEASURED zero extra confirms), plus one extra
+KEY_DOWN tap after opening the browser to move the cursor off entry 0
+onto entry 1 (is_dir_byte=0 there - a real file). Result: assets/log.txt
+shows "preparing to show replay" -> "play started" -> "replay ended after
+death" -> "play ended"; 157 safepoints, a 157-line --digest-out (T=394..
+T=550), reproduced from the checked-in script, not a scratch copy.
+
+**Additional game-function coverage this workload reaches**
+(`--bind-file scripts/all_src.bindfile --report`,
+binding.functions[].crossings_original_to_form > 0): 28 of 42 bound src/
+functions invoked at least once - is_fire, cycle_counter, is_left,
+is_right, update_frame (very high counts - menu-idle polling, not just
+gameplay), update_particle, fps_counter, is_any, getFloorData, new_rand,
+is_up, is_down, line_intersect, scroll_scroller, update_player, is_enter,
+create_particle, add_floor, get_level, jump_player, add_jump_sequence,
+init_control, get_controls, play_jump_sound, get_gamepad, reset_map,
+reset_particles, reset_player.
+
+### Known gaps / not fully closed this pass
+
+- `draw_star_field` still UNVERIFIED IN VIVO - compiles/links/binds
+  cleanly, but no scripted workload in this project calls it.
+- `DET_TRACE_REPLAY_SELECTOR`'s two breakpoints are diagnostic, not a
+  permanent feature - left in det.cpp (env-var-gated, same convention as
+  DET_DUMP_MEM_TICK) since they cost nothing when unset and were the
+  evidence that solved item 2.
+- The concrete .itr this script plays was not independently identified by
+  name - entry 1 of the (uncorrupted) file list, whichever .itr that
+  mechanically sorts to; the mechanism, not the specific recording, was
+  this pass's deliverable.

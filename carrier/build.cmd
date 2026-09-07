@@ -60,6 +60,41 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem --- member-access-safe variant of pf_bindings_src.h ("Allegro inline
+rem primitives" pass, carrier/NOTES.md): `stars` is BOTH a top-level game
+rem global (Tparticle stars[512], bound bare by start_reward.c) AND a
+rem struct member name (Tstar_field.stars, an int star-count field
+rem game_types.h itself declares, and draw_star_field.c reads only via
+rem `sf->stars`). A plain #define stars <address-cast> cannot serve both:
+rem it is exactly what start_reward.c needs bare, and exactly what corrupts
+rem `sf->stars`/game_types.h's own `int stars;` member declaration into a
+rem syntax error the moment either is parsed with that macro active
+rem (src/icytower/PROMOTIONS.md batch 8's "two real gaps" note; the same
+rem blunt-textual-#define bug class batch 7 already hit for jump_sound, but
+rem NOT fixable the same way here - see gen_bindings.py's own
+rem MEMBER_ACCESS_COLLISIONS comment for why a blanket skip would instead
+rem break start_reward.c). The generic fix kept here is a SECOND header,
+rem identical except `stars` additionally excluded (no macro emitted at
+rem all), force-included ONLY for the one file that uses `stars` exclusively
+rem via member access (draw_star_field.c, verified below) - not a src/
+rem change, not a per-name generator rewrite of gen_bindings.py's blunt
+rem token-level #define mechanism (which cannot itself distinguish `.name`/
+rem `->name` from a bare token), just a second, narrower cl invocation.
+python gen\gen_bindings.py --exclude %SRC_EXCLUDES%,stars --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+  --out gen\pf_bindings_src_no_stars.h --types-out gen\pf_bindings_src_no_stars_types.h
+if errorlevel 1 (
+  echo FAILED: gen_bindings.py --exclude %SRC_EXCLUDES%,stars ^(regenerating pf_bindings_src_no_stars.h^)
+  exit /b 1
+)
+
+rem Files needing the member-safe (no `stars` macro) variant instead of the
+rem normal pf_bindings_src.h - hand-curated (same discipline as
+rem build_blockers.json / MEMBER_ACCESS_COLLISIONS: a small, understood
+rem exception list, not a full per-file auto-detecting scan) and pulled OUT
+rem of MSVC_SRC_EXTRA below so it is compiled exactly once, under exactly
+rem one header set.
+set MEMBER_SAFE_FILES=..\src\icytower\draw_star_field.c
+
 rem --- "binding table generated" pass (carrier/NOTES.md): carrier\src\bind.cpp
 rem no longer hand-carries the per-function binding table (name/VA/argc/
 rem comparison domain) as a C++ literal - gen_bind_table.py derives it fresh
@@ -130,6 +165,25 @@ for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --
 set MSVC_SRC_EXTRA=
 for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --extra-fi extra --prefix "..\src\icytower\\"') do set MSVC_SRC_EXTRA=%%E
 
+rem Pull MEMBER_SAFE_FILES (see above: files needing pf_bindings_src_no_stars.h
+rem instead of pf_bindings_src.h) out of MSVC_SRC_EXTRA - scan_src_defs.py's
+rem mechanical CALL-syntax scan has no way to know this file needs a
+rem DIFFERENT variant of the same header, only that it needs the extra
+rem group's headers at all (it calls rectfill/putpixel, both now bound by
+rem pf_lib_bindings.h - see NOTES.md "Allegro inline primitives"). Plain
+rem %VAR:search=replace% substitution (no delayed expansion needed/enabled -
+rem this file's PATH-with-unescaped-")" trap earlier already rules that
+rem tooling out): only one member-safe file exists today, so this is a
+rem single hand-written check rather than a general loop, matching this
+rem file's own SRC_EXCLUDES/build_blockers.json precedent for a small,
+rem understood exception rather than new generic machinery.
+set MSVC_SRC_EXTRA_MEMBERSAFE=
+echo %MSVC_SRC_EXTRA% | findstr /C:"draw_star_field.c" >nul
+if not errorlevel 1 (
+  set MSVC_SRC_EXTRA_MEMBERSAFE=%MEMBER_SAFE_FILES%
+  set "MSVC_SRC_EXTRA=%MSVC_SRC_EXTRA:..\src\icytower\draw_star_field.c=%"
+)
+
 if not "%MSVC_SRC_BASE%"=="" (
   cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
     /I gen /FIpf_bindings_src.h ^
@@ -148,6 +202,17 @@ if not "%MSVC_SRC_EXTRA%"=="" (
     /Fo:obj\
   if errorlevel 1 (
     echo FAILED: src\icytower MSVC compile errors above ^(Allegro/asset-seam group^)
+    exit /b 1
+  )
+)
+
+if not "%MSVC_SRC_EXTRA_MEMBERSAFE%"=="" (
+  cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
+    /I gen /FIpf_bindings_src_no_stars.h /FIpf_lib_bindings.h /FIpf_asset_bindings.h ^
+    /c %MSVC_SRC_EXTRA_MEMBERSAFE% ^
+    /Fo:obj\
+  if errorlevel 1 (
+    echo FAILED: src\icytower MSVC compile errors above ^(member-access-safe group^)
     exit /b 1
   )
 )
