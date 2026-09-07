@@ -286,4 +286,14 @@ extern "C" {
     // call, but records the distinct names asked for and whether the host had
     // a value, so the channel can be reported as evidence instead of assumed.
     char* __cdecl det_wrap_getenv(const char* name);
+    // Divergence 009 (carrier/NOTES.md): a host DEVICE ENUMERATION reaches
+    // the 151-global digest domain WITHOUT any of its values being stored in
+    // a game global - the guest allocates one arena block per enumerated
+    // device (sized by that device's name), which displaces every later arena
+    // pointer the digest hashes. In a carrier-owned run this wrapper runs the
+    // real enumeration into carrier memory and hands the guest a CONSTANT
+    // synthetic list instead, keeping only each device's GUID value so the
+    // later DirectSoundCreate still opens real hardware. Forwards unchanged
+    // for a plain oracle run, or under DET_ISOLATE_OFF=dsound.
+    long __stdcall det_wrap_DirectSoundEnumerateA(void* cb, void* ctx);
 }

@@ -40,7 +40,8 @@ purpose). Raw digests, reports and stderr: `artifacts/determinism_audit/`.
 | 9 | **`clock()` / QPC / `timeGetTime`** | **DETERMINISTIC** (proved irrelevant, not merely cited) | **EQUAL** under a 123 456 ms perturbation | H4 |
 | 10 | **Other time/date imports** (`localtime`, `mktime`, `_ftime`, `GetLocalTime`, `GetSystemTime`, `strftime`, `asctime`) | **DETERMINISTIC** (never called in this workload; `localtime`/`mktime` only on profile/replay save) | n/a (call count 0) | I1 |
 | 11 | **Environment variables** (`getenv`) | **DETERMINISTIC** on this host (all 3 names unset) — **STILL OPEN** as a channel | n/a | J1 |
-| 12 | **Audio init result** | **STILL OPEN** | not controlled | K1 |
+| 12 | **Audio init result** | **PARTLY CLOSED (divergence 009, 2026-09-07)**: the host DirectSound *device list* is now NORMALIZED (constant carrier-owned enumeration); the *absence* of any audio device is still **STILL OPEN** | positive control **T=237** (`DET_DSOUND_DEVICES=1` vs `=3`) | K1, `carrier/NOTES.md` "Divergence 009" |
+| 12a | **Host device ENUMERATION as a class** (device set/order/count/names -> per-item guest allocations -> displaced arena pointers in 19 digest-domain globals) | **SUPPRESSED** for `DirectSoundEnumerateA`; **STILL OPEN** for DirectInput device enumeration and `joyGetDevCapsA` | positive control **T=237**; negative control `DET_ISOLATE_OFF=dsound` **EQUAL** to the pre-fix build | divergence 009; `carrier/win32_policy.json` `digest_domain.host_enumeration_policy` |
 | 13 | **Window-thread writes to shared carrier/guest state** | **STILL OPEN** (bounded: 1 `malloc` + 1 `free` at startup) | not controlled | L1 |
 | 14 | Allegro timer threads | DETERMINISTIC (parked; prior pass) | — | `carrier/NOTES.md` "parked timer thread" |
 | 15 | Keyboard | SUPPRESSED (script) / RECORDED (real) — prior pass | — | divergence 002/005, closed |
@@ -456,8 +457,19 @@ every channel except the ad thread (D2).
 
 ## What remains STILL OPEN
 
-1. **Audio init result** (row 12) — reaches the digest through Allegro voice
-   ids; no wrapper records it and no no-sound-device experiment was run.
+1. **Audio init result** (row 12) — the *device-list* half is closed by
+   divergence 009 (the enumeration is normalized, and the Allegro voice ids
+   themselves were measured IDENTICAL across device counts — only the
+   `SAMPLE*` pointers in `sounds`/`combo_sound`/... moved). What remains
+   open is a host with **no** DirectSound render device at all: the wrapper
+   then delivers 0 devices, Allegro falls back to its WaveOut mixer, and
+   that run's digest is not comparable. Still no experiment with the device
+   removed.
+1b. **Host enumerations other than DirectSound** (row 12a) — DirectInput
+   device enumeration and `joyGetDevCapsA` have the same shape and are not
+   normalized; they were constant across divergence 009's drift window but
+   are the next suspects for the same signature (identical game outcome,
+   digest differing from the first tick, `arena.top` moved).
 2. **Environment variables** (row 11) — inert on this host (all three names
    unset) but forwarded, so a differently-configured host is not covered.
 3. **The window thread's one `malloc`/`free`** (row 13) — a cross-thread write

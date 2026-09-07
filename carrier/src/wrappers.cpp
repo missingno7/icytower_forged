@@ -157,5 +157,7 @@ void* wrappers_lookup(const char* name) {
     if (strcmp(name, "CreateWindowExA") == 0) return (void*)det_wrap_CreateWindowExA;
     if (strcmp(name, "pthread_create") == 0) return (void*)det_wrap_pthread_create;
     if (strcmp(name, "getenv") == 0) return (void*)det_wrap_getenv;
+    // Divergence 009: host device enumeration -> arena displacement -> digest.
+    if (strcmp(name, "DirectSoundEnumerateA") == 0) return (void*)det_wrap_DirectSoundEnumerateA;
     return nullptr;
 }

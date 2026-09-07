@@ -44,6 +44,14 @@ static const char* kWrapNames[] = {
     // forwards unchanged unless --det / a non-interactive run asks otherwise.
     "ShowWindow", "SetForegroundWindow", "SetWindowPos", "CreateWindowExA",
     "pthread_create", "getenv",
+    // Divergence 009 (carrier/NOTES.md, notes/living_record.md): a host
+    // DEVICE ENUMERATION is a determinism channel even when none of its
+    // values is stored in a game global - the guest allocates once per
+    // enumerated device, from the shared deterministic arena, so every later
+    // arena pointer in the digest domain is displaced when the host's device
+    // list changes. Normalized (not merely counted) whenever the carrier owns
+    // determinism; forwards unchanged otherwise. See det.cpp.
+    "DirectSoundEnumerateA",
 };
 static bool is_wrapped(const char* name) {
     for (const char* w : kWrapNames)

@@ -227,6 +227,8 @@ static FARPROC g_real_rand = nullptr, g_real_srand = nullptr; // milestone 8: RN
 static FARPROC g_real_ShowWindow = nullptr, g_real_SetForegroundWindow = nullptr,
                g_real_SetWindowPos = nullptr, g_real_CreateWindowExA = nullptr,
                g_real_pthread_create = nullptr, g_real_getenv = nullptr;
+// Divergence 009 (host device enumeration, see det_wrap_DirectSoundEnumerateA).
+static FARPROC g_real_DirectSoundEnumerateA = nullptr;
 
 // Import ids (see wrappers.hpp/det_bind_real doc), one per always-installed
 // wrapper this file defines - each det_wrap_* below calls pf_count_import
@@ -237,7 +239,8 @@ static int g_id_Sleep = -1, g_id_QPC = -1, g_id_timeGetTime = -1, g_id_time = -1
            g_id_malloc = -1, g_id_calloc = -1, g_id_realloc = -1, g_id_free = -1,
            g_id_WaitForSingleObject = -1, g_id_rand = -1, g_id_srand = -1,
            g_id_ShowWindow = -1, g_id_SetForegroundWindow = -1, g_id_SetWindowPos = -1,
-           g_id_CreateWindowExA = -1, g_id_pthread_create = -1, g_id_getenv = -1;
+           g_id_CreateWindowExA = -1, g_id_pthread_create = -1, g_id_getenv = -1,
+           g_id_DirectSoundEnumerateA = -1;
 
 void det_bind_real(const char* name, void* real_proc, int id) {
     if (strcmp(name, "QueryPerformanceCounter") == 0) { g_real_QPC = (FARPROC)real_proc; g_id_QPC = id; }
@@ -259,6 +262,7 @@ void det_bind_real(const char* name, void* real_proc, int id) {
     else if (strcmp(name, "CreateWindowExA") == 0) { g_real_CreateWindowExA = (FARPROC)real_proc; g_id_CreateWindowExA = id; }
     else if (strcmp(name, "pthread_create") == 0) { g_real_pthread_create = (FARPROC)real_proc; g_id_pthread_create = id; }
     else if (strcmp(name, "getenv") == 0) { g_real_getenv = (FARPROC)real_proc; g_id_getenv = id; }
+    else if (strcmp(name, "DirectSoundEnumerateA") == 0) { g_real_DirectSoundEnumerateA = (FARPROC)real_proc; g_id_DirectSoundEnumerateA = id; }
 }
 
 // ---------------------------------------------------------------------
@@ -2008,6 +2012,157 @@ extern "C" char* __cdecl det_wrap_getenv(const char* name) {
 }
 
 // ---------------------------------------------------------------------
+// Divergence 009: a host ENUMERATION result reaches the digest domain
+// through the deterministic arena's allocation POSITIONS.
+//
+// THE GENERIC RULE this implements (carrier/win32_policy.json,
+// "digest_domain.host_enumeration_policy"): in a carrier-owned deterministic
+// run the guest may never observe a host enumeration - the set, the order,
+// the count or the names of whatever devices the OS happens to report - even
+// when no game global stores the enumerated values themselves. The guest
+// turns an enumeration into ALLOCATIONS (one per item, sized by the item's
+// name), and every later allocation from the shared deterministic arena is
+// displaced by exactly that prefix. Since ~27 of the 151 digest-domain
+// globals hold arena pointers (`sounds`, `combo_sound`, `bg_beat`, `data`,
+// `swap_screen`, `ply`, `custom`, ... - measured with pf_inspect on a
+// tick-237 snapshot), a host that gains or loses one device changes the
+// digest from the very first gameplay tick while the GAME OUTCOME is
+// identical. That is a defect of the verdict domain, not of the game.
+//
+// MEASURED, this host, this day (all numbers from --report JSONs, which is
+// how the channel was finally named):
+//   _get_win_digi_driver_list (wddsnd.c, 0x47ac18) calls DirectSoundEnumerateA
+//   once with DSEnumCallback (0x47bcf4). That callback SKIPS the NULL-GUID
+//   "primary" entry and, for every real render device, does
+//   _al_malloc(strlen(description)+1) + _al_sane_strncpy into
+//   _dsalmix_name_list[16] (0x4ed3a0), stores the GUID pointer in
+//   _dsalmix_guid_list[16] (0x4ed3e0) and bumps _dsalmix_count (0x4ecb64,
+//   capped at 16). _get_win_digi_driver_list then allocates once more per
+//   device in _get_dsalmix_driver, reallocs the driver list, and mallocs a
+//   0xb8-byte DIGI_DRIVER copy per device for DIGI_DIRECTX(i).
+//   Per device that is ~10 arena blocks / ~992 bytes and 3 strncat calls, so
+//   the whole channel is legible in any --report: strncat == 3*devices + 3.
+//   17:00-19:23: strncat=27 (8 devices), arena top 28468560. From ~19:40:
+//   strncat=21 (6 devices), arena top 28466576 - two NVIDIA HDMI monitor
+//   audio endpoints left the host. Nothing in git changed; every replay
+//   diverged at T=237, the first digest line.
+//
+// THE FIX: this wrapper. Whenever the carrier owns determinism it does NOT
+// let the guest see the host's list. It runs the real enumeration ITSELF,
+// into carrier statics (host memory - never the arena), and then invokes the
+// guest's callback with a CONSTANT, carrier-owned list: a fixed number of
+// devices (kDetDSoundDevices, default 1) with fixed-length synthetic
+// descriptions. The one thing kept from the host is each device's GUID
+// VALUE, copied into carrier memory and handed back so the later
+// DirectSoundCreate still opens a real device - and a GUID never reaches the
+// digest domain, because _dsalmix_guid_list is one of Allegro's globals, not
+// one of the game's 151.
+//
+// Delivering exactly ONE device is not a behavioural change on this host:
+// DirectSoundEnumerate lists the default render device first among the real
+// ones, and the guest was already opening index 0 (MEASURED: the traced
+// DirectSoundCreate lpGuid equals _dsalmix_guid_list[0]). It also collapses
+// the second half of the channel - the device NAMES, whose lengths are
+// malloc sizes.
+//
+// Knobs, both diagnostics in the DET_ISOLATE_OFF / DET_PERTURB_* style,
+// never used by a gate:
+//   DET_ISOLATE_OFF=dsound   forward to the host enumeration unchanged
+//                            (negative control: reproduces the host-dependent
+//                            stream this host produces today)
+//   DET_DSOUND_DEVICES=N     deliver N synthetic devices instead of 1
+//                            (positive control: the digest must move with N)
+// ---------------------------------------------------------------------
+typedef BOOL (__stdcall* DetDSEnumCallbackA)(void* lpGuid, const char* desc,
+                                             const char* mod, void* ctx);
+static const int kDetDSoundMax = 16;      // Allegro's own _dsalmix_* cap
+static const int kDetDSoundDevices = 1;   // the constant list's size
+
+struct DetDSoundDevice {
+    unsigned char guid[16];
+    char name[64];
+};
+static DetDSoundDevice g_ds_host[kDetDSoundMax];
+static int  g_ds_host_count = 0;   // real non-primary render devices the host reported
+static int  g_ds_delivered = -1;   // devices handed to the guest (-1 = never enumerated)
+static bool g_ds_normalized = false;
+
+static int det_dsound_devices_wanted() {
+    char v[16];
+    if (GetEnvironmentVariableA("DET_DSOUND_DEVICES", v, sizeof(v)) && v[0])
+        return atoi(v);
+    return kDetDSoundDevices;
+}
+
+// Carrier-side harvest callback. Runs on the guest main thread but allocates
+// nothing: it copies the GUID bytes and the description into carrier statics.
+static BOOL __stdcall det_ds_harvest(void* lpGuid, const char* desc,
+                                     const char* /*mod*/, void* /*ctx*/) {
+    if (!lpGuid) return TRUE; // the NULL-GUID "primary" entry, which DSEnumCallback skips too
+    if (g_ds_host_count < kDetDSoundMax) {
+        memcpy(g_ds_host[g_ds_host_count].guid, lpGuid, 16);
+        strncpy(g_ds_host[g_ds_host_count].name, desc ? desc : "",
+                sizeof(g_ds_host[0].name) - 1);
+        g_ds_host[g_ds_host_count].name[sizeof(g_ds_host[0].name) - 1] = 0;
+        ++g_ds_host_count;
+    }
+    return TRUE;
+}
+
+extern "C" long __stdcall det_wrap_DirectSoundEnumerateA(void* cb, void* ctx) {
+    pf_count_import(g_id_DirectSoundEnumerateA);
+    typedef long (__stdcall* FnEnum)(void*, void*);
+    FnEnum real = (FnEnum)g_real_DirectSoundEnumerateA;
+
+    bool carrier_owns = g_det_mode || g_input_policy != InputPolicy::Real;
+    if (!real) return 0;
+    if (!carrier_owns || isolate_off("dsound")) {
+        if (carrier_owns)
+            fprintf(stderr, "det: DET_ISOLATE_OFF=dsound - the HOST DirectSound device list is "
+                            "passed to the guest UNCONTROLLED (audit mode; divergence 009)\n");
+        return real(cb, ctx);
+    }
+
+    g_ds_host_count = 0;
+    long hr = real((void*)det_ds_harvest, nullptr);
+
+    int want = det_dsound_devices_wanted();
+    if (want < 0) want = 0;
+    if (want > g_ds_host_count) want = g_ds_host_count;
+    if (want > kDetDSoundMax) want = kDetDSoundMax;
+
+    DetDSEnumCallbackA guest = (DetDSEnumCallbackA)cb;
+    int delivered = 0;
+    if (guest) {
+        for (int i = 0; i < want; ++i) {
+            // CONSTANT length for i < 10, and constant content: this string is
+            // the malloc size DSEnumCallback asks the arena for.
+            char name[48];
+            _snprintf(name, sizeof(name), "PortForge Deterministic Audio Device %d", i);
+            name[sizeof(name) - 1] = 0;
+            ++delivered;
+            if (!guest(g_ds_host[i].guid, name, "", ctx)) break;
+        }
+    }
+    g_ds_delivered = delivered;
+    g_ds_normalized = true;
+
+    fprintf(stderr, "det: DirectSound enumeration NORMALIZED - host reported %d render device(s), "
+                    "the guest was given %d constant carrier-owned one(s) "
+                    "(a host enumeration must not reach the digest domain - "
+                    "carrier/NOTES.md 'Divergence 009')\n",
+            g_ds_host_count, delivered);
+    for (int i = 0; i < g_ds_host_count; ++i)
+        fprintf(stderr, "det:   host dsound device [%d] '%s'%s\n", i, g_ds_host[i].name,
+                i < delivered ? "  (GUID reused for the synthetic device)" : "");
+    if (g_ds_host_count == 0)
+        fprintf(stderr, "det: WARNING - this host reports NO DirectSound render device; Allegro will "
+                        "fall back to its WaveOut mixer and the digest of this run is not comparable "
+                        "with a run made on a host that has one (determinism_audit.md row 12)\n");
+    return hr;
+}
+
+// ---------------------------------------------------------------------
 // C. Tick sensor: generic {VA, callback} hardware-breakpoint table.
 // Dr0-Dr3 give up to 4 simultaneous exec breakpoints; slot 0 is always the
 // play() safepoint when digest/stop-at-tick is requested, slots 1-2 are the
@@ -2511,6 +2666,27 @@ void det_environment_json(char* buf, size_t n) {
         used += (size_t)w;
     }
     envs[sizeof(envs) - 1] = 0;
+    // Divergence 009: the host's own DirectSound render-device list, verbatim.
+    // It is deliberately reported even though the guest never sees it - it is
+    // the one number that makes a future arena-shift drift attributable in
+    // one diff instead of a day of bisection.
+    char dsnames[768]; dsnames[0] = 0;
+    {
+        size_t dused = 0;
+        for (int i = 0; i < g_ds_host_count; ++i) {
+            char esc[64]; size_t e = 0;
+            for (const char* p = g_ds_host[i].name; *p && e < sizeof(esc) - 2; ++p) {
+                unsigned char c = (unsigned char)*p;
+                if (c == '"' || c == '\\' || c < 0x20 || c > 0x7e) esc[e++] = '?';
+                else esc[e++] = (char)c;
+            }
+            esc[e] = 0;
+            int w = _snprintf(dsnames + dused, sizeof(dsnames) - dused, "%s\"%s\"", i ? "," : "", esc);
+            if (w < 0 || dused + (size_t)w >= sizeof(dsnames) - 1) break;
+            dused += (size_t)w;
+        }
+        dsnames[sizeof(dsnames) - 1] = 0;
+    }
     _snprintf(buf, n,
               "{\"interactive\":%s,\"window_mode\":\"%s\","
               "\"showwindow_substituted\":%ld,\"setforeground_suppressed\":%ld,"
@@ -2522,6 +2698,8 @@ void det_environment_json(char* buf, size_t n) {
               "\"time_recorded\":%ld,\"time_replayed\":%ld,\"time_available\":%zu,"
               "\"time_underflow\":%ld,\"time_offthread\":%ld,"
               "\"perturb_clock_ms\":%lld,\"perturb_time_s\":%ld,"
+              "\"dsound_normalized\":%s,\"dsound_host_devices\":%d,\"dsound_delivered\":%d,"
+              "\"dsound_host_names\":[%s],"
               "\"getenv_calls\":%ld,\"getenv_names\":[%s]}",
               g_interactive ? "true" : "false", window_mode_name(g_window_mode),
               g_showwindow_substituted, g_setforeground_suppressed,
@@ -2533,6 +2711,7 @@ void det_environment_json(char* buf, size_t n) {
               g_time_recorded, g_time_replayed, g_time_values.size(),
               g_time_underflow, g_time_offthread,
               perturb_clock_ms(), perturb_time_s(),
+              g_ds_normalized ? "true" : "false", g_ds_host_count, g_ds_delivered, dsnames,
               g_env_calls, envs);
     buf[n - 1] = 0;
 }

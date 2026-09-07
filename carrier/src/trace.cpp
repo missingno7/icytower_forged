@@ -161,7 +161,7 @@ void trace_write_report(const char* report_path) {
     // of - window policy, activation, mouse, ad thread, recorded clock,
     // getenv. This is the machine-readable half of notes/determinism_audit.md.
     {
-        char envbuf[2048];
+        char envbuf[4096]; // divergence 009 added the host's DirectSound device list
         det_environment_json(envbuf, sizeof(envbuf));
         fprintf(f, "  \"environment\": %s,\n", envbuf);
     }

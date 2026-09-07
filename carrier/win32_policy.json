@@ -1,5 +1,5 @@
 {
-  "_purpose": "Single place holding icytower_forged's own Win32-carrier literals for port_forge's framework tools/pf_win32_*.py (notes/extraction_plan.md S1). Every value here was previously hardcoded inside carrier/gen/*.py; each field is cited by the tool that consumes it.",
+  "_purpose": "Single place holding icytower_forged's own Win32-carrier literals for port_forge's framework tools/pf_win32_*.py (notes/extraction_plan.md S1, S3). Every value here was previously hardcoded inside carrier/gen/*.py or carrier/scripts/*.py; each field is cited by the tool that consumes it.",
 
   "cu_prefix": "f:\\projects\\icytower\\trunk\\source\\",
   "names_json": "src/icytower/names.json",
@@ -42,6 +42,24 @@
       "scroll_speed_selection": 8,
       "floor_size_selection": 8,
       "gravity_selection": 8
+    },
+
+    "_host_enumeration_policy_note": "DIVERGENCE 009 (2026-09-07). The rule below is stated GENERICALLY on purpose: it is not about audio. `exclude_names` above can only remove globals that HOLD a host identity; this rule covers the other, sneakier way a host value reaches the digest -- through the POSITIONS of the deterministic arena rather than through any hashed value. A host enumeration (the set / order / count / names of whatever devices the OS reports) makes the guest allocate once per enumerated item, sized by that item's name, from the same fixed-address arena the game later allocates from; every arena pointer stored in a digest-domain global is then displaced by that prefix. MEASURED on this project: 19 of the 151 globals are such pointers (swap_screen, data, demo, gameData, profiles, profile, combo_sound, bg_beat, bg_menu, speaker, menu_sounds, sounds, menu_params.font, play_char.bmp, custom.frame, characters, greeting_scroller.fnt, ply, gameover_bmp -- named by `pf_inspect diff` of two tick-237 snapshots taken with 1 vs 3 enumerated devices), so one device more or less on the host changes the digest from the FIRST gameplay tick while the game outcome is byte-identical. Excluding those 19 is the WRONG fix: they are real game state, not host identities. The right fix is at the seam -- the carrier normalizes the enumeration before the guest sees it (carrier/src/det.cpp det_wrap_DirectSoundEnumerateA) and keeps only the opaque host handle/GUID VALUE, which never lands in a game-owned global. This block is the written-down policy the carrier's constants cite; the carrier itself does not read this file at run time (nothing in carrier/src does -- see this file's top note), so the two are kept in step by name, exactly as `exclude_names` is kept in step with carrier/gen/gen_game_globals.py.",
+    "host_enumeration_policy": {
+      "rule": "In a carrier-owned deterministic run (--det, or input policy != real) no host ENUMERATION result may reach the guest. The carrier performs the enumeration itself into carrier memory and delivers a constant, carrier-owned list of fixed size with fixed-length synthetic names; only an opaque host handle needed to keep the subsequent open/create call working may be passed through, and only where that handle is provably outside the digest domain.",
+      "why_not_exclude_names": "The values enumerated are never themselves stored in a game global; what the enumeration changes is the ALLOCATION PREFIX of the shared deterministic arena, hence the VALUE of every arena pointer the digest hashes. No exclusion list can express that without deleting genuine game state.",
+      "normalized_imports": [
+        {
+          "import": "dsound.dll!DirectSoundEnumerateA",
+          "guest_call_site": "0x0047ac18 _get_win_digi_driver_list (wddsnd.c)",
+          "guest_callback": "0x0047bcf4 DSEnumCallback",
+          "delivered_devices": 1,
+          "host_value_passed_through": "the device GUID bytes, copied into carrier memory; stored by the guest only in Allegro's _dsalmix_guid_list (0x004ed3e0), which is not one of the 151 game-owned globals",
+          "regression_guard": "msvcrt.dll!strncat == 3 * delivered_devices + 3 in any --report; it is 6 for every host once normalized, and was 27 (8 devices) / 21 (6 devices) before the fix",
+          "audit_knobs": ["DET_ISOLATE_OFF=dsound", "DET_DSOUND_DEVICES=N"]
+        }
+      ],
+      "unaudited_enumerations": "DirectInput device enumeration (dinput.dll!DirectInputCreateA x3 + EnumDevices) and joyGetDevCapsA x16 are called on this host but were measured constant across the drift window; they are NOT normalized yet and are the next candidates should the same signature (identical game outcome, digest differing from the first tick, arena top moved) ever reappear."
     }
   },
 
@@ -62,5 +80,24 @@
       "pf_on_[A-Za-z0-9_]*", "IT_G_[A-Za-z0-9_]*", "IT_F_[A-Za-z0-9_]*",
       "PFN_[A-Za-z0-9_]*", "lifted_[A-Za-z0-9_]*"
     ]
+  },
+
+  "bind_all": {
+    "_bind_all_note": "carrier/scripts/bind_all.py's own command-line literals (notes/extraction_plan.md S3): the 35 src/icytower functions in src/icytower/PROMOTIONS.md batches 1-4, in that table's own order; the subset of those whose src/ form has real x87 floating point and was built through the mingw32 GCC -mfpmath=387 -mno-sse2 mixed-toolchain path (carrier/build.cmd) -- 'particles' below means update_particle + create_particle; and the fixed carrier.exe flags every bind_all run passes (--det for deterministic mode, --pace=fast to skip real-time pacing, --input=script to replay a recording instead of live input).",
+    "functions": [
+      "update_frame", "is_solid",
+      "jump_player", "getFloorData", "reset_map", "add_combo", "line_intersect",
+      "get_gamepad", "is_up", "is_down", "is_left", "is_right", "is_fire",
+      "is_pause", "is_enter", "is_any",
+      "set_control", "init_control", "check_control_key", "get_level",
+      "add_jump_sequence", "reset_particles", "scroll_scroller",
+      "restart_scroller", "cycle_counter", "fps_counter", "get_demo",
+      "get_controls", "switchedFromProgram", "switchedToProgram",
+      "clickedCloseButton",
+      "new_rand", "update_particle", "create_particle", "ok_to_play"
+    ],
+    "x87_functions": ["jump_player", "line_intersect", "new_rand",
+                       "update_particle", "create_particle"],
+    "carrier_common_flags": ["--det", "--pace=fast", "--input=script"]
   }
 }
