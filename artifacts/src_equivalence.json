@@ -1411,5 +1411,143 @@
    "vectors": 200
   },
   "result": "EQUAL (GCC x87, modulo the signaling-NaN-payload note below); MSVC precision-only"
+ },
+ "play_jump_sound": {
+  "va": "0x406ecc",
+  "form": "src",
+  "domain_bytes": 200,
+  "domain_names": [
+   "Tplayer",
+   "play_sound_trace(count,handle,pitch,pan)"
+  ],
+  "msvc": {
+   "result": "EQUAL",
+   "total_vectors": 20000,
+   "differing_vectors_total": 0
+  },
+  "gcc": {
+   "result": "EQUAL",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "total_vectors": 20000,
+   "differing_vectors_total": 0,
+   "note": "x87 comparison-only function (Tplayer.sy vs two .rdata float thresholds, no accumulated arithmetic) -- EQUAL under both toolchains, no precision gap found."
+  },
+  "call_trace_domain": {
+   "mechanism": "win32_pilot.md task-brief mechanism B (PROMOTIONS.md batch 7): carrier/lift/harness/lift_check.py's Oracle hooks play_sound's entry VA (0x406da4), captures 3 stack args + a call count into a scratch slot (CALLTRACE_PLAY_SOUND_VA=0x7c1000) and stubs a ret; the compiled side redirects play_sound to harness_trace_play_sound (harness/pf_harness_calltrace.h, harness/call_trace_stubs.c) which writes the identical shape. Compared as an ordinary memory-domain entry, no new comparator code.",
+   "traced_callee": "play_sound",
+   "verifies": "which of custom.jump_sound[0..2] reached play_sound's first argument, for every threshold branch"
+  },
+  "negative_control": {
+   "fault": "play_jump_sound:5:0",
+   "vectors": 200,
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "original": "0x33",
+    "lifted": "0x32"
+   }
+  },
+  "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
+  "note": "Batch 2's skip reason (3 sound-handle globals with no DWARF-recovered name) was incomplete: custom.jump_sound[0..2] is a DWARF-named Tcustom struct member (already in game_types.h/game_state.h via the custom global), not a nameless top-level global -- see src/icytower/names.json's _meta note and PROMOTIONS.md batch 7. The real blocker was the call-trace domain (mechanism B above), not naming."
+ },
+ "handle_player_collision_original": {
+  "va": "0x407e10",
+  "form": "src",
+  "domain_bytes": 220,
+  "domain_names": [
+   "Tplayer",
+   "any11",
+   "any12",
+   "any21",
+   "any22",
+   "any23",
+   "play_sound_trace(count,handle,pitch,pan)"
+  ],
+  "msvc": {
+   "result": "EQUAL",
+   "total_vectors": 20000,
+   "differing_vectors_total": 0
+  },
+  "gcc": {
+   "result": "EQUAL",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "total_vectors": 20000,
+   "differing_vectors_total": 0,
+   "note": "x87 use is a single fistpl truncation (p->x/p->y, round-to-zero) plus a double-minus-int fisubl -- no accumulated register-resident chain of the line_intersect/update_player kind. EQUAL under both toolchains, no precision gap found."
+  },
+  "call_trace_domain": {
+   "mechanism": "same mechanism B as play_jump_sound (see that entry); traces the sounds[8] handle reaching play_sound's first argument on the status!=0 landing-sound branch.",
+   "traced_callee": "play_sound",
+   "verifies": "whether/which sound handle (sounds[8]) reached play_sound, gated on the status transition (0 vs non-0/1/2) that triggers the landing sound"
+  },
+  "negative_control": {
+   "fault": "handle_player_collision_original:5:0",
+   "vectors": 200,
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "original": "0x00",
+    "lifted": "0x01"
+   }
+  },
+  "result": "EQUAL (both MSVC and GCC x87, 20000 vectors each)",
+  "note": "Batch 6's skip reason (sound-handle global at 0x4dd300 has no DWARF-recovered name) was incomplete: 0x4dd300 is sounds[8] -- DWARF names `sounds` as SAMPLE *sounds[9] at VA 0x4dd2e0 (already in game_state.h), 0x4dd300 - 0x4dd2e0 == 0x20 == 8*sizeof(SAMPLE*). The real blocker was the call-trace domain (mechanism B), not naming. Both ignored parameters confirmed unread anywhere in 0x407e10-0x407fd7. All five collision_type-dispatched variants (_original/_old/_combo/_vector/_vector_2) confirmed LIVE (jump table at 0x4d60c4, cmpl $0x4,collision_type dispatch) -- batch 6's 'may be dead code' hedge does not hold for any of them; only _original promoted this pass, the other four deferred for headroom."
+ },
+ "start_reward": {
+  "va": "0x407c38",
+  "form": "src",
+  "domain_bytes": 12324,
+  "domain_names": [
+   "reward_time",
+   "reward_scale",
+   "reward_bmp",
+   "stars[512]",
+   "seed",
+   "play_sound_trace(count,handle,pitch,pan)"
+  ],
+  "msvc": {
+   "result": "DIFFER (precision only, propagates new_rand's -- see note)",
+   "total_vectors": 20000,
+   "differing_vectors_total": 1725,
+   "note": "100% of the 1725 differing vectors' FIRST differing byte is inside stars[] (1688) or seed (37) -- both exclusively new_rand()-derived fields (up to 224 new_rand() calls per vector through the confetti particle loop and create_particle's own draws); ZERO of the 1725 first-diverge in reward_time, reward_scale, reward_bmp, or the play_sound call-trace slot -- confirmed by an exhaustive per-vector domain scan (all 20000), not sampling. Same double-vs-80-bit precision gap already documented for new_rand/update_particle/create_particle (propagated transitively); not a logic error in start_reward itself -- see the GCC entry below, which is EQUAL over all 20000."
+  },
+  "gcc": {
+   "result": "EQUAL",
+   "flags": "-m32 -mfpmath=387 -mno-sse2 -O2",
+   "total_vectors": 20000,
+   "differing_vectors_total": 0,
+   "note": "Confirms the MSVC DIFFER above is purely new_rand's propagated precision gap: with new_rand (and everything start_reward itself computes -- tier selection, itrcheck/flash gating, the confetti sy/sx formulas, the reward_bmp asset lookup, the play_sound argument) compiled with real x87 arithmetic, EQUAL over all 20000 vectors, 0 differences of any kind."
+  },
+  "call_trace_domain": {
+   "mechanism": "same mechanism B as play_jump_sound/handle_player_collision_original; traces combo_sound[tier] reaching play_sound's first argument.",
+   "traced_callee": "play_sound",
+   "verifies": "that the correct reward-tier sound handle (combo_sound[tier]) reaches play_sound, unconditionally on every call"
+  },
+  "asset_seam": {
+   "computed_index_site": "0x407c7d: data[0x5a + tier] (tier in [0,9])",
+   "resolution": "asset_bitmap((asset_id)(ASSET_DATA_REWARD_000 + tier)) -- ASSET_DATA_REWARD_000..009 are 10 contiguously-generated ids (assets_table.inc rows 114-123, object indices 90-99), closing the 10-wide-range gap src/icytower/ASSETS.md's hand-mapped table previously left open (base-object-only).",
+   "offline_verification": "the harness links call_trace_stubs.c's asset_bitmap() (harness-only), which reads through the SAME PF_MEM-redirected data global the vector sets up (a scratch DATAFILE[10] table, gen_start_reward's DATA_TABLE_VA), so reward_bmp's final value is verified via the ordinary memory domain like every other field, not skipped the way draw_buffer.c's pixel-output domain was."
+  },
+  "negative_control": {
+   "fault": "start_reward:5:0",
+   "vectors": 200,
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "reward_time+0x0 (VA 0x004fec68)",
+    "byte_index": 0,
+    "original": "0x50",
+    "lifted": "0x51"
+   }
+  },
+  "result": "EQUAL (GCC x87, 20000 vectors); MSVC precision-only (propagates new_rand's gap, 0 logic divergences)",
+  "note": "Two recovery mistakes caught by the 20000-vector offline check, each fixed and re-verified in this pass (see PROMOTIONS.md batch 7 for the full derivation): (1) reward_bmp's asset-seam update runs UNCONDITIONALLY whenever itrcheck==0, independent of options.flash/tier -- a first reading had it nested inside the flash!=0 branch. (2) the confetti sy/sx magic-multiply divisors are /100, not /50 (same 0x51eb851f constant as particle.c's create_particle, but shift 5 not shift 4 -- one more correction bit halves the quotient), and sy's correction step is negated relative to sx's (opposite AT&T operand order in the disassembly, sub -0x20(%ebp),%edx vs sub %edx,-0x20(%ebp)) -- both re-derived by directly executing the isolated instruction blocks in unicorn with controlled register input, not by re-reading the mnemonics."
  }
 }

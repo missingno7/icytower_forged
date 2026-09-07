@@ -649,3 +649,302 @@ carrier:    python carrier\gen\scan_src_defs.py --src-dir src\icytower   (42 fun
                src\icytower\update_player.c
             -- 0 errors, 0 warnings (carrier world, scratch bindings header)
 ```
+
+## Batch 7 (2026-09-07 — the two recurring blockers)
+
+Task: remove the two recurring "unnamed global" blockers batches 2 and 6
+each hit once, then promote the functions they blocked, plus `start_reward`
+(blocked separately by the asset-seam computed-index gap). Both blockers
+turned out to be **misdiagnosed, not genuinely unnamed** — see "Mechanism A"
+below — which meant the real remaining work was building the call-trace
+comparison domain (mechanism B) both skip notes had already flagged as the
+*other* thing standing in the way.
+
+### Mechanism A: `src/icytower/names.json` (address → name table)
+
+Built exactly as specified: a hand-curated `{address: {name, meaning,
+evidence}}` table (`src/icytower/names.json`), consumed by
+`carrier/gen/gen_interop.py`'s `collect_globals()` (and, by reuse,
+`gen_src_headers.py`'s game_state.h/state.c output) whenever a
+`DW_TAG_variable` DIE has an address but no `DW_AT_name` — the DWARF-nameless
+case the task brief anticipated. `load_names_table()`/`NAMES_TABLE` are new,
+real, tested code (`--names` argument on both generators, default
+`src/icytower/names.json` if present).
+
+**It ships empty (`"globals": {}`), and that is the actual finding, not a
+shortcut.** Re-investigating the two addresses this task cited as unnamed —
+0x4dd300 (blocking `handle_player_collision_original`) and
+0x4fabf4/f8/fc (blocking `play_jump_sound`) — found both are DWARF-named
+**aggregate members**, not nameless globals:
+
+- 0x4dd300 is `sounds[8]` — DWARF names the whole array `SAMPLE *sounds[9]`
+  at VA 0x4dd2e0 (`0x4dd300 - 0x4dd2e0 == 0x20 == 8 * sizeof(SAMPLE*)`),
+  already declared `extern SAMPLE *sounds[9];` in game_state.h.
+- 0x4fabf4/f8/fc is `custom.jump_sound[0..2]` — DWARF names `Tcustom`'s
+  member `jump_sound[3]` at struct offset 1212 (`DW_AT_data_member_location`),
+  and `custom` (VA 0x4fa738, `0x4fa738 + 1212 == 0x4fabf4`) is already
+  declared `extern Tcustom custom;` with `Tcustom.jump_sound[3]` already in
+  game_types.h.
+
+Both were found by computing `address - candidate_aggregate_base` against
+every already-named global/struct in scope and recognising the offset lands
+inside it — a check batch 2/6's original "no DWARF name anywhere" searches
+never ran (they only matched a literal top-level `DW_OP_addr`, which is
+correct for a genuine top-level global but blind to a struct member or array
+element, which DWARF records via `DW_AT_data_member_location`/array indexing
+instead). A broader, exhaustive check confirms this is the whole story, not
+a coincidence limited to these two: a scan of every `DW_TAG_variable` DIE in
+all 25 game-scope CUs found **zero** with an address but no name — every
+game-scope global DWARF describes already has a real one. See
+`src/icytower/names.json`'s `_meta` for the full writeup, the positive-path
+unit test (a synthetic nameless DIE, since this DWARF has no real one to
+test against), and the purity-gate decision (`names.json` is a `.json` file;
+`scripts/check_native_layer.py` only globs `*.c`/`*.h`, so it is already out
+of the gate's scope with no code change needed — documented there rather
+than editing the gate).
+
+**One genuine, different naming collision found and fixed along the way**
+(not what mechanism A was built for, but the same "address-binding macro
+substitutes a bare token it shouldn't" family of bug): `custom.jump_sound`
+tripped over a *second*, unrelated top-level DWARF global that also happens
+to be spelled `jump_sound` (VA 0x4dd2b0, a COFF/DWARF-real, independently-
+named global — apparently unrelated background-music state, given its
+neighbours `_speaker`/`_bg_menu`/`_menu_sounds`/`_bg_beat`). `gen_bindings.py`
+binds every game-scope name to a `#define`, textually, with no notion of "in
+a member-access position" — `#define jump_sound (*(...)0x4dd2b0)` also
+rewrites the `jump_sound` token inside `custom.jump_sound`, producing
+`(*(Tcustom*)0x4fa738).(*(SAMPLE*(*)[3])0x4dd2b0)[2]` — a syntax error, not a
+harmless one. Fixed with a small, hand-curated, narrowly-scoped
+`MEMBER_ACCESS_COLLISIONS = {'jump_sound'}` set in `gen_bindings.py` (same
+shape as the pre-existing `RESERVED_CRT_WINDOWS_IDENTS`, deliberately **not**
+a blanket scan of every struct member name in scope — a first attempt at
+that blanket version also skipped `data`/`stars`/`ctrl`/`cycle_count`/
+`sort_method`, several of which `pf_asset_bindings.h` or this very batch's
+own new files already bind and use correctly as bare identifiers; reverted
+in favour of the narrow, evidence-gated list). A second, unrelated instance
+of the *identical* class of bug was found and fixed the same way while
+wiring `start_reward.c`: `check_control_key(Tcontrol *c, int key)`'s
+generated prototype parameter name `key` collides with Allegro's own
+`key[]` keyboard-state array once `pf_lib_bindings.h` is also
+force-included (the first `src/` file to need both game_funcs.h and the
+asset seam together) — fixed with `gen_src_headers.py`'s new
+`PROTOTYPE_PARAM_RENAMES = {'key': 'key_arg'}`, applied only to the
+*prototype* text (game_funcs.h is forward declarations only, so a parameter
+name there is cosmetic; regenerated for real, diff confined to the 3
+prototypes using that parameter name, byte-identical otherwise).
+
+### Mechanism B: the call-trace comparison domain
+
+Implemented generically in `carrier/lift/harness/lift_check.py`, exactly as
+scoped: for a traced callee (name → VA/argc, read from
+`interop_index.json`'s DWARF-recovered prototype, not hand-counted —
+`load_call_targets()`), the ORIGINAL side installs a `UC_HOOK_CODE` hook at
+the callee's own entry VA (the same "hook the callee's entry, stub a `ret`"
+trick `_rand_hook` already established for the `_rand` IAT thunk), captures
+`argc` stack dwords plus a call count into a fixed scratch slot
+(`CALLTRACE_PLAY_SOUND_VA = 0x7c1000`, 16 bytes), and resumes past the call
+without executing it. The COMPILED side redirects the same callee name to a
+harness-only stub (`harness/pf_harness_calltrace.h` force-included,
+`#define play_sound harness_trace_play_sound`, mirroring
+`pf_harness_rand.h`'s `rand` redirect exactly) that writes the identical
+shape into the identical scratch VA (`harness/call_trace_stubs.c`). Both
+logs are then just another entry in the ordinary memory-domain list —
+**no new comparator code, no new report format**: `lift_check.py`'s existing
+diff/negative-control/census machinery covers it for free. `play_sound`
+(still ORIGINAL-only, not promoted) is the one callee traced this pass;
+the mechanism itself is callee-agnostic (`_CT_PLAY_SOUND` is just one
+`{va, argc, slot}` entry a SPECS row lists under `"call_traces"`).
+
+`play_sound` is excluded from `pf_bindings_harness.h`'s macro table
+specifically (added to the harness-only `--exclude` list alongside the
+auto-scanned src/ function names — **not** to `carrier/gen/pf_bindings_src.h`,
+which correctly keeps redirecting `play_sound` to its original address for
+the real carrier, since it is not promoted there), so there is no conflict
+between the two force-included headers.
+
+`asset_bitmap()` (needed by `start_reward.c`, below) turned out not to need
+the call-trace mechanism at all: `carrier/gen/pf_asset_bindings.h`'s real
+implementation for the `"data"` family is already a pure `data[N].dat`
+memory read through the `data` global, so `call_trace_stubs.c` provides a
+harness-only `asset_bitmap()` that does exactly that same read through the
+harness's own PF_MEM-redirected `data` (a vector-populated scratch
+`DATAFILE[10]` table) — verified via the ordinary memory domain, more
+precisely than a call trace could (it directly checks the *computed
+asset id*, not just "was some function called").
+
+### Promoted this pass
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `play_jump_sound` | 0x406ecc | 141 | main.c | **EQUAL** (MSVC 20000/20000; GCC x87 20000/20000) | Reads `Tplayer.sy` (the launch speed `jump_player()` just set), compares against two `.rdata` float thresholds read directly from the image with `pefile` (−22.0, −15.0, not guessed), picks one of `custom.jump_sound[0..2]` (hi/med/lo), calls `play_sound(handle,1,1)`. No writes of its own — pure call-trace domain, `must_be_unchanged` on the whole `Tplayer`. `x87` comparison-only (no accumulated chain), so no MSVC/GCC precision gap of its own. | pending |
+| `handle_player_collision_original` | 0x407e10 | 456 | main.c | **EQUAL** (MSVC 20000/20000; GCC x87 20000/20000) | The `collision_type==0` dispatch target of `play()`'s 5-way jump table (all 5 variants confirmed LIVE — see below). Two `is_solid(&map, x∓11, y)` foot probes → `any11`/`any12`; `any21`/`any22`/`any23` unconditionally zeroed. Both feet in air: status 0 or 2 → 3 (start falling), else unchanged. At least one foot down: status 1/2 → unchanged; status 0 → silent landing; anything else → `play_sound(sounds[8],1,1)` (the landing sound) THEN the same landing logic — `sy=0`, snap `y -= (tile_result-0x270f)`, `rotate=0`, `edge` = 0 (feet agree)/1 (left foot wins, edge)/2 (right-only). Both parameters confirmed unread anywhere in the function body — recovered as unused, not removed. | pending |
+| `start_reward` | 0x407c38 | 472 | main.c | **EQUAL** (GCC x87, 20000/20000); MSVC DIFFER 1725/20000, 100% confined to `stars[]`/`seed` (new_rand-propagated precision, 0 logic divergences — exhaustive per-vector scan, not sampling) | `reward_time=0x50; reward_scale=0`; tier (0..9) from a 9-threshold cascade on the points argument (6/14/24/34/49/69/99/139/199). If `itrcheck==0`: if `!options.flash && tier>2`, spawn `(tier-2)*16` confetti particles into `stars[512]` via `create_particle()` + two `new_rand()` draws each (`sy = -(((new_rand()%500+500)<<16)/100)`, `sx = (((new_rand()%1000-500)<<16)*count)/100` — divisors and `sy`'s negation both re-derived by direct unicorn block execution, not assumed); `reward_bmp = asset_bitmap(ASSET_DATA_REWARD_000+tier)` runs regardless of `flash`/tier. `play_sound(combo_sound[tier],0,0)` always runs. Returns `tier`. Two recovery mistakes (reward_bmp nesting, `/50` vs `/100` + `sy` sign) caught and fixed by the 20000-vector check — see the `start_reward` entry in `artifacts/src_equivalence.json` for the full derivation. | pending |
+
+Every row's negative control: `--fault <fn>:5:0`, 200 vectors — comparator
+names the exact byte (`Tplayer+0x0 (VA 0x00790000)` for the first two,
+`reward_time+0x0 (VA 0x004fec68)` for `start_reward`) — full detail in
+`artifacts/src_equivalence.json`.
+
+### Corrections to earlier passes' claims (found while investigating this pass)
+
+- **All five `handle_player_collision_*` variants are LIVE**, not "possibly
+  dead code" as batch 6 hedged: `play()` dispatches to all five through one
+  jump table on `collision_type` (0x4dd140, values 0..4; dispatch site
+  0x4125a3, `jmp *0x4d60c4(,%eax,4)`, guarded `cmpl $0x4,collision_type;ja
+  <default>`), each `call` site distinct and reachable. Only `_original`
+  (`collision_type==0`) is promoted this pass; `_old`/`_combo`/`_vector`/
+  `_vector_2` (894/1390/1071/1086 bytes respectively) are deferred for
+  headroom, not because they might be unreachable.
+- **`sounds[8]` and `custom.jump_sound[0..2]` were never actually unnamed**
+  — see "Mechanism A" above. Both `PROMOTIONS.md` batch 2's and batch 6's
+  skip reasons for this specific claim are superseded by this entry; their
+  OTHER stated reason for each skip (the call-trace domain not existing
+  yet) was correct and is what this pass actually had to build.
+
+### Harness changes (additive, none touching `src/`)
+
+- `carrier/lift/harness/lift_check.py`: `CALL_TARGETS`/`load_call_targets()`
+  (mechanism B's generic callee table), `Oracle.__init__`'s new
+  `call_traces` parameter + `_make_call_trace_hook()`, three new globals
+  (`G_ITRCHECK`, `G_OPTIONS_FLASH`, `G_MAP`, `G_ANY11/12/21/22/23`,
+  `G_SOUNDS`, `G_COMBO_SOUND`, `G_CUSTOM_JUMP_SOUND`, `G_REWARD_BMP`,
+  `G_DATA`, `G_STARS`, `DATA_TABLE_VA`, `CALLTRACE_PLAY_SOUND_VA`),
+  `gen_play_jump_sound`/`gen_handle_player_collision_original`/
+  `gen_start_reward` + their `SPECS` entries (additive); `SRC_BATCH7_FUNCS`
+  added to the `--form src` default `--funcs` list. One real bug caught and
+  fixed in the generator itself: `gen_start_reward`'s first draft reused
+  `rnd_double()`'s general special-value pool (includes ±inf/NaN/DBL_MAX)
+  for `seed`, which hung `src_check.exe` outright — `new_rand()`'s
+  recovered fold loop never terminates once the first multiply overflows to
+  +inf. Fixed to bounded ranges only, matching `gen_new_rand`'s own
+  (pre-existing, correct) choice for exactly this reason.
+- `carrier/lift/harness/pf_harness_calltrace.h` (new, harness-only): the
+  `play_sound` → `harness_trace_play_sound` redirect (mechanism B) plus an
+  `asset_bitmap()` prototype (assets.h skips its own under
+  `ICYTOWER_BINDINGS_ACTIVE`, since the carrier world normally gets it from
+  `pf_asset_bindings.h`, which this harness deliberately does not
+  force-include — see below).
+- `carrier/lift/harness/call_trace_stubs.c` (new, harness-only): 
+  `harness_trace_play_sound()` (mechanism B's compiled-side log) and
+  `asset_bitmap()` (a minimal, harness-only `"data"`-family-only
+  implementation reading through the same PF_MEM-redirected `data` global —
+  see "Mechanism B" above for why this needed its own second translation of
+  `data`'s pointer VALUE, the same class of fixup `src_check.c`'s
+  `ply[player_id]`/`demo` fixups already established).
+- `carrier/lift/harness/src_check.c`: three new extern declarations +
+  dispatch branches; `handle_player_collision_original`'s branch reuses
+  `update_frame`'s own `ply[player_id]` pointer-VALUE fixup pattern (this
+  function also reads `ply[player_id]` internally, never as a parameter).
+- `carrier/lift/harness/build_src.cmd`: file list extended with
+  `call_trace_stubs.c` + the three new `src/icytower/*.c` files;
+  `/FIpf_harness_calltrace.h` added.
+- `carrier/lift/harness/gcc_check.c`/`build_src_gcc.sh`: extended to wire
+  all three new functions (this pass's own GCC x87 measurement, not
+  deferred) — `custom`/`itrcheck`/`options`/`reward_time`/`reward_scale`/
+  `reward_bmp`/`combo_sound`/`stars`/`map`/`player_id`/`ply`/`any1*`/
+  `sounds`/`data` all given their own plain-global storage (standalone
+  world, same pattern as `collision_type`/`max_speed`/`seed`/`demo`
+  already use), synced from the guest image before each call and written
+  back after where mutated. `call_trace_stubs.c` linked in;
+  `-include pf_harness_calltrace.h` added (command-line `-include`, not a
+  `#include` inside `gcc_check.c` alone, so `play_jump_sound.c`/
+  `start_reward.c`'s OWN translation units also get the `play_sound`
+  redirect). `is_solid.c` also linked in (a new callee for this build,
+  needed by `handle_player_collision_original.c`).
+- `carrier/gen/gen_bindings.py`: `MEMBER_ACCESS_COLLISIONS` (see "Mechanism
+  A" above).
+- `carrier/gen/gen_src_headers.py`: `PROTOTYPE_PARAM_RENAMES` (see
+  "Mechanism A" above); `game_funcs.h` regenerated for real (diff confined
+  to 3 prototypes' `key`→`key_arg` parameter rename, everything else
+  byte-identical).
+- `carrier/gen/gen_interop.py`: `load_names_table()`/`NAMES_TABLE`,
+  `collect_globals()`'s new-but-inert lookup (see "Mechanism A" above);
+  `--names` argument on both `gen_interop.py` and `gen_src_headers.py`.
+- `src/icytower/names.json` (new): mechanism A's table — ships empty, see
+  above.
+
+**`carrier/gen/pf_bindings_src.h` intentionally NOT regenerated this
+pass** — another agent is running the carrier build concurrently and owns
+that file, same reasoning batch 6 already recorded. Verified the
+carrier-world compile anyway against a scratch copy (`scan_src_defs.py`'s
+auto-scanned 45 names, `MEMBER_ACCESS_COLLISIONS`/`PROTOTYPE_PARAM_RENAMES`
+included automatically since they live in the generator, not the invocation)
+— 0 errors, 0 warnings, then discarded.
+
+### Totals (updated)
+
+| | batch 7 (this pass) | cumulative (7 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 3 | 41 |
+| functions skipped (documented, all passes) | 4 collision variants + 2 carried (destroy_game_data, get_version_str) — net −3 from batch 6's skip list | 6 |
+| original bytes recovered | 1069 (141 + 456 + 472) | 4652 |
+
+`git diff --stat`-style file list this pass: `play_jump_sound.c` (new file,
+141 original bytes), `handle_player_collision_original.c` (new file, 456
+original bytes), `start_reward.c` (new file, 472 original bytes),
+`names.json` (new file, mechanism A, empty table), `game_funcs.h`
+(regenerated, 3 parameter renames only).
+
+## Purity gate (updated)
+
+```
+python scripts/check_native_layer.py
+check_native_layer: scanned 30 file(s) under .../src, 0 violation(s)
+```
+
+## Compile (both worlds, batch 7)
+
+```
+standalone: cl /nologo /c /W3 /TC /Isrc\icytower
+            src\icytower\play_jump_sound.c src\icytower\handle_player_collision_original.c
+            src\icytower\start_reward.c src\icytower\state.c
+            -- 0 errors, 0 warnings
+
+            mingw32-make -f src\build\Makefile.standalone (SOURCES extended with
+            play_jump_sound.c/handle_player_collision_original.c -- start_reward.c
+            deliberately left out, same "asset-seam file, out of scope for this
+            basic smoke test" reasoning draw_buffer.c/assets_standalone.c already
+            have, since it calls asset_bitmap()): libicytower.a + standalone_smoke.exe
+            build clean; standalone_smoke.exe run: 16/16 PASS, 0 failure(s)
+            (regression check: unaffected by this pass's two additions, since
+            neither is referenced by the existing smoke test and a static archive
+            only pulls in a referenced member -- play_sound() never needs to
+            resolve)
+
+carrier:    python carrier\gen\scan_src_defs.py --src-dir src\icytower   (45 function
+            names, auto-scanned)
+            python carrier\gen\gen_bindings.py --exclude <scanned 45 names> ^
+                --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+                --out <SCRATCH>\pf_bindings_src.h --types-out <SCRATCH>\pf_bindings_src_types.h
+            (scratch copy only -- carrier/gen/pf_bindings_src.h itself intentionally
+            untouched this pass, same reasoning as batch 6)
+
+            cl /nologo /c /W3 /TC /I<SCRATCH> /Icarrier\gen /Isrc\icytower ^
+               /FIpf_bindings_src.h ^
+               src\icytower\play_jump_sound.c src\icytower\handle_player_collision_original.c
+            -- 0 errors, 0 warnings
+
+            cl /nologo /c /W3 /TC /I<SCRATCH> /Icarrier\gen /Isrc\icytower ^
+               /FIpf_bindings_src.h /FIpf_lib_bindings.h /FIpf_asset_bindings.h ^
+               src\icytower\start_reward.c
+            -- 0 errors, 0 warnings (asset-seam recipe, matching draw_buffer.c's own)
+
+offline harness (both toolchains, all three functions, 20000 vectors each):
+            python carrier\lift\harness\lift_check.py --form src ^
+               --funcs play_jump_sound,handle_player_collision_original,start_reward ^
+               --vectors 20000 --census
+            -- play_jump_sound: EQUAL; handle_player_collision_original: EQUAL;
+               start_reward: DIFFER 1725/20000 (precision-only, see above)
+
+            python carrier\lift\harness\lift_check.py --form src --toolchain gcc ^
+               --exe harness\gcc_check_x87_nosse_batch7.exe ^
+               --funcs play_jump_sound,start_reward,handle_player_collision_original ^
+               --vectors 20000 --census
+            -- all three: EQUAL (0/20000)
+
+full regression (all 41 promoted functions, default vector counts): 0 new
+            DIFFERs beyond the already-documented precision-only ones
+            (line_intersect, new_rand, update_particle, create_particle,
+            update_player, start_reward) -- every function that was EQUAL
+            before this pass is still EQUAL.
+```

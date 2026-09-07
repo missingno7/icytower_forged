@@ -91,6 +91,67 @@ G_LOGIC_COUNT = 0x506958
 G_COLLISION_TYPE = 0x4dd140
 G_MAX_SPEED = 0x4bdb80
 
+# -- batch 7 (2026-09-07) -- call-trace domain additions (win32_pilot.md task
+# brief "mechanism B") plus the globals play_jump_sound/handle_player_
+# collision_original/start_reward read that PROMOTIONS.md batches 2/6
+# mis-diagnosed as "unnamed": they are DWARF-named aggregate members
+# (sounds[8], custom.jump_sound[0..2]), already declared in game_state.h --
+# see PROMOTIONS.md batch 7 and src/icytower/names.json's _meta note.
+G_ITRCHECK = 0x4dd168                  # int itrcheck (headless replay-checker mode)
+G_OPTIONS_FLASH = 0x4fe528             # Toptions.flash (first field of `options`)
+G_MAP = 0x4f8b18                       # Tmap `map` -- the REAL global handle_player_
+                                        #   collision_original reads (distinct from
+                                        #   is_solid's own scratch MAP_VA parameter slot)
+G_ANY11 = 0x4dd170
+G_ANY12 = 0x4dd174
+G_ANY21 = 0x4dd17c
+G_ANY22 = 0x4dd180
+G_ANY23 = 0x4dd184
+G_SOUNDS = 0x4dd2e0                    # SAMPLE *sounds[9]; sounds[8] == 0x4dd300
+G_COMBO_SOUND = 0x4dd280               # SAMPLE *combo_sound[10]
+G_CUSTOM_JUMP_SOUND = 0x4fabf4         # Tcustom.jump_sound[3] (custom @0x4fa738 + 1212)
+G_REWARD_BMP = 0x4f8af8                # BITMAP *reward_bmp
+G_DATA = 0x4dd23c                      # DATAFILE *data
+G_STARS = 0x4facc8                     # Tparticle stars[512] (start_reward's confetti array)
+DATA_TABLE_VA = 0x7c2000               # scratch DATAFILE[100] table `data` points at for
+                                        #   start_reward's vectors (indices 90..99 populated)
+SZ_DATAFILE_ENTRY = 16                 # {void *dat; int type; long size; int flags;}
+
+# Mechanism B: for a function under test whose own effect includes a call
+# into a still-ORIGINAL-only game function (play_sound here), the ORIGINAL
+# side hooks the callee's entry VA (like the existing _rand_hook), captures
+# argc argument dwords off the stack into a scratch "trace slot"
+# (call_count + up to 3 args, reusing the ordinary memory-domain diff --
+# no new comparator machinery needed), and stubs a `ret`; the compiled side
+# links a harness-only stub (harness/call_trace_stubs.c, redirected in by
+# harness/pf_harness_calltrace.h, force-included the same way
+# pf_harness_rand.h redirects rand()) that logs the same shape into the same
+# VA. See PROMOTIONS.md batch 7 "Mechanism B" for the design writeup.
+CALLTRACE_PLAY_SOUND_VA = 0x7c1000     # {call_count, arg0, arg1, arg2} (16 bytes)
+
+
+def load_call_targets(interop_index_path, names):
+    """Table of callee name -> (va, argc), derived from interop_index.json's
+    DWARF-recovered prototypes (not hand-counted) -- win32_pilot.md task
+    brief: 'a table of callee name -> argument count, from the DWARF
+    prototypes in interop_index.json, so any library-calling function can be
+    verified' generically, not just play_sound."""
+    with open(interop_index_path, encoding='utf-8') as f:
+        idx = json.load(f)
+    by_name = {fn['name']: fn for fn in idx['functions']}
+    out = {}
+    for nm in names:
+        fn = by_name[nm]
+        proto = fn['prototype']
+        inside = proto[proto.index('(') + 1:proto.rindex(')')].strip()
+        argc = 0 if inside in ('', 'void') else len(inside.split(','))
+        out[nm] = {'va': int(fn['va'], 16), 'argc': argc}
+    return out
+
+
+CALL_TARGETS = load_call_targets(
+    os.path.join(HERE, '..', '..', 'gen', 'interop_index.json'), ['play_sound'])
+
 SZ_PLAYER = 184
 SZ_MAP = 772
 SZ_CONTROL = 36                        # Tcontrol: 8 ints + 1 byte + 3 pad
@@ -644,6 +705,178 @@ def gen_update_player(rng, k):
 
 
 # --------------------------------------------------------------------------
+# batch 7 (2026-09-07) -- the two recurring "unnamed global" blockers turn
+# out to be already-DWARF-named aggregate members (sounds[8],
+# custom.jump_sound[0..2] -- PROMOTIONS.md batch 7), so what actually
+# unblocks play_jump_sound / handle_player_collision_original / start_reward
+# is the call-trace domain (mechanism B) for their play_sound() call(s).
+# --------------------------------------------------------------------------
+
+_CT_PLAY_SOUND = {"va": CALL_TARGETS["play_sound"]["va"],
+                   "argc": CALL_TARGETS["play_sound"]["argc"],
+                   "slot": CALLTRACE_PLAY_SOUND_VA}
+
+
+def _blank_call_trace():
+    return (CALLTRACE_PLAY_SOUND_VA,
+            u32(0) + u32(0xdeadbeef) + u32(0xdeadbeef) + u32(0xdeadbeef))
+
+
+def gen_play_jump_sound(rng, k):
+    """Tplayer.sy (offset 0x18, double) picked from rnd_double's pool, plus
+    a family of vectors parked right on/near the two threshold constants
+    (-22.0, -15.0 -- read from the original .rdata at 0x4d6cc4/0x4d6cc8,
+    PROMOTIONS.md batch 7) so all three custom.jump_sound[] branches, and
+    the boundary itself, get exercised. custom.jump_sound[0..2] are set to
+    three distinct sentinel handle values per vector so the call-trace slot
+    unambiguously names which one reached play_sound()."""
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+    if k % 3 == 0:
+        sy = rng.choice([-22.0, -15.0,
+                          -21.999999999999996, -22.000000000000004,
+                          -14.999999999999998, -15.000000000000002,
+                          -100.0, -30.0, -22.5, -18.0, -15.5, -5.0, 0.0])
+    else:
+        sy = rnd_double(rng, k)
+    struct.pack_into("<d", p, 0x18, sy)
+    j0 = 0xAAAA0000 | (k & 0xFF)
+    j1 = 0xBBBB0000 | (k & 0xFF)
+    j2 = 0xCCCC0000 | (k & 0xFF)
+    writes = [(PLAYER_VA, bytes(p)),
+              (G_CUSTOM_JUMP_SOUND + 0, u32(j0)),
+              (G_CUSTOM_JUMP_SOUND + 4, u32(j1)),
+              (G_CUSTOM_JUMP_SOUND + 8, u32(j2)),
+              _blank_call_trace()]
+    return [PLAYER_VA], writes
+
+
+def gen_handle_player_collision_original(rng, k):
+    """Reuses gen_is_solid's own real-map-content generator verbatim (this
+    function calls the REAL global is_solid(&map, ...) twice, at the real
+    `map` VA -- G_MAP -- not is_solid's own scratch MAP_VA parameter slot),
+    so both is_solid() calls see a realistic room[] layout; p->x/p->y are
+    integer-valued doubles (this function only ever truncates them with
+    `fistpl` under the same round-to-zero control word every other physics
+    function already uses, then does plain int arithmetic -- no x87
+    precision question of its own to chase) chosen so left/right foot
+    probes land in-bounds some of the time and out-of-bounds the rest,
+    covering every any11/any12 zero/nonzero/equal/different combination
+    over enough vectors. status is pooled over {0,1,2,3,-1} to hit all four
+    branches (including the play_sound "just landed" gate)."""
+    m = bytearray(SZ_MAP)
+    for r in range(32):
+        b = r * 24
+        struct.pack_into("<i", m, b + 0, rng.choice([0, 0, 0, 1, rng.randint(-3, 3)]))
+        struct.pack_into("<i", m, b + 4, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 8, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 12, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 16, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 20, rng.getrandbits(31))
+    off_pool = [0, 1, 7, 15, 16, 17, -1, -9, -16, -17]
+    struct.pack_into("<i", m, 768, off_pool[k % len(off_pool)] if k < 200 else rng.randint(-1000, 1000))
+
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+    x = float(rng.randint(-600, 600))
+    if k % 4 == 1:
+        y = float(rng.choice([-34, -33, -32, -17, -16, -1, 0, 1, 15, 16, 479, 480, 481]))
+    else:
+        y = float(rng.randint(-40, 500))
+    struct.pack_into("<d", p, 0x0, x)
+    struct.pack_into("<d", p, 0x8, y)
+    status_pool = [0, 1, 2, 3, -1, 7]
+    status = status_pool[k % len(status_pool)] if k % 3 else rng.randint(-5, 8)
+    struct.pack_into("<i", p, 0x34, status)
+    struct.pack_into("<d", p, 0x18, rnd_double(rng, k))   # sy: overwritten on some paths
+
+    sounds8 = 0xDDDD0000 | (k & 0xFF)                     # sounds[8] sentinel handle
+    writes = [(G_MAP, bytes(m)),                          # real `map` global, not the scratch slot
+              (PLAYER_VA, bytes(p)),
+              (G_PLAYER_ID, si32(0)), (G_PLY, u32(PLAYER_VA)),
+              (G_ANY11, u32(0)), (G_ANY12, u32(0)),
+              (G_ANY21, u32(0)), (G_ANY22, u32(0)), (G_ANY23, u32(0)),
+              (G_SOUNDS + 8 * 4, u32(sounds8)),
+              _blank_call_trace()]
+    return [rng.getrandbits(32), rng.getrandbits(32)], writes   # both args ignored by the function
+
+
+REWARD_TIER_ARG_POOL = [0, 1, 6, 7, 8, 14, 15, 16, 24, 25, 26, 34, 35, 36,
+                         49, 50, 51, 69, 70, 71, 99, 100, 101, 139, 140, 141,
+                         199, 200, 201]
+
+
+def gen_start_reward(rng, k):
+    """arg1 (the only real parameter) pooled at every tier boundary
+    (REWARD_TIER_ARG_POOL, from the disassembly's own cascade of `cmp`
+    thresholds -- 6/14/24/34/49/69/99/139/199, PROMOTIONS.md batch 7) so
+    all 10 reward tiers (0..9) are reached, then random beyond that. Biases
+    `itrcheck`/`options.flash` mostly toward the "normal" path (both taken
+    most of the time) since that is the interesting, fully-recovered
+    behaviour, with the two short-circuits sampled often enough (k % 5,
+    k % 7) to prove they are honoured. `stars[]` pre-state and `seed`
+    reuse gen_create_particle's own established technique (an occasional
+    "no free slot anywhere" vector, k % 11 == 0) since start_reward's own
+    particle spawn is create_particle()/new_rand() called directly, already
+    independently verified by their own PROMOTIONS.md rows."""
+    arg1 = REWARD_TIER_ARG_POOL[k % len(REWARD_TIER_ARG_POOL)] if k < len(REWARD_TIER_ARG_POOL) * 8 \
+        else rng.randint(0, 400)
+
+    itrcheck = 0 if k % 7 else rng.choice([0, 1, -1, 5])
+    flash = 1 if k % 5 else 0
+
+    n = 512
+    buf = bytearray(SZ_PARTICLE * n)
+    for i in range(n):
+        off = i * SZ_PARTICLE
+        intens = rng.choice([0, 0, 0, rng.randint(-1000, 1000)])
+        struct.pack_into("<i", buf, off, intens)
+        for f in range(4, SZ_PARTICLE, 4):
+            struct.pack_into("<i", buf, off + f, rng.randint(-100000, 100000))
+    if k % 11 == 0:
+        for i in range(n):
+            off = i * SZ_PARTICLE
+            if struct.unpack_from("<i", buf, off)[0] == 0:
+                struct.pack_into("<i", buf, off, rng.randint(1, 1000))
+
+    # NOT rnd_double()'s general special-value pool: that pool includes
+    # DBL_MAX/+-inf/NaN, and start_reward's own particle loop can call
+    # new_rand() (transitively, through create_particle()) many times per
+    # vector -- new_rand()'s recovered fold loop
+    # (`do { x -= 65535.0; } while (x > 65535.0)`, new_rand.c) never
+    # terminates for a seed whose first multiply overflows to +inf, which
+    # gen_new_rand's OWN generator deliberately never draws for exactly
+    # this reason (its pool/ranges are all finite). Reusing rnd_double()
+    # here hung src_check.exe outright (found this pass, PROMOTIONS.md
+    # batch 7) -- bounded ranges only, matching gen_new_rand's own choice.
+    seed = rng.uniform(-1e7, 1e7) if k % 5 else rng.uniform(-200000.0, 200000.0)
+
+    reward_time_pre = rng.getrandbits(32)
+    reward_scale_pre = rng.getrandbits(32)
+    reward_bmp_pre = 0xE0E00000 | (k & 0xFF)
+    combo_sound = [0xF0000000 | (i << 8) | (k & 0xFF) for i in range(10)]
+
+    # data[90+tier].dat must read from guest address DATA_TABLE_VA + tier*16
+    # (the table below is tier-indexed, 0..9); since data[90+tier] is
+    # computed by the ORIGINAL as `data_ptr + (90+tier)*16`, the `data`
+    # global itself must hold data_ptr = DATA_TABLE_VA - 90*16 (never
+    # dereferenced at that lower address -- only offsets 90..99 are ever
+    # read by start_reward -- so it need not be separately backed).
+    data_table = bytearray(160)   # tier-indexed, 16 bytes each (only .dat, offset 0, matters)
+    for i in range(10):
+        struct.pack_into("<I", data_table, i * SZ_DATAFILE_ENTRY,
+                          0x10000000 | (i << 8) | (k & 0xFF))   # .dat sentinel
+
+    writes = [(G_ITRCHECK, si32(itrcheck)), (G_OPTIONS_FLASH, si32(flash)),
+              (G_REWARD_TIME, u32(reward_time_pre)), (G_REWARD_SCALE, u32(reward_scale_pre)),
+              (G_REWARD_BMP, u32(reward_bmp_pre)),
+              (G_COMBO_SOUND, b"".join(u32(v) for v in combo_sound)),
+              (G_DATA, u32(DATA_TABLE_VA - 90 * SZ_DATAFILE_ENTRY)),
+              (DATA_TABLE_VA, bytes(data_table)),
+              (G_STARS, bytes(buf)), (G_SEED, struct.pack("<d", seed)),
+              _blank_call_trace()]
+    return [arg1], writes
+
+
+# --------------------------------------------------------------------------
 # line_intersect (0x406b80) -- the x87 discriminator
 #
 #   D  = dx1*dy3 - dx3*dy1        (32-bit IMULs, wrapping)
@@ -906,6 +1139,33 @@ SPECS = {
                      "domain": [(PLAYER_VA, SZ_PLAYER)], "domain_names": ["Tplayer"]},
     "update_player": {"va": 0x418740, "gen": gen_update_player, "cmp_eax": False,
                       "domain": [(PLAYER_VA, SZ_PLAYER)], "domain_names": ["Tplayer"]},
+    # -- batch 7 (2026-09-07) -- call-trace domain (mechanism B) unblocks these --
+    "play_jump_sound": {"va": 0x406ecc, "gen": gen_play_jump_sound, "cmp_eax": False,
+                        "call_traces": [_CT_PLAY_SOUND],
+                        # PLAYER_VA listed FIRST: dom_locate()/must_be_unchanged both
+                        # index from offset 0 of the concatenated domain, so a
+                        # must_be_unchanged entry must be domain[0] (every existing
+                        # SPECS entry using must_be_unchanged has exactly one domain
+                        # entry for the same reason -- is_solid, get_gamepad, ...).
+                        "domain": [(PLAYER_VA, SZ_PLAYER), (CALLTRACE_PLAY_SOUND_VA, 16)],
+                        "domain_names": ["Tplayer", "play_sound_trace(count,handle,pitch,pan)"],
+                        "must_be_unchanged": [(PLAYER_VA, SZ_PLAYER)]},
+    "handle_player_collision_original": {
+        "va": 0x407e10, "gen": gen_handle_player_collision_original, "cmp_eax": False,
+        "call_traces": [_CT_PLAY_SOUND],
+        "domain": [(PLAYER_VA, SZ_PLAYER), (G_ANY11, 4), (G_ANY12, 4),
+                   (G_ANY21, 4), (G_ANY22, 4), (G_ANY23, 4),
+                   (CALLTRACE_PLAY_SOUND_VA, 16)],
+        "domain_names": ["Tplayer", "any11", "any12", "any21", "any22", "any23",
+                          "play_sound_trace(count,handle,pitch,pan)"]},
+    "start_reward": {"va": 0x407c38, "gen": gen_start_reward, "cmp_eax": True,
+                     "call_traces": [_CT_PLAY_SOUND],
+                     "domain": [(G_REWARD_TIME, 4), (G_REWARD_SCALE, 4), (G_REWARD_BMP, 4),
+                                (G_STARS, 512 * SZ_PARTICLE), (G_SEED, SZ_SEED),
+                                (CALLTRACE_PLAY_SOUND_VA, 16)],
+                     "domain_names": ["reward_time", "reward_scale", "reward_bmp",
+                                       "stars[512]", "seed",
+                                       "play_sound_trace(count,handle,pitch,pan)"]},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -920,13 +1180,15 @@ SRC_ADD_FLOOR_FUNCS = "add_floor"
 
 SRC_BATCH6_FUNCS = "reset_player,update_player"
 
+SRC_BATCH7_FUNCS = "play_jump_sound,handle_player_collision_original,start_reward"
+
 
 # --------------------------------------------------------------------------
 # ORIGINAL side (unicorn)
 # --------------------------------------------------------------------------
 
 class Oracle(object):
-    def __init__(self, guest):
+    def __init__(self, guest, call_traces=None):
         self.guest = guest
         self.mu = Uc(UC_ARCH_X86, UC_MODE_32)
         self.mu.mem_map(GUEST_BASE, GUEST_SIZE)
@@ -948,6 +1210,19 @@ class Oracle(object):
         # the return address ourselves and redirecting EIP + emu_stop().
         self.mu.hook_add(UC_HOOK_CODE, self._rand_hook,
                           begin=RAND_THUNK_VA, end=RAND_THUNK_VA)
+        # Mechanism B (see CALLTRACE_* / load_call_targets above): one hook
+        # per traced callee VA, installed only for functions whose SPECS
+        # entry declares "call_traces". Each hook captures argc stack dwords
+        # into a fixed scratch slot (call_count + args) and stubs a `ret`
+        # instead of letting unicorn execute the real callee (which is
+        # correct, mapped game-image code -- but the point of this domain is
+        # "which value reached the call", not "what the callee itself does",
+        # and the callee may not be safely re-enterable/side-effect-free to
+        # run twice per vector the way play_sound's own guard globals are).
+        self._call_traces = list(call_traces or [])
+        for ct in self._call_traces:
+            self.mu.hook_add(UC_HOOK_CODE, self._make_call_trace_hook(ct),
+                              begin=ct["va"], end=ct["va"])
 
     def _rand_hook(self, uc, address, size, data):
         esp = uc.reg_read(UC_X86_REG_ESP)
@@ -958,6 +1233,24 @@ class Oracle(object):
         uc.reg_write(UC_X86_REG_ESP, esp + 4)
         uc.reg_write(UC_X86_REG_EIP, ret_addr)
         uc.emu_stop()
+
+    def _make_call_trace_hook(self, ct):
+        slot_va, argc = ct["slot"], ct["argc"]
+
+        def hook(uc, address, size, data):
+            esp = uc.reg_read(UC_X86_REG_ESP)
+            ret_addr = struct.unpack("<I", bytes(uc.mem_read(esp, 4)))[0]
+            args = [struct.unpack("<I", bytes(uc.mem_read(esp + 4 + 4 * i, 4)))[0]
+                    for i in range(argc)]
+            count = struct.unpack("<I", bytes(uc.mem_read(slot_va, 4)))[0]
+            uc.mem_write(slot_va, u32(count + 1))
+            for i, a in enumerate(args):
+                uc.mem_write(slot_va + 4 + 4 * i, u32(a))
+            uc.reg_write(UC_X86_REG_EAX, 0)              # stub return value
+            uc.reg_write(UC_X86_REG_ESP, esp + 4)         # pop the return address
+            uc.reg_write(UC_X86_REG_EIP, ret_addr)
+            uc.emu_stop()
+        return hook
 
     def fpu_reset(self):
         """FNINIT + FLDCW 0x037F -- the x87 state ___mingw_CRTStartup leaves."""
@@ -1116,7 +1409,7 @@ def main():
                          "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
                          "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
                          "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS +
-                         "," + SRC_BATCH6_FUNCS)
+                         "," + SRC_BATCH6_FUNCS + "," + SRC_BATCH7_FUNCS)
         else:
             args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper() + ("/GCC" if args.toolchain == "gcc" else "")
@@ -1152,7 +1445,7 @@ def main():
         domlen = sum(n for _, n in spec["domain"])
         lifted = read_results(rpath, nvec, domlen)
 
-        oracle = Oracle(guest)
+        oracle = Oracle(guest, call_traces=spec.get("call_traces"))
         restore = list(spec["domain"]) + [(va, len(b)) for _, w in vectors for va, b in w]
         restore = sorted(set(restore))
         first_diff = None

@@ -273,15 +273,15 @@ and `draw_buffer.c` too).
 
 ## What remains hand-mapped
 
-**The 7 computed-index sites** (notes/asset_census.md SS3/SS5b/SS8): 7
+**6 of the 7 computed-index sites** (notes/asset_census.md SS3/SS5b/SS8): 7
 code locations compute a `data[N]` index at runtime (`shl $0x4` on a
 variable) rather than using a literal `N`, each with a hard-coded *base*
-object the generator can name but not the per-site range/stride, which is
-the author's intent, not a mechanical fact:
+object the generator can name but not (for 6 of them) the per-site
+range/stride, which is the author's intent, not a mechanical fact:
 
 | VA | function | expression | base object | generator can name |
 |---|---|---|---|---|
-| 0x407c7d | `start_reward` | `data[0x5a + i]` | 90 = `REWARD000` (`ASSET_DATA_REWARD000`) | base only, not the 10-wide range |
+| 0x407c7d | `start_reward` | `data[0x5a + i]` | 90 = `REWARD000` (`ASSET_DATA_REWARD_000`) | **the full 10-wide range** (`ASSET_DATA_REWARD_000`..`_009`, indices 90-99) — resolved PROMOTIONS.md batch 7: `assets_table.inc` already generates all 10 REWARD ids contiguously from the manifest's own consecutive `REWARD000`..`REWARD009` object names, so `ASSET_DATA_REWARD_000 + i` (i in [0,9], `start_reward`'s own recovered `tier`) is a safe mechanical offset into that one generator-guaranteed contiguous family — see `start_reward.c`'s own header comment for the "why this specific arithmetic is safe, unlike the general asset_id-as-index case" reasoning. |
 | 0x409383 | `draw_frame` | `data[bg_stripe_ids[i] + 1]` | 1 = `BGTILE` (`ASSET_DATA_BGTILE`) | base only, not the 6-wide range (`BGTILE`..`BGTILE_5`) |
 | 0x4095ff | `draw_frame` | `data[v + 2]` | floor/sign strip base | base object identity only |
 | 0x4146e4 | `play` | `data[local]` | results background | base object identity only |
@@ -292,13 +292,16 @@ explicitly-ruled-out row (`view_profile` 0x419d34, "rank tables, not
 datafile" — not a `data[N]` site at all, listed there only to record that
 it was checked and rejected), while its prose states "**Seven** sites
 compute the index" and SS8 repeats "the 7 computed-index sites need
-per-site ranges". This document does not paper over that gap: 2 of the 7
-are not individually itemized by VA anywhere in the current census, so
-this generator — correctly — did not attempt to synthesize per-index ids
-for any of the 7, computed-only or not; each needs the range/stride read
-off the loop that drives it before a symbolic constant (or constant range)
-can be emitted, which is future work on `notes/asset_census.md`, not on
-this generator.
+per-site ranges". This document does not paper over that remaining gap: 2
+of the 7 are still not individually itemized by VA anywhere in the current
+census, so this generator — correctly — did not attempt to synthesize
+per-index ids for those 2, or for the 4 remaining itemized-but-unresolved
+sites (`draw_frame` ×2, `play` ×2); each needs the range/stride read off
+the loop that drives it before a symbolic constant (or constant range) can
+be emitted, which is future work on `notes/asset_census.md`, not on this
+generator. `start_reward`'s own range/stride (10, contiguous from 90) was
+available directly from `assets_table.inc`'s already-generated output — no
+census update was needed to resolve that one specifically.
 
 **Character slot names** are hand-recovered too, but already done and
 reused rather than re-derived: `tools_recon/assets_manifest.py`'s

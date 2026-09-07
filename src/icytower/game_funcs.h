@@ -60,7 +60,7 @@ int __cdecl save_garbled_data(Tbeta *b, char *filename);
 
 /* ---- F:\projects\icytower\trunk\source\control.c ---- */
 #ifndef check_control_key
-int __cdecl check_control_key(Tcontrol *c, int key);
+int __cdecl check_control_key(Tcontrol *c, int key_arg);
 #endif
 #ifndef get_gamepad
 Tgamepad * __cdecl get_gamepad();
@@ -136,7 +136,7 @@ void __cdecl custom_alert(char *txt1, char *txt2);
 int __cdecl destroy_custom_data(Tcustom *c);
 #endif
 #ifndef get_string_data
-char * __cdecl get_string_data(char *key, char *string);
+char * __cdecl get_string_data(char *key_arg, char *string);
 #endif
 #ifndef init_custom
 int __cdecl init_custom(Tcustom *c, const char *name, int uses_datafile);
@@ -498,7 +498,7 @@ void __cdecl play_menu_select();
 void __cdecl play_sound(SAMPLE *s, int pitch, int please_pan);
 #endif
 #ifndef pwd_garble_string
-void __cdecl pwd_garble_string(char *str, int key);
+void __cdecl pwd_garble_string(char *str, int key_arg);
 #endif
 #ifndef rebuild_profile_list
 int __cdecl rebuild_profile_list(Tavailable_profile **profs);

@@ -89,6 +89,10 @@
                                  * src/icytower file compiled alongside this
                                  * driver in the same invocation, none of
                                  * which call plain rand() except map.c */
+#include "pf_harness_calltrace.h"   /* #define play_sound harness_trace_play_sound
+                                     * -- batch 7 (2026-09-07), play_jump_sound.c's
+                                     * own play_sound() call (mechanism B); see
+                                     * that header's comment. */
 
 #define PF_GUEST_BASE 0x400000u
 #define PF_GUEST_SIZE 0x400000u          /* 0x400000 .. 0x800000 */
@@ -102,6 +106,22 @@
 #define G_DEMO           0x4dd250u
 #define RAND_SEED_VA     0x794020u
 #define G_GRAVITY_MOD    0x4bdba8u
+#define G_CUSTOM_JUMP_SOUND 0x4fabf4u   /* Tcustom.jump_sound[3] (custom @0x4fa738+1212) */
+#define G_ITRCHECK       0x4dd168u
+#define G_OPTIONS_FLASH  0x4fe528u
+#define G_REWARD_TIME    0x4fec68u
+#define G_REWARD_SCALE   0x4fac28u
+#define G_REWARD_BMP     0x4f8af8u
+#define G_COMBO_SOUND    0x4dd280u
+#define G_STARS          0x4facc8u
+#define G_DATA           0x4dd23cu
+#define G_MAP            0x4f8b18u
+#define G_ANY11          0x4dd170u
+#define G_ANY12          0x4dd174u
+#define G_ANY21          0x4dd17cu
+#define G_ANY22          0x4dd180u
+#define G_ANY23          0x4dd184u
+#define G_SOUNDS         0x4dd2e0u
 
 /* storage for game_state.h's extern decls -- the STANDALONE world's
  * contract (win32_pilot.md SS7a: "a state.c defines the globals"); this
@@ -123,6 +143,21 @@ double gravity_modifier[3];   /* update_player.c (batch 6) */
 Tcontrol ctrl;
 int hasFocus;
 int closeButtonClicked;
+Tcustom custom;            /* play_jump_sound.c (batch 7) reads custom.jump_sound[0..2] */
+DATAFILE *data;            /* call_trace_stubs.c's asset_bitmap() needs this symbol; also
+                             * start_reward.c's own indirect read through asset_bitmap() */
+int itrcheck;
+Toptions options;
+int reward_time;
+fixed reward_scale;
+BITMAP *reward_bmp;
+SAMPLE *combo_sound[10];
+Tparticle stars[512];
+Tmap map;
+int player_id;
+Tplayer *ply[1000];
+int any11, any12, any13, any21, any22, any23;
+SAMPLE *sounds[9];
 
 unsigned char *pf_guest = 0;
 static unsigned char *pf_pristine = 0;
@@ -142,6 +177,9 @@ extern int ok_to_play(void);
 extern void add_floor(Tmap *);
 extern void reset_player(Tplayer *);
 extern void update_player(Tplayer *);
+extern void play_jump_sound(Tplayer *);
+extern int  start_reward(int);
+extern void handle_player_collision_original(int, int);
 
 static unsigned int rd32(FILE *f)
 {
@@ -179,10 +217,13 @@ int main(int argc, char **argv)
         strcmp(fn, "new_rand") != 0 && strcmp(fn, "update_particle") != 0 &&
         strcmp(fn, "create_particle") != 0 && strcmp(fn, "ok_to_play") != 0 &&
         strcmp(fn, "add_floor") != 0 && strcmp(fn, "reset_player") != 0 &&
-        strcmp(fn, "update_player") != 0) {
+        strcmp(fn, "update_player") != 0 && strcmp(fn, "play_jump_sound") != 0 &&
+        strcmp(fn, "start_reward") != 0 &&
+        strcmp(fn, "handle_player_collision_original") != 0) {
         fprintf(stderr, "gcc_check only wires up line_intersect/jump_player/"
                         "new_rand/update_particle/create_particle/ok_to_play/"
-                        "add_floor/reset_player/update_player; got '%s'\n", fn);
+                        "add_floor/reset_player/update_player/play_jump_sound/"
+                        "start_reward/handle_player_collision_original; got '%s'\n", fn);
         return 2;
     }
 
@@ -275,7 +316,7 @@ int main(int argc, char **argv)
             Tplayer *p = (Tplayer *)tr(a[0]);
             reset_player(p);
             eax = 0;
-        } else { /* update_player */
+        } else if (!strcmp(fn, "update_player")) {
             Tplayer *p = (Tplayer *)tr(a[0]);
             /* same globals jump_player.c/add_floor's blocks above sync by
              * hand: collision_type/max_speed (read-only), gravity_modifier
@@ -286,6 +327,63 @@ int main(int argc, char **argv)
             demo = (Treplay *)tr(*(unsigned int *)(pf_guest + (G_DEMO - PF_GUEST_BASE)));
             update_player(p);
             eax = 0;
+        } else if (!strcmp(fn, "play_jump_sound")) {
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            /* custom.jump_sound[0..2] -- the only part of `custom` this
+             * function reads. */
+            memcpy(custom.jump_sound, pf_guest + (G_CUSTOM_JUMP_SOUND - PF_GUEST_BASE),
+                   sizeof(custom.jump_sound));
+            play_jump_sound(p);
+            eax = 0;
+        } else if (!strcmp(fn, "start_reward")) {
+            itrcheck = *(int *)(pf_guest + (G_ITRCHECK - PF_GUEST_BASE));
+            memcpy(&options, pf_guest + (G_OPTIONS_FLASH - PF_GUEST_BASE), sizeof(int));
+            reward_time = *(int *)(pf_guest + (G_REWARD_TIME - PF_GUEST_BASE));
+            reward_scale = *(fixed *)(pf_guest + (G_REWARD_SCALE - PF_GUEST_BASE));
+            reward_bmp = *(BITMAP **)(pf_guest + (G_REWARD_BMP - PF_GUEST_BASE));
+            memcpy(combo_sound, pf_guest + (G_COMBO_SOUND - PF_GUEST_BASE), sizeof(combo_sound));
+            /* `data` stays a RAW guest VA here (NOT tr()-translated): unlike
+             * ply[player_id]/demo above, this driver never dereferences
+             * `data` itself -- call_trace_stubs.c's asset_bitmap() does,
+             * and translates it via PF_MEM() there (the same function body
+             * used by the MSVC harness, where `data` is a macro yielding a
+             * raw guest VA too -- keeping this copy raw here is what keeps
+             * that one shared implementation correct in both worlds). */
+            data = (DATAFILE *)(size_t)(*(unsigned int *)(pf_guest + (G_DATA - PF_GUEST_BASE)));
+            memcpy(stars, pf_guest + (G_STARS - PF_GUEST_BASE), sizeof(stars));
+            seed = *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE));
+            eax = (unsigned int)start_reward((int)a[0]);
+            *(int *)(pf_guest + (G_REWARD_TIME - PF_GUEST_BASE)) = reward_time;
+            *(fixed *)(pf_guest + (G_REWARD_SCALE - PF_GUEST_BASE)) = reward_scale;
+            *(BITMAP **)(pf_guest + (G_REWARD_BMP - PF_GUEST_BASE)) = reward_bmp;
+            memcpy(pf_guest + (G_STARS - PF_GUEST_BASE), stars, sizeof(stars));
+            *(double *)(pf_guest + (G_SEED - PF_GUEST_BASE)) = seed;
+        } else { /* handle_player_collision_original */
+            unsigned int pid;
+            player_id = *(int *)(pf_guest + (G_PLAYER_ID - PF_GUEST_BASE));
+            pid = (unsigned int)player_id;
+            /* same ply[player_id] pointer-VALUE second translation
+             * update_frame's own dispatch (src_check.c) needs -- this
+             * function reads ply[player_id] internally, never as a
+             * parameter. */
+            ply[pid] = (Tplayer *)tr(*(unsigned int *)(pf_guest + (G_PLY + 4u * pid - PF_GUEST_BASE)));
+            memcpy(&map, pf_guest + (G_MAP - PF_GUEST_BASE), sizeof(map));
+            any11 = *(int *)(pf_guest + (G_ANY11 - PF_GUEST_BASE));
+            any12 = *(int *)(pf_guest + (G_ANY12 - PF_GUEST_BASE));
+            any21 = *(int *)(pf_guest + (G_ANY21 - PF_GUEST_BASE));
+            any22 = *(int *)(pf_guest + (G_ANY22 - PF_GUEST_BASE));
+            any23 = *(int *)(pf_guest + (G_ANY23 - PF_GUEST_BASE));
+            memcpy(sounds, pf_guest + (G_SOUNDS - PF_GUEST_BASE), sizeof(sounds));
+            handle_player_collision_original((int)a[0], (int)a[1]);
+            eax = 0;
+            /* ply[pid] itself points INTO pf_guest (tr()'s own contract),
+             * so any Tplayer field writes already landed there directly --
+             * only the plain-int globals need writing back. */
+            *(int *)(pf_guest + (G_ANY11 - PF_GUEST_BASE)) = any11;
+            *(int *)(pf_guest + (G_ANY12 - PF_GUEST_BASE)) = any12;
+            *(int *)(pf_guest + (G_ANY21 - PF_GUEST_BASE)) = any21;
+            *(int *)(pf_guest + (G_ANY22 - PF_GUEST_BASE)) = any22;
+            *(int *)(pf_guest + (G_ANY23 - PF_GUEST_BASE)) = any23;
         }
 
         fwrite(&eax, 4, 1, fo);

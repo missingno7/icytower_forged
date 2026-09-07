@@ -33,9 +33,9 @@ if [ ! -x "$GCC" ]; then GCC=gcc; fi
 
 mkdir -p obj_gcc
 "$GCC" -m32 "$@" -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
-    -I. -I../../../src/icytower \
-    -include pf_harness_rand.h \
-    gcc_check.c harness_rand.c \
+    -I. -I../../gen -I../../../src/icytower \
+    -include pf_harness_rand.h -include pf_harness_calltrace.h \
+    gcc_check.c harness_rand.c call_trace_stubs.c \
     ../../../src/icytower/line_intersect.c \
     ../../../src/icytower/jump_player.c \
     ../../../src/icytower/new_rand.c \
@@ -45,5 +45,9 @@ mkdir -p obj_gcc
     ../../../src/icytower/main_state.c \
     ../../../src/icytower/reset_player.c \
     ../../../src/icytower/update_player.c \
+    ../../../src/icytower/play_jump_sound.c \
+    ../../../src/icytower/start_reward.c \
+    ../../../src/icytower/handle_player_collision_original.c \
+    ../../../src/icytower/is_solid.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"

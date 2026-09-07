@@ -136,6 +136,18 @@ extern unsigned int harness_rand_state;
  * established above. */
 extern void reset_player(Tplayer *);
 extern void update_player(Tplayer *);
+/* batch 7 (2026-09-07): the two "unnamed global" blockers turned out to be
+ * already-DWARF-named aggregate members (sounds[8], custom.jump_sound[0..2]
+ * -- PROMOTIONS.md batch 7); what actually unblocks these three is the
+ * call-trace domain (mechanism B) for their play_sound() call(s) --
+ * pf_harness_calltrace.h/call_trace_stubs.c, force-included/linked
+ * alongside this file by build_src.cmd. No extra fixup needed at these
+ * three dispatch branches beyond the usual tr() translation -- none of
+ * them dereferences a pointer VALUE read out of guest memory the way
+ * add_floor()/update_player() do for `demo`. */
+extern void play_jump_sound(Tplayer *);
+extern void handle_player_collision_original(int, int);
+extern int  start_reward(int);
 
 static unsigned int rd32(FILE *f)
 {
@@ -374,6 +386,24 @@ int main(int argc, char **argv)
                 *demo_slot = (unsigned int)(size_t)PF_MEM(*demo_slot);
             update_player(p);
             eax = 0;
+        } else if (!strcmp(fn, "play_jump_sound")) {
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            play_jump_sound(p);
+            eax = 0;
+        } else if (!strcmp(fn, "handle_player_collision_original")) {
+            /* same second translation of the pointer VALUE stored in
+             * ply[player_id] update_frame() already needs above -- this
+             * function reads ply[player_id] internally too (never as a
+             * parameter, matching the original's own two ignored args --
+             * see handle_player_collision_original.c's header comment). */
+            int pid = *(int *)PF_MEM(G_PLAYER_ID);
+            unsigned int *slot = (unsigned int *)PF_MEM((unsigned int)(G_PLY + 4u * (unsigned int)pid));
+            if (*slot >= PF_GUEST_BASE && *slot < PF_GUEST_BASE + PF_GUEST_SIZE)
+                *slot = (unsigned int)(size_t)PF_MEM(*slot);
+            handle_player_collision_original((int)a[0], (int)a[1]);
+            eax = 0;
+        } else if (!strcmp(fn, "start_reward")) {
+            eax = (unsigned int)start_reward((int)a[0]);
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);
             return 2;

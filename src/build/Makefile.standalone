@@ -36,22 +36,29 @@ CFLAGS  := -m32 -mfpmath=387 -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK -W
            -I$(ALLEGRO_SRC)/addons/logg -I$(SRC)
 AR      := ar
 
-# Every promoted .c file that needs no asset seam, updated through batch 6
-# (2026-09-07 -- reset_player.c/update_player.c added; main_state.c added
-# so map.c's add_floor() -> get_demo() call link-resolves, a link failure
-# this target had picked up silently since batch 5 added that call without
-# updating this hand-maintained list -- see STANDALONE.md). Excluded on
-# purpose: game_types_check.c ("game_types_check.c is out of scope here":
-# its sizeof/offsetof assertions check the DWARF-recovered ADDRESS-BACKED
-# layout of Allegro's internal structs, e.g. LZSS_UNPACK_DATA/
-# _al_normal_packfile_details, which upstream's public <allegro.h> does not
-# even expose -- that check only makes sense against src/icytower's own
-# stand-in, never against upstream); draw_buffer.c/assets_standalone.c
-# (the asset-seam files, out of scope for this basic smoke test).
+# Every promoted .c file that needs no asset seam, updated through batch 7
+# (2026-09-07 -- play_jump_sound.c/handle_player_collision_original.c added;
+# both call play_sound(), not yet promoted/defined anywhere in src/, but
+# this is safe: SOURCES only feeds libicytower.a, a static archive, and the
+# final $(SMOKE_EXE) link only pulls in an archive member actually
+# referenced by standalone_smoke.c or something it references -- neither
+# new file is, so play_sound() never needs to resolve here, exactly as it
+# already didn't for is_solid.c/etc's own not-yet-promoted callees).
+# Excluded on purpose: game_types_check.c ("game_types_check.c is out of
+# scope here": its sizeof/offsetof assertions check the DWARF-recovered
+# ADDRESS-BACKED layout of Allegro's internal structs, e.g.
+# LZSS_UNPACK_DATA/_al_normal_packfile_details, which upstream's public
+# <allegro.h> does not even expose -- that check only makes sense against
+# src/icytower's own stand-in, never against upstream); draw_buffer.c/
+# assets_standalone.c/start_reward.c (the asset-seam files -- start_reward.c
+# calls asset_bitmap(), out of scope for this basic smoke test the same way
+# draw_buffer.c already was; both are compile-checked separately, see
+# src/icytower/ASSETS.md and PROMOTIONS.md batch 7).
 SOURCES := add_combo.c add_jump_sequence.c control.c is_solid.c jump_player.c \
            line_intersect.c map.c main_state.c new_rand.c ok_to_play.c \
            particle.c reset_player.c scroller.c timer.c update_frame.c \
-           update_player.c state.c
+           update_player.c play_jump_sound.c handle_player_collision_original.c \
+           state.c
 OBJECTS := $(patsubst %.c,$(OBJDIR)/%.o,$(SOURCES))
 
 LIB       := $(BUILDDIR)/libicytower.a

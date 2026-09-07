@@ -3,8 +3,8 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 15:01:20 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
+ * Generated: 2026-09-07 15:56:02 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, play_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Addresses wrapped with --mem-macro: PF_MEM(...)
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
@@ -188,8 +188,7 @@
 #define jcLabels (*(char *(*)[5])PF_MEM(0x4bdbc0))
 /* jumpSequence  VA=0x4fa728  type=Tgd_jump_sequence  cu=F:\projects\icytower\trunk\source\main.c */
 #define jumpSequence (*(Tgd_jump_sequence *)PF_MEM(0x4fa728))
-/* jump_sound  VA=0x4dd2b0  type=SAMPLE *[3]  cu=F:\projects\icytower\trunk\source\main.c */
-#define jump_sound (*(SAMPLE *(*)[3])PF_MEM(0x4dd2b0))
+/* SKIPPED: "jump_sound" collides with a struct/union member name elsewhere in scope -- a plain #define would also rewrite that member access (e.g. `x.jump_sound`); see MEMBER_ACCESS_COLLISIONS in gen_bindings.py and PROMOTIONS.md batch 7 */
 /* lastFocus  VA=0x4bc024  type=int  cu=F:\projects\icytower\trunk\source\main.c */
 #define lastFocus (*(int *)PF_MEM(0x4bc024))
 /* lastMouseB  VA=0x4dd268  type=int  cu=F:\projects\icytower\trunk\source\main.c */
@@ -670,9 +669,7 @@
 /* handle_player_collision_old  VA=0x407fd8  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void handle_player_collision_old(int, int) */
 #define handle_player_collision_old ((PFN_handle_player_collision_old)PF_MEM(0x407fd8))
-/* handle_player_collision_original  VA=0x407e10  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void handle_player_collision_original(int, int) */
-#define handle_player_collision_original ((PFN_handle_player_collision_original)PF_MEM(0x407e10))
+/* excluded by --exclude (compiled natively): handle_player_collision_original */
 /* handle_player_collision_vector  VA=0x408d08  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void handle_player_collision_vector(int, int) */
 #define handle_player_collision_vector ((PFN_handle_player_collision_vector)PF_MEM(0x408d08))
@@ -828,18 +825,14 @@
 /* play  VA=0x411a00  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int play() */
 #define play ((PFN_play)PF_MEM(0x411a00))
-/* play_jump_sound  VA=0x406ecc  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void play_jump_sound(Tplayer *) */
-#define play_jump_sound ((PFN_play_jump_sound)PF_MEM(0x406ecc))
+/* excluded by --exclude (compiled natively): play_jump_sound */
 /* play_menu_move  VA=0x406ea4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void play_menu_move() */
 #define play_menu_move ((PFN_play_menu_move)PF_MEM(0x406ea4))
 /* play_menu_select  VA=0x406e7c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void play_menu_select() */
 #define play_menu_select ((PFN_play_menu_select)PF_MEM(0x406e7c))
-/* play_sound  VA=0x406da4  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void play_sound(SAMPLE *, int, int) */
-#define play_sound ((PFN_play_sound)PF_MEM(0x406da4))
+/* excluded by --exclude (compiled natively): play_sound */
 /* poll_control  VA=0x401958  cu=F:\projects\icytower\trunk\source\control.c */
 /* prototype: void poll_control(Tcontrol *, int) */
 #define poll_control ((PFN_poll_control)PF_MEM(0x401958))
@@ -975,9 +968,7 @@
 /* startMenuMusic  VA=0x406d68  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void startMenuMusic() */
 #define startMenuMusic ((PFN_startMenuMusic)PF_MEM(0x406d68))
-/* start_reward  VA=0x407c38  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int start_reward(int) */
-#define start_reward ((PFN_start_reward)PF_MEM(0x407c38))
+/* excluded by --exclude (compiled natively): start_reward */
 /* stopGameMusic  VA=0x40caf4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void stopGameMusic() */
 #define stopGameMusic ((PFN_stopGameMusic)PF_MEM(0x40caf4))

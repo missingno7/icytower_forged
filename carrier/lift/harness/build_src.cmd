@@ -14,8 +14,8 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 if errorlevel 1 ( echo FAILED: no MSVC x86 environment & exit /b 1 )
 if not exist obj_src mkdir obj_src
 cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\..\gen /I. /I..\..\..\src\icytower ^
-   /FIpf_harness_mem.h /FIpf_bindings_harness.h /FIpf_harness_rand.h ^
-   src_check.c harness_rand.c ..\..\..\src\icytower\update_frame.c ..\..\..\src\icytower\is_solid.c ^
+   /FIpf_harness_mem.h /FIpf_bindings_harness.h /FIpf_harness_rand.h /FIpf_harness_calltrace.h ^
+   src_check.c harness_rand.c call_trace_stubs.c ..\..\..\src\icytower\update_frame.c ..\..\..\src\icytower\is_solid.c ^
    ..\..\..\src\icytower\jump_player.c ..\..\..\src\icytower\map.c ^
    ..\..\..\src\icytower\add_combo.c ..\..\..\src\icytower\add_jump_sequence.c ^
    ..\..\..\src\icytower\line_intersect.c ^
@@ -24,6 +24,8 @@ cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\..\gen /I. /I..\..\..\src\icyt
    ..\..\..\src\icytower\main_state.c ^
    ..\..\..\src\icytower\new_rand.c ..\..\..\src\icytower\ok_to_play.c ^
    ..\..\..\src\icytower\reset_player.c ..\..\..\src\icytower\update_player.c ^
+   ..\..\..\src\icytower\play_jump_sound.c ..\..\..\src\icytower\handle_player_collision_original.c ^
+   ..\..\..\src\icytower\start_reward.c ^
    /Fe:src_check.exe /Fo:obj_src\
 if errorlevel 1 ( echo FAILED & exit /b 1 )
 echo OK: harness\src_check.exe
