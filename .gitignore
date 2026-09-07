@@ -33,3 +33,11 @@ artifacts/repro_backup_*/
 artifacts/*.bin
 artifacts/dump_digest*.txt
 artifacts/.repro_backup_path.txt
+artifacts/test_digest*.txt
+artifacts/*.stdout
+artifacts_task/
+__pycache__/
+carrier/obj_build.log
+artifacts/mem_diff_*.txt
+artifacts/game_globals_*.txt
+replays/*.replay.digest
