@@ -41,3 +41,4 @@ carrier/obj_build.log
 artifacts/mem_diff_*.txt
 artifacts/game_globals_*.txt
 replays/*.replay.digest
+artifacts/assets_extract/

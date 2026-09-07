@@ -1,0 +1,6696 @@
+{
+ "schema": "portforge-asset-manifest/1",
+ "target": "Icy Tower 1.5.1 (icytower15.exe)",
+ "generated": "2026-09-07",
+ "binding_model": {
+  "EMBEDDED_ORIGINAL": "carrier build - load_asset(ID) returns the original bytes at the original location (exe VA, or the datafile the game already loaded); zero copying",
+  "EXTRACTED_FILE": "standalone build - load_asset(ID) opens assets/<clean_path>"
+ },
+ "assets": [
+  {
+   "id": "exe/rsrc/1",
+   "kind": "icon",
+   "origin": {
+    "mode": "EXE_RSRC",
+    "va": "0x005170bc",
+    "size": 2216
+   },
+   "format": "win32 resource (RT_ICON / RT_GROUP_ICON)",
+   "sha256": "6ffc805ab7af80415c67e5f566273321d4a97e54f00018de01d251b45f15075b",
+   "extract": "verbatim -> assets/icon/1.ico",
+   "referenced_by": "Allegro win_set_window / LoadIcon by name \"ALLEGRO_ICON\""
+  },
+  {
+   "id": "exe/rsrc/ALLEGRO_ICON",
+   "kind": "icon",
+   "origin": {
+    "mode": "EXE_RSRC",
+    "va": "0x00517964",
+    "size": 20
+   },
+   "format": "win32 resource (RT_ICON / RT_GROUP_ICON)",
+   "sha256": "494e4fd717fa1ee0c5c7bb3b4e28fdab4b7f6e95b4f9865f5ab86f03f62ae62c",
+   "extract": "verbatim -> assets/icon/ALLEGRO_ICON.ico",
+   "referenced_by": "Allegro win_set_window / LoadIcon by name \"ALLEGRO_ICON\""
+  },
+  {
+   "id": "exe/table/pink",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc000",
+    "size": 4,
+    "section": ".data",
+    "cu": "custom.c"
+   },
+   "format": "RGB",
+   "sha256": "3554726ba0f5404f9a0d3f318041d420f7dc94a4088a548a8c2148bcfd8bb49a",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/gFLDADMutex",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc004",
+    "size": 4,
+    "section": ".data",
+    "cu": "fld_adspot.c"
+   },
+   "format": "pthread_mutex_t",
+   "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/_png_screen_gamma",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc008",
+    "size": 8,
+    "section": ".data",
+    "cu": "loadpng.c"
+   },
+   "format": "double",
+   "sha256": "e77817b649821c634355a917817c1224a360514b1244fe09e832bac4e8ea4440",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/_png_compression_level",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc010",
+    "size": 4,
+    "section": ".data",
+    "cu": "loadpng.c"
+   },
+   "format": "int",
+   "sha256": "9f076b7eb7fdc0311cd3208cdbbebbf8014dd3a05e35191c96947b358a362b40",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/hasFocus",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc020",
+    "size": 4,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "int",
+   "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/lastFocus",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc024",
+    "size": 4,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "int",
+   "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/window",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc028",
+    "size": 4,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "int",
+   "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/hisc_names",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc040",
+    "size": 60,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "char*[]",
+   "sha256": "7e6c145c168d6e8112389ec0ddc7eaf07834545572053cdab2223d921136dab6",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/category_names",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc080",
+    "size": 60,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "char*[]",
+   "sha256": "80fd66f36472604e14bf6bf8430fbe164fb19bf0301943293889eb2bd32968a5",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/hints",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc0c0",
+    "size": 180,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "char*[]",
+   "sha256": "88eff2e390c153cac8a259e11c306fc10094dd23f571578e4423fbe7651d543d",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/checkMusicVoiceID",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc174",
+    "size": 4,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "int",
+   "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/gameMusicVoiceID",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc178",
+    "size": 4,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "int",
+   "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/start_speeds",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc17c",
+    "size": 24,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "int[]",
+   "sha256": "caa894f8cbb8dc2ff3ed187413a26e53b37fce43e7f0f09baa4fe14884322de8",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/version_str",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc194",
+    "size": 4,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "char*",
+   "sha256": "66f777fe24cb6e492d5ddb5f2083ce40c0230a966326ba75e66647d6aee6049b",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/snd_volume_slider",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc198",
+    "size": 16,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu_slider",
+   "sha256": "82f864d448a6f56c0baccff485b7c4d1c3e94d7eb01cd6073e8ef1e6ed245fdb",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/msc_volume_slider",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc1a8",
+    "size": 16,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu_slider",
+   "sha256": "82f864d448a6f56c0baccff485b7c4d1c3e94d7eb01cd6073e8ef1e6ed245fdb",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/ctrl_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc1c0",
+    "size": 888,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "8b01ef214338c3744add25bac6d589c1e9f89a727df749dda462adf62fb4de86",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/snd_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc540",
+    "size": 444,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "5645f1eac37270ebc6992c2eb5d9e5eaa8d73106e205baee5c2621f9edf005ee",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/gfx_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bc700",
+    "size": 740,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "b60755e034740eaaacdbb09b89c07dc0a4ceeaf261d0f0ec0dcd825b0211904f",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/game_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bca00",
+    "size": 148,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "fdb51b94df93de75a0cda8cadaabdf57c55306faae0f924ec5175e7f511df87f",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/profile_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bcaa0",
+    "size": 444,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "5e7a4946e084af7571cd15cba6241de02de5237bd148c5e2d1b793c62df621b8",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/opt_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bcc60",
+    "size": 592,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "2bb8ed8283813728a98c9364333909c37706063ca8f133c690eedd633ec6675f",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/custom_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bcec0",
+    "size": 740,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "972cb86bae97285abfbc0123ca678d7f9036c9d5b8698dfd1faedcf69338f79e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/play_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bd1c0",
+    "size": 444,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "0dabec1782e61d3b02357adbe8c3657d5d0bc629d1a7645e20480f542bbdf908",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/main_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bd380",
+    "size": 1036,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "5e1021247c1db8142687556bf401d3af3385ec5c8f60ba50e8d9099a68e8c11e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/replay_menu",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bd7a0",
+    "size": 740,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "Tmenu[]",
+   "sha256": "356337d8a0524c5d8bbb9a14044101caf4a06a27e40ccfc9b5f9d08a47cce05e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/scroller_greetings",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdaa0",
+    "size": 156,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "char[]",
+   "sha256": "944478065203553448d580ef32c7ed8e96f62f3fd6dcd9425cc57af1a567cf9e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/init_string",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdb3c",
+    "size": 7,
+    "section": ".data",
+    "cu": "main.c"
+   },
+   "format": "char[]",
+   "sha256": "d486d926ac0c084cfdc75a28eac2fbea3f05261f1f81a76b13552efd7a74bd05",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/floor_size_modifiers",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdb60",
+    "size": 20,
+    "section": ".data",
+    "cu": "map.c"
+   },
+   "format": "int[]",
+   "sha256": "2b995b8d532b5e0eba887372bf70cfdd51ba05049e4deb060c99d84f6a95ee08",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/max_speed",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdb80",
+    "size": 40,
+    "section": ".data",
+    "cu": "player.c"
+   },
+   "format": "double[]",
+   "sha256": "45bd156f37f742a21ea4971a7f36d18b2421c0c1b3ccfad0220e88c141ed04de",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/gravity_modifier",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdba8",
+    "size": 24,
+    "section": ".data",
+    "cu": "player.c"
+   },
+   "format": "double[]",
+   "sha256": "cb7563d8818b7ca6c8519f400eb6f1efb8e89b185b35e08bd4a2b0fef1898ebf",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/jcLabels",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdbc0",
+    "size": 20,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "char*[]",
+   "sha256": "d50351554a8cffb0327c57a0992d34d041eaebe52e96125159387fc32e602da3",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/rankLables",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdbe0",
+    "size": 48,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "char*[]",
+   "sha256": "8a88eb5b9054f5167b9e2c74c92e9c2fefc98370bc14d502ca6292b4e7796827",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/rankFloors",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdc20",
+    "size": 48,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "int[]",
+   "sha256": "c5e2517556ba820ac98fa16c3a5d4ff025bc4f16d1bb84e17c87411a0a9928c7",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/rankCombos",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdc60",
+    "size": 48,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "int[]",
+   "sha256": "e5b3ad67f81b0c3a8f4bcecd6a8bdee07453e65d50f049fbed2d194dae28fd74",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/rankCCCs",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdca0",
+    "size": 48,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "int[]",
+   "sha256": "dbe3eb894bc00e904d671635238c6634efd02f11523d894a025f48acdf1d3660",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/rankNMLs",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdce0",
+    "size": 48,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "int[]",
+   "sha256": "a45411459fa9fe02435a48e1c2ea0e267852f0197a012dd895419869174e00ab",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/comboNames",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdd20",
+    "size": 40,
+    "section": ".data",
+    "cu": "profile.c"
+   },
+   "format": "char*[]",
+   "sha256": "da312725b5d6d3ac7cefde347e3f16119fae26be06d517cf5d39038c13e2570a",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/sort_method",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdd60",
+    "size": 4,
+    "section": ".data",
+    "cu": "replay.c"
+   },
+   "format": "int",
+   "sha256": "67abdd721024f0ff4e0b3f4c2fc13bc5bad42d0b7851d456d88d203d15aaa450",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/full_weekdays",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdd80",
+    "size": 32,
+    "section": ".data",
+    "cu": "strptime.c"
+   },
+   "format": "const char*[]",
+   "sha256": "fbcaafc600d5642cf8d0e4d8327ee93c62e4817fc4b7bc3e8d5d533c8fc8aca2",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/abb_weekdays",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bdda0",
+    "size": 32,
+    "section": ".data",
+    "cu": "strptime.c"
+   },
+   "format": "const char*[]",
+   "sha256": "e82b871871595029f5b26b61fef5f3e98d1ddc89b0e3de2a4f22ab6507b6659f",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/full_month",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bddc0",
+    "size": 52,
+    "section": ".data",
+    "cu": "strptime.c"
+   },
+   "format": "const char*[]",
+   "sha256": "3994adb94ed0ec1828495ca93a5a12a1af425d7e7e61126431f26b30ef881efd",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/abb_month",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bde00",
+    "size": 52,
+    "section": ".data",
+    "cu": "strptime.c"
+   },
+   "format": "const char*[]",
+   "sha256": "7381ccbe213e72279c9ec0cf2010e4e25322116aa93d58cca07e5d71835bcf50",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/ampm",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004bde34",
+    "size": 12,
+    "section": ".data",
+    "cu": "strptime.c"
+   },
+   "format": "const char*[]",
+   "sha256": "f12ffd6cf8f7f645862a5104089cfb2e6a20c614219a6b0e33740d9f609de502",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/_vsync_speed",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004ccba4",
+    "size": 4,
+    "section": ".data",
+    "cu": "timer.c"
+   },
+   "format": "long int",
+   "sha256": "687b6668b613246f88a7096f3b38898294745fe26c89bed468d6fa97745cdad6",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/_retrace_hpp_value",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004ccba8",
+    "size": 4,
+    "section": ".data",
+    "cu": "timer.c"
+   },
+   "format": "volatile int",
+   "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/REPLAY_HEADER",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004d7dd0",
+    "size": 6,
+    "section": ".rdata",
+    "cu": "replay.c"
+   },
+   "format": "const char[]",
+   "sha256": "8b19e6a8024ca29f1b2fdb7169bdfc1c1b08140650b8dc4eaaec350ffcaf4c04",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "exe/table/tm_year_base",
+   "kind": "compiled_table",
+   "origin": {
+    "mode": "EXE_DATA",
+    "va": "0x004d80cc",
+    "size": 4,
+    "section": ".rdata",
+    "cu": "strptime.c"
+   },
+   "format": "const int",
+   "sha256": "6f42b287a9742df51e820aa2f974ab1393d36e9eada2a7c87b697e05d31452e5",
+   "extract": "generator emits a C initialiser into src/; no file",
+   "referenced_by": "the C symbol name (already symbolic)"
+  },
+  {
+   "id": "data/AAAPAL",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 0,
+    "object_name": "AAAPAL",
+    "type_fourcc": "PAL ",
+    "unpacked_offset": 38,
+    "size": 1024
+   },
+   "format": "allegro_palette",
+   "geometry": null,
+   "sha256": "dcb62a16df70c6a77e1e3581dd40b460da66987c5396800345fea8695ca8cbc5",
+   "extract": "256x(r,g,b,filler) 6-bit -> .pal text or verbatim .pal",
+   "clean_path": "assets/data/aaapal.pal",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "data/BGTILE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 1,
+    "object_name": "BGTILE",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1220,
+    "size": 139782
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 546,
+    "h": 128
+   },
+   "sha256": "f60daf3dd95921346f54f5a98329a2e3abe3774a8a722ee5ad56a00233015ce6",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bgtile.png",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "data/BGTILE2",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 2,
+    "object_name": "BGTILE2",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 141162,
+    "size": 139782
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 546,
+    "h": 128
+   },
+   "sha256": "7811ba19ceea290dff1745f1be1a39033e79929be1102476ec256f1a76aa96da",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bgtile2.png",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "data/BGTILE3",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 3,
+    "object_name": "BGTILE3",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 281104,
+    "size": 139782
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 546,
+    "h": 128
+   },
+   "sha256": "fa8cc5997e21014ff8f475d69d968e1b4d97f1f6585a3b1d4ea0ddeebbaa15ca",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bgtile3.png",
+   "referenced_by": "numeric index data[3] compiled into .text"
+  },
+  {
+   "id": "data/BGTILE4",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 4,
+    "object_name": "BGTILE4",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 421046,
+    "size": 139782
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 546,
+    "h": 128
+   },
+   "sha256": "fd87d940acebc17cd717200e0d85e174a200c66b1511028b1b9cb5000d41447d",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bgtile4.png",
+   "referenced_by": "numeric index data[4] compiled into .text"
+  },
+  {
+   "id": "data/BGTILE5",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 5,
+    "object_name": "BGTILE5",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 560988,
+    "size": 139782
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 546,
+    "h": 128
+   },
+   "sha256": "6e818b5866d2e51d3cc4ef0ed64e6ade2e6273ad47b2eea0a0d3970adec32dc5",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bgtile5.png",
+   "referenced_by": "numeric index data[5] compiled into .text"
+  },
+  {
+   "id": "data/BT_ESC",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 6,
+    "object_name": "BT_ESC",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 700936,
+    "size": 3474
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 34,
+    "h": 34
+   },
+   "sha256": "5f69c28042f42b0037656d211fa98100fc2cc8bc508d8a4cdbef4bcfb353abc9",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bt_esc.png",
+   "referenced_by": "numeric index data[6] compiled into .text"
+  },
+  {
+   "id": "data/BT_NO",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 7,
+    "object_name": "BT_NO",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 704574,
+    "size": 2726
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 40,
+    "h": 34
+   },
+   "sha256": "08c7e10db7ec92d14eddeddee3056bf6c62907da3218f10ce0db59ad598f7cf0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bt_no.png",
+   "referenced_by": "numeric index data[7] compiled into .text"
+  },
+  {
+   "id": "data/BT_NO_2",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 8,
+    "object_name": "BT_NO_2",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 707468,
+    "size": 4086
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 40,
+    "h": 34
+   },
+   "sha256": "8aa55a44077fe04b1cda4a0a98fe72dc6c359cbfc33ce62a56066cf3e0c0527a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bt_no_2.png",
+   "referenced_by": "numeric index data[8] compiled into .text"
+  },
+  {
+   "id": "data/BT_UP_DN",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 9,
+    "object_name": "BT_UP_DN",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 711723,
+    "size": 9606
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 40,
+    "h": 80
+   },
+   "sha256": "fa489c84bda6b84c448905588adbd17a3f76446c435b93f2588e488d5312d58f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bt_up_dn.png",
+   "referenced_by": "numeric index data[9] compiled into .text"
+  },
+  {
+   "id": "data/BT_YES",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 10,
+    "object_name": "BT_YES",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 721495,
+    "size": 2318
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 34,
+    "h": 34
+   },
+   "sha256": "d47470e50c58697de8c480e0180e27874e9be04c1ff228510d9823d4e8439895",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bt_yes.png",
+   "referenced_by": "numeric index data[10] compiled into .text"
+  },
+  {
+   "id": "data/BT_YES_2",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 11,
+    "object_name": "BT_YES_2",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 723983,
+    "size": 3474
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 34,
+    "h": 34
+   },
+   "sha256": "a96982b5e57e809da4232fb9d92363ec8a0cfaa8c86a90c8bbccb26f780384fe",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/bt_yes_2.png",
+   "referenced_by": "numeric index data[11] compiled into .text"
+  },
+  {
+   "id": "data/CLOCK",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 12,
+    "object_name": "CLOCK",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 727613,
+    "size": 12270
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 73,
+    "h": 84
+   },
+   "sha256": "a5dd3d33daa49bc3b63dec520017eda214c941523e5fa33a7f10dc9b54331660",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/clock.png",
+   "referenced_by": "numeric index data[12] compiled into .text"
+  },
+  {
+   "id": "data/CLOCK_HAND",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 13,
+    "object_name": "CLOCK_HAND",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 740049,
+    "size": 2012
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 17,
+    "h": 59
+   },
+   "sha256": "96a44cdc67d9e7262fecfbdceefd8ce0ed1cefd26418d7c336c75be775846a0a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/clock_hand.png",
+   "referenced_by": "numeric index data[13] compiled into .text"
+  },
+  {
+   "id": "data/COMBO_COUNT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 14,
+    "object_name": "COMBO_COUNT",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 742232,
+    "size": 15406
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 100,
+    "h": 77
+   },
+   "sha256": "012fe0723f79f7d7242b88e3dd21f8b32fc089e98b5c1fde608954d5909bc9ac",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/combo_count.png",
+   "referenced_by": "numeric index data[14] compiled into .text"
+  },
+  {
+   "id": "data/COMBO_LIQUID",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 15,
+    "object_name": "COMBO_LIQUID",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 757811,
+    "size": 3206
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 100
+   },
+   "sha256": "319d414c4c5bfb81141d446900dc5e68a5bc2df127a2e6e14b4e5e0798508fd6",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/combo_liquid.png",
+   "referenced_by": "numeric index data[15] compiled into .text"
+  },
+  {
+   "id": "data/COMBO_METER",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 16,
+    "object_name": "COMBO_METER",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 761185,
+    "size": 10486
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 40,
+    "h": 131
+   },
+   "sha256": "43a4b75fe470ed940aa3b80e0d14dcc0ff74ea90fbfae2a891589e5ba6429f98",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/combo_meter.png",
+   "referenced_by": "numeric index data[16] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 17,
+    "object_name": "FLOOR01",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 771832,
+    "size": 1560
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 37
+   },
+   "sha256": "3625a33af31480825686b84a73c60c5da16df5b97ea06c7dc48a77e2e6247813",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor01.png",
+   "referenced_by": "numeric index data[17] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 18,
+    "object_name": "FLOOR02",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 773553,
+    "size": 1190
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 37
+   },
+   "sha256": "eed30a2e94b570a2cb90621534529c009c2094c6848dfdcc49b16fcb78bfefeb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor02.png",
+   "referenced_by": "numeric index data[18] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 19,
+    "object_name": "FLOOR03",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 774904,
+    "size": 1560
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 37
+   },
+   "sha256": "9edb91087f0cd5dafe3481ab83f8136ece06e4bcb109a5920d169257cbadc1a7",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor03.png",
+   "referenced_by": "numeric index data[19] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 20,
+    "object_name": "FLOOR04",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 776625,
+    "size": 1560
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 37
+   },
+   "sha256": "aee8c7773bf894099541201f3979e9f53711d3e73647277ecbc4106dadf98468",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor04.png",
+   "referenced_by": "numeric index data[20] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 21,
+    "object_name": "FLOOR05",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 778346,
+    "size": 1190
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 37
+   },
+   "sha256": "528265b5acb24c77b76090e9c9a46466543cc309f78762aed05243704b642693",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor05.png",
+   "referenced_by": "numeric index data[21] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 22,
+    "object_name": "FLOOR06",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 779697,
+    "size": 1560
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 37
+   },
+   "sha256": "4e3727ed5958c5c401c1c9fc62ef68558a4aee7c58880f69a5e5140a71ddf4d5",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor06.png",
+   "referenced_by": "numeric index data[22] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 23,
+    "object_name": "FLOOR07",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 781418,
+    "size": 888
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 21
+   },
+   "sha256": "de7e71d6cfef458aecbcc45088e724d427bfb6897088bebabac6620aa5d42792",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor07.png",
+   "referenced_by": "numeric index data[23] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 24,
+    "object_name": "FLOOR08",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 782467,
+    "size": 614
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 19
+   },
+   "sha256": "1cfec636f8117728ccd4889bc27518c7d4799e66eb99bafc7bdf7ee0db9ac2b3",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor08.png",
+   "referenced_by": "numeric index data[24] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 25,
+    "object_name": "FLOOR09",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 783242,
+    "size": 888
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 21
+   },
+   "sha256": "12f23c1447eba4170e2e014d648824a6e8b69dcc8fc5be5539855c84c35b83de",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor09.png",
+   "referenced_by": "numeric index data[25] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR10",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 26,
+    "object_name": "FLOOR10",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 784291,
+    "size": 762
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 18
+   },
+   "sha256": "ae0c6f17852251512e124f56f0fd2dc6e556ea7179e398ef0b4e1f96a0c56cd7",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor10.png",
+   "referenced_by": "numeric index data[26] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR11",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 27,
+    "object_name": "FLOOR11",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 785214,
+    "size": 582
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 18
+   },
+   "sha256": "6fbecd61bf320343f837a7546c77de3bde877cf8f00e681ed3834309a3a0adc6",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor11.png",
+   "referenced_by": "numeric index data[27] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR12",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 28,
+    "object_name": "FLOOR12",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 785957,
+    "size": 762
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 18
+   },
+   "sha256": "260ba7ff88c6befff03c287383cdc6fc4649bb1eddf144456fcdc2da45bfd490",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor12.png",
+   "referenced_by": "numeric index data[28] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR12a",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 29,
+    "object_name": "FLOOR12a",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 786881,
+    "size": 1018
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 23
+   },
+   "sha256": "5f25bb1d170160ef1f11b00f3e3df753e82553529382478c62258af75445218d",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor12a.png",
+   "referenced_by": "numeric index data[29] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR12b",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 30,
+    "object_name": "FLOOR12b",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 788061,
+    "size": 710
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 22
+   },
+   "sha256": "1784ee5229e61bd1e74c7a3892cf1787216a77caa86d45dce251980a56850fda",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor12b.png",
+   "referenced_by": "numeric index data[30] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR12c",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 31,
+    "object_name": "FLOOR12c",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 788933,
+    "size": 930
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 21
+   },
+   "sha256": "4eaf2b3f81c723544cb9aa1c6f0fb428e16d55d178e75585eb519ac1afb64c0f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor12c.png",
+   "referenced_by": "numeric index data[31] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR13",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 32,
+    "object_name": "FLOOR13",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 790024,
+    "size": 930
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 21
+   },
+   "sha256": "3b3a636b34ec5dc7a3c3a6c9026108ba0d4c4e982f83d3052331ed088e2bdb27",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor13.png",
+   "referenced_by": "numeric index data[32] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR14",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 33,
+    "object_name": "FLOOR14",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 791115,
+    "size": 678
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 21
+   },
+   "sha256": "8556754cd177b5537542f52c69aabf41ec79ca9f706cfbeaa5c2b620ce2075d8",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor14.png",
+   "referenced_by": "numeric index data[33] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR15",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 34,
+    "object_name": "FLOOR15",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 791954,
+    "size": 930
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 21
+   },
+   "sha256": "f6ffd032e960dd3e7ac040a4134ef491e247d5bd33ebf5bd6e716802680d55bd",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor15.png",
+   "referenced_by": "numeric index data[34] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR16",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 35,
+    "object_name": "FLOOR16",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 793045,
+    "size": 1062
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 24
+   },
+   "sha256": "07658d5429d58cec0662f98ecf8487e05d403fc70f04e48b7201f6e120624df2",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor16.png",
+   "referenced_by": "numeric index data[35] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR17",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 36,
+    "object_name": "FLOOR17",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 794268,
+    "size": 774
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 24
+   },
+   "sha256": "21e5ae5eae6dde0544d9bb359bf8f06c907ed30a4b02e4906cd960f9db4be486",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor17.png",
+   "referenced_by": "numeric index data[36] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR18",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 37,
+    "object_name": "FLOOR18",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 795203,
+    "size": 1158
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 24,
+    "h": 24
+   },
+   "sha256": "331a2e9d3f113532ef923b3fa426ef043fe5119e10d2fd36ab80c729ddf8f7a8",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor18.png",
+   "referenced_by": "numeric index data[37] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR18a",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 38,
+    "object_name": "FLOOR18a",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 796523,
+    "size": 930
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 22
+   },
+   "sha256": "d4012c73660214e9d944adb98815464c7af9be3941ee110b58f59bfe169a00fb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor18a.png",
+   "referenced_by": "numeric index data[38] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR18b",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 39,
+    "object_name": "FLOOR18b",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 797615,
+    "size": 710
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 22
+   },
+   "sha256": "1f066263cd81874f705689061c21a36ef391717f4beffc8f8a57a8e28099aba8",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor18b.png",
+   "referenced_by": "numeric index data[39] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR18c",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 40,
+    "object_name": "FLOOR18c",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 798487,
+    "size": 930
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 21,
+    "h": 22
+   },
+   "sha256": "3fb55e67591a976a445897a9247b099d5684ba82c9a4d7a9fd7a104cf82d1b37",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor18c.png",
+   "referenced_by": "numeric index data[40] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR19",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 41,
+    "object_name": "FLOOR19",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 799578,
+    "size": 1238
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 28
+   },
+   "sha256": "7325742010c1c24954cdee819005eae757cfad8b582deaad2f348e80714e12d0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor19.png",
+   "referenced_by": "numeric index data[41] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR20",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 42,
+    "object_name": "FLOOR20",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 800977,
+    "size": 902
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 28
+   },
+   "sha256": "ed2de579ef5a707b205a3e498c976089d77bafb3e1bc0bda423a6459d9c21167",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor20.png",
+   "referenced_by": "numeric index data[42] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR21",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 43,
+    "object_name": "FLOOR21",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 802040,
+    "size": 1238
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 28
+   },
+   "sha256": "104ef686d828e6dbb1e9560441320d126435317ade97daf7b0b27b0d6f1ff390",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor21.png",
+   "referenced_by": "numeric index data[43] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR22",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 44,
+    "object_name": "FLOOR22",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 803439,
+    "size": 1062
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 24
+   },
+   "sha256": "6f0a64afa8abf4e7c3749f00d9dfa54541c1bad1c3fc1d51e1702375f5c0f224",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor22.png",
+   "referenced_by": "numeric index data[44] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR23",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 45,
+    "object_name": "FLOOR23",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 804662,
+    "size": 582
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 18
+   },
+   "sha256": "408ef0f182691c2f63f330250e871fdc0b74796a7a1115b0d1b65747f64e89f5",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor23.png",
+   "referenced_by": "numeric index data[45] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR24",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 46,
+    "object_name": "FLOOR24",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 805405,
+    "size": 1062
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 24
+   },
+   "sha256": "f3ca32ed55481c92a9c282d2751a18b9a80e58866d7bf504746c0990d04a98c0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor24.png",
+   "referenced_by": "numeric index data[46] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR25",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 47,
+    "object_name": "FLOOR25",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 806628,
+    "size": 666
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 15
+   },
+   "sha256": "a93ce9b42c5695025b4c8c8a7a78919aa8cc91909464ce0e19816f6f8c820d24",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor25.png",
+   "referenced_by": "numeric index data[47] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR26",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 48,
+    "object_name": "FLOOR26",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 807455,
+    "size": 486
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 16,
+    "h": 15
+   },
+   "sha256": "d073f99b46689ccebc7e92a956f528606334edc18ea2ec787347fcb960dbcc25",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor26.png",
+   "referenced_by": "numeric index data[48] compiled into .text"
+  },
+  {
+   "id": "data/FLOOR27",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 49,
+    "object_name": "FLOOR27",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 808102,
+    "size": 666
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 15
+   },
+   "sha256": "ec0c4eef0c708774528c3b1ac0d9851bbb0accc658fc83dcd603a385d5cafac1",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/floor27.png",
+   "referenced_by": "numeric index data[49] compiled into .text"
+  },
+  {
+   "id": "data/FONT_BIG_WHITE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 50,
+    "object_name": "FONT_BIG_WHITE",
+    "type_fourcc": "FONT",
+    "unpacked_offset": 808899,
+    "size": 97546
+   },
+   "format": "allegro_font",
+   "geometry": null,
+   "sha256": "d113913d5eeef125febc3d67d2f603c11060f082c9a08a24528ed94e6fddec0f",
+   "extract": "keep payload (.alfont) + manifest; a normal format needs a glyph sheet + metrics",
+   "clean_path": "assets/data/font_big_white.alfont",
+   "referenced_by": "numeric index data[50] compiled into .text"
+  },
+  {
+   "id": "data/FONT_MED_BLACK",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 51,
+    "object_name": "FONT_MED_BLACK",
+    "type_fourcc": "FONT",
+    "unpacked_offset": 906576,
+    "size": 41977
+   },
+   "format": "allegro_font",
+   "geometry": null,
+   "sha256": "94ce2966fc6bdc41b0450e59e6667510fec103fc216caa357f940b3349a6cb63",
+   "extract": "keep payload (.alfont) + manifest; a normal format needs a glyph sheet + metrics",
+   "clean_path": "assets/data/font_med_black.alfont",
+   "referenced_by": "numeric index data[51] compiled into .text"
+  },
+  {
+   "id": "data/FONT_MED_WHITE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 52,
+    "object_name": "FONT_MED_WHITE",
+    "type_fourcc": "FONT",
+    "unpacked_offset": 948684,
+    "size": 52647
+   },
+   "format": "allegro_font",
+   "geometry": null,
+   "sha256": "cbbaeaf0e63f306deb85926f4d315a74d862264b23132c8f2b3d9ad1e6e4b564",
+   "extract": "keep payload (.alfont) + manifest; a normal format needs a glyph sheet + metrics",
+   "clean_path": "assets/data/font_med_white.alfont",
+   "referenced_by": "numeric index data[52] compiled into .text"
+  },
+  {
+   "id": "data/FONT_MONO",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 53,
+    "object_name": "FONT_MONO",
+    "type_fourcc": "FONT",
+    "unpacked_offset": 1001451,
+    "size": 1549
+   },
+   "format": "allegro_font",
+   "geometry": null,
+   "sha256": "10e6623628224fb4be09dde9fedcfc5b90868c06da0c86a9810ff4a57f9b4076",
+   "extract": "keep payload (.alfont) + manifest; a normal format needs a glyph sheet + metrics",
+   "clean_path": "assets/data/font_mono.alfont",
+   "referenced_by": "numeric index data[53] compiled into .text"
+  },
+  {
+   "id": "data/FONT_SMALL",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 54,
+    "object_name": "FONT_SMALL",
+    "type_fourcc": "FONT",
+    "unpacked_offset": 1003114,
+    "size": 2395
+   },
+   "format": "allegro_font",
+   "geometry": null,
+   "sha256": "b514e0697bfc53ac3b8c806d94180400d7f55d0787d64c754e9aaef74cf334ac",
+   "extract": "keep payload (.alfont) + manifest; a normal format needs a glyph sheet + metrics",
+   "clean_path": "assets/data/font_small.alfont",
+   "referenced_by": "numeric index data[54] compiled into .text"
+  },
+  {
+   "id": "data/GAMEOVER",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 55,
+    "object_name": "GAMEOVER",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1005676,
+    "size": 76166
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 448,
+    "h": 85
+   },
+   "sha256": "676a56a38dc0bd79b702dbd5943b91ea68f010f0e0c456aac83e1cc976991c76",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/gameover.png",
+   "referenced_by": "numeric index data[55] compiled into .text"
+  },
+  {
+   "id": "data/GOONLINE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 56,
+    "object_name": "GOONLINE",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1082012,
+    "size": 168006
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 280,
+    "h": 200
+   },
+   "sha256": "dc03524397b1740d78b80cf3dedc191a2622a5ef4a7f65ef9ee40bd0575d73a1",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/goonline.png",
+   "referenced_by": "numeric index data[56] compiled into .text"
+  },
+  {
+   "id": "data/GOONLINE2",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 57,
+    "object_name": "GOONLINE2",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1250186,
+    "size": 168006
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 280,
+    "h": 200
+   },
+   "sha256": "bdb04ef075b1b807e8df965f55131a797477b6fe027d59412ad74402e8fe40eb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/goonline2.png",
+   "referenced_by": "numeric index data[57] compiled into .text"
+  },
+  {
+   "id": "data/HEROFACE000",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 58,
+    "object_name": "HEROFACE000",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1418360,
+    "size": 116606
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 220,
+    "h": 265
+   },
+   "sha256": "4993726c10843c1ceb15c774c8f95a7dec696e3724b179c9b189e21ee5eeaed5",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/heroface000.png",
+   "referenced_by": "numeric index data[58] compiled into .text"
+  },
+  {
+   "id": "data/HEROFACE001",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 59,
+    "object_name": "HEROFACE001",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1535134,
+    "size": 116606
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 220,
+    "h": 265
+   },
+   "sha256": "38df2754c8d7233fd089558cfcaaee231fad2349d4a332fcd83cb6d462ec7726",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/heroface001.png",
+   "referenced_by": "numeric index data[59] compiled into .text"
+  },
+  {
+   "id": "data/HEROFACE002",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 60,
+    "object_name": "HEROFACE002",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1651908,
+    "size": 116606
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 220,
+    "h": 265
+   },
+   "sha256": "0e914e1c87c2b8c73b4d1943980122385f849def2e5278694af18b94530da238",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/heroface002.png",
+   "referenced_by": "numeric index data[60] compiled into .text"
+  },
+  {
+   "id": "data/HEROFACESHADOW",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 61,
+    "object_name": "HEROFACESHADOW",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1768690,
+    "size": 174906
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 220,
+    "h": 265
+   },
+   "sha256": "01892d894447c7aec62905c6ff4de9c0b67aef886d475088391a756c3c008b02",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/herofaceshadow.png",
+   "referenced_by": "numeric index data[61] compiled into .text"
+  },
+  {
+   "id": "data/HIGHSCORE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 62,
+    "object_name": "HIGHSCORE",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1943766,
+    "size": 78502
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 446,
+    "h": 88
+   },
+   "sha256": "46716d2522e1a94cb1182974bb7b1bdaf34086c6c8bb2f6326c543a684deefca",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/highscore.png",
+   "referenced_by": "numeric index data[62] compiled into .text"
+  },
+  {
+   "id": "data/HINT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 63,
+    "object_name": "HINT",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2022296,
+    "size": 7850
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 106,
+    "h": 37
+   },
+   "sha256": "6dab5aed1c15dfdd465f69011230aa237fc7b1ccff1aebc12a4780a3adc8deac",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/hint.png",
+   "referenced_by": "numeric index data[63] compiled into .text"
+  },
+  {
+   "id": "data/HISC_BTM",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 64,
+    "object_name": "HISC_BTM",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2030316,
+    "size": 70370
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 359,
+    "h": 98
+   },
+   "sha256": "083a12feba57d7d73d7dd7a321d681ca663f3560e6833a0f233dc88b7160e362",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/hisc_btm.png",
+   "referenced_by": "numeric index data[64] compiled into .text"
+  },
+  {
+   "id": "data/HISC_MID",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 65,
+    "object_name": "HISC_MID",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2100856,
+    "size": 72524
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 359,
+    "h": 101
+   },
+   "sha256": "2b38202bf0dcf32658aaeb1559aec701b36baa2c6a788cb32947ee77a072893f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/hisc_mid.png",
+   "referenced_by": "numeric index data[65] compiled into .text"
+  },
+  {
+   "id": "data/HISC_TOP",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 66,
+    "object_name": "HISC_TOP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2173550,
+    "size": 117758
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 359,
+    "h": 164
+   },
+   "sha256": "790d3d346d68459228f29276e7622cfccd9474be8d6f2cdf57f0173828f0aac3",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/hisc_top.png",
+   "referenced_by": "numeric index data[66] compiled into .text"
+  },
+  {
+   "id": "data/HURRYUP",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 67,
+    "object_name": "HURRYUP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2291474,
+    "size": 31356
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 285,
+    "h": 55
+   },
+   "sha256": "3df8e1b71e2f7f1dbe3a9faf9e52be85df922b158b8d30f52e71ac99611cf24f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/hurryup.png",
+   "referenced_by": "numeric index data[67] compiled into .text"
+  },
+  {
+   "id": "data/ICON_HS",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 68,
+    "object_name": "ICON_HS",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2322997,
+    "size": 806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 20,
+    "h": 20
+   },
+   "sha256": "2449fc4404eba8976a13ebf7eb7c719877c57a6f170e6c3c040f0471c395204f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/icon_hs.png",
+   "referenced_by": "numeric index data[68] compiled into .text"
+  },
+  {
+   "id": "data/ICON_PB",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 69,
+    "object_name": "ICON_PB",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2323974,
+    "size": 806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 20,
+    "h": 20
+   },
+   "sha256": "a3d6753c6e9fd0aafba62db49269b19129879124ea3f63c2e47ad9a0313e48c3",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/icon_pb.png",
+   "referenced_by": "numeric index data[69] compiled into .text"
+  },
+  {
+   "id": "data/INSTRUCTIONS",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 70,
+    "object_name": "INSTRUCTIONS",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2324957,
+    "size": 614406
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 640,
+    "h": 480
+   },
+   "sha256": "20fbc11103af4f8cc8dd7ac6f5e3823a4236f0755ff225e38d21ac02f7f1b419",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/instructions.png",
+   "referenced_by": "numeric index data[70] compiled into .text"
+  },
+  {
+   "id": "data/MENU_BG",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 71,
+    "object_name": "MENU_BG",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 2939523,
+    "size": 160958
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 341,
+    "h": 236
+   },
+   "sha256": "ad6eed67b0f956280db559f19c1a9d158cd3f9b606fa52a6f0c8b5a41cc5dceb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/menu_bg.png",
+   "referenced_by": "numeric index data[71] compiled into .text"
+  },
+  {
+   "id": "data/MENU_BULLET",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 72,
+    "object_name": "MENU_BULLET",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3100650,
+    "size": 3122
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 38,
+    "h": 41
+   },
+   "sha256": "1448622e27d331f6477c5784b54ba2d8e8d66497bc77af02b5e685a436e6a483",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/menu_bullet.png",
+   "referenced_by": "numeric index data[72] compiled into .text"
+  },
+  {
+   "id": "data/PROFILE_BUTTONS",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 73,
+    "object_name": "PROFILE_BUTTONS",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3103955,
+    "size": 48456
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 95,
+    "h": 170
+   },
+   "sha256": "1e8bd9de7ae95d4acdd52118f5561f5b555424b5ce653663b05d1b8d4186d7f7",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/profile_buttons.png",
+   "referenced_by": "numeric index data[73] compiled into .text"
+  },
+  {
+   "id": "data/RANK_00",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 74,
+    "object_name": "RANK_00",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3152570,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "daa3db9d3dcaba9b9185b5576aa02b7b492fadd69691e5c38dd3448bc38327ab",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_00.png",
+   "referenced_by": "numeric index data[74] compiled into .text"
+  },
+  {
+   "id": "data/RANK_01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 75,
+    "object_name": "RANK_01",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3181535,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "4c2812c88491be85cbbfaca0a526ea8e0df0677822b1ec279f3740c9bbd51af1",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_01.png",
+   "referenced_by": "numeric index data[75] compiled into .text"
+  },
+  {
+   "id": "data/RANK_02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 76,
+    "object_name": "RANK_02",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3210500,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "6418cf4d7ad912a641af1b20ab3eb915cf2b84186e5759d9ca032bb000f63e90",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_02.png",
+   "referenced_by": "numeric index data[76] compiled into .text"
+  },
+  {
+   "id": "data/RANK_03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 77,
+    "object_name": "RANK_03",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3239465,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "d20bd1dd7957a1da31152e0f3521b8b9f04d14b9d89d32166c5399ed41ebca45",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_03.png",
+   "referenced_by": "numeric index data[77] compiled into .text"
+  },
+  {
+   "id": "data/RANK_04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 78,
+    "object_name": "RANK_04",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3268430,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "6bb641183a12ae04fef105ee7505dadd38220d972f9f0b8728d410ff969c5ea6",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_04.png",
+   "referenced_by": "numeric index data[78] compiled into .text"
+  },
+  {
+   "id": "data/RANK_05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 79,
+    "object_name": "RANK_05",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3297395,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "72d64db136e6276b6c8fdbc86f573d9e0128e917b0e007c1619c30259f2a9573",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_05.png",
+   "referenced_by": "numeric index data[79] compiled into .text"
+  },
+  {
+   "id": "data/RANK_06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 80,
+    "object_name": "RANK_06",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3326360,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "d803a4f9cf9a24277ad091522a6753ce125d9534c7853b1073e5a1f3edf363c0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_06.png",
+   "referenced_by": "numeric index data[80] compiled into .text"
+  },
+  {
+   "id": "data/RANK_07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 81,
+    "object_name": "RANK_07",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3355325,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "d7ac9d6fb6d2a67fc28b71dd2e23eeefcf45ac668f6a5907e62a9598f0f538ff",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_07.png",
+   "referenced_by": "numeric index data[81] compiled into .text"
+  },
+  {
+   "id": "data/RANK_08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 82,
+    "object_name": "RANK_08",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3384291,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "c23144ad9b4154b27d693222003647eb310f37ae3b2a67e2efc516858db0d29a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_08.png",
+   "referenced_by": "numeric index data[82] compiled into .text"
+  },
+  {
+   "id": "data/RANK_09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 83,
+    "object_name": "RANK_09",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3413258,
+    "size": 28806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "267e2b2733d22db02d47218bfc81ab1539f0918b946f6323a13a8c1c8e651786",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_09.png",
+   "referenced_by": "numeric index data[83] compiled into .text"
+  },
+  {
+   "id": "data/RANK_10",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 84,
+    "object_name": "RANK_10",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3442226,
+    "size": 43206
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "6143fe8ce0cf99bdc570fa7ec99f9a772a9d59383961fb031a390b96c2b3149a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_10.png",
+   "referenced_by": "numeric index data[84] compiled into .text"
+  },
+  {
+   "id": "data/RANK_11",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 85,
+    "object_name": "RANK_11",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3485595,
+    "size": 43206
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 120,
+    "h": 120
+   },
+   "sha256": "b84d16a9b56726588fbef303e82c70e1fc3b7c2b5bb2aabd45bc95e045d36848",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/rank_11.png",
+   "referenced_by": "numeric index data[85] compiled into .text"
+  },
+  {
+   "id": "data/REPLAY_BG",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 86,
+    "object_name": "REPLAY_BG",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3528965,
+    "size": 374114
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 434,
+    "h": 431
+   },
+   "sha256": "7f9b4ca4e33d912497797c6658cc64e96ea2428162d426b62b499b1522de9675",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/replay_bg.png",
+   "referenced_by": "numeric index data[86] compiled into .text"
+  },
+  {
+   "id": "data/REPLAY_BG_MED",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 87,
+    "object_name": "REPLAY_BG_MED",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 3903250,
+    "size": 129206
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 380,
+    "h": 170
+   },
+   "sha256": "c325d3c7d3ec77b924696f66912f74b8c9a3ae3016b97750f3f84bb69cb13bfc",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/replay_bg_med.png",
+   "referenced_by": "numeric index data[87] compiled into .text"
+  },
+  {
+   "id": "data/REPLAY_BG_SML",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 88,
+    "object_name": "REPLAY_BG_SML",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4032629,
+    "size": 86806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 434,
+    "h": 100
+   },
+   "sha256": "821410f6fae34c59bd5a8ad6ce979af86c7963316b994142d14f256bec0a3782",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/replay_bg_sml.png",
+   "referenced_by": "numeric index data[88] compiled into .text"
+  },
+  {
+   "id": "data/REPLAY_BUTTONS",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 89,
+    "object_name": "REPLAY_BUTTONS",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4119616,
+    "size": 36186
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 90,
+    "h": 201
+   },
+   "sha256": "928a04d11c576621dac93d67370f5c005fa64d8d351604f67577a60b8dc867ef",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/replay_buttons.png",
+   "referenced_by": "numeric index data[89] compiled into .text"
+  },
+  {
+   "id": "data/REWARD000",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 90,
+    "object_name": "REWARD000",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4155975,
+    "size": 10758
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 128,
+    "h": 42
+   },
+   "sha256": "9c50163acae2b9475a66aa396958e07b2445fa5aeb55f041ece94c0437e95449",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward000.png",
+   "referenced_by": "numeric index data[90] compiled into .text"
+  },
+  {
+   "id": "data/REWARD001",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 91,
+    "object_name": "REWARD001",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4166906,
+    "size": 21948
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 207,
+    "h": 53
+   },
+   "sha256": "d22450b0b8040688abc99dd38068a5fd62c0c8ee55926ca7c1cf6ae3ba1b0d39",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward001.png",
+   "referenced_by": "numeric index data[91] compiled into .text"
+  },
+  {
+   "id": "data/REWARD002",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 92,
+    "object_name": "REWARD002",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4189027,
+    "size": 31950
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 242,
+    "h": 66
+   },
+   "sha256": "c3d75f258296793a1022744a1de9021d2a46198f36a3a8e022c7a9c6a7db45f8",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward002.png",
+   "referenced_by": "numeric index data[92] compiled into .text"
+  },
+  {
+   "id": "data/REWARD003",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 93,
+    "object_name": "REWARD003",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4221150,
+    "size": 39718
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 272,
+    "h": 73
+   },
+   "sha256": "425bd1a33245af472335cc984b913ea8f07bb3238cc5960a5a901042c470c136",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward003.png",
+   "referenced_by": "numeric index data[93] compiled into .text"
+  },
+  {
+   "id": "data/REWARD004",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 94,
+    "object_name": "REWARD004",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4261039,
+    "size": 37736
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 245,
+    "h": 77
+   },
+   "sha256": "913c42fde58071cf4c5ba6dc831353ddff600cda91b7df0d42d6bf7117948fd4",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward004.png",
+   "referenced_by": "numeric index data[94] compiled into .text"
+  },
+  {
+   "id": "data/REWARD005",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 95,
+    "object_name": "REWARD005",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4298950,
+    "size": 87666
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 487,
+    "h": 90
+   },
+   "sha256": "e75bb2c5cecffd5c94e6146b291b13da709f39114c179f69e572bec4cd8c1c7f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward005.png",
+   "referenced_by": "numeric index data[95] compiled into .text"
+  },
+  {
+   "id": "data/REWARD006",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 96,
+    "object_name": "REWARD006",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4386791,
+    "size": 109392
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 531,
+    "h": 103
+   },
+   "sha256": "4dd6d1192edc001934f38b971942ca32354ffde106a8b8d4899d7b0c26f29b1f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward006.png",
+   "referenced_by": "numeric index data[96] compiled into .text"
+  },
+  {
+   "id": "data/REWARD007",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 97,
+    "object_name": "REWARD007",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4496360,
+    "size": 108806
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 544,
+    "h": 100
+   },
+   "sha256": "735c4b315d794a6b92a61dda3ad7b48cf08cca90021c58bc785f63a41763546a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward007.png",
+   "referenced_by": "numeric index data[97] compiled into .text"
+  },
+  {
+   "id": "data/REWARD008",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 98,
+    "object_name": "REWARD008",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4605342,
+    "size": 131790
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 578,
+    "h": 114
+   },
+   "sha256": "3391d77524e13ec4e6892e425969ae3b8cdf050a20387f6871dd5082fc1df1c8",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward008.png",
+   "referenced_by": "numeric index data[98] compiled into .text"
+  },
+  {
+   "id": "data/REWARD009",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 99,
+    "object_name": "REWARD009",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4737307,
+    "size": 162798
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 612,
+    "h": 133
+   },
+   "sha256": "16b718d37c9234cf60dae80bc8ed0aa38be0f9554185260df9b8794414da4985",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/reward009.png",
+   "referenced_by": "numeric index data[99] compiled into .text"
+  },
+  {
+   "id": "data/SIDEBLOCK",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 100,
+    "object_name": "SIDEBLOCK",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4900270,
+    "size": 32742
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 132,
+    "h": 124
+   },
+   "sha256": "ea798ca7e3aa27f4e6659e3c29c1c768870adc0799feda3b9a3deb85dba4ab9b",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sideblock.png",
+   "referenced_by": "numeric index data[100] compiled into .text"
+  },
+  {
+   "id": "data/SIGN01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 101,
+    "object_name": "SIGN01",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4933169,
+    "size": 2022
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 36,
+    "h": 28
+   },
+   "sha256": "446619b812d83f62abbd3fe9c07c04af9d6aadb0ece3aecd728c626da83c7b54",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign01.png",
+   "referenced_by": "numeric index data[101] compiled into .text"
+  },
+  {
+   "id": "data/SIGN02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 102,
+    "object_name": "SIGN02",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4935348,
+    "size": 2022
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 36,
+    "h": 28
+   },
+   "sha256": "bc95f4ae0ea826403743939929b6d23acfedb727ecc39915be67a5a170b39ebb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign02.png",
+   "referenced_by": "numeric index data[102] compiled into .text"
+  },
+  {
+   "id": "data/SIGN03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 103,
+    "object_name": "SIGN03",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4937527,
+    "size": 1688
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 29
+   },
+   "sha256": "134db9a5c22f0a95a5fd1f31d5a538b13cd572e41fbe4bee9b7f098d3fb56ceb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign03.png",
+   "referenced_by": "numeric index data[103] compiled into .text"
+  },
+  {
+   "id": "data/SIGN04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 104,
+    "object_name": "SIGN04",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4939372,
+    "size": 2022
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 36,
+    "h": 28
+   },
+   "sha256": "7babe64a80b797b67ad1347d736b97ffd7f052360eb1f8036fa7acd80e359910",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign04.png",
+   "referenced_by": "numeric index data[104] compiled into .text"
+  },
+  {
+   "id": "data/SIGN04a",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 105,
+    "object_name": "SIGN04a",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4941552,
+    "size": 2406
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 40,
+    "h": 30
+   },
+   "sha256": "ea8b7dd86d783518deef7f5b621a0046e90e5ba436b76dda9d2d130487880d8c",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign04a.png",
+   "referenced_by": "numeric index data[105] compiled into .text"
+  },
+  {
+   "id": "data/SIGN05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 106,
+    "object_name": "SIGN05",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4944115,
+    "size": 1920
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 33
+   },
+   "sha256": "96726bb982f41da8715f6f4d5ecdf522120ff683ffe1bb55c111008afb0d4ea5",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign05.png",
+   "referenced_by": "numeric index data[106] compiled into .text"
+  },
+  {
+   "id": "data/SIGN06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 107,
+    "object_name": "SIGN06",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4946192,
+    "size": 2094
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 36,
+    "h": 29
+   },
+   "sha256": "aef1fee6938970ff6bb1a5c007a15ac9c4a26ba55ca60f20f365116066d2c7ab",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign06.png",
+   "referenced_by": "numeric index data[107] compiled into .text"
+  },
+  {
+   "id": "data/SIGN06a",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 108,
+    "object_name": "SIGN06a",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4948444,
+    "size": 2046
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 34
+   },
+   "sha256": "995fa9742b189c3461b257abcf367831e86e8ff2c6165ddd14d7acd71521e616",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign06a.png",
+   "referenced_by": "numeric index data[108] compiled into .text"
+  },
+  {
+   "id": "data/SIGN07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 109,
+    "object_name": "SIGN07",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4950647,
+    "size": 2374
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 37,
+    "h": 32
+   },
+   "sha256": "dc00e85af1286e6f6a0605c1584137a8db6d3e979507b7192860dbae20a627aa",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign07.png",
+   "referenced_by": "numeric index data[109] compiled into .text"
+  },
+  {
+   "id": "data/SIGN08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 110,
+    "object_name": "SIGN08",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4953179,
+    "size": 1688
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 29
+   },
+   "sha256": "beda39b6ae92b4100a5ff7afd0b68661c3f6a5e6fb04cccd960752b6ede80cc9",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign08.png",
+   "referenced_by": "numeric index data[110] compiled into .text"
+  },
+  {
+   "id": "data/SIGN09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 111,
+    "object_name": "SIGN09",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4955025,
+    "size": 1256
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 25,
+    "h": 25
+   },
+   "sha256": "00c1e01675a3f7fc2ab7692336cb4c8e271da99742794be1d33bbf1eeb7bf68a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sign09.png",
+   "referenced_by": "numeric index data[111] compiled into .text"
+  },
+  {
+   "id": "data/SORT_BUTTON_ALL",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 112,
+    "object_name": "SORT_BUTTON_ALL",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4956461,
+    "size": 4970
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 73,
+    "h": 34
+   },
+   "sha256": "4dd86e81c984c4216346164eb813fa278ee638604164561f21f92f456c2fb6cb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sort_button_all.png",
+   "referenced_by": "numeric index data[112] compiled into .text"
+  },
+  {
+   "id": "data/SORT_BUTTON_COMBO",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 113,
+    "object_name": "SORT_BUTTON_COMBO",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4961615,
+    "size": 398
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 28,
+    "h": 7
+   },
+   "sha256": "b8577dcd5ad2b66035b7e5a8b9305076d23c0b6d383d0fa8b5864e5ccc682d2c",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sort_button_combo.png",
+   "referenced_by": "numeric index data[113] compiled into .text"
+  },
+  {
+   "id": "data/SORT_BUTTON_FLOOR",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 114,
+    "object_name": "SORT_BUTTON_FLOOR",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4962197,
+    "size": 286
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 20,
+    "h": 7
+   },
+   "sha256": "e0a73a472cb09dece8d5109f796bd13b8930cccd6e565d86e7dbcd242458653b",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sort_button_floor.png",
+   "referenced_by": "numeric index data[114] compiled into .text"
+  },
+  {
+   "id": "data/SORT_BUTTON_NAME",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 115,
+    "object_name": "SORT_BUTTON_NAME",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4962665,
+    "size": 328
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 23,
+    "h": 7
+   },
+   "sha256": "e5c3a964fbe3c8d3723d5c63edff176773ebde05700b89363e389eb2913f7f2f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sort_button_name.png",
+   "referenced_by": "numeric index data[115] compiled into .text"
+  },
+  {
+   "id": "data/SORT_BUTTON_SCORE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 116,
+    "object_name": "SORT_BUTTON_SCORE",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4963177,
+    "size": 314
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 22,
+    "h": 7
+   },
+   "sha256": "0b82b5a2fe0e1584d8d84d8748bf347bb57889e3bd4b24c10d24539bb3ae7481",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/sort_button_score.png",
+   "referenced_by": "numeric index data[116] compiled into .text"
+  },
+  {
+   "id": "data/STAR01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 117,
+    "object_name": "STAR01",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4963652,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "4857c41ace3c2be2c5267ac1b79d787ac67ca0c3fa32da637ff85b52c273b8de",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star01.png",
+   "referenced_by": "numeric index data[117] compiled into .text"
+  },
+  {
+   "id": "data/STAR02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 118,
+    "object_name": "STAR02",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4964039,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "d21c2701e5888472d964640bc927e10f1222dd08b601bf22219738717f924918",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star02.png",
+   "referenced_by": "numeric index data[118] compiled into .text"
+  },
+  {
+   "id": "data/STAR03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 119,
+    "object_name": "STAR03",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4964426,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "6014c2542664ff8fd403592c75c05d7225a1eacd6fb8f7bbd76d234c92b41d03",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star03.png",
+   "referenced_by": "numeric index data[119] compiled into .text"
+  },
+  {
+   "id": "data/STAR04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 120,
+    "object_name": "STAR04",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4964813,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "8af0cccc10efe018efcaddfeeba140ea14eae0e44e4cfc921edf19f90df44671",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star04.png",
+   "referenced_by": "numeric index data[120] compiled into .text"
+  },
+  {
+   "id": "data/STAR05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 121,
+    "object_name": "STAR05",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4965200,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "c52ccfd3f4acc6725ac387197dd59048df8d78002ab29d2b96ab372e0b4f36ff",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star05.png",
+   "referenced_by": "numeric index data[121] compiled into .text"
+  },
+  {
+   "id": "data/STAR06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 122,
+    "object_name": "STAR06",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4965587,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "fa24a501675dee24b32d34c3ae91eecf3b3acd8cc1a089f4f2e177a3bda9acbc",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star06.png",
+   "referenced_by": "numeric index data[122] compiled into .text"
+  },
+  {
+   "id": "data/STAR07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 123,
+    "object_name": "STAR07",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4965974,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "9d360d573f21dcfea193bb69d861f9d8fcca2a7fedc3cc6c9994acdfb3b9c18a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star07.png",
+   "referenced_by": "numeric index data[123] compiled into .text"
+  },
+  {
+   "id": "data/STAR08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 124,
+    "object_name": "STAR08",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4966361,
+    "size": 226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 11,
+    "h": 10
+   },
+   "sha256": "277f2b79c7b01d447264c74d2243a9b7cef12f498d42c1f1d8b9a3edd0ee2be0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/star08.png",
+   "referenced_by": "numeric index data[124] compiled into .text"
+  },
+  {
+   "id": "data/TITLE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 125,
+    "object_name": "TITLE",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4966749,
+    "size": 408006
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 400,
+    "h": 340
+   },
+   "sha256": "994fc8b784bd705fbf7d540df4b8ccdc076148a6e5b999aa6fc629c9cbff556c",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/title.png",
+   "referenced_by": "numeric index data[125] compiled into .text"
+  },
+  {
+   "id": "data/TITLE_BG",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 126,
+    "object_name": "TITLE_BG",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 5374917,
+    "size": 614406
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 640,
+    "h": 480
+   },
+   "sha256": "b810d6b85b3d29c9f383aef9718833b74a0a8b272a277cfa9fbb8fe747520fbb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/title_bg.png",
+   "referenced_by": "numeric index data[126] compiled into .text"
+  },
+  {
+   "id": "data/VCR",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 127,
+    "object_name": "VCR",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 5989478,
+    "size": 16994
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 137,
+    "h": 62
+   },
+   "sha256": "c83a611ba19a1aebf7641f942ca18ecbf0b0ece0a040c1ce20ad4b64b57985e3",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/vcr.png",
+   "referenced_by": "numeric index data[127] compiled into .text"
+  },
+  {
+   "id": "data/VCR_LEFT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 128,
+    "object_name": "VCR_LEFT",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 6006640,
+    "size": 168
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 9,
+    "h": 9
+   },
+   "sha256": "a25daf2d2888cd741a0d1df347a350b505c05e06977ca380c784fc780972384c",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/vcr_left.png",
+   "referenced_by": "numeric index data[128] compiled into .text"
+  },
+  {
+   "id": "data/VCR_RIGHT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 129,
+    "object_name": "VCR_RIGHT",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 6006978,
+    "size": 168
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 9,
+    "h": 9
+   },
+   "sha256": "522517b5c30280846da2dbfc1ce18cdf177d76d7f0b19fc20425e85fd52de5b0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/vcr_right.png",
+   "referenced_by": "numeric index data[129] compiled into .text"
+  },
+  {
+   "id": "data/VCR_UP",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 130,
+    "object_name": "VCR_UP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 6007310,
+    "size": 168
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 9,
+    "h": 9
+   },
+   "sha256": "d490b4b63f182bb75a18faf97b43806a743bf52718d1008182e8037389452961",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/data/vcr_up.png",
+   "referenced_by": "numeric index data[130] compiled into .text"
+  },
+  {
+   "id": "data/GrabberInfo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/data.dat",
+    "index": 131,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 6007649,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/data/grabberinfo.bin",
+   "referenced_by": "numeric index data[131] compiled into .text"
+  },
+  {
+   "id": "loading/AAAPAL",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/loading.dat",
+    "index": 0,
+    "object_name": "AAAPAL",
+    "type_fourcc": "PAL ",
+    "unpacked_offset": 112,
+    "size": 1024
+   },
+   "format": "allegro_palette",
+   "geometry": null,
+   "sha256": "d14e59b1f430b1058af76ed2d820bb9e75d007cc7320aa9fa21bf2356863298a",
+   "extract": "256x(r,g,b,filler) 6-bit -> .pal text or verbatim .pal",
+   "clean_path": "assets/loading/aaapal.pal",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "loading/FLD_LOGO",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/loading.dat",
+    "index": 1,
+    "object_name": "FLD_LOGO",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1298,
+    "size": 84216
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 8,
+    "w": 401,
+    "h": 210
+   },
+   "sha256": "819e507f30345d99743dbd84d9403caa4598dccaa73178136b03beff41823b0a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/loading/fld_logo.png",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "loading/GrabberInfo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/loading.dat",
+    "index": 2,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 85655,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/loading/grabberinfo.bin",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_AIGHT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 0,
+    "object_name": "S_AIGHT",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 132,
+    "size": 38716
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "2699a832cf408bc67958619162dc695caa860d1b70dcc5ef2513f6f4bc3fa608",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_aight.ogg",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_AMAZING",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 1,
+    "object_name": "S_AMAZING",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 38978,
+    "size": 45479
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "ada33a20012cd95cbe0b2b2bd130e1190da9522f7ddc37e6e5595dde5f83a400",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_amazing.ogg",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_BG_BEAT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 2,
+    "object_name": "S_BG_BEAT",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 84587,
+    "size": 235866
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "4cd4872f1088e990d9cd1452de769d556304475cd30069bde2c0cbfdb100e27e",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_bg_beat.ogg",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_BG_MENU",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 3,
+    "object_name": "S_BG_MENU",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 320583,
+    "size": 236424
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "6b10458e26f399fb0cd08cf9702ca981fc912f1a4fb60620a50896e3448d1210",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_bg_menu.ogg",
+   "referenced_by": "numeric index data[3] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_CHEER",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 4,
+    "object_name": "S_CHEER",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 557132,
+    "size": 102250
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "baa9a73003502a2cef96a016901d74454ea84278c8fbf53766262b444868c7e6",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_cheer.ogg",
+   "referenced_by": "numeric index data[4] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_EXTREME",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 5,
+    "object_name": "S_EXTREME",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 659512,
+    "size": 42277
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "0def99a73d0102633d86a2ac4901eadcb504edd3828061b9200a6dcaf11eeee1",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_extreme.ogg",
+   "referenced_by": "numeric index data[5] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_FANTASTIC",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 6,
+    "object_name": "S_FANTASTIC",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 701923,
+    "size": 43997
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "661431d5878b6a1e33298b9246912089769dd33d82c42621d94aa3b7c6238fbd",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_fantastic.ogg",
+   "referenced_by": "numeric index data[6] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_GAMEOVER",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 7,
+    "object_name": "S_GAMEOVER",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 746051,
+    "size": 29907
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "4791bdb783f578da3ac25124c584d406605a78be11492f14c70d0e4ed33417b5",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_gameover.ogg",
+   "referenced_by": "numeric index data[7] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_GOOD",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 8,
+    "object_name": "S_GOOD",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 776081,
+    "size": 26592
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "7b9ba3152c51bc59e07f5c74615d2cc06151ecc164fca58d1943219547448113",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_good.ogg",
+   "referenced_by": "numeric index data[8] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_GREAT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 9,
+    "object_name": "S_GREAT",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 802798,
+    "size": 28659
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "f7ce41702f65f4b371217e9ad4cb315022a3e78647c05d21e29a1086e504a915",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_great.ogg",
+   "referenced_by": "numeric index data[9] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_HURRYUP",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 10,
+    "object_name": "S_HURRYUP",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 831586,
+    "size": 19072
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "b97e22c85fa542893e2c91520b2b15b82cd15b7b6715a964faf3691487ec5ae0",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_hurryup.ogg",
+   "referenced_by": "numeric index data[10] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_MENU_CHANGE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 11,
+    "object_name": "S_MENU_CHANGE",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 850796,
+    "size": 5579
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "41a4993ec37c39ae3e9aad443456395ae8c623de8d8c4f67d79517e14da4f91b",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_menu_change.ogg",
+   "referenced_by": "numeric index data[11] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_MENU_CHOOSE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 12,
+    "object_name": "S_MENU_CHOOSE",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 856513,
+    "size": 5801
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "66a003dfd9a647c2ad4fcbe28ea945a4c0b3e06b43237ea39bfe0c7ad2ef0ec5",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_menu_choose.ogg",
+   "referenced_by": "numeric index data[12] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_RING",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 13,
+    "object_name": "S_RING",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 862438,
+    "size": 25527
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "e9e747dbcae984cf1b6adbee52f954d7908505d8a4ca7a1d39a293a856e84d3a",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_ring.ogg",
+   "referenced_by": "numeric index data[13] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_SPLAT",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 14,
+    "object_name": "S_SPLAT",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 888090,
+    "size": 41438
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "2cba950ef3b4e26db85f95cfa1a941aa0bc0e3d24308e62bf7a76f33001be8fb",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_splat.ogg",
+   "referenced_by": "numeric index data[14] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_SPLENDID",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 15,
+    "object_name": "S_SPLENDID",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 929660,
+    "size": 46381
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "a5171a9bd83da6967169d3fd39cc940a11b5c95776245f59b5b8feb9bad7763a",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_splendid.ogg",
+   "referenced_by": "numeric index data[15] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_STEP",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 16,
+    "object_name": "S_STEP",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 976165,
+    "size": 5859
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "fbef1052dea614783e9c352568b2b10836a84c5ae76549ae7d55fed76462ebc1",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_step.ogg",
+   "referenced_by": "numeric index data[16] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_SUPER",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 17,
+    "object_name": "S_SUPER",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 982149,
+    "size": 33456
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "0416ce73680a7374ae3c1cdff8be51544436b3d2d9f7c2d8529f8e6eaf5a2335",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_super.ogg",
+   "referenced_by": "numeric index data[17] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_SWEET",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 18,
+    "object_name": "S_SWEET",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 1015730,
+    "size": 28025
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "472a8b250a5b49fb4c86e5e142a3fae8d372bc58264669567630b19959dd44c2",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_sweet.ogg",
+   "referenced_by": "numeric index data[18] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_TRYAGAIN",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 19,
+    "object_name": "S_TRYAGAIN",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 1043886,
+    "size": 26242
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "01a0a42b8f8e6dfee085a2ce7d146ed9645a4724a3625302384af38d0f843b2b",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_tryagain.ogg",
+   "referenced_by": "numeric index data[19] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_UNBELIEVABLE",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 20,
+    "object_name": "S_UNBELIEVABLE",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 1070260,
+    "size": 76890
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "aaef2b416041be31f4e4fdd026b13fff3f438ccc72be85bfae3c425a769b564d",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_unbelievable.ogg",
+   "referenced_by": "numeric index data[20] compiled into .text"
+  },
+  {
+   "id": "sfx15/S_WOW",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 21,
+    "object_name": "S_WOW",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 1147271,
+    "size": 29747
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "a1aba43c1ad25193f5b43497b731722a776823f03ef37570ca82b03c52578f47",
+   "extract": "verbatim",
+   "clean_path": "assets/sfx15/s_wow.ogg",
+   "referenced_by": "numeric index data[21] compiled into .text"
+  },
+  {
+   "id": "sfx15/GrabberInfo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "data/sfx15.dat",
+    "index": 22,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 1177159,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/sfx15/grabberinfo.bin",
+   "referenced_by": "numeric index data[22] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/palette",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 0,
+    "object_name": "000_PAL",
+    "type_fourcc": "PAL ",
+    "unpacked_offset": 114,
+    "size": 1024
+   },
+   "format": "allegro_palette",
+   "geometry": null,
+   "sha256": "fec19c8997a25cfd02e73b113242be46cfb7779671553df285295b91375d0912",
+   "extract": "256x(r,g,b,filler) 6-bit -> .pal text or verbatim .pal",
+   "clean_path": "assets/char/harold_the_homeboy/palette.pal",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 1,
+    "object_name": "001_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1321,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "1d2eade83f99cf4294b71e9974a2f5f234468d3622c9de5b66cb6c561879678a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame01.png",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 2,
+    "object_name": "002_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4631,
+    "size": 3022
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "00a5d33098a450652a4263b3852434a4f87d1f2573129d8150c43b43f245920e",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame02.png",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 3,
+    "object_name": "003_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 7837,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "06222d6272ac1c9ad993345f27d8f81c3f83f0058e167004b4af5183c9752b08",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame03.png",
+   "referenced_by": "numeric index data[3] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 4,
+    "object_name": "004_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 11148,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "1f9f596e324eb35cc3bed9cce35527725f72925bdb3671d14a88133f9676c4fe",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame04.png",
+   "referenced_by": "numeric index data[4] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 5,
+    "object_name": "005_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 14459,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "9ad5cdf431acc4198fba768b5cba86ae694366d44d4ce12235f7c2f79e333adb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame05.png",
+   "referenced_by": "numeric index data[5] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 6,
+    "object_name": "006_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 17770,
+    "size": 3254
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 56
+   },
+   "sha256": "1076d946bca32b4bebd2d03361919a629511fd60b23296689c2b8973d1298ca7",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame06.png",
+   "referenced_by": "numeric index data[6] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 7,
+    "object_name": "007_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 21209,
+    "size": 3080
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 53
+   },
+   "sha256": "3b6060c8d80308a8bd36d8c4906e4a40d55e419568acdfa7d92e8cc5d3d7567a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame07.png",
+   "referenced_by": "numeric index data[7] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 8,
+    "object_name": "008_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 24474,
+    "size": 3306
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 55
+   },
+   "sha256": "3e5090e82837c808fb62de1cfe89c387700d3987b25400ac057a1bb2f2e6f18e",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame08.png",
+   "referenced_by": "numeric index data[8] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 9,
+    "object_name": "009_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 27965,
+    "size": 3486
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 58
+   },
+   "sha256": "75cc1173666561a87e06da10ffef3045201a8b92cfcf8e0f6be41d1eb95ea6ac",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame09.png",
+   "referenced_by": "numeric index data[9] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame10",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 10,
+    "object_name": "010_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 31636,
+    "size": 3334
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 32,
+    "h": 52
+   },
+   "sha256": "4fcfc0e50b16a30324f80bb4824665d3d1e5ef6cc1de319be8a7cd182d07d83f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame10.png",
+   "referenced_by": "numeric index data[10] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame11",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 11,
+    "object_name": "011_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 35155,
+    "size": 3334
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 32,
+    "h": 52
+   },
+   "sha256": "c41dd4e95a06c29e8fac470d039528e65053b59bec687107dc9b1bb16882b5dd",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame11.png",
+   "referenced_by": "numeric index data[11] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame12",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 12,
+    "object_name": "012_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 38674,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "830d4bd1c6c3667decffbd42cf6e5aea92afb621947c5eaf4a6549efc39d807f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame12.png",
+   "referenced_by": "numeric index data[12] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame13",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 13,
+    "object_name": "013_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 41985,
+    "size": 5198
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 44,
+    "h": 59
+   },
+   "sha256": "40238ff208407d3d06dea37625f7c31b3ee426f26367d3ddc10440b074a4f906",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame13.png",
+   "referenced_by": "numeric index data[13] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame14",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 14,
+    "object_name": "014_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 47368,
+    "size": 3854
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 37,
+    "h": 52
+   },
+   "sha256": "74418279f9d9a3001b853414e82776cce6858ee6e3f01f2a4ac1db44f789853e",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame14.png",
+   "referenced_by": "numeric index data[14] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/frame15",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 15,
+    "object_name": "015_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 51407,
+    "size": 4166
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 40,
+    "h": 52
+   },
+   "sha256": "f3339902ec96d307dcccb1d17969219ce31ddf10ea925e29e4d719a56815ef8d",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/harold_the_homeboy/frame15.png",
+   "referenced_by": "numeric index data[15] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_jump_lo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 16,
+    "object_name": "016",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 55661,
+    "size": 7028
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "94e7a4057eb64b0be108c164c4d78295c5d1c69499f14efd7779ccf560960a33",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_jump_lo.ogg",
+   "referenced_by": "numeric index data[16] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_jump_med",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 17,
+    "object_name": "017",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 62780,
+    "size": 10023
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "a74f5eecc91b4365f36e02ec76aba16db34278fdb5621520d689a441854737c4",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_jump_med.ogg",
+   "referenced_by": "numeric index data[17] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_jump_hi",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 18,
+    "object_name": "018",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 72892,
+    "size": 14972
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "de49f489b8d690e6f632c6b91e35388edf258ecd1452fc356bf51a736f4b07d9",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_jump_hi.ogg",
+   "referenced_by": "numeric index data[18] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_yo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 19,
+    "object_name": "019",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 87952,
+    "size": 13156
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "2a18c99de59046ed5e6f161e4f658ad526645eee40f5c79dbd09b9e0a02a2557",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_yo.ogg",
+   "referenced_by": "numeric index data[19] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_wazup",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 20,
+    "object_name": "020",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 101192,
+    "size": 28657
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "9776e4da35c5768eecd648831988787950065a54afb70ec94438f5aec6d7419c",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_wazup.ogg",
+   "referenced_by": "numeric index data[20] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_falling",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 21,
+    "object_name": "021",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 129933,
+    "size": 23160
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "af33e0f5b46c2b19c2e51cba811557d2aed20f7faaa30ef77960317b75d708a7",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_falling.ogg",
+   "referenced_by": "numeric index data[21] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/snd_edge",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 22,
+    "object_name": "022",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 153177,
+    "size": 9895
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "decc343cafbe0a49a1b583372ff34c68379323ada39c6fb0bcb8ed280d642376",
+   "extract": "verbatim",
+   "clean_path": "assets/char/harold_the_homeboy/snd_edge.ogg",
+   "referenced_by": "numeric index data[22] compiled into .text"
+  },
+  {
+   "id": "char.harold_the_homeboy/music_bg",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/harold_the_homeboy/harold.dat",
+    "index": 23,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 163211,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/char/harold_the_homeboy/music_bg.bin",
+   "referenced_by": "numeric index data[23] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/palette",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 0,
+    "object_name": "000_PAL",
+    "type_fourcc": "PAL ",
+    "unpacked_offset": 112,
+    "size": 1024
+   },
+   "format": "allegro_palette",
+   "geometry": null,
+   "sha256": "876d716a11748cb79f36dc14101fcfc9693d33ed9c801961b5a7037fe448653a",
+   "extract": "256x(r,g,b,filler) 6-bit -> .pal text or verbatim .pal",
+   "clean_path": "assets/char/disco_dave/palette.pal",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 1,
+    "object_name": "001_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1294,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "ec50bbdf1bae6f5adbb4f82498ade54cf4e54f49ecb66071f5a4a3cfa3b186bb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame01.png",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 2,
+    "object_name": "002_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 4579,
+    "size": 3022
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "6f790976e968add2cf17883237c0a95d1d2a6eeb0cce8d2e3537ba5d3e632d9a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame02.png",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 3,
+    "object_name": "003_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 7760,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "0d002bf69e753c7b71bb903484c0f02f3a8053cba678c2849ebd6bac65039e81",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame03.png",
+   "referenced_by": "numeric index data[3] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 4,
+    "object_name": "004_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 11046,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "24bade5018ae80e80373786d94af6dab752313cd7208db5e539b1fd10a19dba4",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame04.png",
+   "referenced_by": "numeric index data[4] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 5,
+    "object_name": "005_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 14332,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "2e0d252d74108918a17158f30280ba84bb1ad9b69ee25455ab56460b96b1e4f5",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame05.png",
+   "referenced_by": "numeric index data[5] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 6,
+    "object_name": "006_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 17618,
+    "size": 3416
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 31,
+    "h": 55
+   },
+   "sha256": "8634a3dd2eb67dbf0ecfebb3e145c2d758ffd1365efdf1f88fbed3ec3705e400",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame06.png",
+   "referenced_by": "numeric index data[6] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 7,
+    "object_name": "007_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 21194,
+    "size": 3398
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 32,
+    "h": 53
+   },
+   "sha256": "4dfd210b22c0d25bdc5f85960b208c8ea77433e1b55494d9befb2219c76dbce2",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame07.png",
+   "referenced_by": "numeric index data[7] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 8,
+    "object_name": "008_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 24752,
+    "size": 3636
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 33,
+    "h": 55
+   },
+   "sha256": "4be76b4e4d011036eddde062b11347e4dee693b0f2928c9b398456f50cf01c0c",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame08.png",
+   "referenced_by": "numeric index data[8] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 9,
+    "object_name": "009_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 28548,
+    "size": 3718
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 32,
+    "h": 58
+   },
+   "sha256": "a0db49551e43e508385371ebdd4dd50c0a288b7ac053d8fcc9617553e867c4be",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame09.png",
+   "referenced_by": "numeric index data[9] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame10",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 10,
+    "object_name": "010_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 32426,
+    "size": 3334
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 32,
+    "h": 52
+   },
+   "sha256": "853286c961b742bbfbc579868757c5d06307bfa7fc166f82e819d85398aed9bb",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame10.png",
+   "referenced_by": "numeric index data[10] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame11",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 11,
+    "object_name": "011_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 35920,
+    "size": 3334
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 32,
+    "h": 52
+   },
+   "sha256": "68ef700382dc31d2636c5a0b529e0daa555f4741c87a9c423361d2627aed636e",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame11.png",
+   "referenced_by": "numeric index data[11] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame12",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 12,
+    "object_name": "012_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 39414,
+    "size": 3126
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "cb9a081a6141c7424f55bd0c758165c17e30315eb29167ef24dee6f1c080140d",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame12.png",
+   "referenced_by": "numeric index data[12] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame13",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 13,
+    "object_name": "013_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 42700,
+    "size": 5286
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 44,
+    "h": 60
+   },
+   "sha256": "84751e53f2d6b0c938ac6f25da30e2996aae830fb317bca44c40e4caaab3a45f",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame13.png",
+   "referenced_by": "numeric index data[13] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame14",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 14,
+    "object_name": "014_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 48146,
+    "size": 3854
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 37,
+    "h": 52
+   },
+   "sha256": "69a2aae9dec9c1403dfc6560ebbbdd9770fdd060c6b2cccb20cd61c91ecb7542",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame14.png",
+   "referenced_by": "numeric index data[14] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/frame15",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 15,
+    "object_name": "015_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 52160,
+    "size": 4166
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 16,
+    "w": 40,
+    "h": 52
+   },
+   "sha256": "048f6ce9950565ac06bad5e2be3b195570e79ae0c083c88fed1029b2c3059cd2",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/disco_dave/frame15.png",
+   "referenced_by": "numeric index data[15] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_jump_lo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 16,
+    "object_name": "016_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 56416,
+    "size": 7700
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "ab6c968e702c8408648919b3c4bdd52e73a071c2b4c3ac705265805f4b17fe55",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_jump_lo.ogg",
+   "referenced_by": "numeric index data[16] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_jump_med",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 17,
+    "object_name": "017_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 64209,
+    "size": 12791
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "5fed0bd4c13d99eb215ed105c57847266755d4944bda97c4fd0e2772f5ac947d",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_jump_med.ogg",
+   "referenced_by": "numeric index data[17] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_jump_hi",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 18,
+    "object_name": "018_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 77091,
+    "size": 20555
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "4c5e9f739891942faa08c4790253566b7c5fada34a28fa409260e2664aa39772",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_jump_hi.ogg",
+   "referenced_by": "numeric index data[18] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_yo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 19,
+    "object_name": "019_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 97736,
+    "size": 18366
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "5884bb31d0dc89c62312ae84d986179deb800a9ddc97b10000248f3e16314a7f",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_yo.ogg",
+   "referenced_by": "numeric index data[19] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_wazup",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 20,
+    "object_name": "020_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 116189,
+    "size": 11743
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "c2884cc0527e4f5f7a6ec879cd8f6033f02519601376e5f534aebb37c8d01405",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_wazup.ogg",
+   "referenced_by": "numeric index data[20] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_falling",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 21,
+    "object_name": "021_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 128018,
+    "size": 23886
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "c41b231dbe5a13580ca0f758d04ce6ce59047e72bb854c704aa2fc753d239d58",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_falling.ogg",
+   "referenced_by": "numeric index data[21] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/snd_edge",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 22,
+    "object_name": "022_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 151990,
+    "size": 11328
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "fb4170f7abb0a19866fd9b021b3ee2ba9a3ddb9f7100221cbce7e81efea6b442",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/snd_edge.ogg",
+   "referenced_by": "numeric index data[22] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/music_bg",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 23,
+    "object_name": "023_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 163402,
+    "size": 235294
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "e9d6dc98b90c5d5717522b6bdcd6f2aece9795712d28732c143233a9ba16090b",
+   "extract": "verbatim",
+   "clean_path": "assets/char/disco_dave/music_bg.ogg",
+   "referenced_by": "numeric index data[23] compiled into .text"
+  },
+  {
+   "id": "char.disco_dave/GrabberInfo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/disco_dave/dave.dat",
+    "index": 24,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 398835,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/char/disco_dave/grabberinfo.bin",
+   "referenced_by": "numeric index data[24] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/palette",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 0,
+    "object_name": "000_PAL",
+    "type_fourcc": "PAL ",
+    "unpacked_offset": 96,
+    "size": 1024
+   },
+   "format": "allegro_palette",
+   "geometry": null,
+   "sha256": "99577067d25366d55580f9cf21f552c26541553b1c05febad061a9c4767ef07e",
+   "extract": "256x(r,g,b,filler) 6-bit -> .pal text or verbatim .pal",
+   "clean_path": "assets/char/jungle_jane/palette.pal",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 1,
+    "object_name": "001_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1262,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "9cf388d91685e41804468dfa4366dde3a34a52239656d40d560889caadb7b375",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame01.png",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 2,
+    "object_name": "002_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 6091,
+    "size": 4530
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "9e4681dd3818df0424f36e6449989b83d128d8d2a61a802e9d8cc9d121ee3f52",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame02.png",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 3,
+    "object_name": "003_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 10764,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "400dc13132c841b2608d76026747d7e7697764ff986d10cc0239e6260cbb39cc",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame03.png",
+   "referenced_by": "numeric index data[3] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 4,
+    "object_name": "004_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 15594,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "68680ec2101b1f5bd6fb5f1e50d5571fa7d93e19d9412e384d561d8b57a26488",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame04.png",
+   "referenced_by": "numeric index data[4] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 5,
+    "object_name": "005_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 20424,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "f33b7f9557224cb9f89041501d63244fbbcb3ff1d9995afe57ba04540a749835",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame05.png",
+   "referenced_by": "numeric index data[5] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 6,
+    "object_name": "006_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 25254,
+    "size": 4878
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 29,
+    "h": 56
+   },
+   "sha256": "f5ce47a78c71f026dad69f239277e227be67d62f8d78944b89342bd0e9807464",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame06.png",
+   "referenced_by": "numeric index data[6] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 7,
+    "object_name": "007_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 30276,
+    "size": 4617
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 29,
+    "h": 53
+   },
+   "sha256": "de713124e240e69bb5ff0ed8edf6bca0bfb62193d20c00665d50e8784d3505ef",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame07.png",
+   "referenced_by": "numeric index data[7] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 8,
+    "object_name": "008_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 35037,
+    "size": 4956
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 55
+   },
+   "sha256": "62793f85a534111a035ca6fa3564304704ece6062407d12dd28d1904582b4412",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame08.png",
+   "referenced_by": "numeric index data[8] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 9,
+    "object_name": "009_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 40137,
+    "size": 5226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 58
+   },
+   "sha256": "fcb60a237459d8f56f058ed6d43a5703ce2b10ce2bbc182691b560b72c1c4a03",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame09.png",
+   "referenced_by": "numeric index data[9] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame10",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 10,
+    "object_name": "010_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 45507,
+    "size": 4998
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 32,
+    "h": 52
+   },
+   "sha256": "e5093bdd223436516665049c65ac9250705114a86f68e635b8c7392b43b18d05",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame10.png",
+   "referenced_by": "numeric index data[10] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame11",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 11,
+    "object_name": "011_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 50649,
+    "size": 4842
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 31,
+    "h": 52
+   },
+   "sha256": "4eb3420d7689f0d1cc9a86ef9b0bbe93df927dcce35621810c18e8051f640bdc",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame11.png",
+   "referenced_by": "numeric index data[11] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame12",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 12,
+    "object_name": "012_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 55635,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "575c57765e2aa89764de7bdbb844169b4346f046af43ba80478bb8da1ff67d0a",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame12.png",
+   "referenced_by": "numeric index data[12] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame13",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 13,
+    "object_name": "013_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 60465,
+    "size": 7926
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 44,
+    "h": 60
+   },
+   "sha256": "3fdbaba20b0eda072fcd90404671086a845f687538263090ab9c8d01f981d1be",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame13.png",
+   "referenced_by": "numeric index data[13] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame14",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 14,
+    "object_name": "014_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 68535,
+    "size": 5778
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 37,
+    "h": 52
+   },
+   "sha256": "03ee2fb5014943a0fb514054cf31f30202023bdeb1a11213d9fe2f7dbd677963",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame14.png",
+   "referenced_by": "numeric index data[14] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/frame15",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 15,
+    "object_name": "015_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 74457,
+    "size": 6246
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 32,
+    "w": 40,
+    "h": 52
+   },
+   "sha256": "823ff3737ef8552a269b3655b277893f02fca2ea0dccdb2e5d85fab2077f6bd7",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/jungle_jane/frame15.png",
+   "referenced_by": "numeric index data[15] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_jump_lo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 16,
+    "object_name": "016_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 80788,
+    "size": 7489
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "f8bd54ebe8de5e00712590e6d0e724933224e2a05d2b6f4138672c8a221147a2",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_jump_lo.ogg",
+   "referenced_by": "numeric index data[16] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_jump_med",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 17,
+    "object_name": "017_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 88365,
+    "size": 8378
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "45960897c08c691479eb71c8590d82c2e5869ff7ed0296732dd25c008e2797fe",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_jump_med.ogg",
+   "referenced_by": "numeric index data[17] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_jump_hi",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 18,
+    "object_name": "018_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 96828,
+    "size": 11065
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "e64262a1f1b87cef60fb6bc9df002218e3f0758981e90f68846d101aa910e1c6",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_jump_hi.ogg",
+   "referenced_by": "numeric index data[18] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_yo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 19,
+    "object_name": "019_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 107975,
+    "size": 11056
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "7f786e73e6d8bdf3f532acf2730b95f0e13e0f794b688a08bd3454d801f09b26",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_yo.ogg",
+   "referenced_by": "numeric index data[19] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_wazup",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 20,
+    "object_name": "020_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 119113,
+    "size": 6498
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "6f78df0b13eded8ae8dbb14b737e99dbb84e761f1acd7a77f92cd66a96552580",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_wazup.ogg",
+   "referenced_by": "numeric index data[20] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_falling",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 21,
+    "object_name": "021_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 125697,
+    "size": 27373
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "014370b16021cc29c2a55c1832c0a9a407ae3ff09a2408ce28ed2c156d629a23",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_falling.ogg",
+   "referenced_by": "numeric index data[21] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/snd_edge",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 22,
+    "object_name": "022_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 153151,
+    "size": 5840
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "cc473e515636227d6a42fc4b8745b3f433382dc48a3b38b39e6f085861ce43a1",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/snd_edge.ogg",
+   "referenced_by": "numeric index data[22] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/music_bg",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 23,
+    "object_name": "023_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 159076,
+    "size": 235599
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "b028878d9366138b0c174c8ffb2bc1746bfb5cb33478ef71e05d106eee6dd827",
+   "extract": "verbatim",
+   "clean_path": "assets/char/jungle_jane/music_bg.ogg",
+   "referenced_by": "numeric index data[23] compiled into .text"
+  },
+  {
+   "id": "char.jungle_jane/GrabberInfo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/jungle_jane/jane.dat",
+    "index": 24,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 394814,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/char/jungle_jane/grabberinfo.bin",
+   "referenced_by": "numeric index data[24] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/palette",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 0,
+    "object_name": "000_PAL",
+    "type_fourcc": "PAL ",
+    "unpacked_offset": 94,
+    "size": 1024
+   },
+   "format": "allegro_palette",
+   "geometry": null,
+   "sha256": "17ae912fd853e6242a4335188d340fa1e8768ac4fa925ccff2674aaf68de8b11",
+   "extract": "256x(r,g,b,filler) 6-bit -> .pal text or verbatim .pal",
+   "clean_path": "assets/char/wild_wendy/palette.pal",
+   "referenced_by": "numeric index data[0] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame01",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 1,
+    "object_name": "001_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 1258,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "6c238f5944b29794760e89991f4f7834d0aa0e151dbfb0fbfac86a0f8b2c0242",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame01.png",
+   "referenced_by": "numeric index data[1] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame02",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 2,
+    "object_name": "002_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 6085,
+    "size": 4530
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "84ffef8a4111d876092cbfbff0fec48dd54367901c22b136a603379167256266",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame02.png",
+   "referenced_by": "numeric index data[2] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame03",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 3,
+    "object_name": "003_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 10756,
+    "size": 4530
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "b8c556a6cf5769bfca5f4f0bed5c38790e74747246c1da67f47f68e7c39a7fb0",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame03.png",
+   "referenced_by": "numeric index data[3] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame04",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 4,
+    "object_name": "004_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 15428,
+    "size": 4530
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "84ffef8a4111d876092cbfbff0fec48dd54367901c22b136a603379167256266",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame04.png",
+   "referenced_by": "numeric index data[4] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame05",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 5,
+    "object_name": "005_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 20100,
+    "size": 4530
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 29,
+    "h": 52
+   },
+   "sha256": "f9decc860460a28f8689f1f4b731ce91cf915dc8076bf9eb29d38d2460c55c06",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame05.png",
+   "referenced_by": "numeric index data[5] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame06",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 6,
+    "object_name": "006_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 24772,
+    "size": 4791
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 29,
+    "h": 55
+   },
+   "sha256": "2a951886c988cb3c1fc767abf22c87cf0efbbbb0003926aaf58ca532081301ab",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame06.png",
+   "referenced_by": "numeric index data[6] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame07",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 7,
+    "object_name": "007_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 29705,
+    "size": 4878
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 29,
+    "h": 56
+   },
+   "sha256": "4f9d328b91c62a34ad0aff0480e04ec0d2dd7586227ddf055b8c096557b36148",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame07.png",
+   "referenced_by": "numeric index data[7] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame08",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 8,
+    "object_name": "008_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 34725,
+    "size": 5307
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 31,
+    "h": 57
+   },
+   "sha256": "260b2ebd965b3f98ce40bbc0a928079f4c06228a0b84d324226f4706a7f907f4",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame08.png",
+   "referenced_by": "numeric index data[8] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame09",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 9,
+    "object_name": "009_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 40174,
+    "size": 5226
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 30,
+    "h": 58
+   },
+   "sha256": "75023bd0638341499f0a99b391f8e1e09785f6dfeb04f7fd36cee039a5885e3b",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame09.png",
+   "referenced_by": "numeric index data[9] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame10",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 10,
+    "object_name": "010_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 45542,
+    "size": 4842
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 31,
+    "h": 52
+   },
+   "sha256": "9f26e4d0910f5a24047f574722df741f60b4d756eb55159db3b61e2bad99fc64",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame10.png",
+   "referenced_by": "numeric index data[10] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame11",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 11,
+    "object_name": "011_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 50526,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "e0bac80507b899c13e85b0cf9b0fa4b2f8592f53e3af5d65d5851321cbc6c81c",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame11.png",
+   "referenced_by": "numeric index data[11] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame12",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 12,
+    "object_name": "012_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 55354,
+    "size": 4686
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 30,
+    "h": 52
+   },
+   "sha256": "cb6a3db25ca24960e5b61ae5bad4f094a627206dbe8807dfa8d436b7cf5a3edc",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame12.png",
+   "referenced_by": "numeric index data[12] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame13",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 13,
+    "object_name": "013_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 60182,
+    "size": 7794
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 44,
+    "h": 59
+   },
+   "sha256": "e280bdabd9e9cc9b0c6ba8987e017a4b238749344d6fe3057a596606653c2d59",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame13.png",
+   "referenced_by": "numeric index data[13] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame14",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 14,
+    "object_name": "014_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 68118,
+    "size": 5667
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 37,
+    "h": 51
+   },
+   "sha256": "bfb11fb9c15b70c8cd5258ec34c4a2e38d4a00bc62c778fc83304bc3b8596528",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame14.png",
+   "referenced_by": "numeric index data[14] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/frame15",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 15,
+    "object_name": "015_BMP",
+    "type_fourcc": "BMP ",
+    "unpacked_offset": 73927,
+    "size": 5667
+   },
+   "format": "allegro_bitmap",
+   "geometry": {
+    "bpp": 24,
+    "w": 37,
+    "h": 51
+   },
+   "sha256": "8f962ff817ceb1f8ad499713cb8899e68d92be2d63307bc8c9583555c8d1baba",
+   "extract": "bmp565_to_png24 (bit-exact round trip) or keep .albmp payload",
+   "clean_path": "assets/char/wild_wendy/frame15.png",
+   "referenced_by": "numeric index data[15] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_jump_lo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 16,
+    "object_name": "016_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 79685,
+    "size": 7370
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "a59b8e7130a814e986ba839e9e9c90da9fcf95d005640709416adefff1af8492",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_jump_lo.ogg",
+   "referenced_by": "numeric index data[16] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_jump_med",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 17,
+    "object_name": "017_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 87149,
+    "size": 12949
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "fd63aecfd523a845556899996e0affb52f805b16982a699576f5911570847d3a",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_jump_med.ogg",
+   "referenced_by": "numeric index data[17] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_jump_hi",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 18,
+    "object_name": "018_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 100187,
+    "size": 19268
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "319043230250ef608adca3b65e7e012c68270ca336d040ef7bb4db68945937f8",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_jump_hi.ogg",
+   "referenced_by": "numeric index data[18] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_yo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 19,
+    "object_name": "019_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 119546,
+    "size": 10615
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "e7ddcdc5f30983de531072da4c6f0e752f4c5a5582080b1ebb836a913a0c4efa",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_yo.ogg",
+   "referenced_by": "numeric index data[19] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_wazup",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 20,
+    "object_name": "020_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 130249,
+    "size": 13642
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "28a13f3067c6da9c5bace5c81472de17f70e09d57d2f73a76a9a48bd83fc1a30",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_wazup.ogg",
+   "referenced_by": "numeric index data[20] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_falling",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 21,
+    "object_name": "021_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 143978,
+    "size": 18852
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "3e150df2272aba3a3f412973fa65a8ce6a8f9e44bc7157b72d4b3e0fb3579218",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_falling.ogg",
+   "referenced_by": "numeric index data[21] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/snd_edge",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 22,
+    "object_name": "022_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 162917,
+    "size": 15515
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "024bd9732f8463f04be750432a5a235d4c0f5ebbfdf0efa241af38a6a7d989a7",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/snd_edge.ogg",
+   "referenced_by": "numeric index data[22] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/music_bg",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 23,
+    "object_name": "023_OGG",
+    "type_fourcc": "OGG ",
+    "unpacked_offset": 178517,
+    "size": 269280
+   },
+   "format": "ogg_vorbis",
+   "geometry": null,
+   "sha256": "1f98e8e084dba62aac252a60ca72457526a8591047e88e3f498ca318ccb0a607",
+   "extract": "verbatim",
+   "clean_path": "assets/char/wild_wendy/music_bg.ogg",
+   "referenced_by": "numeric index data[23] compiled into .text"
+  },
+  {
+   "id": "char.wild_wendy/GrabberInfo",
+   "kind": "datafile_object",
+   "origin": {
+    "mode": "DATAFILE",
+    "file": "characters/wild_wendy/wendy.dat",
+    "index": 24,
+    "object_name": "GrabberInfo",
+    "type_fourcc": "info",
+    "unpacked_offset": 447936,
+    "size": 32
+   },
+   "format": "grabber_metadata",
+   "geometry": null,
+   "sha256": "a4578fd2ca2b8f27faa19ce1369a95da24b638e103ce7862e8d91da3f32cd03d",
+   "extract": "verbatim (grabber bookkeeping, not used at runtime)",
+   "clean_path": "assets/char/wild_wendy/grabberinfo.bin",
+   "referenced_by": "numeric index data[24] compiled into .text"
+  },
+  {
+   "id": "file/gamepad.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "gamepad.txt",
+    "size": 773
+   },
+   "format": "text/ini",
+   "sha256": "dce183fc68de8ee8becc56c13e7a9787cf904332c16994123648c4323df59dbe",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "gamepad button -> action map, read at init"
+  },
+  {
+   "id": "file/characters/characters.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/characters.txt",
+    "size": 8428
+   },
+   "format": "text",
+   "sha256": "2a2ae961828fbba8357cfa9d9f1e2f4dbdb203332e5921c69221bd4f56c33af1",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "custom-character documentation, not read by the game"
+  },
+  {
+   "id": "file/readme.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "readme.txt",
+    "size": 15372
+   },
+   "format": "text",
+   "sha256": "1f674590acc71078942fe8949c00916101ae9e57518daf0a786931e281a84a38",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "licence / distribution terms"
+  },
+  {
+   "id": "file/ogg_license.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "ogg_license.txt",
+    "size": 1608
+   },
+   "format": "text",
+   "sha256": "8b9788cc144a32ad7f23a0157e70508ddcdbf39993d3ff5fbaffb2322d36911d",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "Xiph BSD licence"
+  },
+  {
+   "id": "file/itrcheck.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "itrcheck.txt",
+    "size": 5040
+   },
+   "format": "text",
+   "sha256": "5bc05897c738d2615d8ac18f589dd8d835be7f258fd1396acb8f1fc9a75088c0",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "documentation of the -itrcheck replay verifier"
+  },
+  {
+   "id": "file/icytower.url",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "icytower.url",
+    "size": 69
+   },
+   "format": "text",
+   "sha256": "b0741556617819af1a08b15292cfebf0a67ae70ca0c87c6309aa1072ef568046",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "shortcut"
+  },
+  {
+   "id": "file/characters/_template/_template.png",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/_template/_template.png",
+    "size": 6768
+   },
+   "format": "png",
+   "sha256": "d8c1b1d86c09cea05ffc41153f36e5042e315953d1613af7468d31ba91b84b1c",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "template character sprite sheet"
+  },
+  {
+   "id": "file/characters/_template/_template.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/_template/_template.txt",
+    "size": 386
+   },
+   "format": "text/tagged",
+   "sha256": "d2c2f5d8bf1bde43abe9a06bd89da19b23b982530210ee49ce9bee2830048f58",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "template character script"
+  },
+  {
+   "id": "file/characters/harold_the_homeboy/harold_the_homeboy.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/harold_the_homeboy/harold_the_homeboy.txt",
+    "size": 247
+   },
+   "format": "text/tagged",
+   "sha256": "c9915659ec54ce20f88b7dd9fd337086b0e63477018ecec3db6296138907ea4e",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "character script"
+  },
+  {
+   "id": "file/characters/disco_dave/disco_dave.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/disco_dave/disco_dave.txt",
+    "size": 212
+   },
+   "format": "text/tagged",
+   "sha256": "52adeec0cc6c393043025a44615ca284f042ef3659c5707ed9ff8f4d9be3515c",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "character script"
+  },
+  {
+   "id": "file/characters/jungle_jane/jungle_jane.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/jungle_jane/jungle_jane.txt",
+    "size": 238
+   },
+   "format": "text/tagged",
+   "sha256": "d9851d4d33643e3440270733a516ccb140c327f57b2661d990241e5b60ff7bf0",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "character script"
+  },
+  {
+   "id": "file/characters/wild_wendy/wild_wendy.txt",
+   "kind": "external_file",
+   "origin": {
+    "mode": "EXTERNAL",
+    "path": "characters/wild_wendy/wild_wendy.txt",
+    "size": 238
+   },
+   "format": "text/tagged",
+   "sha256": "f0e20d94548b2ec7d84e6e45b60d3079075044fb88d29a19591a818cb1501d62",
+   "extract": "already a plain file - copy verbatim",
+   "referenced_by": "path string in .rdata",
+   "meaning": "character script"
+  }
+ ],
+ "datafile_summary": {
+  "data": {
+   "file": "data/data.dat",
+   "objects": 132,
+   "password": "CHEESE",
+   "packed": true,
+   "file_sha256": "f02713d1537345eb460c08666dc00c0c279bba50bc07f4ac74a3edff2aee9b3b",
+   "by_type": {
+    "PAL ": 1,
+    "BMP ": 125,
+    "bpp16": 114,
+    "bpp24": 11,
+    "FONT": 5,
+    "info": 1
+   }
+  },
+  "loading": {
+   "file": "data/loading.dat",
+   "objects": 3,
+   "password": "(c) Free Lunch Design",
+   "packed": true,
+   "file_sha256": "3070634bca32b32400b7baf53dea97840d7c5f00320b595cb8200f2b1d6b6ab8",
+   "by_type": {
+    "PAL ": 1,
+    "BMP ": 1,
+    "bpp8": 1,
+    "info": 1
+   }
+  },
+  "sfx15": {
+   "file": "data/sfx15.dat",
+   "objects": 23,
+   "password": "CHEESE",
+   "packed": false,
+   "file_sha256": "add96a330962dc9097df11e488ccb2380e346f26054d7a345fac7de533a4cf17",
+   "by_type": {
+    "OGG ": 22,
+    "info": 1
+   }
+  },
+  "char.harold_the_homeboy": {
+   "file": "characters/harold_the_homeboy/harold.dat",
+   "objects": 24,
+   "password": null,
+   "packed": true,
+   "file_sha256": "5a901734e08d31d060bc2f9b9abb21a4445c6220eb66553b23c1a07603066a27",
+   "by_type": {
+    "PAL ": 1,
+    "BMP ": 15,
+    "bpp16": 15,
+    "OGG ": 7,
+    "info": 1
+   }
+  },
+  "char.disco_dave": {
+   "file": "characters/disco_dave/dave.dat",
+   "objects": 25,
+   "password": null,
+   "packed": true,
+   "file_sha256": "153c212dc360e2eb594c4adac6fd636d607a792d8ac51a26786da2f9717233ad",
+   "by_type": {
+    "PAL ": 1,
+    "BMP ": 15,
+    "bpp16": 15,
+    "OGG ": 8,
+    "info": 1
+   }
+  },
+  "char.jungle_jane": {
+   "file": "characters/jungle_jane/jane.dat",
+   "objects": 25,
+   "password": null,
+   "packed": true,
+   "file_sha256": "b0a9dce21917a15fc9cc1c3e1546b12f6cc00613800427efd4cb7c267ab08342",
+   "by_type": {
+    "PAL ": 1,
+    "BMP ": 15,
+    "bpp32": 15,
+    "OGG ": 8,
+    "info": 1
+   }
+  },
+  "char.wild_wendy": {
+   "file": "characters/wild_wendy/wendy.dat",
+   "objects": 25,
+   "password": null,
+   "packed": true,
+   "file_sha256": "2dee34dee68de996e00d457412790484cc712ead4f50debf2a03394c12ae92db",
+   "by_type": {
+    "PAL ": 1,
+    "BMP ": 15,
+    "bpp24": 15,
+    "OGG ": 8,
+    "info": 1
+   }
+  }
+ },
+ "runtime_written": [
+  {
+   "path": "tower.cfg",
+   "format": "allegro packfile (LZSS, no password)",
+   "meaning": "options + hiscore tables + ad record; guarded by generate_options_checksum"
+  },
+  {
+   "path": "log.txt",
+   "format": "text",
+   "meaning": "append-only log written from log2file"
+  },
+  {
+   "path": "profiles/<name>/<name>.itp",
+   "format": "binary struct",
+   "meaning": "profile, guarded by generate_profile_checksum"
+  },
+  {
+   "path": "profiles/<name>/<name>_stats.txt",
+   "format": "text",
+   "meaning": "human-readable profile dump"
+  },
+  {
+   "path": "profiles/<name>/replays/*.itr",
+   "format": "binary struct",
+   "meaning": "replay, guarded by calc_replay_checksum"
+  },
+  {
+   "path": "screenshots/icytower_%04d.png",
+   "format": "png",
+   "meaning": "written by take_screenshot"
+  },
+  {
+   "path": "data/com/ads.csv",
+   "format": "csv",
+   "meaning": "ad listing cache (network)"
+  },
+  {
+   "path": "data/com/default.dat",
+   "format": "png/bitmap",
+   "meaning": "default ad image; its file_size_ex is baked into Toptions"
+  },
+  {
+   "path": "data/com/temp.dat",
+   "format": "binary",
+   "meaning": "ad download scratch file"
+  }
+ ]
+}
