@@ -60,6 +60,13 @@ struct DetOptions {
     // cycle_count (0x506938) before and after _handle_timer_tick, the
     // safepoint count and the exact call site. See det.cpp's trace_input.
     const char* trace_input;
+    // --dump-assets PATH ("in-vivo pass, corpus gates, asset oracle" pass,
+    // carrier/NOTES.md; src/icytower/ASSETS.md's own proposal): dumps every
+    // asset id's canonical serialization (src/dump_assets.c) to PATH, once,
+    // at the first tick safepoint reaches (guaranteed to be after the
+    // guest's own init_game() has loaded every datafile - see det.cpp's
+    // safepoint_hit). nullptr/empty = do nothing (the common case).
+    const char* dump_assets;
     // --- "Environment isolation" pass (carrier/NOTES.md) ------------------
     // --interactive: a human is at the keyboard/screen for this run
     // (scripts/play.py passes it for its interactive and --record-replay

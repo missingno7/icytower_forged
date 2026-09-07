@@ -164,6 +164,9 @@ struct Options {
     int  frame_dump_at_tick;  // --frame-dump-at T PATH (two values)
     char frame_dump_path[MAX_PATH];
     char print_globals[1024]; // --print-globals expr1,expr2,...
+    // "in-vivo pass, corpus gates, asset oracle" pass (carrier/NOTES.md;
+    // src/icytower/ASSETS.md "--dump-assets proposal").
+    char dump_assets[MAX_PATH]; // --dump-assets PATH
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -294,6 +297,7 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->frame_dump_at_tick = 0;
     o->frame_dump_path[0] = 0;
     o->print_globals[0] = 0;
+    o->dump_assets[0] = 0;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
@@ -373,6 +377,7 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "frame-digest-every") == 0) { o->frame_digest_every = atoi(value); if (o->frame_digest_every <= 0) o->frame_digest_every = 1; }
         else if (strcmp(name, "frame-digest-out") == 0) { strncpy(o->frame_digest_out, value, sizeof(o->frame_digest_out) - 1); }
         else if (strcmp(name, "print-globals") == 0) { strncpy(o->print_globals, value, sizeof(o->print_globals) - 1); }
+        else if (strcmp(name, "dump-assets") == 0) { strncpy(o->dump_assets, value, sizeof(o->dump_assets) - 1); }
         else if (strcmp(name, "window") == 0) {
             o->window_mode_explicit = true;
             if (_stricmp(value, "normal") == 0) o->window_mode = WindowMode::Normal;
@@ -507,6 +512,7 @@ static void options_to_env(const Options& o) {
     SetEnvironmentVariableA("PF_FRAME_DUMP_AT_TICK", buf);
     SetEnvironmentVariableA("PF_FRAME_DUMP_PATH", o.frame_dump_path);
     SetEnvironmentVariableA("PF_PRINT_GLOBALS", o.print_globals);
+    SetEnvironmentVariableA("PF_DUMP_ASSETS", o.dump_assets);
 }
 
 static bool is_child_process() {
@@ -610,6 +616,7 @@ static void options_from_env(Options* o) {
     o->frame_dump_at_tick = atoi(fde_buf);
     get_env_or("PF_FRAME_DUMP_PATH", o->frame_dump_path, sizeof(o->frame_dump_path), "");
     get_env_or("PF_PRINT_GLOBALS", o->print_globals, sizeof(o->print_globals), "");
+    get_env_or("PF_DUMP_ASSETS", o->dump_assets, sizeof(o->dump_assets), "");
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -704,6 +711,7 @@ int main(int argc, char** argv) {
     det_opt.image_path = o.image;
     det_opt.inject_real_test = o.inject_real_test;
     det_opt.trace_input = o.trace_input[0] ? o.trace_input : nullptr;
+    det_opt.dump_assets = o.dump_assets[0] ? o.dump_assets : nullptr;
     det_opt.interactive = o.interactive;
     det_opt.window_mode = o.window_mode;
     // Milestones 8-9: snapshot/restore ride on the same tick safepoint.

@@ -68,3 +68,16 @@ update_player=src
 # --- added by this in-vivo verification pass (asset-seam unblocked) ---
 draw_buffer=src
 start_reward=src
+# --- added by batch 9's in-vivo pass, corpus gates, asset oracle pass
+#     (2026-09-07): collision.c's four collision_type=1/3/4/(dead-code-2-
+#     is-handled-by-handle_player_collision_original-above) variants, now
+#     compiled and bound. collision_type is a compile-time constant 2
+#     (handle_player_collision_vector's own dispatch case), so only
+#     _vector is ever selected in vivo by any recording; the other three
+#     are included here for completeness of the all-bound run (0
+#     invocations expected, same treatment as handle_player_collision_
+#     original above) rather than left out. ---
+handle_player_collision_old=src
+handle_player_collision_vector=src
+handle_player_collision_vector_2=src
+handle_player_collision_combo=src

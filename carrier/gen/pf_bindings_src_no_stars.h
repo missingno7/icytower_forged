@@ -4,8 +4,8 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-07 21:29:52 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_buffer, draw_scroller, draw_star_field, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_original, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
+ * Generated: 2026-09-07 22:20:22 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_player, draw_replay_hud, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixtoi, it_al_ftofix, it_al_rotate_sprite, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -499,9 +499,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* prototype: void drawSlot(BITMAP *, int, int, char *, char *, int) */
 #define drawSlot ((PFN_drawSlot)0x406fb4)
 /* excluded by --exclude (compiled natively): draw_buffer */
-/* draw_frame  VA=0x40929c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void draw_frame(BITMAP *) */
-#define draw_frame ((PFN_draw_frame)0x40929c)
+/* excluded by --exclude (compiled natively): draw_frame */
 /* draw_menu  VA=0x41767c  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: void draw_menu(BITMAP *, Tmenu *, Tmenu_params *, int, int, int) */
 #define draw_menu ((PFN_draw_menu)0x41767c)
@@ -672,19 +670,11 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* handle_menu  VA=0x417d24  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: int handle_menu(Tmenu *, Tmenu_params *, Tcontrol *, BITMAP *, void (__cdecl *)(void), int, int, int) */
 #define handle_menu ((PFN_handle_menu)0x417d24)
-/* handle_player_collision_combo  VA=0x408358  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void handle_player_collision_combo(int, int) */
-#define handle_player_collision_combo ((PFN_handle_player_collision_combo)0x408358)
-/* handle_player_collision_old  VA=0x407fd8  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void handle_player_collision_old(int, int) */
-#define handle_player_collision_old ((PFN_handle_player_collision_old)0x407fd8)
+/* excluded by --exclude (compiled natively): handle_player_collision_combo */
+/* excluded by --exclude (compiled natively): handle_player_collision_old */
 /* excluded by --exclude (compiled natively): handle_player_collision_original */
-/* handle_player_collision_vector  VA=0x408d08  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void handle_player_collision_vector(int, int) */
-#define handle_player_collision_vector ((PFN_handle_player_collision_vector)0x408d08)
-/* handle_player_collision_vector_2  VA=0x4088c8  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void handle_player_collision_vector_2(int, int) */
-#define handle_player_collision_vector_2 ((PFN_handle_player_collision_vector_2)0x4088c8)
+/* excluded by --exclude (compiled natively): handle_player_collision_vector */
+/* excluded by --exclude (compiled natively): handle_player_collision_vector_2 */
 /* handle_player_input  VA=0x40b3e4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void handle_player_input(Tcontrol *) */
 #define handle_player_input ((PFN_handle_player_input)0x40b3e4)

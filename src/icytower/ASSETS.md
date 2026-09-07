@@ -473,30 +473,53 @@ the strongest evidence in this document: not "the code looks right" but
   not bit-deterministic with each other, and exactly why this isn't
   silently reported as a pass. `asset_oracle.c` still prints a real digest
   for all 53; only the Python-side equality claim is open.
-- **Carrier-vs-standalone equality is NOT yet proven.** This task's brief
-  explicitly scopes the carrier side to a written proposal, not an
-  implementation (the carrier is owned by a concurrently-running task —
-  do not run `carrier.exe` or edit `carrier/src`/`carrier/gen`). Proposal
-  for that task to pick up: a `--dump-assets` mode on the carrier that,
-  for every id, calls `asset_bitmap()`/`asset_sample()`/`asset_font()`/
-  `asset_palette()`/`asset_object()` (already generated in
-  `carrier/gen/pf_asset_bindings.h`) against the **guest's own loaded
-  `DATAFILE*`** (the zero-copy cast for `data`/`sfx`, the lazily-loaded
-  private cache for `loading`/`char:*`) and prints the exact same
-  canonical serialization this file's `asset_oracle.c` documents in its
-  header comment — byte-for-byte the same hashing code, so a diff against
-  either this document's standalone run or `scripts/
-  asset_oracle_digest.py`'s output is direct. Two things that
-  serialization depends on empirically (not just by source-reading, see
-  above) may differ inside the carrier process: which `_rgb_shift_*`
-  values are in effect (the guest installs its own real
-  DirectDraw/GDI graphics mode, so this may already match, or may not —
-  untested) and whether `set_color_conversion`/screen depth were ever
-  touched before the datafiles loaded (the original game's own boot order,
-  not this task's choice). Until that mode exists and is run, "the carrier
-  and the standalone port read the same bytes" (this document's own
-  "Carrier" section, above) is proven only for the on-disk round trip
-  (§1/§2), not for the in-memory object shape addressed here.
+- **Carrier-vs-standalone equality: IMPLEMENTED and MEASURED (2026-09-08,
+  "in-vivo pass, corpus gates, asset oracle", `carrier/NOTES.md`)** — the
+  `--dump-assets PATH` mode this section used to only propose now exists
+  (`carrier/src/dump_assets.c`), calling exactly the accessors named above
+  against the guest's own loaded `DATAFILE*` and printing the same
+  canonical serialization. Result, diffed against
+  `scripts/asset_oracle_digest.py`'s Python reconstruction:
+
+  ```
+  FONT:    5 / 5   EQUAL
+  info:    6 / 6   EQUAL (7th is sfx15.dat's own GrabberInfo — SKIPped, see below)
+  PALETTE: 5 / 6   EQUAL (one unexplained mismatch: "data" family's own AAAPAL)
+  BITMAP:  0 / 186 EQUAL — explained, not a bug (see below)
+  ```
+
+  Both empirical questions this section used to leave open are now
+  answered, and neither matched the guess: **`set_color_conversion` is
+  never touched before the datafiles load** in a real carrier run — Allegro's
+  default `COLORCONV_TOTAL` stays on — and the guest's own `set_gfx_mode`
+  installs a real **32bpp** screen, so every BITMAP object gets silently
+  up-converted from its native on-disk depth (MEASURED: `BGTILE`, 16bpp on
+  disk, reads back `vtable->color_depth == 32` inside the running carrier)
+  the moment `init_game()` loads `data.dat` — before `--dump-assets` or any
+  game code ever sees the object. This is not a `_rgb_shift_*` shift-
+  convention difference (this section's original guess) but a full depth
+  conversion, and it is a genuine, correctly-measured fact about how the
+  real game runs, not a defect in either serialization. "The carrier and
+  the standalone port read the same bytes" is therefore true at the level
+  that matters for gameplay (same file, same decoder, same pixel values,
+  losslessly up-sampled) but not at the raw-stored-byte level this
+  section's own canonical serialization checks.
+
+  A second, real, and independently confirmed environment fact: the
+  persistent `sfx` global stays **NULL** in a `--det`/headless carrier run
+  (`--print-globals sfx,data` MEASURED `sfx = 0x00000000` while
+  `data = 0x2000ebf0` at the same tick, even though an ordinary interactive
+  run's own `assets/log.txt` logs `"sfx15.dat loaded"`) — the guest's sound-
+  install path evidently takes a different branch with no real audio
+  device reachable. `--dump-assets` reports the 23 affected ids (22 `OGG `,
+  1 `info`, all of `sfx15.dat`) as `SKIP family-not-loaded=sfx` rather than
+  crashing (an earlier, unguarded version of the same loop DID crash here
+  first — a real access violation, not a hypothetical). The 30 `char:*`-
+  family `OGG` samples (not gated behind the game's own sound-install path)
+  DO get a real `logg_load_memory`-decoded hash from the carrier, same as
+  the standalone build, just not independently cross-checked (the pre-
+  existing, already-documented Python-side Vorbis limitation below still
+  applies — no new gap).
 - The FONT canonical serialization was derived by transcribing
   `read_font`/`read_font_mono`/`read_font_color` in `datafile.c` field by
   field (documented in `scripts/asset_oracle_digest.py`'s

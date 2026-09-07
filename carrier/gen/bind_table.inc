@@ -13,6 +13,10 @@
 extern "C" {
     void __cdecl add_combo(void*, void*);
     void __cdecl add_jump_sequence(void*, void*);
+    void __cdecl handle_player_collision_old(int, int);
+    void __cdecl handle_player_collision_vector(int, int);
+    void __cdecl handle_player_collision_vector_2(int, int);
+    void __cdecl handle_player_collision_combo(int, int);
     void* __cdecl get_gamepad(void);
     int __cdecl is_up(void*);
     int __cdecl is_down(void*);
@@ -183,6 +187,10 @@ static const FnDesc kFns[] = {
     // name  va  argc  returns_value  lifted  native  src  regions  num_regions  fault_region
     { "add_combo", 0x0040414cu, 2, false, nullptr, nullptr, (void*)add_combo, regions_add_combo, 1, 0 },
     { "add_jump_sequence", 0x004040f4u, 2, false, nullptr, nullptr, (void*)add_jump_sequence, regions_add_jump_sequence, 1, 0 },
+    { "handle_player_collision_old", 0x00407fd8u, 2, false, nullptr, nullptr, (void*)handle_player_collision_old, nullptr, 0, -1 },
+    { "handle_player_collision_vector", 0x00408d08u, 2, false, nullptr, nullptr, (void*)handle_player_collision_vector, nullptr, 0, -1 },
+    { "handle_player_collision_vector_2", 0x004088c8u, 2, false, nullptr, nullptr, (void*)handle_player_collision_vector_2, nullptr, 0, -1 },
+    { "handle_player_collision_combo", 0x00408358u, 2, false, nullptr, nullptr, (void*)handle_player_collision_combo, nullptr, 0, -1 },
     { "get_gamepad", 0x004017fcu, 0, true, nullptr, nullptr, (void*)get_gamepad, nullptr, 0, -1 },
     { "is_up", 0x00401844u, 1, true, nullptr, nullptr, (void*)is_up, regions_is_up, 1, 0 },
     { "is_down", 0x0040185cu, 1, true, nullptr, nullptr, (void*)is_down, regions_is_down, 1, 0 },

@@ -217,6 +217,29 @@ if not "%MSVC_SRC_EXTRA_MEMBERSAFE%"=="" (
   )
 )
 
+rem --- "in-vivo pass, corpus gates, asset oracle" pass (carrier/NOTES.md):
+rem src\dump_assets.c is CARRIER-owned tooling (--dump-assets PATH,
+rem src/icytower/ASSETS.md), not a promoted src/icytower/*.c file - it needs
+rem the SAME three force-includes as the Allegro/asset-seam group above
+rem (asset_bitmap()/asset_font()/.../BITMAP/FONT/PALETTE/SAMPLE), so it gets
+rem its own tiny cl invocation rather than joining src\icytower's own
+rem scan_src_defs.py-derived lists (it defines no game function, so that
+rem scanner would never pick it up anyway). /I ..\src\icytower is needed
+rem here specifically because this file - unlike draw_buffer.c/
+rem start_reward.c above - is NOT ITSELF under src\icytower, so its own
+rem `#include "assets.h"` has no parent file in that directory for MSVC's
+rem quoted-include stack-walk to fall back to (see this file's own header
+rem comment, and the analogous GCC note below for collision.c's cross-
+rem directory /I fix).
+cl /nologo /Zi /Od /W3 /TC /D_CRT_SECURE_NO_WARNINGS ^
+  /I gen /I ..\src\icytower /FIpf_bindings_src.h /FIpf_lib_bindings.h /FIpf_asset_bindings.h ^
+  /c src\dump_assets.c ^
+  /Fo:obj\
+if errorlevel 1 (
+  echo FAILED: src\dump_assets.c compile errors above
+  exit /b 1
+)
+
 rem NOTE 1: gcc.exe DOES need its own bin directory on PATH (MEASURED: it
 rem fails to run at all, silently, exit 1, no stderr, if invoked by full
 rem path alone under the vcvars32 environment - presumably to find its
@@ -244,7 +267,30 @@ if "%GCC_SRC%"=="" (
   echo FAILED: scan_src_defs.py --list-build-files gcc found no files to compile
   exit /b 1
 )
-for %%F in (%GCC_SRC%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F & exit /b 1)
+
+rem "in-vivo pass, batch 9" (carrier/NOTES.md): collision.c calls
+rem makecol()/line() through Allegro's AL_INLINE vtable-dispatch macros
+rem (pf_lib_bindings.h), the same gap draw_buffer.c/start_reward.c hit on
+rem the MSVC side above - a plain `-include pf_bindings_src.h` compile
+rem leaves makecol/line as undeclared identifiers (implicit-int, so it
+rem still compiles) that then fail to link. scan_src_defs.py's --extra-fi
+rem partition already generalizes to the gcc list (same mechanical
+rem CALL-syntax scan, not a gcc-specific rewrite), so split GCC_SRC the
+rem same way MSVC_SRC is split above instead of hand-listing collision.c.
+set GCC_SRC_BASE=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --extra-fi base --prefix "..\src\icytower\\"') do set GCC_SRC_BASE=%%E
+set GCC_SRC_EXTRA=
+for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --extra-fi extra --prefix "..\src\icytower\\"') do set GCC_SRC_EXTRA=%%E
+
+for %%F in (%GCC_SRC_BASE%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F & exit /b 1)
+rem pf_asset_bindings.h's own `#include "assets.h"` (quoted) resolves under
+rem MSVC's /FI because MSVC's quoted-include search walks UP the #include
+rem stack to the primary source file's own directory (src\icytower) when the
+rem name is not found next to pf_asset_bindings.h itself (gen\) - GCC's
+rem quoted-include search does NOT have that stack-walk (MEASURED: "fatal
+rem error: assets.h: No such file or directory" with only -I gen), so GCC
+rem needs src\icytower on its search path explicitly for this group.
+for %%F in (%GCC_SRC_EXTRA%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -I ..\src\icytower -include pf_bindings_src.h -include pf_lib_bindings.h -include pf_asset_bindings.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F ^(Allegro/asset-seam group^) & exit /b 1)
 echo OK: GCC x87 objects built: %GCC_SRC%
 
 rem Object lists for the final link, derived from the SAME two file lists
@@ -262,6 +308,7 @@ cl /nologo /Zi /Od /EHsc /std:c++17 /W3 /D_CRT_SECURE_NO_WARNINGS ^
   gen\import_stubs.cpp ^
   lift\lifted\lifted_update_frame.c lift\lifted\lifted_is_solid.c lift\lifted\lifted_jump_player.c ^
   native\native_update_frame.c native\native_is_solid.c ^
+  obj\dump_assets.obj ^
   %MSVC_OBJS% ^
   %GCC_OBJS% ^
   /Fe:carrier.exe /Fo:obj\ ^

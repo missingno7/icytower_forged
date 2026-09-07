@@ -4405,3 +4405,279 @@ reset_particles, reset_player.
   name - entry 1 of the (uncorrupted) file list, whichever .itr that
   mechanically sorts to; the mechanism, not the specific recording, was
   this pass's deliverable.
+
+## In-vivo batch 9, corpus gates, asset oracle (2026-09-08)
+
+Four items, one pass: rebuild the carrier with `collision.c` linked in,
+in-vivo-verify the four new bind rows plus every row not yet in
+`src/icytower/INVIVO.md`, add corpus (stored-baseline) gates for the
+operator recording AND the `.itr` workload, and implement the
+`--dump-assets` mode `src/icytower/ASSETS.md` only proposed before.
+
+### 1. `collision.c` in the carrier build
+
+`carrier/gen/scan_src_defs.py --list-build-files` already picked up
+`collision.c` mechanically (GCC x87, real `double` arithmetic) - the
+missing piece was its `--extra-fi` classification: it calls
+`makecol()`/`line()` through Allegro's `AL_INLINE` vtable-dispatch macros
+(`pf_lib_bindings.h`), exactly like `draw_buffer.c`/`start_reward.c` on the
+MSVC side, but `build.cmd`'s GCC compile loop had never been split into a
+base/extra pair the way the MSVC loop was - it force-included only
+`pf_bindings_src.h` for every GCC file, so `collision.c` compiled with
+`makecol`/`line`/`screen`/`key`/`KEY_F2` all falling back to C's
+implicit-int rule (still "compiles", then fails to link, LNK2019). Fixed by
+mirroring the MSVC split: `GCC_SRC_BASE`/`GCC_SRC_EXTRA` (same
+`scan_src_defs.py --extra-fi base|extra`, no new generator code), the extra
+group's `gcc` invocation also force-including `pf_lib_bindings.h` +
+`pf_asset_bindings.h`. A SECOND, GCC-specific gap the MSVC side never hits:
+`pf_asset_bindings.h`'s own `#include "assets.h"` (quoted) resolves under
+MSVC's `/FI` because MSVC's quoted-include search walks UP the #include
+stack to the primary source file's own directory (`src\icytower`) when the
+name isn't found next to `pf_asset_bindings.h` itself (`gen\`) - GCC's
+quoted-include search has no such stack-walk (MEASURED: `fatal error:
+assets.h: No such file or directory` with only `-I gen`), so the GCC extra
+group needed `-I ..\src\icytower` added explicitly. Both fixes are in
+`build.cmd`; `collision.c`'s own source is unchanged.
+
+Bind table regenerated (`gen_bind_table.py`, no manual edit):
+**48 rows** (44 -> 48, the stated "4 new rows" -
+`handle_player_collision_old/_vector/_vector_2/_combo`), no
+`fn_domains.json` entries needed (all four take the generator's default
+empty-region domain, the same one `handle_player_collision_original`
+already uses - untested combination avoided deliberately, matching that
+earlier pass's own stated reasoning). `carrier/scripts/all_src.bindfile`
+extended with the four new rows (a short comment explains `collision_type`
+is a compile-time constant 2, so only `_vector` is ever selected in vivo -
+the other three are included for completeness of the all-bound run, same
+treatment `handle_player_collision_original` already got).
+
+Gates (`scripts/gates.ps1`, restoring pristine assets before every launch):
+
+```
+G1: EQUAL (876 ticks)
+G2: EQUAL (877 invocations, src vs original)
+G3a: EQUAL (301 rows T=400..699) and EQUAL (602 rows T=400..1000)
+G3b: EQUAL (301 invocations, k=276..576)
+human_test all-bound (scripts/all_src.bindfile, 48 rows incl. the 4 new
+  collision variants) vs replays/human_test.digest: EQUAL (2293 ticks)
+```
+
+### 2. In-vivo pass (`carrier/scripts/bind_all.py`)
+
+Six rows had no in-vivo verdict anywhere in `src/icytower/INVIVO.md` yet:
+the four new collision variants, `draw_star_field` (compile-only since the
+"Allegro inline primitives" pass), and `draw_scroller` (batch 8's own row,
+verified once by hand in `carrier/NOTES.md` but never given a formal
+`INVIVO.md` entry). Ran over all three of this project's scripted
+workloads:
+
+| function | human_test.txt (2293-tick baseline) | newgame.txt (876-tick baseline) | play_itr.txt (157-tick baseline) |
+|---|---|---|---|
+| `handle_player_collision_old` | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `handle_player_collision_vector` | **EQUAL (2293)** | **EQUAL (876)** | **EQUAL (157)** |
+| `handle_player_collision_vector_2` | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `handle_player_collision_combo` | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `draw_star_field` | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `draw_scroller` | **EQUAL (50)** | **EQUAL (88)** | **EQUAL (382)** |
+
+Exactly as `collision.c`'s own header comment predicts: `_vector` is the
+one live `collision_type==2` dispatch target, so it is the only variant any
+of the three workloads ever selects, at an invocation count equal to the
+workload's own per-tick digest tick count (one collision check per
+gameplay tick) - `_old`/`_vector_2`/`_combo` are reachable in principle
+(real jump-table targets, batch 9's PROMOTIONS.md) but never chosen, since
+`collision_type` has exactly one store in the whole image and it is a
+literal `2`. `draw_star_field` remains unreached by every workload this
+project has (an eye-candy/background effect, same open gap as
+`draw_buffer`). `draw_scroller` is EQUAL on all three, invocation count
+scaling with how much of each workload is spent past the main menu
+(50/88/382 - the `.itr` workload's post-playback idle-menu tail alone
+accounts for most of its own 382).
+
+newgame.txt's own baseline: no stored digest existed for it before this
+pass (unlike `human_test.txt`), so one unbound run's digest was captured
+and cross-checked self-consistent against a second unbound run first
+(`EQUAL, 876 ticks`) before using it as `bind_all.py --baseline`.
+
+### 3. Corpus gates - G4/G5 added to `scripts/gates.ps1`
+
+Two STORED-BASELINE gates (the distinction "Stage 2" above documents: G1-G3
+compare a binary against itself, which cannot see a uniformly-shifted run;
+only a comparison against a digest recorded and committed in an EARLIER
+pass can):
+
+- **G4**: `replays/human_test.txt`, all `scripts/all_src.bindfile` rows
+  bound at once, vs the committed `replays/human_test.digest` - already
+  existed in `scripts/s2_gate.ps1`, now also in the everyday `gates.ps1` so
+  every gate run gets it, not just a Stage-2 unit move.
+- **G5**: the `.itr` workload (`scripts/play_itr.txt`). Its own
+  `--stop-at-tick` never fires - `det.cpp`'s `safepoint_hit` is the only
+  place that checks it, and no further safepoint occurs once `play()` ends
+  and the game returns to an idle menu loop that never reaches
+  `safepoint_hit` again (MEASURED: `--stop-at-tick 700` with a 60-REAL-
+  second budget still ran to virtual T=71992 without ever printing "reached
+  at T=700"). `--run-seconds 15` is what actually bounds it; the complete
+  157-line digest (T=394..T=550) is always produced well inside that
+  budget. G5a replays it twice unbound (`EQUAL, 157 ticks` - self-
+  consistency, the G1-style check); G5b binds `scripts/all_src.bindfile`
+  over it and compares against a NEW stored baseline,
+  `replays/itr_last_game.digest` (committed this pass).
+
+**Which `.itr` file, by name** (an open item every earlier pass on this
+workload left unresolved - "the concrete .itr this script plays was not
+independently identified by name"): a one-off extension of the existing
+`DET_TRACE_REPLAY_SELECTOR=1` diagnostic (`det.cpp`'s
+`trace_replay_selector_confirm_hit`) dereferences `itr_file_list`'s own
+per-entry heap string pointer (VA 0x500938, same stride/index as the
+directory-flag byte array 4 bytes later at 0x50093c the existing trace
+already read) and prints the real path. Result, MEASURED:
+`profiles/MissingNO/replays/last_game.itr` - entry 1 (cursor after the
+script's own extra `KEY_DOWN` tap moves off the `..` entry at cursor 0).
+The one-off per-entry dump loop itself was reverted after gathering this
+evidence; the confirm-hit trace line now also prints the resolved `name`
+field for any future run of the same diagnostic.
+
+### 4. `--dump-assets PATH` (`src/icytower/ASSETS.md`'s own proposal, now built)
+
+New file `carrier/src/dump_assets.c`: one entry point,
+`pf_dump_assets(const char *path)`, called once by `det.cpp`'s
+`safepoint_hit` at the FIRST safepoint any run reaches (always after the
+guest's own `init_game()` has loaded every datafile, since that happens
+once, early, well before `play()` - the only place a safepoint fires - is
+ever entered). For every id in `assets_table.inc`, resolves it through
+`pf_asset_bindings.h`'s existing `asset_bitmap()`/`asset_sample()`/
+`asset_font()`/`asset_palette()`/`asset_object()` (the guest's own loaded
+`DATAFILE*`, zero-copy) and prints `<index> <name> <sha256hex>` in the
+SAME canonical serialization `src/build/asset_oracle.c`'s header comment
+documents - directly diffable against that program's own stdout or
+`scripts/asset_oracle_digest.py`'s output.
+
+Compiled as its own `cl` invocation (`/FIpf_bindings_src.h
+/FIpf_lib_bindings.h /FIpf_asset_bindings.h`, the same recipe the MSVC
+Allegro/asset-seam group uses), plus `/I ..\src\icytower` for the same
+quoted-`#include "assets.h"` reason `collision.c`'s GCC fix above needed
+it (this file, unlike `draw_buffer.c`, is not itself under `src\icytower`,
+so MSVC's stack-walk has no parent file there to fall back to either).
+
+**A real bug found and fixed before this compiled at all**: `sha256.h`
+(`src/build/`, the standalone oracle's own hash implementation) declares
+`SHA256_CTX` with a member field literally named `data`
+(`unsigned char data[64]`) - textually identical to the persistent
+`DATAFILE *data` game global `pf_bindings_src.h` macro-redirects to a fixed
+address for every force-included file. `#include`-ing it produced the
+exact "stars"/"jump_sound" blunt-textual-`#define` collision class this
+project has hit twice before (`carrier/gen/gen_bindings.py`'s own
+`MEMBER_ACCESS_COLLISIONS` comment), just against a THIRD-PARTY header
+this time rather than a `src/icytower/*.c` file - not fixable by editing
+`sha256.h` (outside this task's edit scope) or by adding `data` to
+`MEMBER_ACCESS_COLLISIONS` (would break `draw_buffer.c`/`draw_frame.c`'s
+own bare `data[N].dat` uses, the exact reason `stars` was rejected there
+too). Fixed by NOT including `sha256.h` at all: `dump_assets.c` carries its
+own compact SHA-256 (same public-domain algorithm, every identifier
+prefixed `dsha_` and cross-checked against both generated headers' full
+macro name lists to rule out a second collision) plus a local `#undef data`
+(safe here specifically because nothing in this file ever needs the
+top-level `data` global directly - `asset_bitmap()`/etc. already resolved
+it above this point in the same translation unit) for the two OTHER,
+legitimate `->data` member accesses this file itself needs
+(`SAMPLE.data`, `FONT.data`).
+
+**FONT canonical serialization** needed two pieces of Allegro-internal
+knowledge `asset_oracle.c` reaches via real exported functions
+(`_mono_find_glyph`/`_color_find_glyph`/`is_mono_font`) that
+`pf_lib_bindings.h`'s call-edge-census allow-list does not bind (no game
+file calls any of the three itself, so there is no call site to validate a
+new binding against). Worked around without adding new bindings: `FONT_
+VTABLE`'s `render_char` slot is set, in real Allegro, to exactly
+`mono_render_char` or `color_render_char` depending on font kind, and both
+have a known VA in THIS game's own DWARF recovery
+(`artifacts/functions.json`: `mono_render_char=0x45dfb0`,
+`color_render_char=0x45edb4`) - comparing the vtable slot against these two
+constants is exactly the test `is_mono_font` itself runs. Per-character
+glyph lookup uses a local walk of `FONT->data`'s own linked list with the
+`FONT_MONO_DATA`/`FONT_COLOR_DATA` layout upstream `aintern.h` documents
+(fixed ABI, unchanged between the 4.4.1 this game statically links and the
+4.4.3.1 this project's own standalone oracle build uses) instead of
+calling the unbound find-glyph functions.
+
+**Divergence found and explained, not fixed (a real environment fact, not
+a bug)**: the persistent `sfx` global (VA 0x4dd240, sfx15.dat's own
+datafile pointer) is **NULL** at the point `--dump-assets` fires in a
+`--det`/headless carrier run - MEASURED independently via
+`--print-globals sfx,data`: `sfx = 0x00000000` while `data = 0x2000ebf0`
+(sane, arena-resident) at the SAME tick. `assets/log.txt` from an ordinary
+interactive run logs `"sfx15.dat loaded"`, so the guest's sound-install
+path evidently takes a different branch when no real audio device is
+reachable in this environment (this project's own DirectSound enumeration
+is already NORMALIZED to one synthetic device - Divergence 009) and never
+calls `load_datafile_callback` for `sfx15.dat` at all in a carrier run.
+`pf_dump_assets` guards this generically (any family whose resolved
+`DATAFILE*` is NULL, not just `sfx` by name) and writes
+`SKIP family-not-loaded=sfx` for the 23 affected ids (22 `OGG`/1 `info`)
+rather than dereferencing a null pointer - this is exactly what an EARLIER
+version of this same loop, without the guard, crashed on (MEASURED: an
+access violation inside `asset_sample()`'s `base[row->index]` the first
+time family resolved to NULL, `EIP` inside this file's own compiled code).
+
+**Comparison against `scripts/asset_oracle_digest.py`'s Python
+reconstruction** (204 BITMAP+PALETTE+FONT+info ids, the ones that document
+already proves byte-identical to the real standalone oracle):
+
+```
+FONT:  5 / 5   EQUAL
+info:  6 / 6   EQUAL (the 7th is sfx15.dat's own GrabberInfo - SKIPped, see above)
+PALETTE: 5 / 6 EQUAL (the ONE differing id is "data" family's own AAAPAL -
+                measured, not root-caused past the BITMAP finding below;
+                flagged rather than guessed at)
+BITMAP: 0 / 186 EQUAL
+```
+
+**The BITMAP divergence is a real, fully explained library/environment
+finding, not a coding bug**: every BITMAP object's in-carrier
+`vtable->color_depth` reads **32**, regardless of its native on-disk bpp
+(MEASURED: `BGTILE`, stored at 16bpp per `assets_extracted/manifest.json`'s
+own geometry record, reads back `bpp=32` inside the running carrier). The
+guest's OWN `set_gfx_mode` installs a real 32bpp screen for this run, and
+nothing in the guest's own boot path (unlike `src/build/asset_oracle.c`'s
+explicit `set_color_conversion(COLORCONV_NONE)`) turns off Allegro's
+DEFAULT `COLORCONV_TOTAL` - so every BITMAP object loaded from `data.dat`
+gets silently up-converted to the CURRENT screen's depth the moment
+`init_game()` calls `load_datafile()`, before `--dump-assets` (or any game
+code) ever sees it. "The carrier and the standalone port read the same
+bytes" (this document's own "Carrier" section, `src/icytower/ASSETS.md`)
+is therefore true at the level that matters for gameplay (same source
+file, same decoder, same pixel VALUES up-sampled through a well-defined,
+lossless-for-this-direction conversion) but NOT at the canonical-byte
+level asset_oracle.c's own serialization checks, because that serialization
+intentionally captures the RAW stored format, and a real running game
+installs a DIFFERENT one. Exactly the class of gap `ASSETS.md`'s own text
+already flagged as open ("which `_rgb_shift_*` values are in effect... may
+already match, or may not - untested") - now MEASURED, and narrowed from
+"a shift convention" to "a full depth conversion, 16/8bpp source ->
+32bpp screen".
+
+**OGG/SAMPLE**: 30 ids (the `char:*`-family samples, e.g. `snd_jump_lo`)
+get a REAL hash from the carrier (the same `logg_load_memory` real-decode
+path `asset_oracle.c`'s own standalone build uses) - not independently
+cross-checked here, the same pre-existing, already-documented limitation
+`scripts/asset_oracle_digest.py` itself states (no bit-exact Python Vorbis
+decoder). The other 23 (`sfx15.dat`) are the family-not-loaded SKIPs above.
+
+### Known gaps / not fully closed this pass
+
+- `draw_star_field` remains UNVERIFIED IN VIVO on all three workloads -
+  same open item every prior pass left it in.
+- `handle_player_collision_old`/`_vector_2`/`_combo` are UNVERIFIED IN VIVO
+  by construction (dead per `collision_type`'s single, constant store) -
+  not a gap this project can close with a scripted workload; batch 9's own
+  20000-vector offline harness result (`gcc_check_x87_nosse_batch9.exe`,
+  carrier/lift/harness) remains the strongest evidence for all three.
+- The "data" family's `AAAPAL` PALETTE mismatch is measured but not
+  root-caused past "probably entangled with the same BITMAP color-
+  conversion machinery" - flagged rather than asserted.
+- `carrier/gen/build_blockers.json` gained one entry, `draw_frame.c`,
+  purely to unblock THIS task's own build against a file that appeared
+  untracked mid-pass from a different, concurrently-running task (its GCC
+  object fails to link, `___mingw_sprintf` unresolved - not this task's
+  file, not investigated further here; remove the entry once that other
+  task finishes it, per this file's own top-level comment).

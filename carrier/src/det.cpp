@@ -154,6 +154,20 @@ static bool isolate_off(const char* channel) {
 
 static FILE* g_digest_file = nullptr;
 static FILE* g_record_file = nullptr;
+// --dump-assets PATH (det.hpp's own comment) - a plain C string copy (the
+// DetOptions pointer may point at Options::dump_assets on main()'s own
+// stack-ish storage, but det_init already copies every other such pointer
+// the same way input_script/digest_out do - kept here as a raw pointer to
+// match that existing convention, valid for the process lifetime).
+static const char* g_dump_assets_path = nullptr;
+// src/dump_assets.c - a plain-C-signature function, deliberately declared
+// here rather than in a shared header: this is the ONLY C++ TU that calls
+// it, and its own compile unit force-includes headers (pf_bindings_src.h/
+// pf_lib_bindings.h/pf_asset_bindings.h) that redefine BITMAP and would
+// collide with this file's <windows.h> if ever seen together (win32_pilot.md
+// SS7a; carrier/build.cmd compiles src\dump_assets.c as its own cl
+// invocation for exactly this reason).
+extern "C" void pf_dump_assets(const char* path);
 
 // ---------------------------------------------------------------------
 // --trace-input (divergence 005 instrumentation, notes/living_record.md).
@@ -1653,6 +1667,20 @@ static void safepoint_hit(CONTEXT* ctx) {
             dumped = true;
         }
     }
+    // --dump-assets PATH (det.hpp's own comment): once, at the FIRST
+    // safepoint this run ever reaches. By construction this is always
+    // after the guest's own init_game() has loaded every datafile (that
+    // happens once, early, well before play() -- the only place this
+    // safepoint fires -- is ever entered), so "first safepoint" is a
+    // convenient, always-late-enough hook without needing a dedicated
+    // "just after loading" breakpoint of its own.
+    if (g_dump_assets_path) {
+        static bool dumped_assets = false;
+        if (!dumped_assets) {
+            pf_dump_assets(g_dump_assets_path);
+            dumped_assets = true;
+        }
+    }
     if (g_digest_file) {
         // Digest = sha256 over kGameGlobals (see hash_game_globals above for
         // why this is game-owned globals rather than the full .data/.bss
@@ -1832,9 +1860,18 @@ static void trace_replay_selector_confirm_hit(CONTEXT* ctx) {
     int cursor = *(int*)(uintptr_t)(ctx->Ebp - 0x424);
     int num_itr = *(volatile int*)(uintptr_t)0x4dd744u;
     unsigned char is_dir = *(unsigned char*)(uintptr_t)(0x50093cu + (uint32_t)cursor * 24u);
+    // itr_file_list (VA 0x500938, same stride/index as the directory-flag
+    // array 4 bytes later at 0x50093c) stores a heap string pointer in each
+    // record's first dword - used once, this pass, to identify BY NAME
+    // which .itr file cursor=1 actually selects (carrier/scripts/
+    // play_itr.txt's own header comment / NOTES.md "corpus gates" section
+    // name the result: profiles/MissingNO/replays/last_game.itr). Read
+    // directly rather than left as a standing per-run print, to keep this
+    // diagnostic's steady-state output the same shape it always was.
+    const char* name_ptr = *(const char* const*)(uintptr_t)(0x500938u + (uint32_t)cursor * 24u);
     fprintf(stderr, "det: TRACE _replay_selector: CONFIRM HANDLER REACHED (VA=0x41d9dd, T=%d, "
-                    "cursor=%d, num_itr_files=%d, is_dir_byte=%d)\n",
-            det_current_tick(), cursor, num_itr, (int)is_dir);
+                    "cursor=%d, num_itr_files=%d, is_dir_byte=%d, name=\"%s\")\n",
+            det_current_tick(), cursor, num_itr, (int)is_dir, name_ptr ? name_ptr : "(null)");
 }
 
 void det_arm_thread(HANDLE thread) { pf::win32::arm_thread(thread); }
@@ -1901,6 +1938,10 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     if (opt.digest_out && opt.digest_out[0]) {
         g_digest_file = fopen(opt.digest_out, "w");
         if (!g_digest_file) fprintf(stderr, "det: could not open --digest-out '%s'\n", opt.digest_out);
+        need_safepoint = true;
+    }
+    if (opt.dump_assets && opt.dump_assets[0]) {
+        g_dump_assets_path = opt.dump_assets;
         need_safepoint = true;
     }
     if (need_safepoint) register_breakpoint(VA_SAFEPOINT, safepoint_hit);

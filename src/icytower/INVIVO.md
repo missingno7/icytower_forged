@@ -394,3 +394,54 @@ its binding surface.
 `replays/human_test.txt`): `EQUAL (533 invocations)` per invocation, and
 `EQUAL (2293 ticks)` for the whole-simulation per-tick digest against
 `replays/human_test.digest`.
+
+## In-vivo pass, batch 9 + corpus gates (2026-09-08)
+
+Six binding-table rows had no in-vivo verdict anywhere in this document
+yet: the four `collision.c` variants `carrier.exe` can now bind
+(PROMOTIONS.md batch 9), `draw_star_field` (compiles/links/binds cleanly
+since the "Allegro inline primitives" pass but was never run in vivo), and
+`draw_scroller` (batch 8's own row - verified once by hand in
+`carrier/NOTES.md` but never given a formal entry here). Ran
+`carrier/scripts/bind_all.py --fn <these six>` over all three of this
+project's scripted workloads (`replays/human_test.txt`,
+`carrier/scripts/newgame.txt`, `carrier/scripts/play_itr.txt`):
+
+| function | VA | human_test.txt | newgame.txt | play_itr.txt |
+|---|---|---|---|---|
+| `handle_player_collision_old` | 0x407fd8 | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `handle_player_collision_vector` | 0x408d08 | **EQUAL (2293)** | **EQUAL (876)** | **EQUAL (157)** |
+| `handle_player_collision_vector_2` | 0x4088c8 | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `handle_player_collision_combo` | 0x408358 | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `draw_star_field` | - | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) | UNVERIFIED IN VIVO (0) |
+| `draw_scroller` | - | **EQUAL (50)** | **EQUAL (88)** | **EQUAL (382)** |
+
+`handle_player_collision_vector` is the ONLY collision variant any workload
+ever selects — `collision_type` (VA 0x4dd140) has exactly one store in the
+whole image, `new_game()`'s own unconditional `movl $0x2,...`
+(`src/icytower/collision.c`'s own header comment), so `_old`/`_vector_2`/
+`_combo` are reachable jump-table targets in principle but never chosen by
+any recording. `_vector`'s invocation count equals the workload's own
+per-tick digest tick count on all three (one collision check per gameplay
+tick: 2293/876/157) — as strong an in-vivo confirmation as a compile-time-
+constant selector allows. `draw_star_field` stays unreached (same
+eye-candy/background-effect class as `draw_buffer`, verified nowhere in
+this project). `draw_scroller` is EQUAL on all three (50/88/382
+invocations, scaling with how much of each workload runs past the main
+menu — the `.itr` workload's own long post-playback idle-menu tail
+accounts for most of its 382).
+
+`newgame.txt` had no stored baseline digest before this pass (unlike
+`human_test.txt`); one unbound run's digest was captured and cross-checked
+self-consistent against a second unbound run (`EQUAL, 876 ticks`) before
+using it as `bind_all.py --baseline`. The `.itr` workload's own baseline is
+now committed as `replays/itr_last_game.digest` (`carrier/NOTES.md`
+"corpus gates").
+
+**Updated running total**: 33 EQUAL (31 already listed + `handle_player_
+collision_vector` + `draw_scroller`), 1 DIFFER (`add_jump_sequence`,
+unchanged), 12 unverified in vivo (the 9 already listed + `handle_player_
+collision_old`/`_vector_2`/`_combo`, plus `draw_star_field` already
+counted there) — every one of the 48 generated binding-table rows
+(`carrier/gen/bind_table.inc`) now has an in-vivo verdict recorded
+somewhere in this document.
