@@ -1,0 +1,5607 @@
+{
+ "generated_by": "tools_recon/lib_boundary_scan.py",
+ "summary": {
+  "distinct_library_functions_called_by_game": 100,
+  "allegro_family_api_names": [
+   "__WinMain",
+   "__color_load_depth",
+   "__fixup_loaded_bitmap",
+   "__install_allegro_version_check",
+   "_adjust_sample",
+   "_alert",
+   "_allegro_exit",
+   "_allegro_message",
+   "_blit",
+   "_canonicalize_filename",
+   "_clear_bitmap",
+   "_clear_keybuf",
+   "_create_bitmap",
+   "_create_bitmap_ex",
+   "_create_sub_bitmap",
+   "_delete_file",
+   "_destroy_bitmap",
+   "_destroy_midi",
+   "_destroy_sample",
+   "_drawing_mode",
+   "_enable_hardware_cursor",
+   "_exists",
+   "_file_exists",
+   "_file_select_ex",
+   "_file_size_ex",
+   "_for_each_file_ex",
+   "_generate_332_palette",
+   "_get_color_conversion",
+   "_get_config_string",
+   "_get_executable_name",
+   "_get_extension",
+   "_get_filename",
+   "_get_palette",
+   "_install_int",
+   "_install_joystick",
+   "_install_keyboard",
+   "_install_mouse",
+   "_install_sound",
+   "_install_timer",
+   "_keypressed",
+   "_load_bitmap",
+   "_load_datafile",
+   "_load_datafile_callback",
+   "_load_midi",
+   "_load_sample",
+   "_load_wav",
+   "_logg_load",
+   "_logg_load_memory",
+   "_makecol",
+   "_makecol_depth",
+   "_masked_blit",
+   "_pack_fclose",
+   "_pack_fopen",
+   "_pack_fread",
+   "_pack_fwrite",
+   "_packfile_password",
+   "_play_midi",
+   "_play_sample",
+   "_poll_joystick",
+   "_readkey",
+   "_register_bitmap_file_type",
+   "_register_datafile_object",
+   "_remove_mouse",
+   "_replace_extension",
+   "_replace_filename",
+   "_rest",
+   "_save_bitmap",
+   "_select_mouse_cursor",
+   "_select_palette",
+   "_set_alpha_blender",
+   "_set_clip_rect",
+   "_set_close_button_callback",
+   "_set_color_conversion",
+   "_set_color_depth",
+   "_set_config_file",
+   "_set_display_switch_callback",
+   "_set_display_switch_mode",
+   "_set_gfx_mode",
+   "_set_palette",
+   "_set_trans_blender",
+   "_set_volume",
+   "_show_mouse",
+   "_simulate_keypress",
+   "_solid_mode",
+   "_stop_midi",
+   "_stop_sample",
+   "_stretch_blit",
+   "_stretch_sprite",
+   "_text_height",
+   "_text_length",
+   "_textout_centre_ex",
+   "_textout_ex",
+   "_textout_right_ex",
+   "_textprintf_centre_ex",
+   "_textprintf_ex",
+   "_textprintf_right_ex",
+   "_unload_datafile",
+   "_voice_get_position",
+   "_voice_stop",
+   "_vsync"
+  ],
+  "allegro_api_reached_from_non_vendored_game_cus": 91,
+  "distinct_dll_imports_called_by_game": 95,
+  "dll_imports_by_dll": {
+   "msvcrt.dll": 46,
+   "WSOCK32.DLL": 9,
+   "libpng3.dll": 35,
+   "SHELL32.DLL": 1,
+   "USER32.dll": 1,
+   "KERNEL32.dll": 3
+  },
+  "dll_imports_by_caller_family": {
+   "game": {
+    "msvcrt.dll": 35,
+    "SHELL32.DLL": 1,
+    "WSOCK32.DLL": 1,
+    "USER32.dll": 1,
+    "KERNEL32.dll": 3
+   },
+   "game_vendored": {
+    "msvcrt.dll": 23,
+    "WSOCK32.DLL": 8,
+    "libpng3.dll": 35
+   }
+  },
+  "callbacks_into_game_from_library_registration": 24,
+  "callbacks_game_to_game": 6,
+  "distinct_game_functions_passed_to_libraries": 20,
+  "library_globals_touched_by_game": 26,
+  "game_globals_touched_by_library": 0,
+  "internal_library_symbol_edges_functions": 4,
+  "internal_library_symbol_edges_data": 14,
+  "fnptr_tables_with_cross_family_slots": 0
+ },
+ "inputs": [
+  "artifacts/functions.json",
+  "artifacts/disasm.txt",
+  "artifacts/coff_symbols.json",
+  "assets/icytower15.exe"
+ ],
+ "text_total_bytes": 751448,
+ "ownership": {
+  "allegro_core": {
+   "functions": 906,
+   "bytes": 289796,
+   "pct_text": 38.57,
+   "cu_count": 46,
+   "cus": [
+    "C:\\Lib\\allegro4\\src\\allegro.c",
+    "C:\\Lib\\allegro4\\src\\blit.c",
+    "C:\\Lib\\allegro4\\src\\bmp.c",
+    "C:\\Lib\\allegro4\\src\\colblend.c",
+    "C:\\Lib\\allegro4\\src\\color.c",
+    "C:\\Lib\\allegro4\\src\\config.c",
+    "C:\\Lib\\allegro4\\src\\datafile.c",
+    "C:\\Lib\\allegro4\\src\\dataregi.c",
+    "C:\\Lib\\allegro4\\src\\digmid.c",
+    "C:\\Lib\\allegro4\\src\\dispsw.c",
+    "C:\\Lib\\allegro4\\src\\dither.c",
+    "C:\\Lib\\allegro4\\src\\drvlist.c",
+    "C:\\Lib\\allegro4\\src\\file.c",
+    "C:\\Lib\\allegro4\\src\\flood.c",
+    "C:\\Lib\\allegro4\\src\\font.c",
+    "C:\\Lib\\allegro4\\src\\fsel.c",
+    "C:\\Lib\\allegro4\\src\\gfx.c",
+    "C:\\Lib\\allegro4\\src\\glyph.c",
+    "C:\\Lib\\allegro4\\src\\graphics.c",
+    "C:\\Lib\\allegro4\\src\\gsprite.c",
+    "C:\\Lib\\allegro4\\src\\gui.c",
+    "C:\\Lib\\allegro4\\src\\guiproc.c",
+    "C:\\Lib\\allegro4\\src\\joystick.c",
+    "C:\\Lib\\allegro4\\src\\keyboard.c",
+    "C:\\Lib\\allegro4\\src\\lbm.c",
+    "C:\\Lib\\allegro4\\src\\libc.c",
+    "C:\\Lib\\allegro4\\src\\lzss.c",
+    "C:\\Lib\\allegro4\\src\\math.c",
+    "C:\\Lib\\allegro4\\src\\midi.c",
+    "C:\\Lib\\allegro4\\src\\mixer.c",
+    "C:\\Lib\\allegro4\\src\\mouse.c",
+    "C:\\Lib\\allegro4\\src\\pcx.c",
+    "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "C:\\Lib\\allegro4\\src\\polygon.c",
+    "C:\\Lib\\allegro4\\src\\quantize.c",
+    "C:\\Lib\\allegro4\\src\\readbmp.c",
+    "C:\\Lib\\allegro4\\src\\readsmp.c",
+    "C:\\Lib\\allegro4\\src\\rle.c",
+    "C:\\Lib\\allegro4\\src\\rotate.c",
+    "C:\\Lib\\allegro4\\src\\sound.c",
+    "C:\\Lib\\allegro4\\src\\spline.c",
+    "C:\\Lib\\allegro4\\src\\stream.c",
+    "C:\\Lib\\allegro4\\src\\text.c",
+    "C:\\Lib\\allegro4\\src\\tga.c",
+    "C:\\Lib\\allegro4\\src\\timer.c",
+    "C:\\Lib\\allegro4\\src\\unicode.c"
+   ],
+   "subfamilies": [
+    "core"
+   ]
+  },
+  "game": {
+   "functions": 217,
+   "bytes": 116113,
+   "pct_text": 15.45,
+   "cu_count": 18,
+   "cus": [
+    "F:\\projects\\icytower\\trunk\\source\\beta.c",
+    "F:\\projects\\icytower\\trunk\\source\\control.c",
+    "F:\\projects\\icytower\\trunk\\source\\custom.c",
+    "F:\\projects\\icytower\\trunk\\source\\directories.c",
+    "F:\\projects\\icytower\\trunk\\source\\fld_adspot.c",
+    "F:\\projects\\icytower\\trunk\\source\\game_data.c",
+    "F:\\projects\\icytower\\trunk\\source\\hisc.c",
+    "F:\\projects\\icytower\\trunk\\source\\main.c",
+    "F:\\projects\\icytower\\trunk\\source\\map.c",
+    "F:\\projects\\icytower\\trunk\\source\\menu.c",
+    "F:\\projects\\icytower\\trunk\\source\\options.c",
+    "F:\\projects\\icytower\\trunk\\source\\particle.c",
+    "F:\\projects\\icytower\\trunk\\source\\player.c",
+    "F:\\projects\\icytower\\trunk\\source\\profile.c",
+    "F:\\projects\\icytower\\trunk\\source\\replay.c",
+    "F:\\projects\\icytower\\trunk\\source\\scroller.c",
+    "F:\\projects\\icytower\\trunk\\source\\stars.c",
+    "F:\\projects\\icytower\\trunk\\source\\timer.c"
+   ],
+   "subfamilies": [
+    "icytower"
+   ]
+  },
+  "allegro_c": {
+   "functions": 270,
+   "bytes": 106148,
+   "pct_text": 14.13,
+   "cu_count": 28,
+   "cus": [
+    "C:\\Lib\\allegro4\\src\\c\\cblit16.c",
+    "C:\\Lib\\allegro4\\src\\c\\cblit24.c",
+    "C:\\Lib\\allegro4\\src\\c\\cblit32.c",
+    "C:\\Lib\\allegro4\\src\\c\\cblit8.c",
+    "C:\\Lib\\allegro4\\src\\c\\ccpu.c",
+    "C:\\Lib\\allegro4\\src\\c\\ccsprite.c",
+    "C:\\Lib\\allegro4\\src\\c\\cgfx15.c",
+    "C:\\Lib\\allegro4\\src\\c\\cgfx16.c",
+    "C:\\Lib\\allegro4\\src\\c\\cgfx24.c",
+    "C:\\Lib\\allegro4\\src\\c\\cgfx32.c",
+    "C:\\Lib\\allegro4\\src\\c\\cgfx8.c",
+    "C:\\Lib\\allegro4\\src\\c\\cmisc.c",
+    "C:\\Lib\\allegro4\\src\\c\\cscan15.c",
+    "C:\\Lib\\allegro4\\src\\c\\cscan16.c",
+    "C:\\Lib\\allegro4\\src\\c\\cscan24.c",
+    "C:\\Lib\\allegro4\\src\\c\\cscan32.c",
+    "C:\\Lib\\allegro4\\src\\c\\cscan8.c",
+    "C:\\Lib\\allegro4\\src\\c\\cspr15.c",
+    "C:\\Lib\\allegro4\\src\\c\\cspr16.c",
+    "C:\\Lib\\allegro4\\src\\c\\cspr24.c",
+    "C:\\Lib\\allegro4\\src\\c\\cspr32.c",
+    "C:\\Lib\\allegro4\\src\\c\\cspr8.c",
+    "C:\\Lib\\allegro4\\src\\c\\cstretch.c",
+    "C:\\Lib\\allegro4\\src\\c\\czscan15.c",
+    "C:\\Lib\\allegro4\\src\\c\\czscan16.c",
+    "C:\\Lib\\allegro4\\src\\c\\czscan24.c",
+    "C:\\Lib\\allegro4\\src\\c\\czscan32.c",
+    "C:\\Lib\\allegro4\\src\\c\\czscan8.c"
+   ],
+   "subfamilies": [
+    "C blitters"
+   ]
+  },
+  "libvorbis": {
+   "functions": 181,
+   "bytes": 92320,
+   "pct_text": 12.29,
+   "cu_count": 19,
+   "cus": [
+    "analysis.c",
+    "bitrate.c",
+    "block.c",
+    "codebook.c",
+    "envelope.c",
+    "floor0.c",
+    "floor1.c",
+    "info.c",
+    "lpc.c",
+    "lsp.c",
+    "mapping0.c",
+    "mdct.c",
+    "misc.c",
+    "psy.c",
+    "res0.c",
+    "sharedbook.c",
+    "smallft.c",
+    "synthesis.c",
+    "window.c"
+   ],
+   "subfamilies": [
+    "libvorbis"
+   ]
+  },
+  "allegro_win": {
+   "functions": 306,
+   "bytes": 64664,
+   "pct_text": 8.61,
+   "cu_count": 29,
+   "cus": [
+    "C:\\Lib\\allegro4\\src\\win\\gdi.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddaccel.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddbmp.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddbmpl.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddlock.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddmode.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddovl.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddraw.c",
+    "C:\\Lib\\allegro4\\src\\win\\wddwin.c",
+    "C:\\Lib\\allegro4\\src\\win\\wdispsw.c",
+    "C:\\Lib\\allegro4\\src\\win\\wdsinput.c",
+    "C:\\Lib\\allegro4\\src\\win\\wdsndmix.c",
+    "C:\\Lib\\allegro4\\src\\win\\wdsound.c",
+    "C:\\Lib\\allegro4\\src\\win\\wdxver.c",
+    "C:\\Lib\\allegro4\\src\\win\\wfile.c",
+    "C:\\Lib\\allegro4\\src\\win\\wgdi.c",
+    "C:\\Lib\\allegro4\\src\\win\\winput.c",
+    "C:\\Lib\\allegro4\\src\\win\\wjoydx.c",
+    "C:\\Lib\\allegro4\\src\\win\\wjoyhelp.c",
+    "C:\\Lib\\allegro4\\src\\win\\wjoyw32.c",
+    "C:\\Lib\\allegro4\\src\\win\\wkeybd.c",
+    "C:\\Lib\\allegro4\\src\\win\\wmidi.c",
+    "C:\\Lib\\allegro4\\src\\win\\wmouse.c",
+    "C:\\Lib\\allegro4\\src\\win\\wsndwo.c",
+    "C:\\Lib\\allegro4\\src\\win\\wsystem.c",
+    "C:\\Lib\\allegro4\\src\\win\\wthread.c",
+    "C:\\Lib\\allegro4\\src\\win\\wtimer.c",
+    "C:\\Lib\\allegro4\\src\\win\\wwnd.c"
+   ],
+   "subfamilies": [
+    "win drivers"
+   ]
+  },
+  "crt": {
+   "functions": 76,
+   "bytes": 33379,
+   "pct_text": 4.44,
+   "cu_count": 28,
+   "cus": [
+    "../../../../gcc-4.4.1/libgcc/../gcc/config/i386/cygming-shared-data.c",
+    "../../../../gcc-4.4.1/libgcc/../gcc/libgcc2.c",
+    "CRT_fp10.c",
+    "cpu_features.c",
+    "crt1.c",
+    "cygming-crtbegin.c",
+    "cygming-crtend.c",
+    "dmisc.c",
+    "fake",
+    "fpclassify.c",
+    "gccmain.c",
+    "gdtoa.c",
+    "gethex.c",
+    "gmisc.c",
+    "hd_init.c",
+    "hexnan.c",
+    "main.c",
+    "mbrtowc.c",
+    "pformat.c",
+    "pseudo-reloc.c",
+    "smisc.c",
+    "snprintf.c",
+    "strtodg.c",
+    "strtodnrp.c",
+    "strtof.c",
+    "sum.c",
+    "vsnprintf.c",
+    "wcrtomb.c"
+   ],
+   "subfamilies": [
+    "libgcc/crt",
+    "mingw CRT/misc"
+   ]
+  },
+  "libvorbisfile": {
+   "functions": 47,
+   "bytes": 22032,
+   "pct_text": 2.93,
+   "cu_count": 1,
+   "cus": [
+    "vorbisfile.c"
+   ],
+   "subfamilies": [
+    "libvorbisfile"
+   ]
+  },
+  "game_vendored": {
+   "functions": 36,
+   "bytes": 9528,
+   "pct_text": 1.27,
+   "cu_count": 7,
+   "cus": [
+    "F:\\projects\\icytower\\trunk\\source\\csv.c",
+    "F:\\projects\\icytower\\trunk\\source\\httpget.c",
+    "F:\\projects\\icytower\\trunk\\source\\loadpng.c",
+    "F:\\projects\\icytower\\trunk\\source\\regpng.c",
+    "F:\\projects\\icytower\\trunk\\source\\savepng.c",
+    "F:\\projects\\icytower\\trunk\\source\\strptime.c",
+    "F:\\projects\\icytower\\trunk\\source\\timecompat.c"
+   ],
+   "subfamilies": [
+    "BSD/glibc strptime (vendored)",
+    "csv helper (unclear)",
+    "http helper (unclear)",
+    "loadpng addon (vendored)",
+    "time helper (unclear)"
+   ]
+  },
+  "libogg": {
+   "functions": 68,
+   "bytes": 6880,
+   "pct_text": 0.92,
+   "cu_count": 2,
+   "cus": [
+    "bitwise.c",
+    "framing.c"
+   ],
+   "subfamilies": [
+    "libogg"
+   ]
+  },
+  "allegro_misc": {
+   "functions": 31,
+   "bytes": 6075,
+   "pct_text": 0.81,
+   "cu_count": 2,
+   "cus": [
+    "C:\\Lib\\allegro4\\src\\misc\\ccolconv.c",
+    "C:\\Lib\\allegro4\\src\\misc\\colconv.c"
+   ],
+   "subfamilies": [
+    "misc"
+   ]
+  },
+  "import_thunk": {
+   "functions": 309,
+   "bytes": 2472,
+   "pct_text": 0.33,
+   "cu_count": 1,
+   "cus": [
+    "cygming-crtend.c"
+   ],
+   "subfamilies": [
+    "ddraw.dll",
+    "dinput.dll",
+    "dsound.dll",
+    "gdi32.dll",
+    "kernel32.dll",
+    "libpng3.dll",
+    "msvcrt.dll",
+    "ole32.dll",
+    "shell32.dll",
+    "user32.dll",
+    "winmm.dll",
+    "wsock32.dll"
+   ]
+  },
+  "allegro_addon": {
+   "functions": 18,
+   "bytes": 2041,
+   "pct_text": 0.27,
+   "cu_count": 1,
+   "cus": [
+    "C:\\Lib\\allegro4\\addons\\logg\\logg.c"
+   ],
+   "subfamilies": [
+    "logg"
+   ]
+  }
+ },
+ "game_to_lib": {
+  "distinct_callees": 195,
+  "total_call_sites": 1407,
+  "callees_by_family": {
+   "import_thunk": 95,
+   "allegro_core": 94,
+   "unknown": 1,
+   "crt": 2,
+   "allegro_win": 1,
+   "allegro_c": 2
+  },
+  "callees": {
+   "_makecol": {
+    "count": 115,
+    "callers": [
+     "custom_alert",
+     "do_replay_menu",
+     "drawSlot",
+     "draw_buffer",
+     "draw_frame",
+     "draw_profile_selector",
+     "draw_progress_bar",
+     "draw_replay_selector",
+     "draw_results",
+     "draw_table",
+     "fadeIn",
+     "fadeOut",
+     "force_create_profile",
+     "handle_player_collision_combo",
+     "handle_player_collision_vector",
+     "handle_player_collision_vector_2",
+     "init_game",
+     "line_alert",
+     "load_character_bmp",
+     "load_frames",
+     "main_menu_callback",
+     "my_alert",
+     "play",
+     "replay_menu_callback",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x450c98",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\color.c"
+   },
+   "_sprintf": {
+    "count": 111,
+    "callers": [
+     "HTTPFetchInternal",
+     "add_profile",
+     "build_menu_string",
+     "check_dir",
+     "create_profile",
+     "delete_profile",
+     "do_replay_menu",
+     "draw_frame",
+     "force_create_profile",
+     "getGameDataXML",
+     "get_profile_dir_for_profile",
+     "handle_menu",
+     "init_game",
+     "load_character",
+     "load_character_bmp",
+     "load_frames",
+     "load_profile",
+     "main_menu_callback",
+     "myDeleteFile",
+     "open_web_browser",
+     "play",
+     "profile_data_page_advanced",
+     "profile_data_page_basic",
+     "profile_data_page_extra",
+     "profile_data_page_general",
+     "save_profile",
+     "save_replay",
+     "select_profile",
+     "set_next_rank_message",
+     "take_screenshot",
+     "update_file_list",
+     "view_profile"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad60",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!sprintf"
+   },
+   "_pack_fread": {
+    "count": 54,
+    "callers": [
+     "get_replay_property",
+     "load_datafile_png",
+     "load_hisc_table",
+     "load_options",
+     "load_png_pf",
+     "load_replay",
+     "read_data"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4449b0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_free": {
+    "count": 43,
+    "callers": [
+     "HTTPFetchInternal",
+     "HTTPRequest",
+     "SplitURL",
+     "change_profile",
+     "create_profile",
+     "create_replay",
+     "csv_destroy",
+     "destroyHTTPResponse",
+     "destroy_all",
+     "destroy_hisc_table",
+     "destroy_replay",
+     "fldads_destroy_cache",
+     "init_game",
+     "load_datafile_png",
+     "load_profile",
+     "play",
+     "really_save_png",
+     "rebuild_profile_list",
+     "replay_selector",
+     "save_profile",
+     "uninit_game",
+     "update_file_list",
+     "view_profile"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad08",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!free"
+   },
+   "_strcpy": {
+    "count": 39,
+    "callers": [
+     "add_itr_file",
+     "add_profile",
+     "build_menu_string",
+     "change_profile",
+     "create_profile",
+     "do_replay_menu",
+     "draw_frame",
+     "draw_replay_selector",
+     "force_create_profile",
+     "init_custom",
+     "init_game",
+     "load_character",
+     "load_character_bmp",
+     "load_frames",
+     "load_sounds",
+     "main_menu_callback",
+     "make_hisc_table",
+     "new_game",
+     "play",
+     "replay_selector",
+     "reset_hisc_table",
+     "save_replay"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad48",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strcpy"
+   },
+   "_malloc": {
+    "count": 33,
+    "callers": [
+     "HTTPFetchInternal",
+     "SplitURL",
+     "add_itr_file",
+     "add_profile",
+     "check_characters",
+     "create_game_data",
+     "create_post",
+     "create_profile",
+     "create_replay",
+     "csv_begin",
+     "csv_open",
+     "extractHTTPResponse",
+     "getGameDataXML",
+     "init_game",
+     "loadScrambled",
+     "load_datafile_png",
+     "load_profile",
+     "make_hisc_table",
+     "profile_data_page_advanced",
+     "profile_data_page_basic",
+     "profile_data_page_extra",
+     "profile_data_page_general",
+     "really_save_png",
+     "rebuild_profile_list"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad10",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!malloc"
+   },
+   "_rest": {
+    "count": 32,
+    "callers": [
+     "_mangled_main",
+     "fadeIn",
+     "fadeOut",
+     "get_string",
+     "handle_menu",
+     "init_game",
+     "main_menu_callback",
+     "my_alert",
+     "play",
+     "replay_selector",
+     "select_profile",
+     "show_credits",
+     "show_instructions",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45dea8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\timer.c"
+   },
+   "_pack_fwrite": {
+    "count": 32,
+    "callers": [
+     "save_hisc_table",
+     "save_options",
+     "save_replay",
+     "write_data"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4449c8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_blit": {
+    "count": 30,
+    "callers": [
+     "blit_to_screen",
+     "draw_frame",
+     "fadeOut",
+     "force_create_profile",
+     "get_string",
+     "load_character_bmp",
+     "load_frames",
+     "main_menu_callback",
+     "my_alert",
+     "play",
+     "replay_selector",
+     "select_profile",
+     "show_credits",
+     "show_instructions",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x456264",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\blit.c"
+   },
+   "_textprintf_ex": {
+    "count": 30,
+    "callers": [
+     "draw_buffer",
+     "draw_frame",
+     "draw_menu",
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "draw_results",
+     "draw_table",
+     "load_sound",
+     "main_menu_callback",
+     "view_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45a2a8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_textout_ex": {
+    "count": 30,
+    "callers": [
+     "do_replay_menu",
+     "drawSlot",
+     "draw_frame",
+     "draw_menu",
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "draw_scroller",
+     "force_create_profile",
+     "get_string",
+     "play",
+     "select_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x459f0c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_stricmp": {
+    "count": 28,
+    "callers": [
+     "_mangled_main",
+     "add_itr_file",
+     "do_replay_menu",
+     "draw_profile_selector",
+     "draw_results",
+     "get_gamepad_value",
+     "init_game",
+     "loadCustomSoundFILE",
+     "load_sounds",
+     "main_menu_callback",
+     "play",
+     "select_profile",
+     "set_current_avatar"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2dd8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_stricmp"
+   },
+   "_fclose": {
+    "count": 26,
+    "callers": [
+     "_mangled_main",
+     "check_beta_tester",
+     "csv_open",
+     "fldads_dump_local_cache",
+     "fldads_update_local_adimg",
+     "loadScrambled",
+     "load_character_bmp",
+     "load_frames",
+     "load_garbled_data",
+     "load_plain_data",
+     "load_profile",
+     "load_sounds",
+     "log2file",
+     "save_garbled_data",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad30",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fclose"
+   },
+   "_destroy_bitmap": {
+    "count": 25,
+    "callers": [
+     "destroy_custom_data",
+     "fadeOut",
+     "force_create_profile",
+     "get_string",
+     "load_character_bmp",
+     "load_frames",
+     "load_new_ad_image",
+     "main_menu_callback",
+     "replay_selector",
+     "select_profile",
+     "take_screenshot",
+     "uninit_game",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44f14c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_strcat": {
+    "count": 24,
+    "callers": [
+     "fldads_get_local_cache_name",
+     "getGameDataXML",
+     "load_character_bmp",
+     "load_frames",
+     "load_sounds"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad58",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strcat"
+   },
+   "_set_trans_blender": {
+    "count": 23,
+    "callers": [
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "fadeIn",
+     "fadeOut",
+     "force_create_profile",
+     "line_alert",
+     "main_menu_callback",
+     "my_alert",
+     "play",
+     "replay_menu_callback",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45c5d8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\colblend.c"
+   },
+   "_textout_centre_ex": {
+    "count": 23,
+    "callers": [
+     "draw_progress_bar",
+     "draw_scroller",
+     "my_alert",
+     "play",
+     "show_credits"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x459fcc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_time": {
+    "count": 22,
+    "callers": [
+     "create_profile",
+     "fldads_threadmain",
+     "init_game",
+     "new_game",
+     "play",
+     "save_profile",
+     "save_replay",
+     "timegm"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad78",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!time"
+   },
+   "_drawing_mode": {
+    "count": 22,
+    "callers": [
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "fadeIn",
+     "fadeOut",
+     "force_create_profile",
+     "line_alert",
+     "main_menu_callback",
+     "my_alert",
+     "play",
+     "replay_menu_callback",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44bf54",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_solid_mode": {
+    "count": 22,
+    "callers": [
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "fadeIn",
+     "fadeOut",
+     "force_create_profile",
+     "line_alert",
+     "main_menu_callback",
+     "my_alert",
+     "play",
+     "replay_menu_callback",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44c288",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_strdup": {
+    "count": 21,
+    "callers": [
+     "SplitURL",
+     "fldads_load_cache_from_csv",
+     "init_game"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4b2de8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_strdup"
+   },
+   "_fopen": {
+    "count": 19,
+    "callers": [
+     "_mangled_main",
+     "check_beta_tester",
+     "csv_open",
+     "fldads_dump_local_cache",
+     "fldads_update_local_adimg",
+     "loadScrambled",
+     "load_character_bmp",
+     "load_frames",
+     "load_garbled_data",
+     "load_plain_data",
+     "load_profile",
+     "load_sounds",
+     "log2file",
+     "save_garbled_data",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad28",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fopen"
+   },
+   "_rand": {
+    "count": 18,
+    "callers": [
+     "add_floor",
+     "create_post",
+     "fldads_get_random_ad",
+     "init_game",
+     "init_star_field",
+     "new_game",
+     "scroll_star_field"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad18",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!rand"
+   },
+   "_clear_keybuf": {
+    "count": 18,
+    "callers": [
+     "_mangled_main",
+     "get_string",
+     "init_game",
+     "my_alert",
+     "play",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43dc5c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\keyboard.c"
+   },
+   "_set_gfx_mode": {
+    "count": 18,
+    "callers": [
+     "init_game",
+     "testWindowResolution",
+     "uninit_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x450688",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_destroy_sample": {
+    "count": 16,
+    "callers": [
+     "destroy_custom_data",
+     "uninit_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4408cc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_strtol": {
+    "count": 16,
+    "callers": [
+     "SplitURL",
+     "_strptime"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bad80",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strtol"
+   },
+   "_allegro_message": {
+    "count": 16,
+    "callers": [
+     "_mangled_main",
+     "check_beta_tester",
+     "init_game",
+     "play",
+     "show_name"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43f2e4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\allegro.c"
+   },
+   "_create_bitmap": {
+    "count": 15,
+    "callers": [
+     "fadeIn",
+     "fadeOut",
+     "force_create_profile",
+     "get_string",
+     "init_game",
+     "load_character_bmp",
+     "load_frames",
+     "main_menu_callback",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44f3f0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_textprintf_right_ex": {
+    "count": 15,
+    "callers": [
+     "draw_replay_selector",
+     "draw_results",
+     "draw_table",
+     "main_menu_callback"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45a1d0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_set_color_conversion": {
+    "count": 13,
+    "callers": [
+     "init_game",
+     "load_character_bmp",
+     "load_frames"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44ea38",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_text_length": {
+    "count": 13,
+    "callers": [
+     "draw_frame",
+     "draw_replay_selector",
+     "get_string",
+     "init_scroller",
+     "my_alert"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x459f50",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_keypressed": {
+    "count": 12,
+    "callers": [
+     "get_string",
+     "init_game",
+     "play",
+     "replay_selector",
+     "select_profile",
+     "view_profile",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43dc20",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\keyboard.c"
+   },
+   "_set_clip_rect": {
+    "count": 12,
+    "callers": [
+     "draw_frame",
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "draw_scroller"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44eb70",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_fwrite": {
+    "count": 10,
+    "callers": [
+     "fldads_update_local_adimg",
+     "loadScrambled",
+     "save_control",
+     "save_garbled_data",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad00",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fwrite"
+   },
+   "_fread": {
+    "count": 10,
+    "callers": [
+     "check_beta_tester",
+     "csv_open",
+     "loadScrambled",
+     "load_control",
+     "load_garbled_data",
+     "load_profile",
+     "read_line"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad20",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fread"
+   },
+   "_fgets": {
+    "count": 10,
+    "callers": [
+     "load_character_bmp",
+     "load_frames",
+     "load_sounds"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad50",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fgets"
+   },
+   "_pack_fopen": {
+    "count": 9,
+    "callers": [
+     "get_replay_property",
+     "init_game",
+     "load_png",
+     "load_replay",
+     "save_config",
+     "save_png",
+     "save_replay"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x445afc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_pack_fclose": {
+    "count": 9,
+    "callers": [
+     "get_replay_property",
+     "init_game",
+     "load_png",
+     "load_replay",
+     "save_config",
+     "save_png",
+     "save_replay"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x444d78",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_textprintf_centre_ex": {
+    "count": 9,
+    "callers": [
+     "draw_frame",
+     "init_game",
+     "line_alert",
+     "my_alert"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45a23c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_get_filename": {
+    "count": 9,
+    "callers": [
+     "add_itr_file",
+     "add_profile",
+     "check_dir",
+     "draw_replay_selector",
+     "init_game",
+     "load_character"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44452c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_realloc": {
+    "count": 7,
+    "callers": [
+     "HTTPFetchInternal",
+     "add_profile",
+     "csv_add_field",
+     "csv_open",
+     "extractHTTPResponse",
+     "fldads_load_cache_from_csv"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad38",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!realloc"
+   },
+   "_load_bitmap": {
+    "count": 7,
+    "callers": [
+     "load_character_bmp",
+     "load_frames",
+     "load_new_ad_image"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x452f90",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\readbmp.c"
+   },
+   "_clear_bitmap": {
+    "count": 7,
+    "callers": [
+     "handle_menu",
+     "init_game",
+     "load_character_bmp",
+     "load_frames",
+     "play",
+     "show_credits"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44c2b4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_strncpy": {
+    "count": 7,
+    "callers": [
+     "_strptime",
+     "do_replay_menu",
+     "for_each_directory",
+     "get_adcache_dir",
+     "get_configfile_path",
+     "get_logfile_path",
+     "get_profiles_dir"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad68",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strncpy"
+   },
+   "_fprintf": {
+    "count": 7,
+    "callers": [
+     "_mangled_main",
+     "dumpHTTPResponse",
+     "fldads_dump_local_cache",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad70",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fprintf"
+   },
+   "_play_sample": {
+    "count": 7,
+    "callers": [
+     "_mangled_main",
+     "play",
+     "play_sound",
+     "startGameMusic",
+     "startMenuMusic"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x440404",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_exists": {
+    "count": 7,
+    "callers": [
+     "add_profile",
+     "check_dir",
+     "create_profile",
+     "do_replay_menu",
+     "init_game",
+     "load_character",
+     "take_screenshot"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x446218",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_packfile_password": {
+    "count": 7,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x444590",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_select_palette": {
+    "count": 6,
+    "callers": [
+     "init_game",
+     "load_character_bmp",
+     "load_frames"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44df24",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_png_destroy_read_struct": {
+    "count": 6,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0114",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_destroy_read_struct"
+   },
+   "_text_height": {
+    "count": 6,
+    "callers": [
+     "draw_profile_selector",
+     "draw_replay_selector",
+     "get_string",
+     "init_scroller",
+     "replay_selector",
+     "reset_menu"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45a040",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_textout_right_ex": {
+    "count": 6,
+    "callers": [
+     "draw_replay_selector",
+     "force_create_profile",
+     "my_alert",
+     "select_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x459f64",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\text.c"
+   },
+   "_set_display_switch_callback": {
+    "count": 6,
+    "callers": [
+     "init_game",
+     "testWindowResolution"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x465734",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\dispsw.c"
+   },
+   "_QueryPerformanceCounter@4": {
+    "count": 6,
+    "callers": [
+     "play"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b019c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "KERNEL32.dll!QueryPerformanceCounter"
+   },
+   "_clock": {
+    "count": 6,
+    "callers": [
+     "play"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badd0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!clock"
+   },
+   "_simulate_keypress": {
+    "count": 6,
+    "callers": [
+     "replay_selector",
+     "select_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43e104",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\keyboard.c"
+   },
+   "_unload_datafile": {
+    "count": 5,
+    "callers": [
+     "destroy_custom_data",
+     "init_game",
+     "load_character_bmp",
+     "uninit_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x454174",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\datafile.c"
+   },
+   "_get_extension": {
+    "count": 5,
+    "callers": [
+     "add_itr_file",
+     "init_game",
+     "loadCustomSoundFILE",
+     "load_sounds"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44681c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_create_bitmap_ex": {
+    "count": 5,
+    "callers": [
+     "load_character_bmp",
+     "load_frames",
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x44f27c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_mkdir": {
+    "count": 5,
+    "callers": [
+     "fldads_get_local_cache_name",
+     "init_game",
+     "play",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2de0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_mkdir"
+   },
+   "_stop_sample": {
+    "count": 5,
+    "callers": [
+     "play",
+     "stopGameMusic",
+     "stopMenuMusic"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43fc64",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_delete_file": {
+    "count": 5,
+    "callers": [
+     "delete_profile",
+     "loadScrambled",
+     "myDeleteFile",
+     "replay_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44623c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_file_exists": {
+    "count": 5,
+    "callers": [
+     "init_game",
+     "play",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x446150",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "___chkstk": {
+    "count": 4,
+    "callers": [
+     "_strptime",
+     "do_replay_menu",
+     "getGameDataXML",
+     "load_frames"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4b2a3c",
+    "family": "unknown",
+    "cu": null
+   },
+   "_get_color_conversion": {
+    "count": 4,
+    "callers": [
+     "load_character_bmp",
+     "load_frames"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44ea50",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_get_palette": {
+    "count": 4,
+    "callers": [
+     "load_frames",
+     "take_screenshot",
+     "testWindowResolution"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44c47c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_readkey": {
+    "count": 4,
+    "callers": [
+     "get_string",
+     "play",
+     "replay_selector",
+     "select_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43e0d8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\keyboard.c"
+   },
+   "_voice_stop": {
+    "count": 4,
+    "callers": [
+     "play",
+     "stopGameMusic"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43fe10",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_set_display_switch_mode": {
+    "count": 4,
+    "callers": [
+     "init_game",
+     "testWindowResolution"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4656c8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\dispsw.c"
+   },
+   "_voice_get_position": {
+    "count": 4,
+    "callers": [
+     "play"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43fe54",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_localtime": {
+    "count": 4,
+    "callers": [
+     "create_profile",
+     "save_profile",
+     "save_replay",
+     "timegm"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4badf8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!localtime"
+   },
+   "_fputs": {
+    "count": 4,
+    "callers": [
+     "save_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badf0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fputs"
+   },
+   "_png_write_row": {
+    "count": 4,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0164",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_write_row"
+   },
+   "_load_datafile": {
+    "count": 3,
+    "callers": [
+     "init_game",
+     "load_character_bmp",
+     "load_frames"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4560dc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\datafile.c"
+   },
+   "_stat": {
+    "count": 3,
+    "callers": [
+     "fldads_load_cache_from_csv",
+     "fldads_threadmain",
+     "fldads_update_local_adimg"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2df0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_stat"
+   },
+   "_png_create_info_struct": {
+    "count": 3,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf",
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00fc",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_create_info_struct"
+   },
+   "__setjmp": {
+    "count": 3,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf",
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bada0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_setjmp"
+   },
+   "_png_get_io_ptr": {
+    "count": 3,
+    "callers": [
+     "read_data",
+     "read_data_memory",
+     "write_data"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b011c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_io_ptr"
+   },
+   "_vsync": {
+    "count": 3,
+    "callers": [
+     "get_string",
+     "init_game",
+     "my_alert"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44c340",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_for_each_file_ex": {
+    "count": 3,
+    "callers": [
+     "for_each_directory",
+     "rebuild_profile_list",
+     "update_file_list"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x447798",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_show_mouse": {
+    "count": 3,
+    "callers": [
+     "init_game",
+     "testWindowResolution"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4600fc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\mouse.c"
+   },
+   "_srand": {
+    "count": 3,
+    "callers": [
+     "init_game",
+     "new_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badc8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!srand"
+   },
+   "_printf": {
+    "count": 3,
+    "callers": [
+     "_mangled_main",
+     "init_game",
+     "play"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bade0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!printf"
+   },
+   "_png_set_compression_level": {
+    "count": 3,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0144",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_compression_level"
+   },
+   "_png_set_IHDR": {
+    "count": 3,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b014c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_IHDR"
+   },
+   "_png_write_info": {
+    "count": 3,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0154",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_write_info"
+   },
+   "_png_destroy_write_struct": {
+    "count": 3,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b016c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_destroy_write_struct"
+   },
+   "__isctype": {
+    "count": 3,
+    "callers": [
+     "_strptime"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bae10",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_isctype"
+   },
+   "_mktime": {
+    "count": 3,
+    "callers": [
+     "timegm"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bae30",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!mktime"
+   },
+   "_strncmp": {
+    "count": 2,
+    "callers": [
+     "check_beta_tester",
+     "get_string_data"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad40",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strncmp"
+   },
+   "_load_midi": {
+    "count": 2,
+    "callers": [
+     "load_sounds"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x443fcc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\midi.c"
+   },
+   "_alert": {
+    "count": 2,
+    "callers": [
+     "custom_alert",
+     "load_sound"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44befc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gui.c"
+   },
+   "_png_set_gamma": {
+    "count": 2,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00cc",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_gamma"
+   },
+   "__color_load_depth": {
+    "count": 2,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x44ea5c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_png_sig_cmp": {
+    "count": 2,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00ec",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_sig_cmp"
+   },
+   "_png_create_read_struct": {
+    "count": 2,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00f4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_create_read_struct"
+   },
+   "_png_set_read_fn": {
+    "count": 2,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0104",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_read_fn"
+   },
+   "_png_set_sig_bytes": {
+    "count": 2,
+    "callers": [
+     "load_memory_png",
+     "load_png_pf"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b010c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_sig_bytes"
+   },
+   "_stretch_sprite": {
+    "count": 2,
+    "callers": [
+     "do_replay_menu",
+     "draw_reward"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x463398",
+    "family": "allegro_c",
+    "cu": "C:\\Lib\\allegro4\\src\\c\\cstretch.c"
+   },
+   "_strchr": {
+    "count": 2,
+    "callers": [
+     "get_string",
+     "replaceBadCharacters"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bada8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strchr"
+   },
+   "_adjust_sample": {
+    "count": 2,
+    "callers": [
+     "main_menu_callback",
+     "show_credits"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44035c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_file_size_ex": {
+    "count": 2,
+    "callers": [
+     "loadScrambled",
+     "reset_options"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4465c0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_fputc": {
+    "count": 2,
+    "callers": [
+     "log2file",
+     "save_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badc0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!fputc"
+   },
+   "_set_palette": {
+    "count": 2,
+    "callers": [
+     "testWindowResolution"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44e370",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_install_mouse": {
+    "count": 2,
+    "callers": [
+     "init_game",
+     "replay_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x460de0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\mouse.c"
+   },
+   "_load_datafile_callback": {
+    "count": 2,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x455d40",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\datafile.c"
+   },
+   "_LoadCursorA@8": {
+    "count": 2,
+    "callers": [
+     "main_menu_callback"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b0284",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "USER32.dll!LoadCursorA"
+   },
+   "_QueryPerformanceFrequency@4": {
+    "count": 2,
+    "callers": [
+     "play"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b0194",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "KERNEL32.dll!QueryPerformanceFrequency"
+   },
+   "_replace_filename": {
+    "count": 2,
+    "callers": [
+     "_mangled_main",
+     "replay_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4476fc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_rmdir": {
+    "count": 2,
+    "callers": [
+     "delete_profile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2e08",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_rmdir"
+   },
+   "_strcmp": {
+    "count": 2,
+    "callers": [
+     "_strptime"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bae20",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!strcmp"
+   },
+   "_install_int": {
+    "count": 2,
+    "callers": [
+     "install_timers"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45dd8c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\timer.c"
+   },
+   "_poll_joystick": {
+    "count": 1,
+    "callers": [
+     "poll_control"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43e654",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\joystick.c"
+   },
+   "_destroy_midi": {
+    "count": 1,
+    "callers": [
+     "destroy_custom_data"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x443f7c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\midi.c"
+   },
+   "_load_sample": {
+    "count": 1,
+    "callers": [
+     "loadCustomSoundFILE"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4442f4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\readsmp.c"
+   },
+   "___mingw_snprintf": {
+    "count": 1,
+    "callers": [
+     "get_character_dir"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2e50",
+    "family": "crt",
+    "cu": "snprintf.c"
+   },
+   "___strtof": {
+    "count": 1,
+    "callers": [
+     "fldads_load_cache_from_csv"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2e80",
+    "family": "crt",
+    "cu": "strtof.c"
+   },
+   "_sscanf": {
+    "count": 1,
+    "callers": [
+     "extractHTTPResponse"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bad88",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!sscanf"
+   },
+   "_socket@12": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x420754",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!socket"
+   },
+   "_setsockopt@20": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x42075c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!setsockopt"
+   },
+   "_gethostbyname@4": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x420764",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!gethostbyname"
+   },
+   "_htons@4": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x42076c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!htons"
+   },
+   "_connect@12": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x420774",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!connect"
+   },
+   "_send@16": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x42077c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!send"
+   },
+   "_recv@16": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x420784",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!recv"
+   },
+   "_closesocket@4": {
+    "count": 1,
+    "callers": [
+     "HTTPFetchInternal"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x42078c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!closesocket"
+   },
+   "_png_read_info": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b005c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_read_info"
+   },
+   "_png_get_IHDR": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0064",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_IHDR"
+   },
+   "_png_set_packing": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b006c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_packing"
+   },
+   "_png_get_valid": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0074",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_valid"
+   },
+   "_png_get_sRGB": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b007c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_sRGB"
+   },
+   "_png_set_interlace_handling": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0084",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_interlace_handling"
+   },
+   "_png_read_update_info": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b008c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_read_update_info"
+   },
+   "_png_get_PLTE": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0094",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_PLTE"
+   },
+   "_png_get_rowbytes": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b009c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_rowbytes"
+   },
+   "_makecol_depth": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x450bd0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\color.c"
+   },
+   "_png_set_bgr": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00a4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_bgr"
+   },
+   "_generate_332_palette": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x44c3cc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\gfx.c"
+   },
+   "_png_read_row": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00ac",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_read_row"
+   },
+   "__fixup_loaded_bitmap": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x452d68",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\readbmp.c"
+   },
+   "_png_read_end": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00b4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_read_end"
+   },
+   "_png_set_gray_to_rgb": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00bc",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_gray_to_rgb"
+   },
+   "_png_get_gAMA": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00c4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_get_gAMA"
+   },
+   "_png_set_tRNS_to_alpha": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00d4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_tRNS_to_alpha"
+   },
+   "_png_set_strip_16": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00dc",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_strip_16"
+   },
+   "_getenv": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bad90",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!getenv"
+   },
+   "_atof": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bad98",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!atof"
+   },
+   "_png_set_expand": {
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b00e4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_expand"
+   },
+   "_png_error": {
+    "count": 1,
+    "callers": [
+     "read_data_memory"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0124",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_error"
+   },
+   "__WinMain": {
+    "count": 1,
+    "callers": [
+     "WinMain"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4628d8",
+    "family": "allegro_win",
+    "cu": "C:\\Lib\\allegro4\\src\\win\\wsystem.c"
+   },
+   "_stretch_blit": {
+    "count": 1,
+    "callers": [
+     "blit_to_screen"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4632f8",
+    "family": "allegro_c",
+    "cu": "C:\\Lib\\allegro4\\src\\c\\cstretch.c"
+   },
+   "_masked_blit": {
+    "count": 1,
+    "callers": [
+     "show_instructions"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4560f8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\blit.c"
+   },
+   "_get_config_string": {
+    "count": 1,
+    "callers": [
+     "get_gamepad_value"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4646b8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\config.c"
+   },
+   "_load_wav": {
+    "count": 1,
+    "callers": [
+     "load_sound"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x440f14",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_set_volume": {
+    "count": 1,
+    "callers": [
+     "startGameMusic"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x440990",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_play_midi": {
+    "count": 1,
+    "callers": [
+     "startGameMusic"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x443648",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\midi.c"
+   },
+   "_vfprintf": {
+    "count": 1,
+    "callers": [
+     "log2file"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badb0",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!vfprintf"
+   },
+   "_vsprintf": {
+    "count": 1,
+    "callers": [
+     "log2file"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badb8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!vsprintf"
+   },
+   "_ShellExecuteA@24": {
+    "count": 1,
+    "callers": [
+     "open_web_browser"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4baff4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "SHELL32.DLL!ShellExecuteA"
+   },
+   "_getcwd": {
+    "count": 1,
+    "callers": [
+     "check_characters"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2df8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_getcwd"
+   },
+   "_WSAStartup@8": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x420794",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "WSOCK32.DLL!WSAStartup"
+   },
+   "_set_color_depth": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44e9d4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_enable_hardware_cursor": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4605a4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\mouse.c"
+   },
+   "_select_mouse_cursor": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45f9d8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\mouse.c"
+   },
+   "_set_close_button_callback": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43ee4c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\allegro.c"
+   },
+   "_install_keyboard": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43de28",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\keyboard.c"
+   },
+   "_install_sound": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4417b0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\sound.c"
+   },
+   "_install_joystick": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43e958",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\joystick.c"
+   },
+   "_set_config_file": {
+    "count": 1,
+    "callers": [
+     "init_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x463fe8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\config.c"
+   },
+   "_create_sub_bitmap": {
+    "count": 1,
+    "callers": [
+     "take_screenshot"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44f448",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c"
+   },
+   "_save_bitmap": {
+    "count": 1,
+    "callers": [
+     "take_screenshot"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x452ef8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\readbmp.c"
+   },
+   "_set_alpha_blender": {
+    "count": 1,
+    "callers": [
+     "main_menu_callback"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45be04",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\colblend.c"
+   },
+   "_replace_extension": {
+    "count": 1,
+    "callers": [
+     "do_replay_menu"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4475e4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_LoadLibraryA@4": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b01a4",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "KERNEL32.dll!LoadLibraryA"
+   },
+   "__errno": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4badd8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_errno"
+   },
+   "__install_allegro_version_check": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43f390",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\allegro.c"
+   },
+   "_get_executable_name": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43edf0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\allegro.c"
+   },
+   "_chdir": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2e00",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_chdir"
+   },
+   "_allegro_exit": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43ef04",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\allegro.c"
+   },
+   "_exit": {
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bade8",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!exit"
+   },
+   "_register_datafile_object": {
+    "count": 1,
+    "callers": [
+     "register_png_datafile_object"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x465e68",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\dataregi.c"
+   },
+   "_register_bitmap_file_type": {
+    "count": 1,
+    "callers": [
+     "register_png_file_type"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x45301c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\readbmp.c"
+   },
+   "_qsort": {
+    "count": 1,
+    "callers": [
+     "update_file_list"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bae00",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!qsort"
+   },
+   "_file_select_ex": {
+    "count": 1,
+    "callers": [
+     "replay_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x466dfc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\fsel.c"
+   },
+   "_remove_mouse": {
+    "count": 1,
+    "callers": [
+     "replay_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x460388",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\mouse.c"
+   },
+   "_canonicalize_filename": {
+    "count": 1,
+    "callers": [
+     "replay_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x447980",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\file.c"
+   },
+   "_png_create_write_struct": {
+    "count": 1,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b012c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_create_write_struct"
+   },
+   "_png_set_write_fn": {
+    "count": 1,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0134",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_write_fn"
+   },
+   "_png_set_PLTE": {
+    "count": 1,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b013c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_set_PLTE"
+   },
+   "_png_write_end": {
+    "count": 1,
+    "callers": [
+     "really_save_png"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b015c",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "libpng3.dll!png_write_end"
+   },
+   "__strnicmp": {
+    "count": 1,
+    "callers": [
+     "match_string"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bae08",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_strnicmp"
+   },
+   "__tzset": {
+    "count": 1,
+    "callers": [
+     "_strptime"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bae18",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!_tzset"
+   },
+   "_gmtime": {
+    "count": 1,
+    "callers": [
+     "timegm"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4bae28",
+    "family": "import_thunk",
+    "cu": "cygming-crtend.c",
+    "import": "msvcrt.dll!gmtime"
+   },
+   "_install_timer": {
+    "count": 1,
+    "callers": [
+     "install_timers"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x45da68",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\timer.c"
+   }
+  }
+ },
+ "game_to_lib_tailjmp": {
+  "distinct_callees": 12,
+  "callees": {
+   "_free": {
+    "count": 5,
+    "callers": [
+     "csv_destroy",
+     "destroyHTTPResponse",
+     "destroy_game_data",
+     "destroy_hisc_table",
+     "destroy_replay"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x4bad08",
+    "family": "import_thunk"
+   },
+   "_destroy_bitmap": {
+    "count": 3,
+    "callers": [
+     "destroy_datafile_png",
+     "fadeIn",
+     "view_scores"
+    ],
+    "caller_families": [
+     "game",
+     "game_vendored"
+    ],
+    "va": "0x44f14c",
+    "family": "allegro_core"
+   },
+   "_png_error": {
+    "count": 2,
+    "callers": [
+     "read_data",
+     "write_data"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x4b0124",
+    "family": "import_thunk"
+   },
+   "_logg_load": {
+    "count": 1,
+    "callers": [
+     "loadCustomSoundFILE"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4205cc",
+    "family": "allegro_addon"
+   },
+   "_file_exists": {
+    "count": 1,
+    "callers": [
+     "get_character_dir"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x446150",
+    "family": "allegro_core"
+   },
+   "_strcpy": {
+    "count": 1,
+    "callers": [
+     "enter_hisc_table"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4bad48",
+    "family": "import_thunk"
+   },
+   "_WSAGetLastError@0": {
+    "count": 1,
+    "callers": [
+     "getSocketError"
+    ],
+    "caller_families": [
+     "game_vendored"
+    ],
+    "va": "0x42074c",
+    "family": "import_thunk"
+   },
+   "_logg_load_memory": {
+    "count": 1,
+    "callers": [
+     "getSampleFromOggDatafile"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x420688",
+    "family": "allegro_addon"
+   },
+   "_stop_midi": {
+    "count": 1,
+    "callers": [
+     "stopGameMusic"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4438d8",
+    "family": "allegro_core"
+   },
+   "_allegro_exit": {
+    "count": 1,
+    "callers": [
+     "uninit_game"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x43ef04",
+    "family": "allegro_core"
+   },
+   "_set_clip_rect": {
+    "count": 1,
+    "callers": [
+     "draw_profile_selector"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x44eb70",
+    "family": "allegro_core"
+   },
+   "_stricmp": {
+    "count": 1,
+    "callers": [
+     "my_strcmp"
+    ],
+    "caller_families": [
+     "game"
+    ],
+    "va": "0x4b2dd8",
+    "family": "import_thunk"
+   }
+  }
+ },
+ "lib_to_game_direct_calls": {
+  "distinct": 1,
+  "callees": {
+   "_WinMain@16": {
+    "count": 1,
+    "callers": [
+     "_main"
+    ],
+    "va": "0x406cb0",
+    "caller_family": "crt"
+   }
+  }
+ },
+ "callbacks": {
+  "count": 30,
+  "to_library_count": 24,
+  "to_game_count": 6,
+  "by_receiver": {
+   "*0x00514a58": 1,
+   "_png_set_read_fn": 2,
+   "__WinMain": 1,
+   "_for_each_file_ex": 2,
+   "_set_display_switch_callback": 6,
+   "_for_each_directory": 4,
+   "_set_close_button_callback": 1,
+   "_load_datafile_callback": 2,
+   "_handle_menu": 2,
+   "_register_datafile_object": 2,
+   "_register_bitmap_file_type": 2,
+   "_qsort": 1,
+   "_png_set_write_fn": 2,
+   "_install_int": 2
+  },
+  "refs": [
+   {
+    "site_va": "0x403ad6",
+    "in_function": "fldads_start",
+    "in_function_va": "0x403ac8",
+    "target": "fldads_threadmain",
+    "target_va": "0x404014",
+    "insn": "movl   $0x404014,0x8(%esp)",
+    "receiver": "*0x00514a58",
+    "receiver_family": "import/vtable"
+   },
+   {
+    "site_va": "0x40669e",
+    "in_function": "load_memory_png",
+    "in_function_va": "0x406604",
+    "target": "read_data_memory",
+    "target_va": "0x406738",
+    "insn": "movl   $0x406738,0x8(%esp)",
+    "receiver": "_png_set_read_fn",
+    "receiver_family": "import_thunk"
+   },
+   {
+    "site_va": "0x406821",
+    "in_function": "load_png_pf",
+    "in_function_va": "0x406788",
+    "target": "read_data",
+    "target_va": "0x4068c4",
+    "insn": "movl   $0x4068c4,0x8(%esp)",
+    "receiver": "_png_set_read_fn",
+    "receiver_family": "import_thunk"
+   },
+   {
+    "site_va": "0x406cd2",
+    "in_function": "WinMain",
+    "in_function_va": "0x406cb0",
+    "target": "_mangled_main",
+    "target_va": "0x415f10",
+    "insn": "movl   $0x415f10,(%esp)",
+    "receiver": "__WinMain",
+    "receiver_family": "allegro_win"
+   },
+   {
+    "site_va": "0x40c7e3",
+    "in_function": "rebuild_profile_list",
+    "in_function_va": "0x40c758",
+    "target": "add_profile",
+    "target_va": "0x40c8c0",
+    "insn": "movl   $0x40c8c0,0xc(%esp)",
+    "receiver": "_for_each_file_ex",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40dbb4",
+    "in_function": "testWindowResolution",
+    "in_function_va": "0x40db18",
+    "target": "switchedToProgram",
+    "target_va": "0x406a6c",
+    "insn": "movl   $0x406a6c,0x4(%esp)",
+    "receiver": "_set_display_switch_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40dbc8",
+    "in_function": "testWindowResolution",
+    "in_function_va": "0x40db18",
+    "target": "switchedFromProgram",
+    "target_va": "0x406a5c",
+    "insn": "movl   $0x406a5c,0x4(%esp)",
+    "receiver": "_set_display_switch_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40dc5e",
+    "in_function": "testWindowResolution",
+    "in_function_va": "0x40db18",
+    "target": "switchedToProgram",
+    "target_va": "0x406a6c",
+    "insn": "movl   $0x406a6c,0x4(%esp)",
+    "receiver": "_set_display_switch_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40dc72",
+    "in_function": "testWindowResolution",
+    "in_function_va": "0x40db18",
+    "target": "switchedFromProgram",
+    "target_va": "0x406a5c",
+    "insn": "movl   $0x406a5c,0x4(%esp)",
+    "receiver": "_set_display_switch_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40e6e9",
+    "in_function": "check_characters",
+    "in_function_va": "0x40e680",
+    "target": "check_dir",
+    "target_va": "0x40ffc4",
+    "insn": "movl   $0x40ffc4,0x4(%esp)",
+    "receiver": "_for_each_directory",
+    "receiver_family": "game"
+   },
+   {
+    "site_va": "0x40e734",
+    "in_function": "check_characters",
+    "in_function_va": "0x40e680",
+    "target": "load_character",
+    "target_va": "0x40fe78",
+    "insn": "movl   $0x40fe78,0x4(%esp)",
+    "receiver": "_for_each_directory",
+    "receiver_family": "game"
+   },
+   {
+    "site_va": "0x40e7ac",
+    "in_function": "check_characters",
+    "in_function_va": "0x40e680",
+    "target": "check_dir",
+    "target_va": "0x40ffc4",
+    "insn": "movl   $0x40ffc4,0x4(%esp)",
+    "receiver": "_for_each_directory",
+    "receiver_family": "game"
+   },
+   {
+    "site_va": "0x40e7c4",
+    "in_function": "check_characters",
+    "in_function_va": "0x40e680",
+    "target": "load_character",
+    "target_va": "0x40fe78",
+    "insn": "movl   $0x40fe78,0x4(%esp)",
+    "receiver": "_for_each_directory",
+    "receiver_family": "game"
+   },
+   {
+    "site_va": "0x40ef10",
+    "in_function": "init_game",
+    "in_function_va": "0x40e7dc",
+    "target": "switchedToProgram",
+    "target_va": "0x406a6c",
+    "insn": "movl   $0x406a6c,0x4(%esp)",
+    "receiver": "_set_display_switch_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40ef24",
+    "in_function": "init_game",
+    "in_function_va": "0x40e7dc",
+    "target": "switchedFromProgram",
+    "target_va": "0x406a5c",
+    "insn": "movl   $0x406a5c,0x4(%esp)",
+    "receiver": "_set_display_switch_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40ef38",
+    "in_function": "init_game",
+    "in_function_va": "0x40e7dc",
+    "target": "clickedCloseButton",
+    "target_va": "0x406a7c",
+    "insn": "movl   $0x406a7c,(%esp)",
+    "receiver": "_set_close_button_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40f1af",
+    "in_function": "init_game",
+    "in_function_va": "0x40e7dc",
+    "target": "datafile_callback_slow",
+    "target_va": "0x407bf0",
+    "insn": "movl   $0x407bf0,0x4(%esp)",
+    "receiver": "_load_datafile_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x40f960",
+    "in_function": "init_game",
+    "in_function_va": "0x40e7dc",
+    "target": "datafile_callback",
+    "target_va": "0x407c14",
+    "insn": "movl   $0x407c14,0x4(%esp)",
+    "receiver": "_load_datafile_callback",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x411024",
+    "in_function": "do_replay_menu",
+    "in_function_va": "0x410f98",
+    "target": "replay_menu_callback",
+    "target_va": "0x4073f8",
+    "insn": "movl   $0x4073f8,0x10(%esp)",
+    "receiver": "_handle_menu",
+    "receiver_family": "game"
+   },
+   {
+    "site_va": "0x416179",
+    "in_function": "_mangled_main",
+    "in_function_va": "0x415f10",
+    "target": "main_menu_callback",
+    "target_va": "0x4100f8",
+    "insn": "movl   $0x4100f8,0x10(%esp)",
+    "receiver": "_handle_menu",
+    "receiver_family": "game"
+   },
+   {
+    "site_va": "0x41b8c6",
+    "in_function": "register_png_datafile_object",
+    "in_function_va": "0x41b8c0",
+    "target": "destroy_datafile_png",
+    "target_va": "0x41b8e4",
+    "insn": "movl   $0x41b8e4,0x8(%esp)",
+    "receiver": "_register_datafile_object",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x41b8ce",
+    "in_function": "register_png_datafile_object",
+    "in_function_va": "0x41b8c0",
+    "target": "load_datafile_png",
+    "target_va": "0x41b8fc",
+    "insn": "movl   $0x41b8fc,0x4(%esp)",
+    "receiver": "_register_datafile_object",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x41b972",
+    "in_function": "register_png_file_type",
+    "in_function_va": "0x41b96c",
+    "target": "save_png",
+    "target_va": "0x41f000",
+    "insn": "movl   $0x41f000,0x8(%esp)",
+    "receiver": "_register_bitmap_file_type",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x41b97a",
+    "in_function": "register_png_file_type",
+    "in_function_va": "0x41b96c",
+    "target": "load_png",
+    "target_va": "0x406910",
+    "insn": "movl   $0x406910,0x4(%esp)",
+    "receiver": "_register_bitmap_file_type",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x41be09",
+    "in_function": "update_file_list",
+    "in_function_va": "0x41bda0",
+    "target": "add_itr_file",
+    "target_va": "0x41e740",
+    "insn": "movl   $0x41e740,0xc(%esp)",
+    "receiver": "_for_each_file_ex",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x41be29",
+    "in_function": "update_file_list",
+    "in_function_va": "0x41bda0",
+    "target": "my_strcmp",
+    "target_va": "0x41e6c0",
+    "insn": "movl   $0x41e6c0,0xc(%esp)",
+    "receiver": "_qsort",
+    "receiver_family": "import_thunk"
+   },
+   {
+    "site_va": "0x41e945",
+    "in_function": "really_save_png",
+    "in_function_va": "0x41e8b0",
+    "target": "flush_data",
+    "target_va": "0x41e8a8",
+    "insn": "movl   $0x41e8a8,0xc(%esp)",
+    "receiver": "_png_set_write_fn",
+    "receiver_family": "import_thunk"
+   },
+   {
+    "site_va": "0x41e94d",
+    "in_function": "really_save_png",
+    "in_function_va": "0x41e8b0",
+    "target": "write_data",
+    "target_va": "0x41f074",
+    "insn": "movl   $0x41f074,0x8(%esp)",
+    "receiver": "_png_set_write_fn",
+    "receiver_family": "import_thunk"
+   },
+   {
+    "site_va": "0x41fef7",
+    "in_function": "install_timers",
+    "in_function_va": "0x41fee4",
+    "target": "fps_counter",
+    "target_va": "0x41fea4",
+    "insn": "movl   $0x41fea4,(%esp)",
+    "receiver": "_install_int",
+    "receiver_family": "allegro_core"
+   },
+   {
+    "site_va": "0x41ff29",
+    "in_function": "install_timers",
+    "in_function_va": "0x41fee4",
+    "target": "cycle_counter",
+    "target_va": "0x41fed4",
+    "insn": "movl   $0x41fed4,(%esp)",
+    "receiver": "_install_int",
+    "receiver_family": "allegro_core"
+   }
+  ]
+ },
+ "data_symbol_attribution": {
+  "symbols": 1227,
+  "by_family": {
+   "game": 152,
+   "game_vendored": 8,
+   "allegro_addon": 3,
+   "unknown": 57,
+   "libvorbis": 9,
+   "allegro_core": 723,
+   "allegro_win": 242,
+   "crt": 24,
+   "libogg": 3,
+   "allegro_c": 1,
+   "allegro_misc": 5
+  },
+  "by_attribution": {
+   "dwarf": 1138,
+   "none": 57,
+   "name": 6,
+   "coff_static": 26
+  }
+ },
+ "unattributed_data_touched_by_game_code": {
+  "distinct": 0,
+  "all": {}
+ },
+ "unattributed_data_touched_by_library_code": {
+  "distinct": 22,
+  "top": {
+   "_ATH": 170,
+   "_FLOOR1_fromdB_LOOKUP": 25,
+   "_COS_LOOKUP": 23,
+   "_vwin": 12,
+   "___cpu_features": 10,
+   "_fivesbits": 6,
+   "_dtoa_CS_init": 5,
+   "__CRT_fmode": 3,
+   "_p5s": 3,
+   "__fmode": 2,
+   "__mapping_P": 2,
+   "_initialized": 2,
+   "_pmem_next": 2,
+   "___hexdig_D2A": 2,
+   "__CRT_glob": 1,
+   "__argv": 1,
+   "__bss_start__": 1,
+   "___JCR_LIST__": 1,
+   "_analysis_noisy": 1,
+   "___RUNTIME_PSEUDO_RELOC_LIST__": 1,
+   "___bigtens_D2A": 1,
+   "___tinytens_D2A": 1
+  }
+ },
+ "shared_globals": {
+  "lib_globals_touched_by_game": {
+   "distinct": 26,
+   "total_sites": 272,
+   "globals": {
+    "_key": {
+     "count": 101,
+     "va": "0x506988",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\keyboard.c",
+     "readers": [
+      "blit_to_screen",
+      "draw_frame",
+      "get_string",
+      "handle_menu",
+      "handle_player_collision_combo",
+      "handle_player_collision_vector",
+      "handle_player_collision_vector_2",
+      "main_menu_callback",
+      "my_alert",
+      "play",
+      "show_credits",
+      "show_instructions",
+      "take_screenshot",
+      "update_game_menu",
+      "view_profile",
+      "view_scores"
+     ]
+    },
+    "_screen": {
+     "count": 67,
+     "va": "0x4dda8c",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+     "readers": [
+      "blit_to_screen",
+      "draw_progress_bar",
+      "fadeOut",
+      "force_create_profile",
+      "handle_player_collision_combo",
+      "handle_player_collision_vector",
+      "handle_player_collision_vector_2",
+      "init_game",
+      "line_alert",
+      "load_frames",
+      "my_alert",
+      "play",
+      "replay_selector",
+      "select_profile",
+      "testWindowResolution",
+      "view_profile",
+      "view_scores"
+     ]
+    },
+    "_font": {
+     "count": 39,
+     "va": "0x4ccc94",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\font.c",
+     "readers": [
+      "draw_frame",
+      "draw_profile_selector",
+      "draw_progress_bar",
+      "draw_replay_selector",
+      "init_game",
+      "load_sound",
+      "replay_selector",
+      "select_profile"
+     ]
+    },
+    "_gfx_driver": {
+     "count": 27,
+     "va": "0x4dda84",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+     "readers": [
+      "fadeIn",
+      "fadeOut",
+      "force_create_profile",
+      "line_alert",
+      "main_menu_callback",
+      "my_alert",
+      "play",
+      "replay_selector",
+      "select_profile",
+      "view_profile",
+      "view_scores"
+     ]
+    },
+    "_joy": {
+     "count": 6,
+     "va": "0x506a88",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\joystick.c",
+     "readers": [
+      "init_game",
+      "poll_control"
+     ]
+    },
+    "_mouse_b": {
+     "count": 4,
+     "va": "0x4e8cf8",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\mouse.c",
+     "readers": [
+      "main_menu_callback"
+     ]
+    },
+    "_gui_fg_color": {
+     "count": 3,
+     "va": "0x4cc3a0",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+     "readers": [
+      "custom_alert",
+      "my_alert",
+      "replay_selector"
+     ]
+    },
+    "_gui_bg_color": {
+     "count": 3,
+     "va": "0x4ddaa8",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+     "readers": [
+      "custom_alert",
+      "my_alert",
+      "replay_selector"
+     ]
+    },
+    "_allegro_errno": {
+     "count": 3,
+     "va": "0x4dda78",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+     "readers": [
+      "draw_frame",
+      "load_character"
+     ]
+    },
+    "_system_driver": {
+     "count": 2,
+     "va": "0x4dda74",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+     "readers": [
+      "init_game"
+     ]
+    },
+    "__win_hcursor": {
+     "count": 2,
+     "va": "0x4e8e20",
+     "family": "allegro_win",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\win\\wmouse.c",
+     "readers": [
+      "main_menu_callback"
+     ]
+    },
+    "_mouse_x": {
+     "count": 1,
+     "va": "0x4e8ce8",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\mouse.c",
+     "readers": [
+      "main_menu_callback"
+     ]
+    },
+    "_mouse_y": {
+     "count": 1,
+     "va": "0x4e8cec",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\mouse.c",
+     "readers": [
+      "main_menu_callback"
+     ]
+    },
+    "__rgb_r_shift_32": {
+     "count": 1,
+     "va": "0x4e8674",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_g_shift_32": {
+     "count": 1,
+     "va": "0x4cc9ec",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_b_shift_32": {
+     "count": 1,
+     "va": "0x4cc9f0",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_a_shift_32": {
+     "count": 1,
+     "va": "0x4cc9f4",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_r_shift_24": {
+     "count": 1,
+     "va": "0x4e8670",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_g_shift_24": {
+     "count": 1,
+     "va": "0x4cc9e4",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_b_shift_24": {
+     "count": 1,
+     "va": "0x4cc9e8",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_r_shift_15": {
+     "count": 1,
+     "va": "0x4e8668",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_g_shift_15": {
+     "count": 1,
+     "va": "0x4cc9d4",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_b_shift_15": {
+     "count": 1,
+     "va": "0x4cc9d8",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_r_shift_16": {
+     "count": 1,
+     "va": "0x4e866c",
+     "family": "allegro_core",
+     "sec": ".bss",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_g_shift_16": {
+     "count": 1,
+     "va": "0x4cc9dc",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    },
+    "__rgb_b_shift_16": {
+     "count": 1,
+     "va": "0x4cc9e0",
+     "family": "allegro_core",
+     "sec": ".data",
+     "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+     "readers": [
+      "really_save_png"
+     ]
+    }
+   }
+  },
+  "game_globals_touched_by_lib": {
+   "distinct": 0,
+   "total_sites": 0,
+   "globals": {}
+  }
+ },
+ "internal_symbol_edges": {
+  "functions": {
+   "__color_load_depth": {
+    "va": "0x44ea5c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 2,
+    "callers": [
+     "really_load_png"
+    ]
+   },
+   "__fixup_loaded_bitmap": {
+    "va": "0x452d68",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\readbmp.c",
+    "count": 1,
+    "callers": [
+     "really_load_png"
+    ]
+   },
+   "__WinMain": {
+    "va": "0x4628d8",
+    "family": "allegro_win",
+    "cu": "C:\\Lib\\allegro4\\src\\win\\wsystem.c",
+    "count": 1,
+    "callers": [
+     "WinMain"
+    ]
+   },
+   "__install_allegro_version_check": {
+    "va": "0x43f390",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+    "count": 1,
+    "callers": [
+     "_mangled_main"
+    ]
+   }
+  },
+  "data": {
+   "__win_hcursor": {
+    "va": "0x4e8e20",
+    "family": "allegro_win",
+    "cu": "C:\\Lib\\allegro4\\src\\win\\wmouse.c",
+    "count": 2,
+    "readers": [
+     "main_menu_callback"
+    ]
+   },
+   "__rgb_r_shift_32": {
+    "va": "0x4e8674",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_g_shift_32": {
+    "va": "0x4cc9ec",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_b_shift_32": {
+    "va": "0x4cc9f0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_a_shift_32": {
+    "va": "0x4cc9f4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_r_shift_24": {
+    "va": "0x4e8670",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_g_shift_24": {
+    "va": "0x4cc9e4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_b_shift_24": {
+    "va": "0x4cc9e8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_r_shift_15": {
+    "va": "0x4e8668",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_g_shift_15": {
+    "va": "0x4cc9d4",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_b_shift_15": {
+    "va": "0x4cc9d8",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_r_shift_16": {
+    "va": "0x4e866c",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_g_shift_16": {
+    "va": "0x4cc9dc",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   },
+   "__rgb_b_shift_16": {
+    "va": "0x4cc9e0",
+    "family": "allegro_core",
+    "cu": "C:\\Lib\\allegro4\\src\\graphics.c",
+    "count": 1,
+    "readers": [
+     "really_save_png"
+    ]
+   }
+  }
+ },
+ "indirect_iat_calls_from_game": {
+  "slot_00000020": {
+   "count": 286,
+   "callers": [
+    "None",
+    "_al_stretch_blit",
+    "_bitmap_has_alpha",
+    "_blit_between_formats",
+    "_linear_blit16",
+    "_linear_blit24",
+    "_linear_blit32",
+    "_linear_blit8",
+    "_linear_blit_backward16",
+    "_linear_blit_backward24",
+    "_linear_blit_backward32",
+    "_linear_blit_backward8",
+    "_linear_clear_to_color16",
+    "_linear_clear_to_color24",
+    "_linear_clear_to_color32",
+    "_linear_clear_to_color8",
+    "_linear_draw_256_sprite15",
+    "_linear_draw_256_sprite16",
+    "_linear_draw_256_sprite24",
+    "_linear_draw_256_sprite32",
+    "_linear_draw_256_sprite8",
+    "_linear_draw_character15",
+    "_linear_draw_character16",
+    "_linear_draw_character24",
+    "_linear_draw_character32",
+    "_linear_draw_character8",
+    "_linear_draw_glyph16",
+    "_linear_draw_glyph24",
+    "_linear_draw_glyph32",
+    "_linear_draw_glyph8",
+    "_linear_draw_lit_rle_sprite15",
+    "_linear_draw_lit_rle_sprite16",
+    "_linear_draw_lit_rle_sprite24",
+    "_linear_draw_lit_rle_sprite32",
+    "_linear_draw_lit_rle_sprite8",
+    "_linear_draw_lit_sprite15",
+    "_linear_draw_lit_sprite16",
+    "_linear_draw_lit_sprite24",
+    "_linear_draw_lit_sprite32",
+    "_linear_draw_lit_sprite8",
+    "_linear_draw_rle_sprite15",
+    "_linear_draw_rle_sprite16",
+    "_linear_draw_rle_sprite24",
+    "_linear_draw_rle_sprite32",
+    "_linear_draw_rle_sprite8",
+    "_linear_draw_sprite15",
+    "_linear_draw_sprite16",
+    "_linear_draw_sprite24",
+    "_linear_draw_sprite32",
+    "_linear_draw_sprite8",
+    "_linear_draw_sprite_ex15",
+    "_linear_draw_sprite_ex16",
+    "_linear_draw_sprite_ex24",
+    "_linear_draw_sprite_ex32",
+    "_linear_draw_sprite_ex8",
+    "_linear_draw_sprite_h_flip15",
+    "_linear_draw_sprite_h_flip16",
+    "_linear_draw_sprite_h_flip24",
+    "_linear_draw_sprite_h_flip32",
+    "_linear_draw_sprite_h_flip8",
+    "_linear_draw_sprite_v_flip15",
+    "_linear_draw_sprite_v_flip16",
+    "_linear_draw_sprite_v_flip24",
+    "_linear_draw_sprite_v_flip32",
+    "_linear_draw_sprite_v_flip8",
+    "_linear_draw_sprite_vh_flip15",
+    "_linear_draw_sprite_vh_flip16",
+    "_linear_draw_sprite_vh_flip24",
+    "_linear_draw_sprite_vh_flip32",
+    "_linear_draw_sprite_vh_flip8",
+    "_linear_draw_trans_rgba_rle_sprite15",
+    "_linear_draw_trans_rgba_rle_sprite16",
+    "_linear_draw_trans_rgba_rle_sprite24",
+    "_linear_draw_trans_rgba_sprite15",
+    "_linear_draw_trans_rgba_sprite16",
+    "_linear_draw_trans_rgba_sprite24",
+    "_linear_draw_trans_rle_sprite15",
+    "_linear_draw_trans_rle_sprite16",
+    "_linear_draw_trans_rle_sprite24",
+    "_linear_draw_trans_rle_sprite32",
+    "_linear_draw_trans_rle_sprite8",
+    "_linear_draw_trans_sprite15",
+    "_linear_draw_trans_sprite16",
+    "_linear_draw_trans_sprite24",
+    "_linear_draw_trans_sprite32",
+    "_linear_draw_trans_sprite8",
+    "_linear_hline15",
+    "_linear_hline16",
+    "_linear_hline24",
+    "_linear_hline32",
+    "_linear_hline8",
+    "_linear_masked_blit16",
+    "_linear_masked_blit24",
+    "_linear_masked_blit32",
+    "_linear_masked_blit8",
+    "_linear_putpixel15",
+    "_linear_putpixel16",
+    "_linear_putpixel24",
+    "_linear_putpixel32",
+    "_linear_putpixel8",
+    "_linear_vline15",
+    "_linear_vline16",
+    "_linear_vline24",
+    "_linear_vline32",
+    "_linear_vline8",
+    "_restore_switch_state",
+    "_soft_draw_gouraud_sprite",
+    "_soft_floodfill",
+    "_soft_spline",
+    "blit_from_24",
+    "blit_from_32",
+    "detect_digi_driver",
+    "digi_directsound_rec_read",
+    "dither_blit",
+    "do_ellipse",
+    "do_polygon3d",
+    "draw_scanline_15",
+    "draw_scanline_16",
+    "draw_scanline_24",
+    "draw_scanline_32",
+    "draw_scanline_8",
+    "draw_scanline_generic",
+    "draw_scanline_generic_convert",
+    "draw_triangle_part",
+    "flooder",
+    "get_rle_sprite",
+    "gfx_directx_create_clipper",
+    "gfx_directx_fetch_mode_list",
+    "gfx_directx_set_mouse_sprite",
+    "install_sound",
+    "install_sound_input",
+    "joystick_dinput_unacquire",
+    "key_dinput_unacquire",
+    "load_character_bmp",
+    "load_frames",
+    "mouse_dinput_unacquire",
+    "really_save_png",
+    "save_bmp_pf",
+    "save_pcx_pf",
+    "save_tga_pf"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000024": {
+   "count": 141,
+   "callers": [
+    "None",
+    "_blit_between_formats",
+    "_draw_scrollable_frame",
+    "_linear_blit16",
+    "_linear_blit24",
+    "_linear_blit32",
+    "_linear_blit8",
+    "_linear_blit_backward16",
+    "_linear_blit_backward24",
+    "_linear_blit_backward32",
+    "_linear_blit_backward8",
+    "_linear_draw_trans_rgba_rle_sprite15",
+    "_linear_draw_trans_rgba_rle_sprite16",
+    "_linear_draw_trans_rgba_rle_sprite24",
+    "_linear_draw_trans_rgba_sprite15",
+    "_linear_draw_trans_rgba_sprite16",
+    "_linear_draw_trans_rgba_sprite24",
+    "_linear_draw_trans_rle_sprite15",
+    "_linear_draw_trans_rle_sprite16",
+    "_linear_draw_trans_rle_sprite24",
+    "_linear_draw_trans_rle_sprite32",
+    "_linear_draw_trans_rle_sprite8",
+    "_linear_draw_trans_sprite15",
+    "_linear_draw_trans_sprite16",
+    "_linear_draw_trans_sprite24",
+    "_linear_draw_trans_sprite32",
+    "_linear_draw_trans_sprite8",
+    "_linear_getpixel15",
+    "_linear_getpixel16",
+    "_linear_getpixel24",
+    "_linear_getpixel32",
+    "_linear_getpixel8",
+    "_linear_hline15",
+    "_linear_hline16",
+    "_linear_hline24",
+    "_linear_hline32",
+    "_linear_hline8",
+    "_linear_masked_blit16",
+    "_linear_masked_blit24",
+    "_linear_masked_blit32",
+    "_linear_masked_blit8",
+    "_linear_putpixel15",
+    "_linear_putpixel16",
+    "_linear_putpixel24",
+    "_linear_putpixel32",
+    "_linear_putpixel8",
+    "_soft_spline",
+    "blit_from_24",
+    "blit_from_32",
+    "create_mouse_pointer",
+    "d_icon_proc",
+    "d_slider_proc",
+    "digi_directsound_get_position",
+    "digi_directsound_rec_start",
+    "digi_dsoundmix_mixer_callback",
+    "dither_blit",
+    "do_polygon3d",
+    "dotted_rect",
+    "draw_menu_item",
+    "draw_scanline_generic",
+    "draw_scanline_generic_convert",
+    "draw_star_field",
+    "draw_triangle_part",
+    "flooder",
+    "install_sound",
+    "install_sound_input",
+    "joystick_dinput_poll"
+   ],
+   "caller_family": "game"
+  },
+  "slot_0000003c": {
+   "count": 109,
+   "callers": [
+    "_draw_listbox",
+    "_draw_scrollable_frame",
+    "_draw_textbox",
+    "all_notes_off",
+    "all_sound_off",
+    "color_render",
+    "color_render_char",
+    "create_dsound_buffer",
+    "d_box_proc",
+    "d_button_proc",
+    "d_check_proc",
+    "d_edit_proc",
+    "d_radio_proc",
+    "d_shadow_box_proc",
+    "d_slider_proc",
+    "digi_directsound_exit",
+    "digi_directsound_set_mixer_volume",
+    "digi_directsound_set_volume",
+    "digi_dsoundmix_exit",
+    "digi_dsoundmix_init",
+    "digi_dsoundmix_mixer_callback",
+    "digi_dsoundmix_set_mixer_volume",
+    "drawSlot",
+    "draw_menu",
+    "draw_menu_item",
+    "draw_profile_selector",
+    "draw_progress_bar",
+    "draw_replay_selector",
+    "draw_star_field",
+    "fadeIn",
+    "fadeOut",
+    "finalize_directx_init",
+    "force_create_profile",
+    "get_string",
+    "line_alert",
+    "main_menu_callback",
+    "midi_note_off",
+    "midi_note_on",
+    "midi_seek",
+    "my_alert",
+    "play",
+    "process_midi_event",
+    "raw_program_change",
+    "replay_menu_callback",
+    "replay_selector",
+    "reset_controllers",
+    "select_profile",
+    "trans_render_char",
+    "update_controllers",
+    "view_profile",
+    "view_scores"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000044": {
+   "count": 82,
+   "callers": [
+    "allocate_voice",
+    "d_slider_proc",
+    "deallocate_voice",
+    "digi_directsound_set_frequency",
+    "draw_frame",
+    "draw_menu",
+    "draw_mouse",
+    "draw_profile_selector",
+    "draw_replay_selector",
+    "draw_results",
+    "fadeIn",
+    "fadeOut",
+    "force_create_profile",
+    "init_game",
+    "line_alert",
+    "load_character_bmp",
+    "load_frames",
+    "main_menu_callback",
+    "my_alert",
+    "play",
+    "reallocate_voice",
+    "replay_menu_callback",
+    "select_profile",
+    "show_credits",
+    "update_colorconv_window",
+    "update_mouse_pointer",
+    "view_profile",
+    "view_scores",
+    "win_get_dc"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000048": {
+   "count": 80,
+   "callers": [
+    "color_render_char",
+    "d_slider_proc",
+    "digi_directsound_stop_voice",
+    "digi_dsoundmix_mixer_callback",
+    "draw_frame",
+    "draw_menu",
+    "draw_mouse",
+    "draw_profile_selector",
+    "draw_replay_selector",
+    "draw_results",
+    "fadeIn",
+    "fadeOut",
+    "force_create_profile",
+    "gfx_directx_enable_triple_buffering",
+    "gfx_directx_poll_scroll",
+    "init_game",
+    "line_alert",
+    "load_character_bmp",
+    "load_frames",
+    "main_menu_callback",
+    "my_alert",
+    "play",
+    "replay_menu_callback",
+    "select_profile",
+    "show_credits",
+    "update_mouse_pointer",
+    "view_profile",
+    "view_scores",
+    "voice_start"
+   ],
+   "caller_family": "game"
+  },
+  "slot_0000002c": {
+   "count": 43,
+   "callers": [
+    "None",
+    "_draw_listbox",
+    "_fast_line",
+    "_handle_listbox_click",
+    "_soft_rect",
+    "d_button_proc",
+    "d_icon_proc",
+    "d_keyboard_proc",
+    "d_list_proc",
+    "d_shadow_box_proc",
+    "d_slider_proc",
+    "d_text_list_proc",
+    "digi_directsound_lock_voice",
+    "digi_directsound_rec_read",
+    "digi_dsoundmix_init",
+    "digi_dsoundmix_mixer_callback",
+    "draw_menu",
+    "fill_dsound_buffer",
+    "flip_with_forefront_bitmap",
+    "gui_textout_ex",
+    "init_directx",
+    "init_directx_ovl",
+    "install_sound",
+    "install_sound_input",
+    "joystick_enum_callback",
+    "key_directx_init",
+    "mouse_directx_init",
+    "play",
+    "replay_menu_callback"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000028": {
+   "count": 29,
+   "callers": [
+    "_draw_scrollable_frame",
+    "_fast_line",
+    "_soft_rect",
+    "d_button_proc",
+    "d_icon_proc",
+    "d_shadow_box_proc",
+    "d_slider_proc",
+    "detect_midi_driver",
+    "digi_directsound_rec_stop",
+    "draw_menu",
+    "install_sound",
+    "install_sound_input",
+    "key_dinput_handle",
+    "mouse_dinput_handle",
+    "play",
+    "remove_sound",
+    "remove_sound_input",
+    "replay_menu_callback"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000034": {
+   "count": 27,
+   "callers": [
+    "(indirect string, offset: 0x21d6): destroy_bitmap",
+    "_soft_spline",
+    "blit_to_screen",
+    "d_check_proc",
+    "digi_directsound_loop_voice",
+    "digi_directsound_set_position",
+    "draw_menu_item",
+    "gfx_directx_exit",
+    "gfx_gdi_exit",
+    "handle_player_collision_combo",
+    "handle_player_collision_vector",
+    "handle_player_collision_vector_2",
+    "joystick_enum_callback",
+    "key_directx_init",
+    "mouse_dinput_grab"
+   ],
+   "caller_family": "game"
+  },
+  "slot_000000bc": {
+   "count": 19,
+   "callers": [
+    "_draw_scrollable_frame",
+    "d_box_proc",
+    "d_button_proc",
+    "d_check_proc",
+    "d_radio_proc",
+    "d_shadow_box_proc",
+    "drawSlot",
+    "draw_frame",
+    "draw_menu",
+    "draw_profile_selector",
+    "draw_progress_bar",
+    "draw_replay_selector",
+    "force_create_profile",
+    "select_profile"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000018": {
+   "count": 18,
+   "callers": [
+    "_mapping0_forward",
+    "_mapping0_inverse",
+    "create_directdraw2_surface",
+    "digi_directsound_get_mixer_volume",
+    "digi_directsound_init",
+    "digi_dsoundmix_get_mixer_volume",
+    "digi_dsoundmix_init",
+    "do_uconvert",
+    "get_dx_ver",
+    "gfx_directx_set_palette",
+    "handle_menu",
+    "joystick_enum_callback",
+    "key_directx_init",
+    "mouse_directx_init",
+    "remove_keyboard"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000050": {
+   "count": 16,
+   "callers": [
+    "(indirect string, offset: 0x2c94): show_mouse",
+    "blit_to_screen",
+    "digi_directsound_lock_voice",
+    "digi_dsoundmix_mixer_callback",
+    "draw_frame",
+    "fill_dsound_buffer",
+    "get_dx_ver",
+    "init_directx",
+    "update_controllers",
+    "voice_set_playmode",
+    "wnd_set_video_mode",
+    "wnd_set_windowed_coop"
+   ],
+   "caller_family": "game"
+  },
+  "slot_000000a0": {
+   "count": 11,
+   "callers": [
+    "clear_bitmap",
+    "color_merge_fonts",
+    "d_clear_proc",
+    "init_game",
+    "load_character_bmp",
+    "load_frames",
+    "main_menu_callback",
+    "read_rle_sprite",
+    "view_profile",
+    "view_scores"
+   ],
+   "caller_family": "game"
+  },
+  "slot_0000004c": {
+   "count": 9,
+   "callers": [
+    "allocate_voice",
+    "blit_to_screen",
+    "deallocate_voice",
+    "digi_directsound_unlock_voice",
+    "digi_dsoundmix_init",
+    "digi_dsoundmix_mixer_callback",
+    "fill_dsound_buffer",
+    "midi_note_off",
+    "reallocate_voice"
+   ],
+   "caller_family": "game"
+  },
+  "slot_000000a4": {
+   "count": 5,
+   "callers": [
+    "draw_frame",
+    "draw_reward",
+    "main_menu_callback"
+   ],
+   "caller_family": "game"
+  },
+  "slot_0000005c": {
+   "count": 5,
+   "callers": [
+    "gfx_directx_setup_driver",
+    "main_menu_callback",
+    "trans_render_char",
+    "voice_get_volume"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00514a5c": {
+   "count": 4,
+   "callers": [
+    "fldads_dump_local_cache",
+    "fldads_get_random_ad",
+    "fldads_load_cache_from_csv",
+    "log2file"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00514a60": {
+   "count": 4,
+   "callers": [
+    "fldads_dump_local_cache",
+    "fldads_get_random_ad",
+    "fldads_load_cache_from_csv",
+    "log2file"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00000058": {
+   "count": 4,
+   "callers": [
+    "gfx_directx_sync",
+    "main_menu_callback",
+    "trans_render_char"
+   ],
+   "caller_family": "game"
+  },
+  "slot_00514a58": {
+   "count": 1,
+   "callers": [
+    "fldads_start"
+   ],
+   "caller_family": "game"
+  }
+ },
+ "fnptr_tables": {
+  "tables_with_cross_family_slots": 0,
+  "cross": {},
+  "all_table_holders": {
+   "___linear_vtable15": {
+    "slots": 54,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\vtable15.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "___linear_vtable16": {
+    "slots": 54,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\vtable16.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "___linear_vtable24": {
+    "slots": 54,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\vtable24.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "___linear_vtable32": {
+    "slots": 54,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\vtable32.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "___linear_vtable8": {
+    "slots": 52,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\vtable8.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "_digi_dsoundmix": {
+    "slots": 34,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wdsndmix.c",
+    "target_families": [
+     "allegro_core",
+     "allegro_win"
+    ]
+   },
+   "_digi_waveout": {
+    "slots": 28,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wsndwo.c",
+    "target_families": [
+     "allegro_core",
+     "allegro_win"
+    ]
+   },
+   "_digi_none": {
+    "slots": 27,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\sound.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_digi_directsound": {
+    "slots": 26,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wdsound.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_utypes": {
+    "slots": 24,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_polytype_info32z.10813": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c"
+    ]
+   },
+   "_polytype_info24z.10812": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c"
+    ]
+   },
+   "_polytype_info16z.10811": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c"
+    ]
+   },
+   "_polytype_info15z.10810": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c"
+    ]
+   },
+   "_polytype_info8z.10809": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c"
+    ]
+   },
+   "_polytype_info32.10808": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "_polytype_info24.10807": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "_polytype_info16.10806": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "_polytype_info15.10805": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "_polytype_info8.10804": {
+    "slots": 21,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\poly3d.c",
+    "target_families": [
+     "allegro_c",
+     "allegro_core"
+    ]
+   },
+   "_system_directx": {
+    "slots": 20,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wsystem.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "__midi_none": {
+    "slots": 14,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\sound.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_gfx_directx_win": {
+    "slots": 13,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddwin.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "__font_vtable_mono": {
+    "slots": 12,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\font.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "__font_vtable_color": {
+    "slots": 12,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\font.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "__font_vtable_trans": {
+    "slots": 12,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\font.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_gfx_directx_accel": {
+    "slots": 11,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_gfx_directx_soft": {
+    "slots": 11,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_midi_digmid": {
+    "slots": 11,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\digmid.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_file_selector": {
+    "slots": 10,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\fsel.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_gfx_directx_ovl": {
+    "slots": 10,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddovl.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_system_none": {
+    "slots": 9,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\allegro.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_normal_vtable": {
+    "slots": 9,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\file.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_residue1_exportbundle": {
+    "slots": 8,
+    "holder_family": "libvorbis",
+    "holder_cu": "cygming-crtend.c",
+    "target_families": [
+     "libvorbis"
+    ]
+   },
+   "_residue2_exportbundle": {
+    "slots": 8,
+    "holder_family": "libvorbis",
+    "holder_cu": "cygming-crtend.c",
+    "target_families": [
+     "libvorbis"
+    ]
+   },
+   "_alert_dialog": {
+    "slots": 8,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\gui.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_mouse_directx": {
+    "slots": 8,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wmouse.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_gfx_gdi": {
+    "slots": 8,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wgdi.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_floor1_exportbundle": {
+    "slots": 7,
+    "holder_family": "libvorbis",
+    "holder_cu": "cygming-crtend.c",
+    "target_families": [
+     "libvorbis"
+    ]
+   },
+   "_floor0_exportbundle": {
+    "slots": 6,
+    "holder_family": "libvorbis",
+    "holder_cu": "cygming-crtend.c",
+    "target_families": [
+     "libvorbis"
+    ]
+   },
+   "_residue0_exportbundle": {
+    "slots": 5,
+    "holder_family": "libvorbis",
+    "holder_cu": "cygming-crtend.c",
+    "target_families": [
+     "libvorbis"
+    ]
+   },
+   "_mapping0_exportbundle": {
+    "slots": 5,
+    "holder_family": "libvorbis",
+    "holder_cu": "cygming-crtend.c",
+    "target_families": [
+     "libvorbis"
+    ]
+   },
+   "_keyboard_directx": {
+    "slots": 5,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wkeybd.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_gfx_directx_safe": {
+    "slots": 5,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_win_gfx_driver_windowed": {
+    "slots": 5,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddwin.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_win_gfx_driver_overlay": {
+    "slots": 4,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddovl.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_OV_CALLBACKS_DEFAULT": {
+    "slots": 4,
+    "holder_family": "allegro_addon",
+    "holder_cu": "C:\\Lib\\allegro4\\addons\\logg\\logg.c",
+    "target_families": [
+     "allegro_addon",
+     "import_thunk"
+    ]
+   },
+   "_joystick_none": {
+    "slots": 3,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\joystick.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_timer_win32_high_perf": {
+    "slots": 3,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wtimer.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_timer_win32_low_perf": {
+    "slots": 3,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wtimer.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_joystick_directx": {
+    "slots": 3,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wjoydx.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_joystick_win32": {
+    "slots": 3,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wjoyw32.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_win_gfx_driver_gdi": {
+    "slots": 3,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wgdi.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_midi_linker": {
+    "slots": 2,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\midi.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_mousedrv_none": {
+    "slots": 2,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\mouse.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_mouse_linker": {
+    "slots": 2,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\mouse.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_win_gfx_fullscreen": {
+    "slots": 2,
+    "holder_family": "allegro_win",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\win\\wddfull.c",
+    "target_families": [
+     "allegro_win"
+    ]
+   },
+   "_gui_mouse_x": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\gui.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_gui_mouse_y": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\gui.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_gui_mouse_z": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\gui.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_gui_mouse_b": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\gui.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "__palette_expansion_table": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\gfx.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_ugetc": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_ugetx": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_ugetxc": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_usetc": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_uwidth": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_ucwidth": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "_uisok": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   },
+   "__codepage_extras": {
+    "slots": 1,
+    "holder_family": "allegro_core",
+    "holder_cu": "C:\\Lib\\allegro4\\src\\unicode.c",
+    "target_families": [
+     "allegro_core"
+    ]
+   }
+  }
+ }
+}
