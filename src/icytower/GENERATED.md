@@ -1,5 +1,5 @@
 # Generated src/icytower headers
-Produced by `carrier/gen/gen_src_headers.py` (reusing `carrier/gen/gen_interop.py`'s DWARF parser) from `artifacts/dwarf_info.txt` + `artifacts/functions.json`, scope=`game`.
+Produced by `tools/pf_win32_gen_src_headers.py` (reusing `carrier/gen/gen_interop.py`'s DWARF parser) from `artifacts/dwarf_info.txt` + `artifacts/functions.json`, scope=`game`.
 ## Counts
 | item | count |
 |---|---:|

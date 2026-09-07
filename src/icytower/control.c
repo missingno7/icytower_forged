@@ -148,12 +148,20 @@ void init_control(Tcontrol *c)
 
 /* check_control_key -- true if `key` is currently bound to any of the
  * five remappable actions, or to enter/pause. */
-int check_control_key(Tcontrol *c, int key)
+/* `key_arg` rather than DWARF's own `key`: Allegro's global key[] array is
+ * a blunt textual `#define key ...` in carrier/gen/pf_lib_bindings.h, so a
+ * parameter spelled `key` macro-expands into a syntax error the moment this
+ * file is compiled in the carrier world with that header force-included
+ * (found while doing the same for handle_player_input's `ctrl` in
+ * PROMOTIONS.md batch 11).  carrier/win32_policy.json's `param_renames`
+ * already renames it to `key_arg` in the generated game_funcs.h prototype;
+ * this definition now matches. */
+int check_control_key(Tcontrol *c, int key_arg)
 {
-    if (key == c->key_left || key == c->key_right ||
-        key == c->key_up || key == c->key_down ||
-        key == c->key_fire || key == c->key_enter ||
-        key == c->key_pause)
+    if (key_arg == c->key_left || key_arg == c->key_right ||
+        key_arg == c->key_up || key_arg == c->key_down ||
+        key_arg == c->key_fire || key_arg == c->key_enter ||
+        key_arg == c->key_pause)
         return -1;
     return 0;
 }

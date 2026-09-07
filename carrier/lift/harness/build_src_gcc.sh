@@ -31,7 +31,13 @@ if [ $# -lt 1 ]; then
 fi
 OUT="$1"; shift
 
+# The 32-bit MinGW GCC, however this shell spells its root. Under an MSYS2
+# MINGW32 shell that is /mingw32; under Git Bash (which does NOT mount the
+# msys64 tree at /) the same compiler is at /c/msys64/mingw32. Falling back
+# to a bare `gcc` picks up the 64-bit one, whose -m32 link fails with
+# "cannot find -lkernel32" -- so try the explicit paths first.
 GCC=/mingw32/bin/gcc.exe
+if [ ! -x "$GCC" ]; then GCC=/c/msys64/mingw32/bin/gcc.exe; fi
 if [ ! -x "$GCC" ]; then GCC=gcc; fi
 
 PF_ORACLE=../../../port_forge/tools/win32_oracle
@@ -58,5 +64,8 @@ mkdir -p obj_gcc
     ../../../src/icytower/is_solid.c \
     ../../../src/icytower/draw_scroller.c \
     ../../../src/icytower/collision.c \
+    ../../../src/icytower/control.c \
+    ../../../src/icytower/poll_control.c \
+    ../../../src/icytower/handle_player_input.c \
     -o "$OUT"
 echo "OK: harness/$OUT  (flags: $*)"

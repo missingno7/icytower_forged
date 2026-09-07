@@ -1,9 +1,9 @@
 /* GENERATED FILE -- DO NOT EDIT.
- * Produced by carrier/gen/gen_src_headers.py (which reuses carrier/gen/gen_interop.py's
+ * Produced by tools/pf_win32_gen_src_headers.py (which reuses tools/pf_win32_gen_interop.py's
  * DWARF parser and type IR -- see that file for the parsing itself) from:
  *   artifacts/dwarf_info.txt
  *   artifacts/functions.json
- * scope=game. Re-run carrier/gen/gen_src_headers.py to regenerate; do not hand-edit.
+ * scope=game. Re-run tools/pf_win32_gen_src_headers.py to regenerate; do not hand-edit.
  *
  * Prototypes of every game-CU function, original names and DWARF
  * parameter names. This is the port's OWN header -- unlike
@@ -429,7 +429,7 @@ void __cdecl handle_player_collision_vector(int lastX, int lastY);
 void __cdecl handle_player_collision_vector_2(int lastX, int lastY);
 #endif
 #ifndef handle_player_input
-void __cdecl handle_player_input(Tcontrol *ctrl);
+void __cdecl handle_player_input(Tcontrol *ctrl_arg);
 #endif
 #ifndef init_game
 int __cdecl init_game(int argc, char **argv);
@@ -601,7 +601,7 @@ int __cdecl get_selection_value(Tmenu_selection *s);
 int __cdecl get_slider_value(Tmenu_slider *s);
 #endif
 #ifndef handle_menu
-int __cdecl handle_menu(Tmenu *menu, Tmenu_params *mp, Tcontrol *ctrl, BITMAP *bmp, void (__cdecl *callback)(void), int x, int y, int dx);
+int __cdecl handle_menu(Tmenu *menu, Tmenu_params *mp, Tcontrol *ctrl_arg, BITMAP *bmp, void (__cdecl *callback)(void), int x, int y, int dx);
 #endif
 #ifndef key_to_str
 void __cdecl key_to_str(int k, char *dest);
@@ -616,7 +616,7 @@ int __cdecl set_selection_value(Tmenu_selection *s, int v);
 int __cdecl set_slider_value(Tmenu_slider *s, int v);
 #endif
 #ifndef update_game_menu
-int __cdecl update_game_menu(BITMAP *bmp, Tmenu *m, Tmenu_params *mp, Tcontrol *ctrl, int x, int y, void **data);
+int __cdecl update_game_menu(BITMAP *bmp, Tmenu *m, Tmenu_params *mp, Tcontrol *ctrl_arg, int x, int y, void **data);
 #endif
 
 /* ---- F:\projects\icytower\trunk\source\options.c ---- */
@@ -702,7 +702,7 @@ char * __cdecl profile_data_page_general(Tprofile *p, char *filler);
 int __cdecl save_profile(Tprofile *p);
 #endif
 #ifndef select_profile
-Tprofile * __cdecl select_profile(Tprofile *current_profile, Tavailable_profile *profiles, int numProfiles, Tcontrol *ctrl);
+Tprofile * __cdecl select_profile(Tprofile *current_profile, Tavailable_profile *profiles, int numProfiles, Tcontrol *ctrl_arg);
 #endif
 #ifndef set_next_rank_message
 void __cdecl set_next_rank_message(char *buf, Tprofile *p);
@@ -763,7 +763,7 @@ Treplay * __cdecl load_replay(const char *filename);
 int __cdecl my_strcmp(const void *c, const void *d);
 #endif
 #ifndef replay_selector
-Treplay * __cdecl replay_selector(Tcontrol *ctrl, char *path);
+Treplay * __cdecl replay_selector(Tcontrol *ctrl_arg, char *path);
 #endif
 #ifndef save_replay
 int __cdecl save_replay(const char *path, const char *file, Treplay *r, int size, int make_new_date);

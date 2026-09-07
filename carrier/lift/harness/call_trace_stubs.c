@@ -195,3 +195,14 @@ void harness_trace_line(BITMAP *bmp, int x1, int y1, int x2, int y2, int color)
     }
     slot[0] += 1;
 }
+
+/* batch 11 (2026-09-08): poll_control.c's only callee. Returns 0 because
+ * that is what the ORIGINAL side's stubbed callee returns
+ * (pf_win32_offline_oracle.py's _make_call_trace_hook writes EAX = 0);
+ * poll_control ignores the result anyway. */
+int harness_trace_poll_joystick(void)
+{
+    unsigned int *slot = (unsigned int *)PF_MEM(CALLTRACE_POLL_JOYSTICK_VA);
+    slot[0] += 1;
+    return 0;
+}

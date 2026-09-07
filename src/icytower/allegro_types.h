@@ -1,9 +1,9 @@
 /* GENERATED FILE -- DO NOT EDIT.
- * Produced by carrier/gen/gen_src_headers.py (which reuses carrier/gen/gen_interop.py's
+ * Produced by tools/pf_win32_gen_src_headers.py (which reuses tools/pf_win32_gen_interop.py's
  * DWARF parser and type IR -- see that file for the parsing itself) from:
  *   artifacts/dwarf_info.txt
  *   artifacts/functions.json
- * scope=game. Re-run carrier/gen/gen_src_headers.py to regenerate; do not hand-edit.
+ * scope=game. Re-run tools/pf_win32_gen_src_headers.py to regenerate; do not hand-edit.
  *
  * These are Allegro's (and, where the game shares a CRT/library
  * header transitively, that library's own) PUBLIC types -- BITMAP,
@@ -19,7 +19,7 @@
  * F:\projects\icytower\trunk\source\ -- i.e. some non-game object
  * in the original binary (Allegro, libpng, zlib, pthreads-win32,
  * DirectX headers, the CRT) also defines this exact type, so it is not
- * the game's own. See carrier/gen/gen_src_headers.py's
+ * the game's own. See tools/pf_win32_gen_src_headers.py's
  * compute_type_origin() docstring in gen_interop.py for the exact rule.
  *
  * Skipped when ICYTOWER_BINDINGS_ACTIVE is defined: the generated bindings header

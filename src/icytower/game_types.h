@@ -1,9 +1,9 @@
 /* GENERATED FILE -- DO NOT EDIT.
- * Produced by carrier/gen/gen_src_headers.py (which reuses carrier/gen/gen_interop.py's
+ * Produced by tools/pf_win32_gen_src_headers.py (which reuses tools/pf_win32_gen_interop.py's
  * DWARF parser and type IR -- see that file for the parsing itself) from:
  *   artifacts/dwarf_info.txt
  *   artifacts/functions.json
- * scope=game. Re-run carrier/gen/gen_src_headers.py to regenerate; do not hand-edit.
+ * scope=game. Re-run tools/pf_win32_gen_src_headers.py to regenerate; do not hand-edit.
  *
  * Covers every struct/union/enum/typedef the game CUs
  * (F:\projects\icytower\trunk\source\*.c) declare and that is reachable

@@ -2089,3 +2089,595 @@ offline oracle (GCC x87 only):
   python carrier/lift/harness/draw_frame_xcheck.py --model --seed <s> --vectors 1000
   -- 18000 random + 3356 directed + 4000 model vectors: differ 0
 ```
+
+## Batch 11 (2026-09-08 -- the input seam and the presentation seam)
+
+Task: the per-tick functions `play()` calls, so the tick body becomes clean
+source around the already-recovered physics/collision/map/draw code.
+
+**Three functions promoted, all EQUAL**: `handle_player_input` (the single
+input->simulation seam), `blit_to_screen` (the presentation seam, and the
+point the carrier's `--frame-digest` oracle samples), and `poll_control`
+(the keyboard/joystick reader `handle_player_input` calls, promoted so that
+the seam could be verified end to end with nothing stubbed between the keys
+and the physics).  Plus a complete, byte-accounted structure map of `play()`
+itself -- see "play(): the structure, from the line table" below.
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `handle_player_input` | 0x40b3e4 | 728 | main.c | **EQUAL** (4 seeds x 20000 = 80000; memory domain 760 bytes -- Tcontrol + the whole Tplayer + `rec_pos` + the Trecord[64] window + `profile->total_jumps` + the `play_sound`/`poll_joystick` call-trace slots; GCC x87 `-m32 -mfpmath=387 -mno-sse2 -O2`) | The first promoted function whose callees are ALL already promoted, so nothing between the keys and the physics is stubbed: unicorn runs the original bytes of `is_left`/`is_right`/`is_fire`/`jump_player`/`play_jump_sound`/`poll_control`, and the compiled side calls the clean `src/icytower/` forms of the same six. Two corrections to `notes/replay_format.md` below. | ready once `pf_bindings_src.h` is regenerated (the `ctrl` -> `ctrl_arg` policy fix has landed) |
+| `blit_to_screen` | 0x40b6bc | 1415 | main.c | **EQUAL** (5 seeds x 1500 random = 7500 + 2 directed campaigns x 529 = 1058; ORDERED call-trace of `blit`/`stretch_blit` + 5 `GFX_VTABLE` slots, plus the `blit_mode` memory domain; GCC x87) | Seven presentation modes behind a debug F-key override; in vivo only mode 0 (`blit`) is reachable because `debug` has no store anywhere in the image. New oracle `carrier/lift/harness/blit_to_screen_xcheck.py`, modelled on batch 10's `draw_frame_xcheck.py`. | **compiles clean; LINK blocked on one unbound Allegro data global** (`_cos_tbl`) -- see "Three generator gaps" |
+| `poll_control` | 0x401958 | 294 | control.c | **EQUAL** (4 seeds x 20000 = 80000; Tcontrol + the `poll_joystick` call-trace slot) | Merges keyboard and joystick into one `Tcontrol.flags` byte. Its own file (not the bottom of `control.c`) because `control.c` has a parameter named `key` -- see "Two parameter-name collisions". | ready |
+
+### The 0x80 sentinel: `notes/replay_format.md`'s open question, answered
+
+That document records the sentinel path's location (0x40b634/0x40b645) but
+leaves its trigger and meaning as INFERRED guesses -- "reached when a
+difficulty-table field is nonzero", "practice-mode/segment-boundary marker".
+**Both were wrong.**  Read off the disassembly and confirmed by the offline
+oracle's own coverage census (358 of 2000 vectors take this arm):
+
+- The trigger is `ply[player_id]->dead` (Tplayer+0x4c, loaded at 0x40b5b8 --
+  the very field `play()` polls at 0x41246a/0x41249f to end the game), OR a
+  record whose `key_flags` already has bit 7 set, i.e. a re-entry after the
+  sentinel has been written once.
+- The effect is a **two-record trailer** written at `data[rec_pos + 1]` and
+  `data[rec_pos + 2]` -- `{0x80, 0}` then `{0x00, 0}` -- and `rec_pos` is
+  **not** advanced.  Every subsequent dead tick rewrites the same two
+  records rather than growing the stream.
+- So it is an **end-of-input terminator, idempotent by design**: the
+  recording stops growing the instant the player dies, and the terminator
+  sits one past the last real record, exactly where a decoder walking
+  `rp = rec_pos - 1` would meet it.
+
+### The cursor is biased by one, and the two halves disagree about it
+
+Also new, and load-bearing for anyone writing an `.itr` driver: the DECODER
+reads `demo->data[rec_pos - 1]` (the DWARF local `rp`, decl_line 2394) while
+the ENCODER extends `demo->data[rec_pos]` and writes its new record at
+`demo->data[rec_pos + 1]` via a pre-increment.  The same global cursor, one
+record apart.  That is not a bug -- it is why a recording can be replayed by
+the same code without rewinding -- but a driver that assumes one convention
+for both halves is off by one record.
+
+Three decoder cases, in the original's own order, all measured by the
+coverage census:
+
+| case | effect |
+|---|---|
+| `rp < 0` | `rec_pos++`, and `ctrl->flags` is **left alone** -- the first tick of a playback only advances the cursor |
+| `rp >= demo->size` | `ctrl->flags = 0` and the cursor does **not** advance -- past the end of a finished replay the player simply stops steering; not an error path, nothing is clamped |
+| otherwise | `ctrl->flags = r->key_flags`; if `r->cycle_count > 0` decrement it **in place** (the replay buffer is consumed destructively), else advance `rec_pos` |
+
+A record with `cycle_count == 0` therefore plays for exactly one tick.
+
+### `gamepad` is the joystick's runtime remap table; the keyboard's is hard-coded
+
+`poll_control`'s two halves are deliberately asymmetric, and that asymmetry
+is the whole reason the global `Tgamepad gamepad` (0x4f8748) exists.  The
+keyboard half OR-s in seven **immediate constants** (`orb $0x4,0x20(%ebx)`
+etc. -- the same CTRL_* bit assignment `control.c`'s `is_up`..`is_pause`
+already recovered from the consuming side, so producer and consumers now
+agree bit for bit).  The joystick half instead **loads the bit to set out of
+`gamepad`**, so a pad's four directions and 32 buttons are each remappable
+to any control mask at runtime.  `gamepad.b[]` is `int[32]`, and the loop's
+`b == 32` early exit (0x401a4c) is exactly that array's bound.
+
+Only joystick 0 is ever read, and only six of its fields: `num_buttons`,
+`stick[0].axis[1].d1/.d2` (up/down), `stick[0].axis[0].d1/.d2`
+(left/right), and `button[i].b`.  `joystick_only` (the DWARF parameter name)
+gates only the keyboard half -- with it set the pad is still polled.
+
+### `blit_to_screen`: a function-static, and one draw that targets the wrong bitmap
+
+`blit_mode` is a FUNCTION-STATIC (DWARF: decl_line 2268, `DW_OP_addr
+0x4dd324`), i.e. state that must persist across calls AND stay at that one
+address while state is address-backed.  Writing `static int blit_mode;` in
+`src/` would give this port private storage that does not alias 0x4dd324, so
+the carrier would silently keep two copies.  The generated headers already
+solve this -- `gen_src_headers.py` mangles a function-static to
+`<name>__<function>` and emits it as an ordinary extern with storage in
+`state.c` and a binding at 0x4dd324 -- so `blit_to_screen.c` spells it
+`blit_mode__blit_to_screen`.  That is the generator's spelling, not an
+invention, and it is the one identifier in that file which is not the
+original's own.
+
+The seven modes: 0 straight `blit`; 1/2 h-flip and v-flip through the
+screen's vtable; 3 a 480-scanline sine wobble whose amplitude is half the
+player's `level`, in pixels; 4 a vertical wrap-scroll at `level % 480`; 5/6
+2x and 4x player-following `stretch_blit` zooms.  Mode 4's two black `line`
+calls target **`bmp`, not `screen`** -- the debug separators are drawn into
+the back buffer, so they persist into whatever the next frame draws over.
+Recovered as-is, the same class of finding as batch 10's "reward stars go to
+`swap_screen`", and the negative control "mode4 bottom line y 479 -> 478"
+DIFFERs on 83/529 vectors, so the oracle really does see the destination.
+Only mode 0 is reachable in vivo (`debug` has no store anywhere in the
+image, established in batch 9), but all seven are recovered and all seven
+are driven by the oracle.
+
+### The oracles
+
+**`handle_player_input` / `poll_control` use the EXISTING SPECS mechanism**
+(`carrier/lift/harness/icytower_specs.py`, additive rows) rather than a new
+one, because their comparison domain really is a fixed byte range: 760 and
+40 bytes respectively.  What is new is that the domain reaches through six
+promoted callees on both sides.  Only two leaves are stubbed, both of which
+leave the game entirely:
+
+- `play_sound` (0x406da4) -- the existing `CALLTRACE_PLAY_SOUND_VA` slot,
+  unchanged from batch 7.
+- `poll_joystick` (0x43e654) -- new, argc 0, so the slot is a single
+  call-count word.  Allegro reaches DirectInput through the joystick
+  driver's vtable, which unicorn cannot run and the compiled side has no
+  device for; what matters is that the pad is polled exactly when
+  `c->use_joy` says so, and the `joy[]` contents both sides then read are
+  the ones the vector generator seeded.
+
+**`blit_to_screen` needed a new oracle** for exactly batch 10's reason, one
+mode down: mode 3 issues 480 `blit` calls per invocation with 480 different
+`d_x` values, and the shared call-trace mechanism records per callee a COUNT
+plus the arguments of its FIRST call.  So
+`carrier/lift/harness/blit_to_screen_xcheck.py` +
+`blit_to_screen_check.c` are a standalone ordered-trace pair built on the
+same engine, modelled directly on `draw_frame_xcheck.py`/`draw_frame_check.c`
+and leaving `lift_check.py`/`icytower_specs.py`'s existing mechanism
+untouched.  Batch 9's synthetic-vtable-VA trick is used for five slots at
+once: `acquire` (+0x10), `release` (+0x14), `draw_sprite_v_flip` (+0x4c),
+`draw_sprite_h_flip` (+0x50) on the screen's vtable, and `line` (+0x34) on
+the bitmap's.  `acquire`/`release` are the interesting pair -- Allegro's
+AL_INLINE tests each slot for NULL before calling, so every vector
+randomises whether each is present.
+
+Allegro's `_cos_tbl[512]` is shipped to the compiled side **in the vector
+file, read out of the ORIGINAL image**, so mode 3's wobble is checked
+against the real table rather than a re-derived one.
+
+### Branch coverage, measured rather than argued
+
+`carrier/lift/harness/batch11_coverage.py` (new) drives the SAME generators
+`lift_check.py` uses, runs the ORIGINAL bytes in unicorn the way the engine's
+Oracle does, and counts how many vectors execute each interesting basic-block
+address (read off `artifacts/disasm.txt`, one per recovered branch).  Over
+2000 vectors, every branch is reached; the rarest are the ones worth naming:
+
+```
+handle_player_input          poll_control
+  playback arm        957      joystick arm          1112
+  rp in range         341      button loop body      1063
+  cycle_count > 0     175      b == 32 test          1053
+  advance rec_pos     406      keyboard arm           888
+  rp past size        376      key_up..key_pause  270-324 each
+  recording arm       957
+  0x80 sentinel       358
+  extend current run   63
+  start a new record  536
+  left / right / neither  649 / 293 / 972
+  left brake / right brake  324 / 118
+  rejump!=0 / rejump==0 arm  274 / 1640
+  jump_key latched     69
+  jump_key cleared   1081
+  profile->total_jumps  20
+```
+
+### Negative controls
+
+Two kinds.  The engine's own one-bit `--fault` control for the two SPECS
+functions (`--fault <fn>:5:0`, 200 vectors: comparator names
+`Tcontrol+0x0 (VA 0x00796000)` exactly for both), and deliberate
+**source mutations**, each rebuilt and re-run:
+
+| mutation | result |
+|---|---|
+| `handle_player_input`: RLE mask 0x93 -> 0x92 | DIFFER v5, `Trecord[64]+0x40` |
+| `handle_player_input`: sentinel 0x80 -> 0x40 | DIFFER v13, `rec_pos` |
+| `handle_player_input`: cursor bias `rec_pos-1` -> `rec_pos` | DIFFER v0, `Tcontrol+0x20` |
+| `handle_player_input`: `cycle_count > 0` -> `>= 0` | DIFFER v12, `rec_pos` |
+| `handle_player_input`: sentinel written at +0/+1 not +1/+2 | DIFFER v13, `Trecord[64]+0x38` |
+| `handle_player_input`: left brake 0.7 -> 0.71 | DIFFER v15, `Tplayer+0x10` (sx) |
+| `handle_player_input`: idle decay 0.9 -> 0.89 | DIFFER v1, `Tplayer+0x10` |
+| `handle_player_input`: jump latch -1 -> 1 | DIFFER v34, `Tplayer+0x38` (jump_key) |
+| `handle_player_input`: `dead` test dropped | DIFFER v51, `rec_pos` |
+| `handle_player_input`: left brake `> 0` -> `>= 0` | **EQUAL 0/400 -- an equivalent mutant, recorded not hidden.** At `sx == 0.0` the brake multiplies by 0.7 and stores the same value back, so the extra store is unobservable; `-0.0 * 0.7` is `-0.0`, and NaN fails both compares. The disassembly says strict (`fucom`/`test $0x45,%ah`/`jne`), the source says strict, and the two spellings are provably indistinguishable here. |
+| `poll_control`: joystick up/down swapped | DIFFER v3, `Tcontrol+0x20` |
+| `poll_control`: `CTRL_FIRE` 0x10 -> 0x20 | DIFFER v20, `Tcontrol+0x20` |
+| `poll_control`: `joystick_only` gate inverted | DIFFER v1, `Tcontrol+0x20` |
+| `poll_control`: button bound 32 -> 31 | DIFFER v0 -- **but only after the generator was strengthened.** With the first draft's uniform draw this mutant survived 400 vectors: some other button or key almost always contributed the same bit anyway. `gen_poll_control` now carries a directed class (every 9th vector) where button 31 is the ONLY one pressed, the keyboard half is off, and its `gamepad.b[31]` mask is a bit nothing else can supply. |
+| `poll_control`: button bound 32 -> 33 | EQUAL 0/400 -- **equivalent in this domain, recorded.** Iterating once more reads `joy[0].button[32].b` and `gamepad.b[32]`, both one element past their arrays; those bytes are zero on both sides (guest .bss, and the harness's own zero-initialised storage), so the extra iteration is a no-op. The bound is verified from the low side only. |
+| `blit_to_screen`: mode3 loop `y < 480` -> `< 479` | DIFFER 83/529 |
+| `blit_to_screen`: mode3 amplitude `/2` -> `/4` | DIFFER 75/529 |
+| `blit_to_screen`: mode3 phase `*5` -> `*4` | DIFFER 51/529 |
+| `blit_to_screen`: mode4 bottom line y 479 -> 478 | DIFFER 83/529 |
+| `blit_to_screen`: mode4 wrap `y-480` -> `y-479` | DIFFER 83/529 |
+| `blit_to_screen`: mode5 x clamp 320 -> 319 | DIFFER 56/529 |
+| `blit_to_screen`: mode5 window 320x240 -> 320x241 | DIFFER 170/529 |
+| `blit_to_screen`: mode6 offset 80 -> 81 | DIFFER 96/529 |
+| `blit_to_screen`: mode0 `bmp->w` -> `screen->w` | DIFFER 5/529 |
+| `blit_to_screen`: F5 selects mode 4 not 3 | DIFFER 1/529 |
+| `blit_to_screen`: `if (debug)` gate removed | DIFFER 6/529 |
+| `blit_to_screen`: `release_screen()` dropped | DIFFER 341/529 |
+
+### Two parameter-name collisions, and the mechanism that already existed
+
+Promoting `handle_player_input` broke the CARRIER-world compile of **every**
+translation unit that includes the generated `src/icytower/game_funcs.h` --
+`collision.c`, `draw_frame.c`, `particle.c`, `play_jump_sound.c`,
+`start_reward.c`, `map.c`, ... -- and not because of anything in the new
+file.  DWARF names the parameter `ctrl` (decl_line 2389); `ctrl` is also a
+game global (`Tcontrol ctrl` @0x5000c8) that `pf_bindings_src.h` turns into
+a blunt textual `#define`; and `game_funcs.h`'s prototype is emitted only
+when no such macro exists -- i.e. exactly once the function is promoted.  So
+the prototype `void __cdecl handle_player_input(Tcontrol *ctrl);` appeared
+for the first time this batch and macro-expanded into a syntax error
+everywhere.
+
+The project already had the right mechanism and it needed one data value:
+`carrier/win32_policy.json`'s `param_renames`, which was already renaming
+`key` -> `key_arg` for `check_control_key`.  Added `"ctrl": "ctrl_arg"`,
+regenerated `src/icytower/`'s five generated files with the documented
+`gen_src_headers.py` command, and the only content changes are three
+prototypes (`handle_player_input`, `handle_menu`, `update_game_menu`) --
+everything else differs only in a header-comment path that had already
+drifted to the port_forge shim name.  `handle_player_input.c`'s definition
+matches; `ctrl_arg` is the one identifier in that file which is not the
+original's own.  **`carrier/gen/` was not touched** -- the fix is a policy
+DATA value, which is precisely what `carrier/win32_policy.json` exists for.
+
+The same investigation turned up a **pre-existing** instance of the same bug
+that nothing had tripped over yet: `control.c`'s
+`check_control_key(Tcontrol *c, int key)` collides with Allegro's global
+`key[]` array (`#define key ...` in `pf_lib_bindings.h`), so that file has
+never compiled in a carrier world with `pf_lib_bindings.h` force-included.
+The policy already renamed the prototype's parameter; the definition now
+matches it too.  Fixed as encountered, unrelated to this batch's own
+functions.
+
+Carrier-world compile after both fixes: **26 of 27 `src/icytower/*.c` clean**;
+the one failure is `draw_star_field.c`, batch 8's already-documented
+`stars` MEMBER_ACCESS_COLLISIONS gap, untouched by this pass.
+
+### Three generator gaps found (two reported, one worked around)
+
+1. **`_cos_tbl` has no binding in any generated header, and it is DATA.**
+   `blit_to_screen`'s mode 3 calls `fixsin`, an Allegro AL_INLINE whose whole
+   body is `_cos_tbl[((x - 0x400000 + 0x4000) >> 15) & 0x1FF]`.
+   `carrier/gen/pf_lib_bindings.h` emits a library global only when the
+   referencing GAME CU's own DWARF DIE carries the address; every game-CU
+   reference to `_cos_tbl` is declaration-only (`DW_AT_declaration`, no
+   `DW_AT_location`), while the DEFINING DIE -- in Allegro's own math.c CU,
+   `<0x880f0>` -- does have `DW_OP_addr: 0x4ce100`.  So the fix is a
+   generator one: when a lib global is referenced by declaration only,
+   resolve it to its defining DIE.  Until then `blit_to_screen.c` compiles
+   in the carrier world (the extern is legal) but **will not link** -- this
+   is the one thing standing between this function and an in-vivo bind.
+   Unlike batches 8/9/10's `rectfill`/`putpixel`/`line`/`draw_sprite` gaps,
+   an `#ifndef` stand-in cannot substitute for a missing DATA binding.
+   The value needed: `_cos_tbl`, VA 0x4ce100, `fixed[512]`,
+   `C:\Lib\allegro4\src\math.c`.
+2. **`MEMBER_ACCESS_COLLISIONS`, `data` and `cycle_count`, again.**
+   `demo->data` (the `Trecord *`) and `r->cycle_count` (the RLE run length)
+   collide with the top-level globals of the same names, exactly as batch 10
+   found for `draw_frame.c`.  Worked around the same way -- a guarded
+   `#undef data` / `#undef cycle_count` at the top of
+   `handle_player_input.c` -- and legitimately so: this file must never
+   touch either global (the datafile belongs behind ASSETS.md's seam, the
+   tick counter is `play()`'s pacing).  The real fix is still the
+   context-sensitive rewrite `gen_bindings.py`'s own comment describes.
+3. **`acquire_screen`/`release_screen`/`itofix`/`fixsin`** have no macro in
+   `pf_lib_bindings.h` and no declaration in the generated `allegro_api.h`
+   -- the same AL_INLINE gap batch 8 found for `rectfill`/`putpixel`, batch
+   9 for `line` and batch 10 for `draw_sprite`/`rotate_sprite`/`fixtoi`/
+   `ftofix`.  Handled the same way: `#ifndef`-guarded, upstream-faithful
+   stand-ins inside `blit_to_screen.c`, so the source under test is
+   byte-identical in every world and real `<allegro.h>` always wins where
+   present.
+
+### play(): the structure, from the line table
+
+`artifacts/decodedline.txt` did not exist before this pass.  `objdump
+--dwarf=decodedline assets/icytower15.exe` decodes the binary's `.debug_line`
+section, and the 790 rows that belong to `play()` turn its 17420 bytes into
+an exact source-line map -- the same kind of evidence batch 10 used to split
+`draw_frame`, but far stronger, because it is per-instruction rather than
+per-local.  The `play()` slice plus the region summary below is now
+`artifacts/play_line_map.txt`; the byte counts are sums of address deltas and
+add up to 17420 exactly.
+
+```
+region                                                      lines      bytes
+setup / declarations / first-frame draw                  3405-3539       772
+TICK: preamble, music start/stop, telemetry              3540-3680       862
+TICK: simulation core (start_reward x10, handle_player_
+      input, update_player, particles)                   3681-3800      1682
+TICK: collision dispatch (5 variants)                    3801-3830       199
+TICK: reward/combo/score/floor/jump accounting, death    3831-4035      1894
+TICK: screenshot key + anti-cheat telemetry+update_frame 4036-4116       647
+TICK: pause block A (focus lost)                         4117-4185       951
+TICK: pause block B (user pause)                         4186-4248       837
+TICK: misc keys / logging                                4249-4318       607
+TICK: frame-skip + draw_frame + blit_to_screen + rest()  4319-4370       394
+post-game key-sequence scan                              4371-4460       459
+replay saving (.itr)                                     4461-4630      1841
+game over / high-score entry / rank                      4631-4990      5928
+teardown / return                                        4991-5021       188
+inlined clear() helper (main.c 972-975, 3 sites)          972- 975       159
+                                                                    --------
+                                                                       17420
+```
+
+Loop head **0x411c30** (line 3540); bottom test 0x41250a-0x412512 (lines
+3534-3536); back edge `je 411c30` at 0x41251a; return at 0x412520 (lines
+5020-5021).  **The tick body is source lines 3540..4370 = 8073 bytes, 46% of
+`play()`.**
+
+Two corrections to `notes/binary_recon.md` item l fall straight out of this:
+
+- Its "best safepoint, 0x4124f4" is line **4369** -- the `rest(2)` that ENDS
+  a tick, not the start of one.  The tick begins at the loop head 0x411c30,
+  and `handle_player_input` runs at 0x411f2a (line 3702), well before
+  0x4124f4.  0x4124f4 is still a perfectly good safepoint; it is just the
+  bottom of the loop, not the top.
+- It describes one `draw_frame` then `blit_to_screen` "at call site
+  0x413326".  There are four `draw_frame` sites and six `blit_to_screen`
+  sites across `play()`.  The per-tick pair is 0x41320e (line 4338) and
+  0x413326 (line 4353); 0x413287 (line 4349) is a second present inside the
+  same frame-skip block, and the remaining sites belong to the two pause
+  blocks and the game-over screen.
+
+### What is still ORIGINAL in the tick body
+
+Every game function the tick body calls, after this batch:
+
+| callee | state |
+|---|---|
+| `update_frame`, `handle_player_input`, `poll_control`, `update_player`, `jump_player`, `play_jump_sound`, `is_any`, `is_pause`, `is_left`, `is_right`, `is_fire`, `add_floor`, `get_level`, `add_combo`, `add_jump_sequence`, `new_rand`, `create_particle`, `update_particle`, `start_reward`, all five `handle_player_collision_*`, `draw_frame`, `blit_to_screen` | **promoted** (batches 1-11) |
+| `play_sound` | 0x406da4, 215 B -- ORIGINAL |
+| `log2file` | 0x40da58, 189 B -- ORIGINAL |
+| `take_screenshot` | 0x41002c, 203 B -- ORIGINAL |
+| `startGameMusic` | 0x40cb30, 144 B -- ORIGINAL |
+| `stopGameMusic` | 0x40caf4, 58 B -- ORIGINAL |
+
+**Five functions, 809 bytes.**  Everything else the tick body calls is
+Allegro (`rest`, `blit`, `textout_centre_ex`, `voice_get_position`,
+`voice_stop`, `stop_sample`, `play_sample`, `clear_keybuf`, `keypressed`,
+`allegro_message`, and inlined `vline`/`hline` vtable dispatch) or CRT/Win32
+(`time`, `clock`, `QueryPerformanceCounter`/`Frequency`).
+
+None of the five was promoted this pass, each for a stated reason rather
+than for headroom:
+
+- `play_sound` is the callee EIGHT existing SPECS entries trace through
+  `CALLTRACE_PLAY_SOUND_VA`, and `pf_harness_calltrace.h` redirects the
+  plain name to the stub for the whole harness build -- promoting it means
+  that redirect would rename its own DEFINITION.  Untangling it changes a
+  mechanism eight already-verified functions depend on, the same reason
+  batch 10 gave for not bending the SPECS protocol.  It also writes `any11`
+  (0x4dd170) from an x87 pan computation off `ply[player_id]->x`, so it is
+  not the three-line wrapper its size suggests.
+- `startGameMusic`/`stopGameMusic` need three new Allegro call-trace slots
+  (`set_volume`, `play_midi`, `stop_midi`) on top of the two already
+  present: new harness machinery for 202 cosmetic bytes.
+- `log2file` writes through a `FILE *` behind a mutex
+  (`sLogMutex__log2file`, already on `carrier/win32_policy.json`'s
+  digest-domain exclude list) -- its only observable effect is outside any
+  domain the offline harness can express, the same class as
+  `destroy_game_data`'s `free()` (batch 3).
+- `take_screenshot` writes a PNG to disk; same class.
+
+### Why there is no `play_tick.c` yet
+
+The brief allowed for recovering the tick body as its own file if the line
+table showed clean regions.  It does -- the table above is exactly that --
+but the tick body still cannot be a separately-verifiable file, for a reason
+the line table itself makes plain:
+
+- **The tick body is not a leaf of `play()`; it is half of one function that
+  shares ~47 stack locals with the other half.**  DWARF gives `play()` 47
+  `DW_OP_breg5` (ebp-relative) locals declared at lines 3408-3468 --
+  `scroll_acc`, `next_speed`, `game_over`, `falling`, `step_count`,
+  `tot_scroll`, `midX`/`midY`, `numComboJumps`, `totComboFloors`,
+  `startTime`/`endTime`, `lastJumpLength`, `oldUnlockedFloors`,
+  `current_rank_id`, the twelve anti-cheat timing accumulators, and so on.
+  The tick body reads and writes most of them; the game-over half reads the
+  results.  A `play_tick()` with its own address would need every one of
+  them in an invented context struct -- state the original does not have, at
+  addresses the carrier cannot bind.
+- Batch 10's answer for `draw_frame` (a file of `static` helpers composed by
+  one function bound at ONE address) does apply here, and is the right shape
+  for batch 12 -- but only if the WHOLE of `play()` is recovered, because
+  binding is all-or-nothing per address.  That means the other 9347 bytes
+  too: the replay-save block (1841 B, seven `save_replay` sites), the
+  high-score/rank block (5928 B, the largest single region in the function),
+  the post-game key scan and the teardown.
+- So the honest sequencing is: recover `play()` as ONE file, in one pass,
+  with the tick body's 8073 bytes as `static` helpers -- not a `play_tick.c`
+  that could never be bound.  This batch's contribution to that is the map
+  above, the five remaining ORIGINAL callees named with their blockers, and
+  the two seams (`handle_player_input`, `blit_to_screen`) that the tick body
+  now reduces to a single call each.
+
+### Harness changes (additive)
+
+- `carrier/lift/harness/icytower_specs.py`: `poll_joystick` added to
+  `LIB_CALL_TARGETS`; `CALLTRACE_POLL_JOYSTICK_VA` (0x7c1600) and the
+  batch-11 scratch VAs (`REPLAY_VA` 0x7c8000 -- a FULL-SIZE `Treplay`, since
+  the existing `DEMO_VA`/`SZ_DEMO` stub is 0x100 bytes and stops well short
+  of `size`@0x8 and `data`@0x8a8; `RECORDS_VA` 0x7c9000; `PROFILE_VA`
+  0x7ca000); `_joy0`/`_gamepad`/`_control` helpers; `gen_poll_control` +
+  `gen_handle_player_input`; two `SPECS` rows; `SRC_BATCH11_FUNCS` added to
+  the `src` and `gcc` default `--funcs` lists.
+- `carrier/lift/harness/pf_harness_calltrace.h`, `call_trace_stubs.c`:
+  `harness_trace_poll_joystick()` and its `#define`.
+- `carrier/lift/harness/icytower_harness_project_gcc.c`: `#include
+  "allegro_api.h"` (for `JOYSTICK_INFO joy[8]`), storage for
+  `recording`/`rec_pos`/`rejump`/`profile`/`gamepad`/`joy`, and the two new
+  dispatch branches.  `handle_player_input`'s branch needs a **second-level**
+  pointer fixup no earlier function did: not just `demo` but `demo->data`,
+  the Trecord array base stored INSIDE the guest `Treplay` -- without it the
+  compiled side dereferences a raw guest VA the moment the encoder or
+  decoder indexes a record.
+- `carrier/lift/harness/build_src_gcc.sh`: file list extended with
+  `control.c`, `poll_control.c`, `handle_player_input.c`; and the 32-bit GCC
+  is now also looked for at `/c/msys64/mingw32/bin/gcc.exe`, because under
+  Git Bash (which does not mount the msys64 tree at `/`) the existing
+  `/mingw32/bin/gcc.exe` probe fails and the bare-`gcc` fallback picks the
+  64-bit compiler, whose `-m32` link dies with "cannot find -lkernel32".
+- `carrier/lift/harness/blit_to_screen_xcheck.py` (new, 386 lines) and
+  `blit_to_screen_check.c` (new, 192 lines): the ordered-trace pair.
+- `carrier/lift/harness/batch11_coverage.py` (new, 122 lines): the
+  branch-coverage census.
+- `carrier/win32_policy.json`: `param_renames` gained `"ctrl": "ctrl_arg"`.
+- `src/icytower/`'s five generated files regenerated with the documented
+  command; `src/icytower/control.c`'s `check_control_key` parameter renamed
+  to match its already-renamed prototype.
+- `artifacts/play_line_map.txt` (new).
+
+**`carrier/gen/pf_bindings_src.h` intentionally NOT regenerated this pass**
+-- same reasoning as batches 6-10 (another agent's concurrent carrier build
+owns that file).  The carrier-world compile was verified against a scratch
+copy built outside `carrier/gen/`, then discarded.
+`src/build/Makefile.standalone` deliberately untouched (another agent owns
+it); the three new files are compile-checked separately in all three worlds
+below.
+
+### Totals (updated)
+
+| | batch 11 (this pass) | cumulative (11 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 3 | 50 |
+| functions promoted (compile-only) | 0 | 2 (`draw_buffer`, `draw_star_field`) |
+| functions skipped (documented, all passes) | 5 new (`play_sound`, `log2file`, `take_screenshot`, `startGameMusic`, `stopGameMusic`) | 12 distinct |
+| original bytes recovered (offline-verified) | 2437 (728 + 1415 + 294) | 20444 |
+
+`git diff --stat`-style file list this pass:
+`src/icytower/handle_player_input.c` (new, 289 lines, 728 original bytes),
+`src/icytower/blit_to_screen.c` (new, 255 lines, 1415 original bytes),
+`src/icytower/poll_control.c` (new, 129 lines, 294 original bytes),
+`src/icytower/control.c` (+13/-5: the `key_arg` rename and its note),
+`src/icytower/{game_types.h,game_state.h,game_funcs.h,state.c,allegro_types.h,GENERATED.md}`
+(regenerated), `carrier/win32_policy.json` (+1 policy value),
+`carrier/lift/harness/{icytower_specs.py,pf_harness_calltrace.h,call_trace_stubs.c,icytower_harness_project_gcc.c,build_src_gcc.sh}`,
+`carrier/lift/harness/{blit_to_screen_xcheck.py,blit_to_screen_check.c,batch11_coverage.py}` (new),
+`artifacts/play_line_map.txt` (new), `artifacts/src_equivalence.json`.
+
+## Purity gate (batch 11)
+
+```
+python scripts/check_native_layer.py
+pf_native_purity: scanned 41 file(s) under .../src, 0 violation(s)
+```
+
+(One violation was found and fixed on the way: Allegro's `fixsin` spells its
+quarter-turn offset `0x400000`, which is 64.0 in 16.16 fixed point and also
+the guest image base.  `blit_to_screen.c` writes it `(64 << 16)` -- the same
+constant, unmistakably an angle.)
+
+## Compile (all three worlds, batch 11)
+
+```
+standalone (generated allegro_api.h, no bindings):
+  gcc -m32 -mfpmath=387 -mno-sse2 -O2 -Wall -Isrc/icytower \
+      -Iport_forge/tools/win32_oracle \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      -c src/icytower/{poll_control,handle_player_input,blit_to_screen,control}.c
+  -- 0 errors, 0 warnings
+
+standalone (upstream Allegro, real <allegro.h>):
+  gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK \
+      -Ithird_party/allegro-4.4.3.1/include \
+      -Ithird_party/build-allegro-4.4.3.1/include \
+      -Ithird_party/allegro-4.4.3.1/addons/logg -Isrc/icytower \
+      -c src/icytower/{poll_control,handle_player_input,blit_to_screen,control}.c
+  -- 0 errors, 0 warnings (the real AL_INLINEs win over this file's
+     #ifndef-guarded stand-ins, and real _cos_tbl/fixsin come from Allegro)
+
+carrier (scratch bindings, GCC -- no MSVC cl.exe in this sandbox):
+  python carrier/gen/scan_src_defs.py --src-dir src/icytower
+  python carrier/gen/gen_bindings.py --exclude <scanned>,floor_size_modifiers ^
+      --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+      --out <SCRATCH>/pf_bindings_src.h --types-out <SCRATCH>/pf_bindings_src_types.h
+  gcc -m32 -Wall -DICYTOWER_BINDINGS_ACTIVE -Icarrier/gen -I<SCRATCH> -Isrc/icytower \
+      -include <SCRATCH>/pf_bindings_src.h \
+      -include carrier/gen/pf_lib_bindings.h \
+      -include carrier/gen/pf_asset_bindings.h \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      -c <every src/icytower/*.c>
+  -- 26 of 27 clean (0 errors, no warnings beyond pf_asset_bindings.h's own
+     -Wunused-function notices); the one failure is draw_star_field.c,
+     batch 8's already-documented `stars` MEMBER_ACCESS_COLLISIONS gap.
+     blit_to_screen.c COMPILES but will not LINK until `_cos_tbl` gains a
+     binding (see "Three generator gaps").
+
+offline oracles (GCC x87 only):
+  bash carrier/lift/harness/build_src_gcc.sh gcc_check_x87_nosse_batch11.exe \
+       -mfpmath=387 -mno-sse2 -O2
+  python carrier/lift/harness/lift_check.py --form src --toolchain gcc \
+      --exe <...>/gcc_check_x87_nosse_batch11.exe \
+      --funcs poll_control,handle_player_input --vectors 20000 --seed <s>
+  -- 4 seeds (20260908, 1, 777, 424242) x 20000 x 2 functions
+     = 160000 vectors: EQUAL
+
+  gcc -m32 -mfpmath=387 -mno-sse2 -O2 -Wall -Isrc/icytower \
+      -Iport_forge/tools/win32_oracle \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      carrier/lift/harness/blit_to_screen_check.c src/icytower/blit_to_screen.c \
+      src/icytower/state.c -o carrier/lift/harness/blit_to_screen_check.exe
+  python carrier/lift/harness/blit_to_screen_xcheck.py --random --seed <s> --vectors 1500
+  python carrier/lift/harness/blit_to_screen_xcheck.py --directed --seed <s>
+  -- 5 seeds x 1500 random + 2 x 529 directed = 8558 vectors: differ 0
+
+  python carrier/lift/harness/batch11_coverage.py --vectors 2000 --seed 20260908
+  -- every recovered branch of both SPECS functions reached
+```
+
+### In vivo (for the carrier task -- NOT run by this pass)
+
+This pass did not run `carrier.exe` (another agent owns the carrier).  Bind
+order matters, because one of the three has a stated blocker:
+
+```
+python carrier\gen\scan_src_defs.py --src-dir src\icytower
+python carrier\gen\gen_bindings.py --exclude <scanned names>,floor_size_modifiers ^
+    --guard-define ICYTOWER_BINDINGS_ACTIVE ^
+    --out carrier\gen\pf_bindings_src.h --types-out carrier\gen\pf_bindings_src_types.h
+carrier\build.cmd
+
+rem 0. unbound baseline FIRST -- blit_to_screen is the digest sample point.
+carrier.exe --replay replays\human_test.txt --frame-digest
+
+rem 1. poll_control -- ready now, no blocker.
+carrier.exe --bind poll_control=src --replay replays\human_test.txt --frame-digest
+
+rem 2. handle_player_input -- ready; the `ctrl` -> `ctrl_arg` policy fix has
+rem    landed in carrier\win32_policy.json and src\icytower\game_funcs.h, so
+rem    the regenerated pf_bindings_src.h above is all it needs.
+carrier.exe --bind handle_player_input=src --replay replays\human_test.txt --frame-digest
+carrier.exe --bind handle_player_input=src,poll_control=src ^
+            --replay replays\human_test.txt --frame-digest
+carrier.exe --bind handle_player_input=src --replay <the .itr workload> --frame-digest
+
+rem 3. blit_to_screen -- do NOT attempt until `_cos_tbl` (VA 0x4ce100,
+rem    fixed[512], C:\Lib\allegro4\src\math.c) has a binding in
+rem    carrier\gen\pf_lib_bindings.h; the file compiles but will not link.
+carrier.exe --bind blit_to_screen=src --replay replays\human_test.txt --frame-digest
+```
+
+Every bound run must stay EQUAL to the unbound baseline for all 2293 ticks
+and end on the same score 2386 / floor 100 witness (divergence 009's
+regenerated baseline).
+
+Three things the offline oracle structurally cannot see, all of the class
+`notes/living_record.md` divergence 008 is about:
+
+1. `handle_player_input` in RECORD mode writes into `demo->data`, a heap
+   block `create_replay()` allocated with the GUEST's `malloc`.  The carrier
+   must reach that same block, not a carrier-side copy; the offline harness
+   pins it at a scratch VA and so proves nothing about which allocator's
+   memory the real build touches.
+2. `poll_control` reads Allegro's `key[]` (0x506988) and `joy[]` (0x506a88),
+   both written by the GUEST's own keyboard/joystick driver threads.  A
+   binding that reached a carrier-side copy would produce a silently
+   input-less run -- score 0, floor 1, per-tick digests perfectly
+   self-consistent and completely wrong.  The score-2386 witness is the
+   check that actually catches that, not the digest.
+3. `blit_to_screen` IS the frame-digest sample point, so binding it changes
+   the instrument; take the unbound baseline first (step 0 above).

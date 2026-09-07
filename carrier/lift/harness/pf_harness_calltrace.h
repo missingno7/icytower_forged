@@ -151,4 +151,19 @@ void harness_trace_line(BITMAP *bmp, int x1, int y1, int x2, int y2, int color);
  * pf_bindings_harness.h/pf_harness_rand.h already established. */
 BITMAP *asset_bitmap(asset_id id);
 
+/* batch 11 (2026-09-08): poll_control.c's ONE callee. Allegro's
+ * poll_joystick() (0x43e654) refreshes the joy[] array from the device; on
+ * the ORIGINAL side unicorn cannot run it (it reaches DirectInput through
+ * the joystick driver's vtable), and on the compiled side there is no
+ * device at all. Both sides therefore stub it and log only the CALL COUNT
+ * (argc 0), which is the whole comparison: what matters is that the pad is
+ * polled exactly when c->use_joy says so, and the joy[] contents both sides
+ * then read are the ones the vector generator seeded. Same slot shape as
+ * every other trace, just one word long. */
+#define CALLTRACE_POLL_JOYSTICK_VA 0x7c1600u
+
+int harness_trace_poll_joystick(void);
+
+#define poll_joystick harness_trace_poll_joystick
+
 #endif /* PF_HARNESS_CALLTRACE_H */

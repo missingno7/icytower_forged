@@ -13,7 +13,8 @@
   "lib_bindings_include_guard": "ICYTOWER_ALLEGRO_API_H",
 
   "param_renames": {
-    "key": "key_arg"
+    "key": "key_arg",
+    "ctrl": "ctrl_arg"
   },
 
   "purity_banned_prefixes": ["PF_", "IT_G_", "IT_F_", "PFN_", "lifted_"],

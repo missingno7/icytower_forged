@@ -163,11 +163,14 @@ CALLTRACE_PLAY_SOUND_VA = 0x7c1000     # {call_count, arg0, arg1, arg2} (16 byte
 #   textout_ex          VA=0x459f0c  void(BITMAP*,const FONT*,const char*,int,int,int,int) argc=7
 #   textout_centre_ex   VA=0x459fcc  void(BITMAP*,const FONT*,const char*,int,int,int,int) argc=7
 #   makecol             VA=0x450c98  int(int,int,int)                                     argc=3
+#   poll_joystick       VA=0x43e654  int(void)                                            argc=0
+#                       (batch 11: poll_control's only callee)
 LIB_CALL_TARGETS = {
     "set_clip_rect": {"va": 0x44eb70, "argc": 5},
     "textout_ex": {"va": 0x459f0c, "argc": 7},
     "textout_centre_ex": {"va": 0x459fcc, "argc": 7},
     "makecol": {"va": 0x450c98, "argc": 3},
+    "poll_joystick": {"va": 0x43e654, "argc": 0},
 }
 
 CALLTRACE_SET_CLIP_RECT_VA = 0x7c1100      # {call_count, arg0..arg4}   (24 bytes)
@@ -214,6 +217,51 @@ BMP_VA = 0x7a9000                      # scratch BITMAP for draw_scroller -- onl
                                         # function itself (the final "restore clip
                                         # to the whole bitmap" call); no other field
                                         # is dereferenced by draw_scroller.c
+
+# -- batch 11 (2026-09-08) -- the input seam: poll_control (0x401958) and
+# handle_player_input (0x40b3e4).
+#
+# handle_player_input is the first promoted function whose own callees are
+# ALL already promoted (is_left/is_right/is_fire/jump_player/
+# play_jump_sound/poll_control), so nothing is stubbed on either side except
+# the two leaves that leave the game entirely: play_sound (already
+# CALLTRACE_PLAY_SOUND_VA) and Allegro's poll_joystick.  The ORIGINAL side
+# runs the original bytes of all six callees; the compiled side calls the
+# clean src/icytower/ forms.  That makes this a real end-to-end check of the
+# whole seam rather than a check of one function against stubs.
+CALLTRACE_POLL_JOYSTICK_VA = 0x7c1600  # {call_count}  (4 bytes -- argc 0)
+
+G_RECORDING = 0x4f8e28                 # int recording -- selects encode vs decode
+G_REC_POS = 0x4fec58                   # int rec_pos -- the Trecord cursor
+G_REJUMP = 0x4fdcd8                    # int rejump -- "fire may re-trigger every tick"
+G_PROFILE = 0x4dd27c                   # Tprofile *profile (may legitimately be NULL)
+G_GAMEPAD = 0x4f8748                   # Tgamepad gamepad -- the joystick's remap table
+G_JOY = 0x506a88                       # Allegro's JOYSTICK_INFO joy[8]
+
+SZ_GAMEPAD = 4 * 4 + 32 * 4            # Tgamepad: up/down/left/right + b[32]
+SZ_JOY0 = 0x138 + 32 * 8               # joy[0] through the last button entry
+JOY_NUM_BUTTONS = 0x08                 #   joy[0].num_buttons
+JOY_AX0_D1 = 0x18                      #   joy[0].stick[0].axis[0].d1  ("left")
+JOY_AX0_D2 = 0x1c                      #   joy[0].stick[0].axis[0].d2  ("right")
+JOY_AX1_D1 = 0x28                      #   joy[0].stick[0].axis[1].d1  ("up")
+JOY_AX1_D2 = 0x2c                      #   joy[0].stick[0].axis[1].d2  ("down")
+JOY_BUTTON0 = 0x138                    #   joy[0].button[0].b (8-byte stride)
+
+# A FULL-SIZE scratch Treplay (DEMO_VA/SZ_DEMO above is a 0x100-byte stub
+# that only reaches floor_shrink@0x8c / floor_size@0x90 -- handle_player_
+# input needs size@0x8 and the `data` pointer at 0x8a8, past its end).
+REPLAY_VA = 0x7c8000
+SZ_REPLAY = 0x8b0                      # Treplay is 0x8ac; rounded up
+REPLAY_SIZE_OFF = 0x08                 #   Treplay.size (record count)
+REPLAY_DATA_OFF = 0x8a8                #   Treplay.data (Trecord *)
+RECORDS_VA = 0x7c9000                  # Trecord[64] the `data` pointer points at
+SZ_RECORD = 8                          # {unsigned char key_flags; int cycle_count;}
+N_RECORDS = 64                         # rec_pos stays <= 40, and the 0x80 sentinel
+                                        # path writes rec_pos+1 / rec_pos+2, so 64 is
+                                        # comfortably past every touched index
+PROFILE_VA = 0x7ca000                  # Tprofile (1360 bytes) -- only total_jumps
+SZ_PROFILE = 1360                      #   (offset 216) is in the comparison domain
+PROFILE_TOTAL_JUMPS = 216
 
 
 def load_call_targets(interop_index_path, names):
@@ -1387,6 +1435,233 @@ _COLLISION_DOMAIN_NAMES = ["Tplayer", "any11", "any12", "any21", "any22", "any23
 _COLLISION_TRACES = [_CT_PLAY_SOUND, _CT_MAKECOL, _CT_LINE]
 
 
+# ==========================================================================
+# batch 11 (2026-09-08) -- the input seam
+# ==========================================================================
+
+_CT_POLL_JOYSTICK = {"va": CALL_TARGETS["poll_joystick"]["va"],
+                      "argc": CALL_TARGETS["poll_joystick"]["argc"],
+                      "slot": CALLTRACE_POLL_JOYSTICK_VA}
+
+
+def _joy0(rng, k):
+    """joy[0], the only joystick either function ever reads.  Only six
+    fields matter (num_buttons, two axes' d1/d2, button[i].b); the rest is
+    filled with noise so a stray read would show up as a divergence rather
+    than as a coincidence.  num_buttons is deliberately drawn from BOTH
+    sides of 32 (poll_control's `b == 32` early exit is the gamepad.b[32]
+    array bound -- see poll_control.c's header) and from <= 0 (the loop is
+    skipped entirely)."""
+    j = bytearray(rng.getrandbits(8) for _ in range(SZ_JOY0))
+    nb_pool = [-1, 0, 1, 2, 31, 32, 33, 40, 64]
+    nb = nb_pool[k % len(nb_pool)] if k % 3 == 0 else rng.randint(-2, 40)
+    struct.pack_into("<i", j, JOY_NUM_BUTTONS, nb)
+    for off in (JOY_AX0_D1, JOY_AX0_D2, JOY_AX1_D1, JOY_AX1_D2):
+        struct.pack_into("<i", j, off, rng.choice([0, 0, 1, -1, 12345]))
+    for b in range(32):
+        struct.pack_into("<i", j, JOY_BUTTON0 + 8 * b,
+                         rng.choice([0, 0, 1, rng.getrandbits(20)]))
+    return bytes(j)
+
+
+def _gamepad(rng):
+    """Tgamepad -- the RUNTIME-REMAPPABLE half of poll_control's output.
+    Every field is an int whose LOW BYTE is OR-ed into Tcontrol.flags, so
+    the pool deliberately includes values with high bits set: if the
+    recovered C ever widened that `or %al` to a full int the diff would
+    catch it on the very first such vector."""
+    g = bytearray()
+    for _ in range(4 + 32):
+        g += si32(rng.choice([0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
+                               0x00, 0x13, 0xFF, 0x7FFFFF01, -3]))
+    return bytes(g)
+
+
+def _control(rng, use_joy):
+    """Tcontrol with in-range scancodes.  The original indexes key[] with no
+    bound check, so a scancode outside 0..126 would read outside Allegro's
+    own array on BOTH sides -- unicorn would happily read the neighbouring
+    global while the compiled side reads past its own object.  Keeping the
+    pool in range tests the function, not the harness."""
+    c = bytearray(SZ_CONTROL)
+    struct.pack_into("<i", c, 0x00, use_joy)
+    for i, off in enumerate((0x04, 0x08, 0x0c, 0x10, 0x14, 0x18, 0x1c)):
+        struct.pack_into("<i", c, off, rng.randrange(127))
+    c[0x20] = rng.getrandbits(8)
+    return bytes(c)
+
+
+def gen_poll_control(rng, k):
+    """poll_control(Tcontrol *c, int joystick_only).
+
+    Vectors cross both arms of `c->use_joy` with both values of
+    `joystick_only`, over a random Allegro key[] bitmap.  key[] is drawn
+    sparse-then-dense (a third of vectors hold NO key at all, a sixth hold
+    every key) so both the "flags stays 0" and the "every bit set" ends of
+    the keyboard half are reached, not just the uniform middle."""
+    use_joy = 1 if (k % 2) else 0
+    joystick_only = 1 if (k % 4) >= 2 else 0
+    if k % 3 == 0:
+        keys = bytes(127)
+    elif k % 6 == 1:
+        keys = b"\x01" * 127
+    else:
+        keys = bytes(1 if rng.random() < 0.25 else 0 for _ in range(127))
+    joy = bytearray(_joy0(rng, k))
+    pad = bytearray(_gamepad(rng))
+
+    # Directed class for the LAST button, index 31 -- gamepad.b[] is int[32],
+    # so `b == 32` is that array's own bound and button[31] is the single
+    # index a wrong bound (31, or 33) would get wrong. A uniform draw never
+    # isolates it: some other button or key almost always contributes the
+    # same bit anyway. Here button 31 is the ONLY one pressed, the keyboard
+    # half is switched off, and its mask is a bit nothing else can supply --
+    # so a wrong bound shows up as a bare c->flags difference. (Measured:
+    # without this class the mutant "b < 32 -> b < 31" survived 400 vectors;
+    # with it, it is caught.)
+    if k % 9 == 0:
+        use_joy, joystick_only = 1, 1
+        struct.pack_into("<i", joy, JOY_NUM_BUTTONS, rng.choice([32, 33, 40]))
+        for b in range(32):
+            struct.pack_into("<i", joy, JOY_BUTTON0 + 8 * b, 1 if b == 31 else 0)
+        for off in (JOY_AX0_D1, JOY_AX0_D2, JOY_AX1_D1, JOY_AX1_D2):
+            struct.pack_into("<i", joy, off, 0)
+        for i in range(4 + 32):
+            struct.pack_into("<i", pad, 4 * i, 0x20 if i == 4 + 31 else 0)
+
+    writes = [(CTRL_VA, _control(rng, use_joy)),
+              (G_KEY, keys),
+              (G_GAMEPAD, bytes(pad)),
+              (G_JOY, bytes(joy)),
+              _blank_trace(CALLTRACE_POLL_JOYSTICK_VA, 0)]
+    return [CTRL_VA, joystick_only], writes
+
+
+def gen_handle_player_input(rng, k):
+    """handle_player_input(Tcontrol *ctrl) -- the whole seam, end to end.
+
+    One vector seeds: the recording flag, the Trecord stream and its cursor,
+    a Treplay header (size + data pointer), the player, the profile (or
+    NULL), the rejump flag, the control struct, Allegro's key[]/joy[] and
+    the gamepad remap table, plus the two globals jump_player reads
+    (collision_type/max_speed) and the three custom.jump_sound[] handles
+    play_jump_sound picks between.
+
+    Directed classes, one per residue of k -- each targets a branch the
+    uniform-random draw would essentially never reach:
+
+      rec_pos == 0                 the `rp < 0` first-tick arm
+      rec_pos - 1 == demo->size    the "past the end of the replay" arm
+      cycle_count == 0 / 1         the RLE record-boundary (advance vs
+                                   decrement -- the single most important
+                                   boundary in the whole format)
+      key_flags already == the
+        masked live flags          the "extend the run" arm
+      key_flags with bit 7 set     the 0x80 sentinel re-entry arm
+      p->dead != 0                 the 0x80 sentinel first-entry arm
+      p->sx == 0.0 exactly         the STRICT `> 0` / `< 0` brake compares
+      p->jump_key == 0 / -1        the rejump == 0 edge-detector latch
+    """
+    recording = 1 if (k % 2) else 0
+    rejump = 1 if (k % 7) == 0 else 0
+    pid = rng.randrange(4)
+
+    # --- the record stream -------------------------------------------
+    recs = bytearray(N_RECORDS * SZ_RECORD)
+    for i in range(N_RECORDS):
+        recs[i * SZ_RECORD] = rng.choice([0x00, 0x01, 0x02, 0x10, 0x11, 0x12,
+                                          0x13, 0x80, 0x93, rng.getrandbits(8)])
+        struct.pack_into("<i", recs, i * SZ_RECORD + 4,
+                         rng.choice([0, 0, 1, 2, 5, -1, -7, rng.randint(0, 50)]))
+    rec_pos_pool = [0, 0, 1, 2, 3, 7, 20, 40]
+    rec_pos = rec_pos_pool[k % len(rec_pos_pool)]
+    size_pool = [0, 1, rec_pos - 1, rec_pos, rec_pos + 1, N_RECORDS, -1]
+    demo_size = size_pool[(k // 3) % len(size_pool)]
+
+    ctrl = bytearray(_control(rng, 1 if (k % 5) == 0 else 0))
+    if (k % 11) == 0 and 0 <= rec_pos < N_RECORDS:
+        # make the encoder's "extend the current run" arm reachable
+        recs[rec_pos * SZ_RECORD] = ctrl[0x20] & 0x93
+    if (k % 13) == 0 and 0 <= rec_pos < N_RECORDS:
+        recs[rec_pos * SZ_RECORD] |= 0x80          # sentinel re-entry
+
+    rep = bytearray(rng.getrandbits(8) for _ in range(SZ_REPLAY))
+    struct.pack_into("<i", rep, REPLAY_SIZE_OFF, demo_size)
+    struct.pack_into("<I", rep, REPLAY_DATA_OFF, RECORDS_VA)
+
+    # --- the player ---------------------------------------------------
+    p = bytearray(rng.getrandbits(8) for _ in range(SZ_PLAYER))
+    sx_pool = [0.0, -0.0, 0.3, -0.3, 0.29999999999999999, 1e-300, -1e-300,
+               0.7, -0.7, 5.0, -5.0, 1e300, float('nan')]
+    sx = sx_pool[k % len(sx_pool)] if (k % 3) == 0 else rng.uniform(-40.0, 40.0)
+    struct.pack_into("<d", p, 0x10, sx)                       # sx
+    struct.pack_into("<d", p, 0x18, rng.uniform(-40.0, 40.0))  # sy
+    struct.pack_into("<d", p, 0x00, float(rng.randint(0, 640)))
+    struct.pack_into("<d", p, 0x08, float(rng.randint(0, 480)))
+    struct.pack_into("<i", p, 0x28, rng.randint(0, 500))       # level
+    struct.pack_into("<i", p, 0x34, rng.choice([0, 1, 2, 3]))  # status
+    struct.pack_into("<i", p, 0x38, rng.choice([0, 0, -1, 7])) # jump_key
+    struct.pack_into("<i", p, 0x4c, 1 if (k % 17) == 0 else 0) # dead
+    struct.pack_into("<i", p, 0x50, 0)                         # rotate
+    struct.pack_into("<i", p, 0x54, 0)                         # angle
+
+    prof = bytearray(rng.getrandbits(8) for _ in range(SZ_PROFILE))
+    struct.pack_into("<i", prof, PROFILE_TOTAL_JUMPS, rng.randint(-5, 100000))
+    profile_ptr = 0 if (k % 19) == 0 else PROFILE_VA
+
+    ms = bytearray()
+    for _ in range(5):
+        ms += struct.pack("<d", rng.uniform(1.0, 20.0))
+
+    j0 = 0xAAAA0000 | (k & 0xFF)
+    j1 = 0xBBBB0000 | (k & 0xFF)
+    j2 = 0xCCCC0000 | (k & 0xFF)
+
+    if k % 3 == 0:
+        keys = bytes(1 if rng.random() < 0.5 else 0 for _ in range(127))
+    else:
+        keys = bytes(1 if rng.random() < 0.15 else 0 for _ in range(127))
+
+    writes = [(G_RECORDING, si32(recording)),
+              (G_REC_POS, si32(rec_pos)),
+              (G_DEMO, u32(REPLAY_VA)),
+              (REPLAY_VA, bytes(rep)),
+              (RECORDS_VA, bytes(recs)),
+              (G_PLAYER_ID, si32(pid)),
+              (G_PLY + 4 * pid, u32(PLAYER_VA)),
+              (PLAYER_VA, bytes(p)),
+              (G_REJUMP, si32(rejump)),
+              (G_PROFILE, u32(profile_ptr)),
+              (PROFILE_VA, bytes(prof)),
+              (CTRL_VA, bytes(ctrl)),
+              (G_KEY, keys),
+              (G_GAMEPAD, _gamepad(rng)),
+              (G_JOY, _joy0(rng, k)),
+              (G_COLLISION_TYPE, si32(rng.randrange(5))),
+              (G_MAX_SPEED, bytes(ms)),
+              (G_CUSTOM_JUMP_SOUND + 0, u32(j0)),
+              (G_CUSTOM_JUMP_SOUND + 4, u32(j1)),
+              (G_CUSTOM_JUMP_SOUND + 8, u32(j2)),
+              _blank_call_trace(),
+              _blank_trace(CALLTRACE_POLL_JOYSTICK_VA, 0)]
+    # every ~23rd vector passes a NULL ctrl -- the 0x40b3f0 early return,
+    # which must leave the ENTIRE domain untouched
+    return [0 if (k % 23) == 22 else CTRL_VA], writes
+
+
+_HPI_DOMAIN = [(CTRL_VA, SZ_CONTROL),
+               (PLAYER_VA, SZ_PLAYER),
+               (G_REC_POS, 4),
+               (RECORDS_VA, N_RECORDS * SZ_RECORD),
+               (PROFILE_VA + PROFILE_TOTAL_JUMPS, 4),
+               (CALLTRACE_PLAY_SOUND_VA, 16),
+               (CALLTRACE_POLL_JOYSTICK_VA, 4)]
+_HPI_DOMAIN_NAMES = ["Tcontrol", "Tplayer", "rec_pos", "Trecord[64]",
+                     "profile->total_jumps",
+                     "play_sound_trace(count,handle,pitch,pan)",
+                     "poll_joystick_trace(count)"]
+
+
 SPECS = {
     "update_frame": {"va": 0x406ac4, "gen": gen_update_frame, "cmp_eax": False,
                      "domain": [(G_REWARD_TIME, 4), (G_REWARD_SCALE, 4),
@@ -1556,6 +1831,21 @@ SPECS = {
         "va": 0x408358, "gen": gen_collision, "cmp_eax": False,
         "call_traces": _COLLISION_TRACES,
         "domain": _COLLISION_DOMAIN, "domain_names": _COLLISION_DOMAIN_NAMES},
+    # -- batch 11 (2026-09-08) -- the input seam.
+    "poll_control": {
+        "va": 0x401958, "gen": gen_poll_control, "cmp_eax": False,
+        "call_traces": [_CT_POLL_JOYSTICK],
+        "domain": [(CTRL_VA, SZ_CONTROL), (CALLTRACE_POLL_JOYSTICK_VA, 4)],
+        "domain_names": ["Tcontrol", "poll_joystick_trace(count)"]},
+    # handle_player_input's six game callees are ALL already promoted, so
+    # nothing between the seam and the physics is stubbed: unicorn runs the
+    # original bytes of is_left/is_right/is_fire/jump_player/
+    # play_jump_sound/poll_control, and the compiled side calls the clean
+    # src/icytower/ forms of the same six.
+    "handle_player_input": {
+        "va": 0x40b3e4, "gen": gen_handle_player_input, "cmp_eax": False,
+        "call_traces": [_CT_PLAY_SOUND, _CT_POLL_JOYSTICK],
+        "domain": _HPI_DOMAIN, "domain_names": _HPI_DOMAIN_NAMES},
 }
 
 SRC_BATCH3_FUNCS = ("set_control,init_control,check_control_key,get_level,"
@@ -1577,6 +1867,8 @@ SRC_BATCH8_FUNCS = "draw_scroller"
 SRC_BATCH9_FUNCS = ("handle_player_collision_old,handle_player_collision_vector,"
                     "handle_player_collision_vector_2,handle_player_collision_combo")
 
+SRC_BATCH11_FUNCS = "poll_control,handle_player_input"
+
 
 # --------------------------------------------------------------------------
 # CLI default-selection data (read by the engine's main() via getattr, so a
@@ -1592,9 +1884,10 @@ DEFAULT_FUNCS = {
             "is_right,is_fire,is_pause,is_enter,is_any," + SRC_BATCH3_FUNCS +
             "," + SRC_BATCH4_FUNCS + "," + SRC_ADD_FLOOR_FUNCS +
             "," + SRC_BATCH6_FUNCS + "," + SRC_BATCH7_FUNCS +
-            "," + SRC_BATCH8_FUNCS + "," + SRC_BATCH9_FUNCS),
+            "," + SRC_BATCH8_FUNCS + "," + SRC_BATCH9_FUNCS
+            + "," + SRC_BATCH11_FUNCS),
     "gcc": ("line_intersect,jump_player,add_floor,update_player,"
-            + SRC_BATCH9_FUNCS),
+            + SRC_BATCH9_FUNCS + "," + SRC_BATCH11_FUNCS),
 }
 
 VECTOR_COUNTS = {"jump_player": 4000, "line_intersect": 4000}

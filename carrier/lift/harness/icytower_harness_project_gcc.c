@@ -70,6 +70,12 @@
 
 #include "game_types.h"
 #include "game_state.h"
+#include "allegro_api.h"            /* batch 11: JOYSTICK_INFO joy[8] -- the only
+                                     * Allegro type/global poll_control needs that
+                                     * allegro_types.h does not itself carry
+                                     * (`key`/`screen` were already declared here
+                                     * too; this file's own definitions below match
+                                     * those declarations). */
 #include "pf_harness_rand.h"        /* #define rand harness_rand -- see that
                                      * header's comment; applies to every
                                      * src/icytower file compiled alongside
@@ -159,6 +165,13 @@ SAMPLE *sounds[9];
 int debug;
 volatile char key[127];
 BITMAP *screen;
+/* -- batch 11: the input seam (poll_control.c, handle_player_input.c) -- */
+int recording;
+int rec_pos;
+int rejump;
+Tprofile *profile;
+Tgamepad gamepad;
+JOYSTICK_INFO joy[8];
 
 extern int jump_player(Tplayer *, int);
 extern int line_intersect(int, int, int, int, int, int, int, int, int *, int *);
@@ -177,6 +190,17 @@ extern void handle_player_collision_old(int, int);
 extern void handle_player_collision_vector(int, int);
 extern void handle_player_collision_vector_2(int, int);
 extern void handle_player_collision_combo(int, int);
+extern void poll_control(Tcontrol *, int);
+extern void handle_player_input(Tcontrol *);
+
+/* -- batch 11 guest VAs (icytower_specs.py's own constants) -- */
+#define G_RECORDING     0x4f8e28u
+#define G_REC_POS       0x4fec58u
+#define G_REJUMP        0x4fdcd8u
+#define G_PROFILE       0x4dd27cu
+#define G_GAMEPAD       0x4f8748u
+#define G_JOY           0x506a88u
+#define REPLAY_DATA_OFF 0x8a8u
 
 /* batch 9: the shared pre/post sync for src/icytower/collision.c's four
  * variants. All four read ply[player_id] and `map` internally (never as a
@@ -365,6 +389,63 @@ unsigned int pf_harness_dispatch_gcc(const char *fn, unsigned int *a, unsigned i
         handle_player_collision_combo((int)a[0], (int)a[1]);
         collision_post();
         eax = 0;
+    } else if (!strcmp(fn, "poll_control")) {
+        /* Reads Allegro's key[]/joy[0] and the game's `gamepad` remap
+         * table; writes only c->flags. joy[] is a plain array (no pointer
+         * VALUE inside the six fields poll_control touches), so a straight
+         * memcpy in is enough -- nothing to write back. */
+        Tcontrol *c = (Tcontrol *)pf_tr(a[0]);
+        memcpy((void *)key, pf_guest + (G_KEY - PF_GUEST_BASE), sizeof(key));
+        memcpy(&gamepad, pf_guest + (G_GAMEPAD - PF_GUEST_BASE), sizeof(gamepad));
+        memcpy(&joy[0], pf_guest + (G_JOY - PF_GUEST_BASE), sizeof(joy[0]));
+        poll_control(c, (int)a[1]);
+        eax = 0;
+    } else if (!strcmp(fn, "handle_player_input")) {
+        /* The widest sync in this file, because this ONE function reaches
+         * six already-promoted callees and every global any of them reads:
+         *   itself           recording, rec_pos, demo(+size,+data), rejump,
+         *                    profile->total_jumps, ply[player_id]
+         *   poll_control     key[], joy[0], gamepad
+         *   jump_player      collision_type, max_speed[5]
+         *   play_jump_sound  custom.jump_sound[0..2]
+         *
+         * TWO pointer VALUES need the "second translation, driver-side"
+         * fixup (src_check.c's own header comment): `demo` itself, and --
+         * one level deeper than anything before this batch -- `demo->data`,
+         * the Trecord array base stored INSIDE the guest Treplay. Without
+         * the second one the compiled side would dereference a raw guest VA
+         * the moment the RLE encoder/decoder indexes a record. Neither
+         * pointer is in the comparison domain, so rewriting them in place
+         * is invisible to the diff. */
+        Tcontrol *c = (Tcontrol *)pf_tr(a[0]);       /* may legitimately be NULL */
+        unsigned int pid;
+
+        recording = *(int *)(pf_guest + (G_RECORDING - PF_GUEST_BASE));
+        rec_pos = *(int *)(pf_guest + (G_REC_POS - PF_GUEST_BASE));
+        rejump = *(int *)(pf_guest + (G_REJUMP - PF_GUEST_BASE));
+        player_id = *(int *)(pf_guest + (G_PLAYER_ID - PF_GUEST_BASE));
+        pid = (unsigned int)player_id;
+        ply[pid] = (Tplayer *)pf_tr(*(unsigned int *)(pf_guest + (G_PLY + 4u * pid - PF_GUEST_BASE)));
+        demo = (Treplay *)pf_tr(*(unsigned int *)(pf_guest + (G_DEMO - PF_GUEST_BASE)));
+        if (demo != 0)
+            demo->data = (Trecord *)pf_tr(*(unsigned int *)((unsigned char *)demo + REPLAY_DATA_OFF));
+        profile = (Tprofile *)pf_tr(*(unsigned int *)(pf_guest + (G_PROFILE - PF_GUEST_BASE)));
+        memcpy((void *)key, pf_guest + (G_KEY - PF_GUEST_BASE), sizeof(key));
+        memcpy(&gamepad, pf_guest + (G_GAMEPAD - PF_GUEST_BASE), sizeof(gamepad));
+        memcpy(&joy[0], pf_guest + (G_JOY - PF_GUEST_BASE), sizeof(joy[0]));
+        collision_type = *(int *)(pf_guest + (G_COLLISION_TYPE - PF_GUEST_BASE));
+        memcpy(max_speed, pf_guest + (G_MAX_SPEED - PF_GUEST_BASE), sizeof(max_speed));
+        memcpy(custom.jump_sound, pf_guest + (G_CUSTOM_JUMP_SOUND - PF_GUEST_BASE),
+               sizeof(custom.jump_sound));
+
+        handle_player_input(c);
+        eax = 0;
+
+        /* Tcontrol / Tplayer / the Trecord array / profile->total_jumps all
+         * live INSIDE pf_guest already (pf_tr()'s contract), so their writes
+         * landed there directly; only the plain-int cursor needs copying
+         * back. */
+        *(int *)(pf_guest + (G_REC_POS - PF_GUEST_BASE)) = rec_pos;
     } else {
         fprintf(stderr, "gcc dispatch only wires up line_intersect/jump_player/"
                         "new_rand/update_particle/create_particle/ok_to_play/"
