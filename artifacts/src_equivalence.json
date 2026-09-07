@@ -78,5 +78,407 @@
   "result": "EQUAL",
   "vectors": 20000
  },
- "memory_model_note": "src/icytower/*.c is address-free ordinary C with no PF_MEM seam of its own (by design, see src/README.md). pf_bindings_harness.h's per-global PF_MEM() macros are sufficient for every direct global access (reward_time, reward_scale, player_id, ply, logic_count), but NOT for a pointer VALUE the code reads out of guest memory and then dereferences (update_frame's ply[player_id], and is_solid's own `m` parameter, which the real carrier passes as a plain guest VA because there a guest VA IS a valid host pointer). carrier/lift/harness/src_check.c closes that specific, narrow gap at its two call sites (documented in its header comment) rather than in src/ itself; an identity-mapped guest image (VirtualAlloc at the real 0x400000 base, matching how the real carrier maps the image) was tried first and ruled out empirically -- VirtualQuery showed 0x400000..0x800000 already densely occupied by loader/heap-manager mappings in this process before main() runs."
+ "memory_model_note": "src/icytower/*.c is address-free ordinary C with no PF_MEM seam of its own (by design, see src/README.md). pf_bindings_harness.h's per-global PF_MEM() macros are sufficient for every direct global access (reward_time, reward_scale, player_id, ply, logic_count), but NOT for a pointer VALUE the code reads out of guest memory and then dereferences (update_frame's ply[player_id], and is_solid's own `m` parameter, which the real carrier passes as a plain guest VA because there a guest VA IS a valid host pointer). carrier/lift/harness/src_check.c closes that specific, narrow gap at its two call sites (documented in its header comment) rather than in src/ itself; an identity-mapped guest image (VirtualAlloc at the real 0x400000 base, matching how the real carrier maps the image) was tried first and ruled out empirically -- VirtualQuery showed 0x400000..0x800000 already densely occupied by loader/heap-manager mappings in this process before main() runs.",
+ "jump_player": {
+  "compared_return_value": true,
+  "domain_bytes": 184,
+  "domain_names": [
+   "Tplayer"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "jump_player:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tplayer+0x0 (VA 0x00790000)",
+    "byte_index": 0,
+    "original": "0x4b",
+    "lifted": "0x4a",
+    "args": [
+     "0x00790000",
+     "0x00000000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "getFloorData": {
+  "compared_return_value": false,
+  "domain_bytes": 12,
+  "domain_names": [
+   "*fy",
+   "*fx1",
+   "*fx2"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "getFloorData:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "*fy+0x0 (VA 0x00794010)",
+    "byte_index": 0,
+    "original": "0x01",
+    "lifted": "0x00",
+    "args": [
+     "0x00792000",
+     "0x00000001",
+     "0x00794010",
+     "0x00794014",
+     "0x00794018"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "reset_map": {
+  "compared_return_value": false,
+  "domain_bytes": 772,
+  "domain_names": [
+   "Tmap"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "reset_map:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tmap+0x0 (VA 0x00792000)",
+    "byte_index": 0,
+    "original": "0xff",
+    "lifted": "0xfe",
+    "args": [
+     "0x00792000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "add_combo": {
+  "compared_return_value": false,
+  "domain_bytes": 436,
+  "domain_names": [
+   "comboPosts",
+   "combos[0..25]",
+   "combos[4990..4999]"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "add_combo:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "comboPosts+0x0 (VA 0x007a0040)",
+    "byte_index": 0,
+    "original": "0x89",
+    "lifted": "0x88",
+    "args": [
+     "0x007a0000",
+     "0x007bf000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_up": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_up:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0xf3",
+    "lifted": "0xf2",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_down": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_down:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0xce",
+    "lifted": "0xcf",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_left": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_left:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0x9b",
+    "lifted": "0x9a",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_right": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_right:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0x62",
+    "lifted": "0x63",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_fire": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_fire:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0xdf",
+    "lifted": "0xde",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_pause": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_pause:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0x62",
+    "lifted": "0x63",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_enter": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_enter:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0x62",
+    "lifted": "0x63",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "is_any": {
+  "compared_return_value": true,
+  "domain_bytes": 36,
+  "domain_names": [
+   "Tcontrol"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "is_any:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tcontrol+0x0 (VA 0x00796000)",
+    "byte_index": 0,
+    "original": "0x3d",
+    "lifted": "0x3c",
+    "args": [
+     "0x00796000"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "get_gamepad": {
+  "compared_return_value": true,
+  "domain_bytes": 4,
+  "domain_names": [
+   "gamepad.up"
+  ],
+  "form": "src",
+  "negative_control": {
+   "fault": "get_gamepad:5:0",
+   "note": "one bit of the SRC side's vector-5 result flipped by the harness before comparison; the comparator named it exactly, same as the NATIVE/LIFTED forms and update_frame/is_solid's own negative controls above.",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "gamepad.up+0x0 (VA 0x004f8748)",
+    "byte_index": 0,
+    "original": "0x00",
+    "lifted": "0x01",
+    "args": []
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "line_intersect": {
+  "compared_return_value": true,
+  "domain_bytes": 8,
+  "domain_names": [
+   "*px",
+   "*py"
+  ],
+  "form": "src",
+  "result": "DIFFER",
+  "vectors": 20000,
+  "census_differing_vectors": 997,
+  "first": {
+   "vector": 227,
+   "kind": "comparison domain",
+   "at": "*py+0x0 (VA 0x00794004)",
+   "byte_index": 4,
+   "original": "0xa3",
+   "lifted": "0xa4",
+   "args": [
+    "0xe31dacd7",
+    "0x0036cd0c",
+    "0x16f788d7",
+    "0x2bbf2f0c",
+    "0x00000000",
+    "0x00000000",
+    "0x00000000",
+    "0x00000001",
+    "0x00794000",
+    "0x00794004"
+   ]
+  },
+  "note": "Expected, per carrier/lift/README.md SS6b/win32_pilot.md SS6a: this function's x87 arithmetic needs genuine 80-bit extended precision (every intermediate stays in the FPU register stack across the ua/ub range checks and the final +0.5/truncation); the LIFTED form hit the identical fidelity gap under pf_x87_t=double (107-128 DIFFER per 50000 there) and only closed it with a software 80-bit backend (pf_x87_soft.h). src_check.exe here is built with plain MSVC cl.exe (no /arch override, no long-double/softfloat), so this is the same known gap, not a new one, and not a domain-modelling failure -- the comparison domain (EAX + *px + *py) is exactly the one the LIFTED form already proved complete. The source in src/icytower/line_intersect.c is recovered faithfully (same operation order as the disassembly, no algebraic simplification) and is believed correct; what is unverified is whether MSVC's default double model keeps enough of that precision. Promoted with this caveat rather than skipped, because win32_pilot.md SS6a already names the fix (compile with real 80-bit x87, e.g. GCC -mfpmath=387, or bind the softfloat backend) as a build-configuration question, not a source-recovery one; carrier bind is pending a build configuration proven bit-exact."
+ },
+ "pass_2026-09-07_batch2": {
+  "candidate": "src/icytower/jump_player.c, map.c (getFloorData, reset_map), add_combo.c, line_intersect.c, control.c (get_gamepad, is_up/is_down/is_left/is_right/is_fire/is_pause/is_enter/is_any) -- win32_pilot.md SS7a scale-test batch, 14 functions",
+  "harness": "carrier/lift/harness/lift_check.py --form src --vectors 20000 (harness/src_check.c extended with a case per function; carrier/gen/pf_bindings_src.h and carrier/lift/harness/pf_bindings_harness.h regenerated with the wider --exclude list)",
+  "purity_gate": "python scripts/check_native_layer.py -- PASS, 14 files scanned, 0 violations",
+  "compile": {
+   "carrier_world": "cl /nologo /c /W3 /TC /Icarrier\\gen /FIpf_bindings_src.h src\\icytower\\{update_frame,is_solid,jump_player,map,add_combo,line_intersect,control}.c -- 0 errors, 0 warnings",
+   "standalone_world": "cl /nologo /c /W3 /TC /Isrc\\icytower src\\icytower\\{update_frame,is_solid,jump_player,map,add_combo,line_intersect,control}.c state.c -- 0 errors, 0 warnings"
+  },
+  "summary": "13 of 14 EQUAL over 20000 vectors each, plus a passing negative control per function; line_intersect DIFFER (997/20000, documented x87 precision gap, see its own entry above) -- play_jump_sound (top-8 candidate #8) was attempted and SKIPPED, not written to src/: its 3 sound-handle globals (0x4fabf4/f8/fc) have no DWARF-recovered name, so src/ cannot reference them address-free without inventing a binding outside the generator pipeline, and promotion_candidates.md SS4.3 already flags this function's real comparison domain as the downstream play_sound() call trace, not a memory domain -- lift_check.py's harness only does memory-domain diffing, so its domain genuinely cannot be modelled by this harness without new call-tracing machinery, which is out of scope for this pass."
+ }
 }

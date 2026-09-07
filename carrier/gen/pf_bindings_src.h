@@ -3,7 +3,7 @@
  *   interop_index.json
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
- * Generated: 2026-09-07 12:04:41 UTC
+ * Generated: 2026-09-07 12:10:58 UTC
  * Excluded (compiled natively, name kept free): add_combo, getFloorData, get_gamepad, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, jump_player, line_intersect, reset_map, update_frame
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *

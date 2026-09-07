@@ -16,6 +16,9 @@ if not exist obj_src mkdir obj_src
 cl /nologo /W3 /TC /D_CRT_SECURE_NO_WARNINGS /I..\..\gen /I. /I..\..\..\src\icytower ^
    /FIpf_harness_mem.h /FIpf_bindings_harness.h ^
    src_check.c ..\..\..\src\icytower\update_frame.c ..\..\..\src\icytower\is_solid.c ^
+   ..\..\..\src\icytower\jump_player.c ..\..\..\src\icytower\map.c ^
+   ..\..\..\src\icytower\add_combo.c ..\..\..\src\icytower\line_intersect.c ^
+   ..\..\..\src\icytower\control.c ^
    /Fe:src_check.exe /Fo:obj_src\
 if errorlevel 1 ( echo FAILED & exit /b 1 )
 echo OK: harness\src_check.exe

@@ -41,6 +41,14 @@ PLAYER_VA = 0x790000                   # past every PE section (last ends 0x78b6
 MAP_VA = 0x792000
 OUT_X = 0x794000                       # int *px / int *py for line_intersect
 OUT_Y = 0x794004
+OUT_FY = 0x794010                      # int *fy/*fx1/*fx2 for getFloorData
+OUT_FX1 = 0x794014
+OUT_FX2 = 0x794018
+CTRL_VA = 0x796000                     # Tcontrol for is_up/is_down/.../is_any
+GD_VA = 0x7a0000                       # Tgame_data for add_combo (comboPosts + combos[5000])
+GD_COMBO_VA = 0x7a0040                 #   == GD_VA + 0x40 (comboPosts field)
+GD_COMBOS_VA = 0x7a0044                #   == GD_VA + 0x44 (combos[] array base)
+C_VA = 0x7bf000                        # source Tgd_combo for add_combo
 
 # The ORIGINAL side must enter the function with the SAME x87 control word the
 # game enters it with.  KNOWN: ___mingw_CRTStartup (0x401020) calls __fpreset
@@ -62,6 +70,10 @@ G_MAX_SPEED = 0x4bdb80
 
 SZ_PLAYER = 184
 SZ_MAP = 772
+SZ_CONTROL = 36                        # Tcontrol: 8 ints + 1 byte + 3 pad
+SZ_COMBO = 12                          # Tgd_combo: start, end, length (3 ints)
+GD_LOW_WINDOW = 26                     # combos[0..25] -- covers every "small" comboPosts vector
+GD_HIGH_BASE = 4990                    # combos[4990..4999] -- covers the boundary vectors
 
 
 def i32(v):
@@ -182,6 +194,72 @@ def gen_jump_player(rng, k):
                                  else rng.randint(-1000, 1000))
     writes = [(PLAYER_VA, bytes(p)), (G_COLLISION_TYPE, si32(ct))]
     return [PLAYER_VA, a2], writes
+
+
+def gen_getFloorData(rng, k):
+    """Tmap.room[32] (Tfloor: empty,start_tile,end_tile,level,sign,tiles,
+    each int) + Tmap.offset -- same row layout is_solid()/gen_is_solid use."""
+    m = bytearray(SZ_MAP)
+    for r in range(32):
+        b = r * 24
+        struct.pack_into("<i", m, b + 0, rng.choice([0, 0, 0, 1, rng.randint(-3, 3)]))
+        struct.pack_into("<i", m, b + 4, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 8, rng.randint(-40, 40))
+        struct.pack_into("<i", m, b + 12, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 16, rng.getrandbits(31))
+        struct.pack_into("<i", m, b + 20, rng.getrandbits(31))
+    off_pool = [0, 1, 7, 15, 16, 17, -1, -9, -16, -17, 0x40000000, -0x40000000]
+    off = off_pool[k % len(off_pool)] if k < 48 else rng.randint(-100000, 100000)
+    struct.pack_into("<i", m, 768, off)
+    if k % 4 == 0:
+        cy = rng.randint(-40, 500)
+    elif k % 4 == 1:
+        cy = rng.choice([-34, -33, -32, -17, -16, -1, 0, 1, 15, 16, 479, 480, 481])
+    else:
+        cy = rng.randint(-20000, 20000)
+    writes = [(MAP_VA, bytes(m)),
+              (OUT_FY, u32(0xdeadbeef)), (OUT_FX1, u32(0xdeadbeef)), (OUT_FX2, u32(0xdeadbeef))]
+    return [MAP_VA, cy, OUT_FY, OUT_FX1, OUT_FX2], writes
+
+
+def gen_reset_map(rng, k):
+    m = bytearray(rng.getrandbits(8) for _ in range(SZ_MAP))
+    return [MAP_VA], [(MAP_VA, bytes(m))]
+
+
+def gen_add_combo(rng, k):
+    """comboPosts pooled at small indices (covers the ordinary insert path)
+    and near the 5000-entry bound (covers the reject-if->4999 branch);
+    combos[] is only compared in the two windows those indices can land
+    in (GD_LOW_WINDOW / GD_HIGH_BASE.. -- see the 'add_combo' SPECS entry),
+    so comboPosts never strays outside either window."""
+    low_pool = [0, 1, 2, 5, 10, 19, 25]
+    high_pool = [4990, 4995, 4998, 4999, 5000, 5001, 5005, 5100]
+    if k % 3 == 0:
+        cp = low_pool[k % len(low_pool)] if k < 400 else rng.randint(0, GD_LOW_WINDOW - 1)
+    else:
+        cp = high_pool[k % len(high_pool)]
+    c = bytearray(SZ_COMBO)
+    struct.pack_into("<i", c, 0, rng.randint(-100000, 100000))   # start
+    struct.pack_into("<i", c, 4, rng.randint(-100000, 100000))   # end
+    struct.pack_into("<i", c, 8, rng.randint(-100000, 100000))   # length
+    writes = [(GD_COMBO_VA, si32(cp)), (C_VA, bytes(c)),
+              (GD_COMBOS_VA, b"\x00" * (GD_LOW_WINDOW * SZ_COMBO)),
+              (GD_COMBOS_VA + GD_HIGH_BASE * SZ_COMBO, b"\x00" * (10 * SZ_COMBO))]
+    return [GD_VA, C_VA], writes
+
+
+def gen_control(mask, invert=False):
+    def gen(rng, k):
+        c = bytearray(rng.getrandbits(8) for _ in range(SZ_CONTROL))
+        flags_pool = list(range(256)) if k < 256 else [rng.getrandbits(8)]
+        c[0x20] = flags_pool[k % len(flags_pool)]
+        return [CTRL_VA], [(CTRL_VA, bytes(c))]
+    return gen
+
+
+def gen_get_gamepad(rng, k):
+    return [], []
 
 
 # --------------------------------------------------------------------------
@@ -350,6 +428,43 @@ SPECS = {
     "line_intersect": {"va": 0x406b80, "gen": gen_line_intersect, "cmp_eax": True,
                        "domain": [(OUT_X, 4), (OUT_Y, 4)],
                        "domain_names": ["*px", "*py"]},
+    "getFloorData": {"va": 0x416770, "gen": gen_getFloorData, "cmp_eax": False,
+                     "domain": [(OUT_FY, 4), (OUT_FX1, 4), (OUT_FX2, 4)],
+                     "domain_names": ["*fy", "*fx1", "*fx2"]},
+    "reset_map": {"va": 0x4166a4, "gen": gen_reset_map, "cmp_eax": False,
+                 "domain": [(MAP_VA, SZ_MAP)], "domain_names": ["Tmap"]},
+    "add_combo": {"va": 0x40414c, "gen": gen_add_combo, "cmp_eax": False,
+                 "domain": [(GD_COMBO_VA, 4),
+                            (GD_COMBOS_VA, GD_LOW_WINDOW * SZ_COMBO),
+                            (GD_COMBOS_VA + GD_HIGH_BASE * SZ_COMBO, 10 * SZ_COMBO)],
+                 "domain_names": ["comboPosts", "combos[0..25]", "combos[4990..4999]"]},
+    "get_gamepad": {"va": 0x4017fc, "gen": gen_get_gamepad, "cmp_eax": True,
+                    "domain": [(0x4f8748, 4)], "domain_names": ["gamepad.up"],
+                    "must_be_unchanged": [(0x4f8748, 4)]},
+    "is_up": {"va": 0x401844, "gen": gen_control(0x04), "cmp_eax": True,
+             "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+             "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_down": {"va": 0x40185c, "gen": gen_control(0x08), "cmp_eax": True,
+               "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+               "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_left": {"va": 0x401874, "gen": gen_control(0x01), "cmp_eax": True,
+               "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+               "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_right": {"va": 0x401888, "gen": gen_control(0x02), "cmp_eax": True,
+                "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+                "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_fire": {"va": 0x4018a0, "gen": gen_control(0x10), "cmp_eax": True,
+               "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+               "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_pause": {"va": 0x4018b8, "gen": gen_control(0x40), "cmp_eax": True,
+                "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+                "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_enter": {"va": 0x4018d0, "gen": gen_control(0x20), "cmp_eax": True,
+                "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+                "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
+    "is_any": {"va": 0x4018e8, "gen": gen_control(0xbf), "cmp_eax": True,
+              "domain": [(CTRL_VA, SZ_CONTROL)], "domain_names": ["Tcontrol"],
+              "must_be_unchanged": [(CTRL_VA, SZ_CONTROL)]},
 }
 
 
@@ -482,8 +597,14 @@ def main():
         args.exe = os.path.join(HERE, {"native": "native_check.exe",
                                         "src": "src_check.exe"}.get(args.form, "lift_check.exe"))
     if args.funcs is None:
-        args.funcs = ("update_frame,is_solid" if args.form in ("native", "src")
-                      else "update_frame,is_solid,jump_player,line_intersect")
+        if args.form == "native":
+            args.funcs = "update_frame,is_solid"
+        elif args.form == "src":
+            args.funcs = ("update_frame,is_solid,jump_player,getFloorData,reset_map,"
+                         "add_combo,line_intersect,get_gamepad,is_up,is_down,is_left,"
+                         "is_right,is_fire,is_pause,is_enter,is_any")
+        else:
+            args.funcs = "update_frame,is_solid,jump_player,line_intersect"
     label = args.form.upper()
 
     guest = build_guest(args.image)

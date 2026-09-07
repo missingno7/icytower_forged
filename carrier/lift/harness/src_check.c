@@ -83,12 +83,50 @@ void pf_trap(unsigned int va, const char *why)
 
 extern void update_frame(void);
 extern int  is_solid(Tmap *, int, int);
+extern int  jump_player(Tplayer *, int);
+extern void getFloorData(Tmap *, int, int *, int *, int *);
+extern void reset_map(Tmap *);
+extern void add_combo(Tgame_data *, Tgd_combo *);
+extern int  line_intersect(int, int, int, int, int, int, int, int, int *, int *);
+extern Tgamepad *get_gamepad(void);
+extern int  is_up(Tcontrol *);
+extern int  is_down(Tcontrol *);
+extern int  is_left(Tcontrol *);
+extern int  is_right(Tcontrol *);
+extern int  is_fire(Tcontrol *);
+extern int  is_pause(Tcontrol *);
+extern int  is_enter(Tcontrol *);
+extern int  is_any(Tcontrol *);
 
 static unsigned int rd32(FILE *f)
 {
     unsigned int v = 0;
     if (fread(&v, 4, 1, f) != 1) { fprintf(stderr, "short read\n"); exit(2); }
     return v;
+}
+
+/* tr()/untr() -- the same guest-VA <-> host-pointer translation src_check's
+ * update_frame/is_solid cases already perform by hand at their call sites
+ * (see the header comment): a vector's pointer-shaped arguments arrive as
+ * plain guest VAs (what the real carrier would pass, since there a guest VA
+ * IS a valid host pointer); this driver knows the harness's memory model
+ * (src/ itself does not), so it does the PF_MEM() translation here instead
+ * of inside the recovered functions. untr() is the inverse, needed once a
+ * recovered function hands back a pointer VALUE (get_gamepad's return) that
+ * has to be compared against the unicorn oracle's raw guest VA. */
+static void *tr(unsigned int va)
+{
+    if (va >= PF_GUEST_BASE && va < PF_GUEST_BASE + PF_GUEST_SIZE)
+        return PF_MEM(va);
+    return (void *)(size_t)va;
+}
+
+static unsigned int untr(void *hostptr)
+{
+    unsigned char *p = (unsigned char *)hostptr;
+    if (p >= pf_guest && p < pf_guest + PF_GUEST_SIZE)
+        return (unsigned int)(PF_GUEST_BASE + (p - pf_guest));
+    return (unsigned int)(size_t)hostptr;
 }
 
 int main(int argc, char **argv)
@@ -138,10 +176,10 @@ int main(int argc, char **argv)
     { unsigned int m = 0x53455250u; fwrite(&m, 4, 1, fo); fwrite(&nvec, 4, 1, fo); }
 
     for (i = 0; i < nvec; i++) {
-        unsigned int nargs, a[8], nwr, eax = 0;
+        unsigned int nargs, a[10], nwr, eax = 0;
         memcpy(pf_guest, pf_pristine, PF_GUEST_SIZE);
         nargs = rd32(fi);
-        if (nargs > 8) { fprintf(stderr, "too many args\n"); return 2; }
+        if (nargs > 10) { fprintf(stderr, "too many args\n"); return 2; }
         for (j = 0; j < nargs; j++) a[j] = rd32(fi);
         nwr = rd32(fi);
         for (j = 0; j < nwr; j++) {
@@ -164,9 +202,48 @@ int main(int argc, char **argv)
             update_frame();
             eax = 0;
         } else if (!strcmp(fn, "is_solid")) {
-            Tmap *m = (a[0] >= PF_GUEST_BASE && a[0] < PF_GUEST_BASE + PF_GUEST_SIZE)
-                     ? (Tmap *)PF_MEM(a[0]) : (Tmap *)(size_t)a[0];
+            Tmap *m = (Tmap *)tr(a[0]);
             eax = (unsigned int)is_solid(m, (int)a[1], (int)a[2]);
+        } else if (!strcmp(fn, "jump_player")) {
+            Tplayer *p = (Tplayer *)tr(a[0]);
+            eax = (unsigned int)jump_player(p, (int)a[1]);
+        } else if (!strcmp(fn, "getFloorData")) {
+            Tmap *m = (Tmap *)tr(a[0]);
+            int *fy = (int *)tr(a[2]), *fx1 = (int *)tr(a[3]), *fx2 = (int *)tr(a[4]);
+            getFloorData(m, (int)a[1], fy, fx1, fx2);
+            eax = 0;
+        } else if (!strcmp(fn, "reset_map")) {
+            Tmap *m = (Tmap *)tr(a[0]);
+            reset_map(m);
+            eax = 0;
+        } else if (!strcmp(fn, "add_combo")) {
+            Tgame_data *gd = (Tgame_data *)tr(a[0]);
+            Tgd_combo *c = (Tgd_combo *)tr(a[1]);
+            add_combo(gd, c);
+            eax = 0;
+        } else if (!strcmp(fn, "line_intersect")) {
+            int *px = (int *)tr(a[8]), *py = (int *)tr(a[9]);
+            eax = (unsigned int)line_intersect((int)a[0], (int)a[1], (int)a[2], (int)a[3],
+                                               (int)a[4], (int)a[5], (int)a[6], (int)a[7],
+                                               px, py);
+        } else if (!strcmp(fn, "get_gamepad")) {
+            eax = untr(get_gamepad());
+        } else if (!strcmp(fn, "is_up")) {
+            eax = (unsigned int)is_up((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_down")) {
+            eax = (unsigned int)is_down((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_left")) {
+            eax = (unsigned int)is_left((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_right")) {
+            eax = (unsigned int)is_right((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_fire")) {
+            eax = (unsigned int)is_fire((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_pause")) {
+            eax = (unsigned int)is_pause((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_enter")) {
+            eax = (unsigned int)is_enter((Tcontrol *)tr(a[0]));
+        } else if (!strcmp(fn, "is_any")) {
+            eax = (unsigned int)is_any((Tcontrol *)tr(a[0]));
         } else {
             fprintf(stderr, "unknown function '%s'\n", fn);
             return 2;
