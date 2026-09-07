@@ -6,7 +6,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
-#include "pe_image.hpp"
+#include "../win32_policy.hpp"
+#include "../../port_forge/src/platform/win32/pe_image.hpp"
+#include "../../port_forge/src/platform/win32/bootstrap.hpp"
 #include "imports.hpp"
 #include "trace.hpp"
 #include "wrappers.hpp"
@@ -44,12 +46,12 @@
 // carrier's OWN flags therefore travel via environment variables (PF_*,
 // see options_to_env/options_from_env) instead of argv in the child.
 
-// KNOWN (notes/binary_recon.md): icytower15.exe's ImageBase/SizeOfImage.
-// pe_image_load() re-derives the real values from the file's own header
-// for the actual mapping; this hardcoded copy exists only so the range can
-// be reserved before the file is even opened - see relaunch_as_reserved_child.
-#define GUEST_IMAGE_BASE_HINT 0x400000ul
-#define GUEST_IMAGE_SIZE_HINT 0x38c000ul
+// The guest image's ImageBase/SizeOfImage, the fixed guest stack, and the
+// child-process marker are DATA now: carrier/win32_policy.hpp, consumed by
+// port_forge/src/platform/win32/{pe_image,bootstrap}.hpp. See that header
+// for the evidence behind each value; nothing about the guest is spelled
+// out in this file any more.
+using icytower::kGuestImage;
 
 // ---------------------------------------------------------------------
 // Shutdown plumbing: both the ExitProcess/exit/_cexit/abort wrappers (see
@@ -129,48 +131,13 @@ static LONG WINAPI veh_handler(EXCEPTION_POINTERS* ep) {
 }
 
 // ---------------------------------------------------------------------
-// Guest stack switch (--guest-stack=fixed, the default). TEMPORARY
-// mechanism whose only purpose is a deterministic guest stack address -
-// see pf_launch_guest_fixed's comment for the SEH/TEB caveat.
+// Guest stack switch (--guest-stack=fixed, the default) and the "guest
+// entry returned" fallback. Both mechanisms now live in
+// port_forge/src/platform/win32/bootstrap.hpp (the TEB fs:[4]/fs:[8] swap
+// is target-independent); this file only says what happens on the
+// impossible return path, which is carrier composition, not mechanism.
 // ---------------------------------------------------------------------
-#define GUEST_STACK_BASE ((void*)0x0e000000)
-#define GUEST_STACK_SIZE (2 * 1024 * 1024)
-
-extern "C" void __cdecl pf_on_guest_return() {
-    fprintf(stderr, "FATAL: guest entry point returned (should never happen - "
-                     "the mingw entry always calls ExitProcess).\n");
-    carrier_shutdown("guest entry returned unexpectedly");
-    TerminateProcess(GetCurrentProcess(), 1);
-}
-
-// Win32 SEH validates that exception-registration frames lie within the
-// TEB's stack limits (fs:[4]=StackBase/high, fs:[8]=StackLimit/low) - this
-// is exactly what fibers do to run on an alternate stack. We swap those two
-// TEB fields to the guest stack's bounds, switch esp, and call the guest
-// entry point. It never returns in practice (the mingw entry always ends in
-// ExitProcess, intercepted by wrap_ExitProcess); the return path below is a
-// diagnostic-only fallback, not a real unwind.
-extern "C" void __declspec(naked) pf_launch_guest_fixed(
-    void* entry, void* guest_esp, void* stack_base_high, void* stack_limit_low) {
-    __asm {
-        mov eax, [esp+4]        // entry
-        mov ecx, [esp+8]        // guest_esp
-        mov edx, [esp+12]       // stack_base_high
-        push esi
-        push edi
-        mov esi, fs:[4]         // save host StackBase
-        mov edi, fs:[8]         // save host StackLimit
-        mov fs:[4], edx
-        mov edx, [esp+16+8]     // stack_limit_low (esp shifted by the 2 pushes above)
-        mov fs:[8], edx
-        mov esp, ecx            // switch onto the guest stack
-        call eax                 // call the guest entry point - does not return
-        mov fs:[4], esi          // (unreachable in practice) restore host TEB bounds
-        mov fs:[8], edi
-        call pf_on_guest_return  // noreturn
-        int 3
-    }
-}
+static void on_guest_return() { carrier_shutdown("guest entry returned unexpectedly"); }
 
 // ---------------------------------------------------------------------
 // Argument parsing.
@@ -578,8 +545,7 @@ static void options_to_env(const Options& o) {
 }
 
 static bool is_child_process() {
-    char buf[8];
-    return GetEnvironmentVariableA("PF_CHILD", buf, sizeof(buf)) > 0;
+    return pf::win32::bootstrap_is_child(icytower::kChildMarkerEnv);
 }
 
 static void get_env_or(const char* name, char* out, size_t n, const char* fallback) {
@@ -711,40 +677,17 @@ static void options_from_env(Options* o) {
 // CreateProcessA's default lpEnvironment=null inherits automatically.
 static int relaunch_as_reserved_child(const Options& o) {
     options_to_env(o);
-
-    char self_path[MAX_PATH];
-    GetModuleFileNameA(nullptr, self_path, MAX_PATH);
+    // The child's real OS-assigned command line IS the guest's argv[0] -
+    // see bootstrap.hpp reason 2 and the big comment at the top of this
+    // file for why nothing later can substitute for it.
     char cmdline[MAX_PATH + 2];
     _snprintf(cmdline, sizeof(cmdline), "\"%s\"", o.image);
     cmdline[sizeof(cmdline) - 1] = 0;
-
-    STARTUPINFOA si; ZeroMemory(&si, sizeof(si)); si.cb = sizeof(si);
-    PROCESS_INFORMATION pi; ZeroMemory(&pi, sizeof(pi));
-    if (!CreateProcessA(self_path, cmdline, nullptr, nullptr, FALSE,
-                         CREATE_SUSPENDED, nullptr, nullptr, &si, &pi)) {
-        fprintf(stderr, "relaunch_as_reserved_child: CreateProcessA FAILED, gle=%lu\n", GetLastError());
-        return 1;
-    }
-
-    void* mem = VirtualAllocEx(pi.hProcess, (void*)GUEST_IMAGE_BASE_HINT, GUEST_IMAGE_SIZE_HINT,
-                                MEM_RESERVE, PAGE_NOACCESS);
-    if (mem != (void*)GUEST_IMAGE_BASE_HINT) {
-        fprintf(stderr,
-            "relaunch_as_reserved_child: VirtualAllocEx reservation FAILED (got %p, gle=%lu) - "
-            "resuming anyway, pe_image_load will report the real conflict.\n",
-            mem, GetLastError());
-    }
-
-    ResumeThread(pi.hThread);
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    DWORD code = 0;
-    GetExitCodeProcess(pi.hProcess, &code);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    return (int)code;
+    return pf::win32::bootstrap_relaunch_as_reserved_child(kGuestImage, cmdline);
 }
 
 int main(int argc, char** argv) {
+    pf::win32::g_on_guest_return = on_guest_return;
     if (!is_child_process()) {
         Options o;
         parse_args(argc, argv, &o);
@@ -756,7 +699,8 @@ int main(int argc, char** argv) {
     // trivial success (VirtualAlloc on our own existing reservation just
     // succeeds); kept as a fallback in case the parent's VirtualAllocEx
     // failed for some other reason.
-    bool reserved = pe_image_reserve_guest_range(GUEST_IMAGE_BASE_HINT, GUEST_IMAGE_SIZE_HINT);
+    bool reserved = pf::win32::pe_image_reserve_guest_range(kGuestImage.image_base,
+                                                           kGuestImage.size_of_image);
 
     Options o;
     options_from_env(&o);
@@ -836,8 +780,8 @@ int main(int argc, char** argv) {
            o.headless_effective, o.headless_explicit, o.no_sound);
     fflush(stdout);
 
-    PeImageInfo info;
-    if (!pe_image_load(o.image, &info)) {
+    pf::win32::PeImageInfo info;
+    if (!pf::win32::pe_image_load(o.image, kGuestImage, &info)) {
         fprintf(stderr, "carrier: failed to map guest image, aborting.\n");
         return 1;
     }
@@ -917,23 +861,9 @@ int main(int argc, char** argv) {
     fflush(stderr);
 
     if (o.guest_stack_fixed) {
-        void* mem = VirtualAlloc(GUEST_STACK_BASE, GUEST_STACK_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-        if (!mem) {
-            fprintf(stderr, "carrier: VirtualAlloc(guest stack @ %p) FAILED gle=%lu\n",
-                    GUEST_STACK_BASE, GetLastError());
-            return 1;
-        }
-        if (mem != GUEST_STACK_BASE) {
-            fprintf(stderr, "carrier: guest stack landed at %p instead of requested %p, aborting.\n",
-                    mem, GUEST_STACK_BASE);
-            return 1;
-        }
-        void* top = (void*)((uintptr_t)mem + GUEST_STACK_SIZE - 16);
-        void* base_high = (void*)((uintptr_t)mem + GUEST_STACK_SIZE);
-        pf_launch_guest_fixed((void*)(uintptr_t)info.entry_va, top, base_high, mem);
+        if (!pf::win32::bootstrap_enter_guest_fixed_stack(kGuestImage, info.entry_va)) return 1;
     } else {
-        typedef void (*EntryFn)();
-        ((EntryFn)(void*)(uintptr_t)info.entry_va)();
+        pf::win32::bootstrap_enter_guest_host_stack(info.entry_va);
     }
 
     // Unreachable: the guest always exits through wrap_ExitProcess.

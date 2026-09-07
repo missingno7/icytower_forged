@@ -190,9 +190,9 @@ for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files msvc --
 set GCC_OBJS=
 for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --prefix "obj_gcc\\" --ext .o') do set GCC_OBJS=%%E
 
-cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
+cl /nologo /Zi /Od /EHsc /std:c++17 /W3 /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /I lift\lifted ^
-  src\main.cpp src\pe_image.cpp src\imports.cpp src\trace.cpp src\wrappers.cpp src\symbols.cpp src\det.cpp src\bind.cpp src\snapshot.cpp ^
+  src\main.cpp src\imports.cpp src\trace.cpp src\wrappers.cpp src\symbols.cpp src\det.cpp src\bind.cpp src\snapshot.cpp ^
   src\headless.cpp src\frame.cpp src\print_globals.cpp ^
   gen\import_stubs.cpp ^
   lift\lifted\lifted_update_frame.c lift\lifted\lifted_is_solid.c lift\lifted\lifted_jump_player.c ^
