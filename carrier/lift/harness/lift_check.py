@@ -267,16 +267,39 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--image", default=os.path.join(HERE, "..", "..", "..",
                                                     "assets", "icytower15.exe"))
-    ap.add_argument("--exe", default=os.path.join(HERE, "lift_check.exe"))
-    ap.add_argument("--funcs", default="update_frame,is_solid,jump_player")
+    ap.add_argument("--form", default="lifted", choices=["lifted", "native"],
+                    help="which candidate form to check against ORIGINAL "
+                         "(unicorn): 'lifted' runs harness/lift_check.exe "
+                         "(generated lifted_<f> symbols), 'native' runs "
+                         "harness/native_check.exe (hand-written native_<f> "
+                         "symbols from carrier/native). Only changes the "
+                         "--exe default and the report/print labels below;"
+                         " the vector generation, oracle and diff are "
+                         "identical for both forms (carrier/lift/README.md SS7).")
+    ap.add_argument("--exe", default=None,
+                    help="default: harness/lift_check.exe or "
+                         "harness/native_check.exe, per --form")
+    ap.add_argument("--funcs", default=None,
+                    help="default: update_frame,is_solid,jump_player for "
+                         "--form lifted; update_frame,is_solid for --form "
+                         "native (native_check.exe has no native_jump_player)")
     ap.add_argument("--vectors", type=int, default=0,
                     help="vectors per function (0 = per-function default)")
     ap.add_argument("--seed", type=int, default=20260907)
     ap.add_argument("--fault", default=None,
                     help="negative control: FUNC:VECTOR:BYTE -- flip one bit of "
-                         "the LIFTED result and require the comparator to name it")
+                         "the candidate (LIFTED or NATIVE) result and require "
+                         "the comparator to name it")
     ap.add_argument("--json", default=None)
     args = ap.parse_args()
+
+    if args.exe is None:
+        args.exe = os.path.join(HERE, "native_check.exe" if args.form == "native"
+                                       else "lift_check.exe")
+    if args.funcs is None:
+        args.funcs = ("update_frame,is_solid" if args.form == "native"
+                      else "update_frame,is_solid,jump_player")
+    label = args.form.upper()
 
     guest = build_guest(args.image)
     gpath = os.path.join(HERE, "guest.bin")
@@ -301,8 +324,9 @@ def main():
         r = subprocess.run([args.exe, gpath, vpath, rpath, name],
                            capture_output=True, text=True)
         if r.returncode != 0:
-            print("[%s] LIFTED side failed: %s%s" % (name, r.stdout, r.stderr))
-            report[name] = {"result": "LIFTED_SIDE_FAILED", "detail": r.stderr.strip()}
+            print("[%s] %s side failed: %s%s" % (name, label, r.stdout, r.stderr))
+            report[name] = {"result": "%s_SIDE_FAILED" % label, "form": args.form,
+                            "detail": r.stderr.strip()}
             rc = 1
             continue
         domlen = sum(n for _, n in spec["domain"])
@@ -347,14 +371,15 @@ def main():
                 break
 
         if first_diff is None:
-            print("[%s] EQUAL over %d vectors (%d domain bytes + %s)"
-                  % (name, nvec, domlen, "EAX" if spec["cmp_eax"] else "no return value"))
-            report[name] = {"result": "EQUAL", "vectors": nvec,
+            print("[%s/%s] EQUAL over %d vectors (%d domain bytes + %s)"
+                  % (name, label, nvec, domlen, "EAX" if spec["cmp_eax"] else "no return value"))
+            report[name] = {"result": "EQUAL", "form": args.form, "vectors": nvec,
                             "domain_bytes": domlen,
                             "compared_return_value": spec["cmp_eax"]}
         else:
-            print("[%s] DIFFER at vector %d: %s" % (name, first_diff["vector"], first_diff))
-            report[name] = {"result": "DIFFER", "vectors": nvec, "first": first_diff}
+            print("[%s/%s] DIFFER at vector %d: %s" % (name, label, first_diff["vector"], first_diff))
+            report[name] = {"result": "DIFFER", "form": args.form, "vectors": nvec,
+                            "first": first_diff}
             rc = 1
         if unchanged_violation is not None:
             print("[%s] NOTE: the ORIGINAL modified its 'must be unchanged' domain "

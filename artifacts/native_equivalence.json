@@ -1,0 +1,62 @@
+{
+ "checked": "2026-09-07",
+ "harness": "carrier/lift/harness/lift_check.py --form native (unicorn ORIGINAL vs carrier/lift/harness/native_check.exe)",
+ "image": "icytower15.exe sha256=7570c6b0c7cddf6180d7c421bdc7d7bc1486c47a6d62cc6fde90670f62d4388d",
+ "is_solid": {
+  "compared_return_value": true,
+  "domain_bytes": 772,
+  "domain_names": [
+   "Tmap"
+  ],
+  "form": "native",
+  "negative_control": {
+   "fault": "is_solid:5:3",
+   "note": "one bit of the NATIVE side's vector-5 result flipped by the harness before comparison; the comparator named it exactly",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "Tmap+0x3 (VA 0x00792003)",
+    "byte_index": 3,
+    "original": "0xff",
+    "lifted": "0xfe",
+    "args": [
+     "0x00792000",
+     "0x000000bc",
+     "0x00000010"
+    ]
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ },
+ "seed": 20260907,
+ "update_frame": {
+  "compared_return_value": false,
+  "domain_bytes": 192,
+  "domain_names": [
+   "reward_time",
+   "reward_scale",
+   "Tplayer"
+  ],
+  "form": "native",
+  "negative_control": {
+   "fault": "update_frame:5:3",
+   "note": "one bit of the NATIVE side's vector-5 result flipped by the harness before comparison; the comparator named it exactly",
+   "result": "DIFFER",
+   "first": {
+    "vector": 5,
+    "kind": "comparison domain",
+    "at": "reward_time+0x3 (VA 0x004fec6b)",
+    "byte_index": 3,
+    "original": "0x00",
+    "lifted": "0x01",
+    "args": []
+   },
+   "vectors": 200
+  },
+  "result": "EQUAL",
+  "vectors": 20000
+ }
+}
