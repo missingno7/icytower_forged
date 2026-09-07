@@ -282,7 +282,29 @@ for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --e
 set GCC_SRC_EXTRA=
 for /f "delims=" %%E in ('python gen\scan_src_defs.py --list-build-files gcc --extra-fi extra --prefix "..\src\icytower\\"') do set GCC_SRC_EXTRA=%%E
 
-for %%F in (%GCC_SRC_BASE%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -include pf_bindings_src.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F & exit /b 1)
+rem "in-vivo pass, corpus gates, asset oracle, batch 10 draw_frame" (carrier/
+rem NOTES.md): a src/icytower/*.c file that calls sprintf/printf-family
+rem directly (draw_frame.c's scrollerText formatting - the first GCC-routed
+rem file to do so) hits a THIRD GCC-specific gap neither collision.c nor any
+rem earlier GCC file exposed: this MSYS2 mingw32 GCC's own <stdio.h>
+rem defines __USE_MINGW_ANSI_STDIO=1 by default, which redirects sprintf (and
+rem the rest of the printf family) to MinGW's OWN __mingw_sprintf/
+rem __mingw_vsnprintf implementations (libmingwex.a) instead of plain
+rem msvcrt.dll sprintf - invisible while every object was linked by GCC's own
+rem linker, but this project's FINAL link is `cl`/`link.exe` (MSVC), which
+rem never sees libmingwex.a (only kernel32/user32/psapi are linked - see the
+rem final cl invocation below), so a GCC object compiled with the default
+rem redirect fails there with LNK2019 unresolved external ___mingw_sprintf
+rem (MEASURED: obj_gcc\draw_frame.o -> draw_replay_hud). Fixed the same way
+rem upstream MinGW's own docs recommend for exactly this "linking against a
+rem non-MinGW CRT" case: -D__USE_MINGW_ANSI_STDIO=0 forces the plain
+rem msvcrt-backed sprintf/printf-family GCC's <stdio.h> already declares as a
+rem fallback, which MSVC's link.exe resolves against the standard CRT the
+rem same way it resolves every other libc symbol MSVC-compiled files use.
+rem Added to BOTH GCC compile lines (not just the one file that needs it
+rem today) so a future GCC-routed src/icytower/*.c file that also calls
+rem sprintf/printf never silently re-hits this same gap.
+for %%F in (%GCC_SRC_BASE%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -D__USE_MINGW_ANSI_STDIO=0 -I gen -include pf_bindings_src.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F & exit /b 1)
 rem pf_asset_bindings.h's own `#include "assets.h"` (quoted) resolves under
 rem MSVC's /FI because MSVC's quoted-include search walks UP the #include
 rem stack to the primary source file's own directory (src\icytower) when the
@@ -290,7 +312,7 @@ rem name is not found next to pf_asset_bindings.h itself (gen\) - GCC's
 rem quoted-include search does NOT have that stack-walk (MEASURED: "fatal
 rem error: assets.h: No such file or directory" with only -I gen), so GCC
 rem needs src\icytower on its search path explicitly for this group.
-for %%F in (%GCC_SRC_EXTRA%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -I gen -I ..\src\icytower -include pf_bindings_src.h -include pf_lib_bindings.h -include pf_asset_bindings.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F ^(Allegro/asset-seam group^) & exit /b 1)
+for %%F in (%GCC_SRC_EXTRA%) do %GCC% -m32 -mfpmath=387 -mno-sse2 -O2 -fno-asynchronous-unwind-tables -Wall -D__USE_MINGW_ANSI_STDIO=0 -I gen -I ..\src\icytower -include pf_bindings_src.h -include pf_lib_bindings.h -include pf_asset_bindings.h -c %%F -o obj_gcc\%%~nF.o || (echo FAILED: GCC compile of %%F ^(Allegro/asset-seam group^) & exit /b 1)
 echo OK: GCC x87 objects built: %GCC_SRC%
 
 rem Object lists for the final link, derived from the SAME two file lists
@@ -312,7 +334,21 @@ cl /nologo /Zi /Od /EHsc /std:c++17 /W3 /D_CRT_SECURE_NO_WARNINGS ^
   %MSVC_OBJS% ^
   %GCC_OBJS% ^
   /Fe:carrier.exe /Fo:obj\ ^
-  /link /DYNAMICBASE:NO /FIXED /BASE:0x10000000 /LARGEADDRESSAWARE:NO /SUBSYSTEM:CONSOLE /DEBUG /MAP:obj\carrier.map kernel32.lib user32.lib psapi.lib
+  /link /DYNAMICBASE:NO /FIXED /BASE:0x10000000 /LARGEADDRESSAWARE:NO /SUBSYSTEM:CONSOLE /DEBUG /MAP:obj\carrier.map kernel32.lib user32.lib psapi.lib legacy_stdio_definitions.lib
+rem legacy_stdio_definitions.lib (batch 10, draw_frame.c): VS2015+'s Universal
+rem CRT no longer exports the classic cdecl-decorated `_sprintf`/`_printf`/...
+rem symbol names a GCC/MinGW-compiled object references directly (MSVC-
+rem compiled callers get sprintf/printf as an __inline header wrapper around
+rem the UCRT's own __stdio_common_vfprintf instead, so this only bites an
+rem object built by a DIFFERENT compiler) - MEASURED this pass: draw_frame.o
+rem (the first GCC-routed src/icytower/*.c file to call sprintf() directly,
+rem for its scrollerText formatting) failed the final link with LNK2019
+rem unresolved external _sprintf even after the __USE_MINGW_ANSI_STDIO=0 fix
+rem above got it off __mingw_sprintf and onto the classic name. This is the
+rem well-known, Microsoft-documented fix for exactly that migration gap
+rem (legacy_stdio_definitions.lib re-exports the classic names against the
+rem modern UCRT); added once, for the whole link, since any future GCC- or
+rem MSVC-object needing an old-style CRT symbol name benefits the same way.
 
 if errorlevel 1 (
   echo FAILED: build errors above

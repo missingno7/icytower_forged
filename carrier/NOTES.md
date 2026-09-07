@@ -4675,9 +4675,119 @@ decoder). The other 23 (`sfx15.dat`) are the family-not-loaded SKIPs above.
 - The "data" family's `AAAPAL` PALETTE mismatch is measured but not
   root-caused past "probably entangled with the same BITMAP color-
   conversion machinery" - flagged rather than asserted.
-- `carrier/gen/build_blockers.json` gained one entry, `draw_frame.c`,
-  purely to unblock THIS task's own build against a file that appeared
-  untracked mid-pass from a different, concurrently-running task (its GCC
-  object fails to link, `___mingw_sprintf` unresolved - not this task's
-  file, not investigated further here; remove the entry once that other
-  task finishes it, per this file's own top-level comment).
+- `carrier/gen/build_blockers.json`'s `draw_frame.c` entry (a different,
+  concurrently-running task's then-untracked file) is now RESOLVED - see
+  "In-vivo draw_frame via the frame oracle" below: the file is committed
+  clean, the entry is removed, and the real `___mingw_sprintf` cause is
+  fixed at the carrier-build layer.
+
+## In-vivo draw_frame via the frame oracle (batch 10, 2026-09-08)
+
+`src/icytower/draw_frame.c` (`PROMOTIONS.md` batch 10) went from
+"compile-only, in-vivo-pending" to fully in-vivo verified this pass. Full
+detail (per-workload tables, the process-exit caveat measured on
+`play_itr.txt`, the two generator-gap investigations) is in
+`src/icytower/INVIVO.md`'s own "In-vivo pass, batch 10" section; this is
+the carrier-side summary.
+
+**Build** (`carrier/build.cmd`): `draw_frame.c` is now in the GCC x87
+"extra" group (`scan_src_defs.py --extra-fi`: real `float`/`double` code
+routes it GCC-side; its `asset_bitmap`/`asset_font`/Allegro calls route it
+into the Allegro/asset-seam extra group alongside `draw_buffer.c`/
+`start_reward.c`/`collision.c`). Two real link-layer gaps fixed, both
+GCC-specific and both now guarded for any FUTURE GCC-routed file that hits
+them too, not just this one:
+
+1. `-D__USE_MINGW_ANSI_STDIO=0` added to both GCC compile lines (this MSYS2
+   mingw32 GCC's `<stdio.h>` otherwise redirects `sprintf`/the printf
+   family to MinGW's own `__mingw_sprintf` in `libmingwex.a`, which the
+   FINAL link - `cl`/`link.exe`, linking only `kernel32`/`user32`/`psapi` -
+   never sees; MEASURED: LNK2019 unresolved `___mingw_sprintf` in
+   `draw_replay_hud`, exactly what stalled `draw_frame.c` under the earlier
+   `build_blockers.json` entry).
+2. `legacy_stdio_definitions.lib` added to the final link's library list
+   (VS2015+'s Universal CRT does not export the classic `_sprintf` symbol
+   name a GCC-compiled object references directly - MSVC's own
+   `<stdio.h>` gets it as an inline wrapper instead, so only a
+   different-compiler object ever hits this; the standard, Microsoft-
+   documented fix).
+
+**Generator** (`port_forge/tools/pf_win32_gen_lib_bindings.py`, branch
+`experimental/win32`): added `AL_INLINE_BRANCHING_OR_MATH`, a third class
+of curated Allegro `AL_INLINE` primitive alongside the existing fixed-point
+-math note and `AL_INLINE_VTABLE_DISPATCH` list - `draw_sprite`/
+`rotate_sprite`/`fixtoi`/`ftofix`, each with a real upstream branch or real
+arithmetic (not a bare vtable passthrough), hand-transcribed from
+`allegro/inline/draw.inl`/`fmaths.inl` (both third_party 4.4.1 and 4.4.3.1
+checked, identical) and emitted into `pf_lib_bindings.h` as `#ifndef`-guarded
+`static` helpers + forwarding macros. Regenerated
+(`gen\gen_lib_bindings.py --out gen\pf_lib_bindings.h --types-out
+gen\pf_lib_bindings_types.h --notes-out gen\LIB_BINDINGS_NOTES.md` - the
+project wrapper's zero-argument form writes to `port_forge/tools/` instead
+of `carrier/gen/` because it never injects `--out`/`--types-out`/
+`--notes-out` from `win32_policy.json`; worked around this run by passing
+all three explicitly, left as a real gap in the wrapper for a future pass
+to close). `draw_frame.c`'s own private `#ifndef`-guarded copies of these
+four names now go dead automatically (this header is force-included ahead
+of that file's own text) - no edit to that file.
+
+The `demo->data`/`.cycle_count` member-collision workaround (`draw_frame.c`
+itself, file-scope `#undef` after the force-included headers) was
+investigated against both routes the task named and left AS IS: `data` is
+used bare by `carrier/gen/pf_asset_bindings.h` itself (force-included into
+the same translation unit for the asset-seam calls `draw_frame.c` needs),
+and `cycle_count` is used bare by `src/icytower/timer.c` (already in the
+MSVC build) - the identical shape of the already-documented `stars`/
+`start_reward.c` conflict `MEMBER_ACCESS_COLLISIONS`'s own comment
+describes, just for two names instead of one, so neither a blanket skip
+nor a second member-safe header is safe here without ALSO changing
+`pf_asset_bindings.h`'s own generator (`gen_assets.py`, outside this task's
+named edit targets) to stop needing `data` bare. `draw_frame.c` is
+unmodified.
+
+**Gates** (`gates.ps1`, restoring pristine assets before every launch):
+**G1-G5 all EQUAL** - G1 EQUAL (876 ticks), G2 EQUAL (877 invocations), G3a
+EQUAL (301 rows T=400..699, 602 rows T=400..1000), G3b EQUAL (301
+invocations k=276..576), G4 EQUAL (2293 ticks vs `replays/human_test.digest`),
+G5a EQUAL (157 ticks, itr replayed twice unbound), G5b EQUAL (157 ticks,
+itr all-bound vs `replays/itr_last_game.digest`).
+
+**In-vivo frame oracle** (`--frame-digest-out`, presentation-independent -
+hashes the complete `swap_screen` back buffer `blit_to_screen` receives
+every tick, not just `draw_frame`'s first library call the way the ordinary
+per-invocation sensor would): unbound vs `--bind draw_frame=src`, all three
+scripted workloads.
+
+| workload | frame oracle | per-tick digest | vs stored baseline |
+|---|---|---|---|
+| `replays/human_test.txt` | EQUAL (2381 frame lines) | EQUAL (2293 ticks) | EQUAL, both forms |
+| `newgame.txt` | EQUAL (983 frame lines) | EQUAL (876 ticks) | no stored baseline (batch 9) |
+| `play_itr.txt` | EQUAL on every common line (see caveat) | EQUAL (157 ticks) | EQUAL, both forms |
+
+**`play_itr.txt` caveat (this session/host, not a `draw_frame` finding)**:
+`--run-seconds`'s watchdog fires in the PARENT `carrier.exe`, but the game
+relaunches itself as a child that does not exit on its own once the `.itr`
+playback ends and the idle menu loop takes over - MEASURED: the digest-out
+file reaches its expected, stable content and the process then sits idle
+indefinitely (`gates.ps1`'s own G5 hit this identical hang first,
+independently). Worked around at the test-harness level only (poll the
+digest-out file for size stability, then force-terminate `carrier.exe`);
+never a `carrier/src` change. Because the poll is a real wall-clock race
+against a live idle-menu render loop, and `--bind fn=original` (DR-sensed)
+runs far slower per call than `--bind fn=src`, the two independently-stopped
+runs' raw frame/invocation counts differ in the idle tail (single digits for
+the frame oracle; up to a few hundred thousand extra idle-menu invocations
+for `bind_all.py --fn draw_frame`'s own per-invocation sensor) while staying
+content-EQUAL on every commonly reached record - the per-tick game-global
+digest (the gate that matters, not wall-clock-paced) is unaffected and
+EQUAL both ways.
+
+**Per-invocation fn sensor** (`bind_all.py --fn draw_frame`): EQUAL (2294
+invocations, human_test.txt); EQUAL (877 invocations, newgame.txt); EQUAL
+for the first 44808 common invocations on `play_itr.txt` (0 differences on
+any compared record - the length-only mismatch past that point is the same
+wall-clock artifact the frame-oracle caveat above describes).
+
+**Conclusion**: `draw_frame` is EQUAL in vivo on all three workloads, at
+both the frame-oracle level and the per-tick game-global digest level.
+`src/icytower/INVIVO.md` has the full per-workload detail.

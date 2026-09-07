@@ -30,6 +30,7 @@ extern "C" {
     void __cdecl init_control(void*);
     int __cdecl check_control_key(void*, int);
     int __cdecl draw_buffer(void*, void*, int, int);
+    void __cdecl draw_frame(void*);
     int __cdecl draw_scroller(void*, void*, int, int, int);
     void __cdecl draw_star_field(void*, void*, int, int);
     void __cdecl handle_player_collision_original(int, int);
@@ -204,6 +205,7 @@ static const FnDesc kFns[] = {
     { "init_control", 0x00401790u, 1, false, nullptr, nullptr, (void*)init_control, regions_init_control, 1, 0 },
     { "check_control_key", 0x00401808u, 2, true, nullptr, nullptr, (void*)check_control_key, regions_check_control_key, 1, 0 },
     { "draw_buffer", 0x004191c8u, 4, true, nullptr, nullptr, (void*)draw_buffer, nullptr, 0, -1 },
+    { "draw_frame", 0x0040929cu, 1, false, nullptr, nullptr, (void*)draw_frame, nullptr, 0, -1 },
     { "draw_scroller", 0x0041f0ecu, 5, true, nullptr, nullptr, (void*)draw_scroller, nullptr, 0, -1 },
     { "draw_star_field", 0x0041f340u, 4, false, nullptr, nullptr, (void*)draw_star_field, nullptr, 0, -1 },
     { "handle_player_collision_original", 0x00407e10u, 2, false, nullptr, nullptr, (void*)handle_player_collision_original, nullptr, 0, -1 },

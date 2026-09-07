@@ -445,3 +445,128 @@ collision_old`/`_vector_2`/`_combo`, plus `draw_star_field` already
 counted there) — every one of the 48 generated binding-table rows
 (`carrier/gen/bind_table.inc`) now has an in-vivo verdict recorded
 somewhere in this document.
+
+## In-vivo pass, batch 10 — `draw_frame` via the frame oracle (2026-09-08)
+
+`draw_frame` (`src/icytower/draw_frame.c`, `PROMOTIONS.md` batch 10) is the
+per-frame renderer: ~120 library calls per invocation (blit/draw_sprite/
+draw_256_sprite/textprintf_ex/...), so `bind_all.py`'s ordinary per-invocation
+sensor (first-call args/pre/post only) covers roughly 15% of what one call
+actually does — that file's own header comment says so. The AUTHORITATIVE
+check is the in-vivo **frame oracle** `carrier/NOTES.md` "Headless, frame
+oracle" already built: a breakpoint at `blit_to_screen`'s entry hashes the
+COMPLETE rendered frame (`swap_screen`, the game's own off-screen back
+buffer `draw_frame()` has just finished painting) every tick
+(`--frame-digest-out`), which is presentation-independent and sees every
+pixel `draw_frame` touched, not just its first library call.
+
+### 0. Carrier build
+
+`draw_frame.c` had picked up a stale `build_blockers.json` entry from a
+different, concurrently-running task earlier in this project's history (the
+entry's own text: "not owned by this task" / "obj_gcc\draw_frame.o ->
+draw_replay_hud, ___mingw_sprintf unresolved") — the file is now committed
+clean (`src/`'s own batch 10), so the block was removed and the real cause
+fixed at the carrier-build layer (`carrier/build.cmd`, not the file):
+
+1. This MSYS2 mingw32 GCC's `<stdio.h>` defaults `__USE_MINGW_ANSI_STDIO=1`,
+   redirecting `sprintf` (draw_frame.c's `scrollerText` formatting — the
+   first GCC-routed file to call it directly) to MinGW's own
+   `__mingw_sprintf` (`libmingwex.a`), which the FINAL link (`cl`/`link.exe`,
+   linking only `kernel32`/`user32`/`psapi`) never sees. Fixed with
+   `-D__USE_MINGW_ANSI_STDIO=0` on both GCC compile lines, landing back on
+   the classic `_sprintf` symbol name.
+2. That classic name is itself not exported by VS2022's Universal CRT
+   (only by an MSVC-compiled call site's own `<stdio.h>` inline wrapper) —
+   the well-known "migrating a legacy-CRT object" gap, fixed by adding
+   `legacy_stdio_definitions.lib` to the final link line.
+
+Two generator gaps the file itself already worked around (`#ifndef`-guarded,
+documented in its own header) were investigated for a real fix, not edited
+in the file (out of this task's scope either way):
+
+- `draw_sprite`/`rotate_sprite`/`fixtoi`/`ftofix` — real Allegro `AL_INLINE`
+  bodies with a branch or arithmetic of their own (not the bare vtable
+  passthrough `pf_lib_bindings.h` already curates for 23 other names).
+  **Fixed in the generator**: `port_forge/tools/pf_win32_gen_lib_bindings.py`
+  gained a new curated list, `AL_INLINE_BRANCHING_OR_MATH`, emitting the
+  same four upstream-faithful bodies (hand-transcribed from
+  `allegro/inline/draw.inl`/`fmaths.inl`, both third_party 4.4.1 and 4.4.3.1
+  checked) as `#ifndef`-guarded `static` helpers + forwarding macros into
+  `pf_lib_bindings.h` itself. Regenerated; `draw_frame.c`'s own `#ifndef`
+  guards now see these already defined (force-included ahead of its own
+  text) and its private copies become dead code automatically, with no edit
+  to that file.
+- `demo->data`/`.cycle_count` member-access collisions with the top-level
+  `data`/`cycle_count` globals — investigated against both routes the task
+  named. Neither is safe to apply globally: `cycle_count` is used BARE by
+  `src/icytower/timer.c` (`cycle_counter(void) { cycle_count++; }`, already
+  in the MSVC build), and `data` is used BARE by `carrier/gen/pf_asset_bindings.h`
+  itself (`if (!strcmp(family,"data")) return data;` — force-included into
+  the SAME translation unit as `draw_frame.c` for the asset-seam calls it
+  needs). Skipping either name from `MEMBER_ACCESS_COLLISIONS` (or a
+  second, `stars`-style member-safe header) would fix `draw_frame.c` and
+  break one of those two files in the same build — exactly the already-
+  documented `stars`/`start_reward.c` shape of this bug, just doubled up.
+  Left as `draw_frame.c`'s own in-file `#undef` (correct and necessary,
+  not merely convenient: it is the only place in the translation unit that
+  can un-define these two names for the REST of one file's own text
+  without touching either of the other two consumers) — not removed, not
+  edited.
+
+Gates after these fixes (`carrier/scripts/gates.ps1`, restoring pristine
+assets before every launch): **G1-G5 all EQUAL** (G1 876 ticks; G2 877
+invocations; G3a EQUAL 301 rows T=400..699 / EQUAL 602 rows T=400..1000; G3b
+EQUAL 301 invocations k=276..576; G4 EQUAL 2293 ticks vs
+`replays/human_test.digest`; G5a EQUAL 157 ticks itr-replayed-twice; G5b
+EQUAL 157 ticks itr all-bound vs `replays/itr_last_game.digest`).
+
+### 1. Frame oracle: unbound vs `draw_frame=src`, all three workloads
+
+Per workload: one unbound run (`draw_frame` at its original address) and
+one `--bind draw_frame=src` run, both with `--frame-digest-out` (every
+tick) AND the ordinary `--digest-out` (per-tick game-global digest).
+
+| workload | frame oracle (unbound vs src) | ticks (unbound vs src) | ticks vs stored baseline |
+|---|---|---|---|
+| `replays/human_test.txt` (2293 ticks) | **EQUAL (2381 frame lines)** | **EQUAL (2293 ticks)** | **EQUAL**, both forms, vs `replays/human_test.digest` |
+| `carrier/scripts/newgame.txt` (876 ticks) | **EQUAL (983 frame lines)** | **EQUAL (876 ticks)** | no stored baseline (per batch 9); unbound-vs-src is the check |
+| `carrier/scripts/play_itr.txt` (157 ticks) | **EQUAL on every common line** (see note) | **EQUAL (157 ticks)** | **EQUAL**, both forms, vs `replays/itr_last_game.digest` |
+
+**`play_itr.txt` process-exit note** (this session, this host, not a
+`draw_frame` finding): `--run-seconds`'s watchdog fires in the PARENT
+`carrier.exe`, but the game relaunches itself as a child process, and that
+child does not exit on its own once `.itr` playback ends and the menu's
+idle loop takes over — MEASURED: the digest-out file reaches its expected,
+stable content (157 ticks, matching `replays/itr_last_game.digest`
+byte-for-byte) and the process then sits idle indefinitely rather than
+exiting, in every run this pass (`gates.ps1`'s own G5 hit the identical
+hang first, independently of this file). Worked around at the test-harness
+level only (no `carrier/src` change): poll the digest-out file for size
+stability, then force-terminate `carrier.exe`. Because this poll is a real
+wall-clock race against a live idle-menu render loop, and the DR-sensed
+`--bind draw_frame=original` form runs dramatically slower per call than
+the compiled `--bind draw_frame=src` form, the two independently-stopped
+runs' RAW FRAME-BLIT counts differ by anywhere from single digits to (for
+the per-invocation fn-sensor below) low hundred-thousands of extra idle-menu
+frames — every one of which is still **content-EQUAL on every commonly
+reached line**; only the trailing length differs, and only in the idle
+tail past the last real gameplay tick. The per-tick game-global digest
+(157/157, deterministic, not wall-clock-paced) is unaffected and is the
+gate that matters; it is EQUAL against the stored baseline for both forms.
+
+### 2. Per-invocation fn sensor (`carrier/scripts/bind_all.py --fn draw_frame`)
+
+| workload | verdict |
+|---|---|
+| `replays/human_test.txt` | **EQUAL (2294 invocations)** |
+| `carrier/scripts/newgame.txt` | **EQUAL (877 invocations)** |
+| `carrier/scripts/play_itr.txt` | **EQUAL for the first 44808 common invocations** (0 differences on any compared record); the ORIGINAL-form (DR-sensed) run's own poll-stop landed at 44808 idle-menu-tail invocations, the `src`-form run's landed later (293900) for the same reason as the frame-oracle note above — a wall-clock stopping-point artifact of this session's `play_itr.txt` process-exit issue, not a content divergence |
+
+### Conclusion
+
+`draw_frame` is **EQUAL** in vivo on all three of this project's scripted
+workloads, at both the frame-oracle level (every pixel `blit_to_screen`
+receives) and the per-tick game-global digest level (the value that
+actually gates correctness). Recorded here rather than left "compile-only"
+as `PROMOTIONS.md` batch 10 had it pending.

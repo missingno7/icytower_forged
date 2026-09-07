@@ -2,7 +2,7 @@
  * Produced by tools/pf_win32_gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json (allow-list: summary.allegro_family_api_names + shared_globals.lib_globals_touched_by_game.globals)
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model, reused from gen_interop.py)
- * Generated: 2026-09-07 21:05:01 UTC
+ * Generated: 2026-09-07 23:19:13 UTC
  *
  * win32_pilot.md SS7b "NEXT": the library-call layer game-scope
  * pf_bindings.h does not cover. One #define per allow-listed name,
@@ -458,6 +458,69 @@ typedef void (__cdecl *PFN_LIB_vsync)(void);
 #define draw_lit_sprite(a0, a1, a2, a3, a4) ((a0)->vtable->draw_lit_sprite((a0), (a1), (a2), (a3), (a4)))
 /* draw_gouraud_sprite  GFX_VTABLE slot=draw_gouraud_sprite  argc=8  (no VA -- inlined vtable dispatch, not a call target) */
 #define draw_gouraud_sprite(a0, a1, a2, a3, a4, a5, a6, a7) ((a0)->vtable->draw_gouraud_sprite((a0), (a1), (a2), (a3), (a4), (a5), (a6), (a7)))
+
+/* ------------------------------------------------------------------ */
+/* AL_INLINE branching/math primitives (4): a real upstream branch or */
+/* real arithmetic, not a bare vtable passthrough -- see this          */
+/* generator's AL_INLINE_BRANCHING_OR_MATH comment for the upstream    */
+/* draw.inl/fmaths.inl bodies reproduced below and why each is NOT in  */
+/* the simpler AL_INLINE_VTABLE_DISPATCH list above. Each name is      */
+/* individually #ifndef-guarded: a project file that already defines   */
+/* one of these keeps its own definition; real <allegro.h> is never    */
+/* affected (this whole header is skipped in that world).             */
+/* ------------------------------------------------------------------ */
+
+#include <errno.h>  /* ERANGE -- ftofix's own out-of-range guard, below */
+
+#ifndef fixtoi
+/* fixfloor (fmaths.inl:158), fixtoi's own private helper -- never a
+ * public macro, so it needs no collision check of its own. */
+static __inline int pf_lib_fixfloor(fixed x)
+{
+    if (x >= 0)
+        return (x >> 16);
+    return ~((~x) >> 16);
+}
+#endif
+
+#ifndef draw_sprite
+static __inline void pf_lib_draw_sprite(BITMAP *bmp, BITMAP *sprite, int x, int y)
+{
+    if (sprite->vtable->color_depth == 8)
+        bmp->vtable->draw_256_sprite(bmp, sprite, x, y);
+    else
+        bmp->vtable->draw_sprite(bmp, sprite, x, y);
+}
+#define draw_sprite(b, s, x, y) pf_lib_draw_sprite((b), (s), (x), (y))
+#endif
+
+#ifndef rotate_sprite
+static __inline void pf_lib_rotate_sprite(BITMAP *bmp, BITMAP *sprite, int x, int y, fixed angle)
+{
+    bmp->vtable->pivot_scaled_sprite_flip(bmp, sprite,
+        (x << 16) + (sprite->w << 15), (y << 16) + (sprite->h << 15),
+        sprite->w << 15, sprite->h << 15, angle, 0x10000, 0);
+}
+#define rotate_sprite(b, s, x, y, a) pf_lib_rotate_sprite((b), (s), (x), (y), (a))
+#endif
+
+#ifndef fixtoi
+static __inline int pf_lib_fixtoi(fixed x)
+{
+    return pf_lib_fixfloor(x) + ((x & 0x8000) >> 15);
+}
+#define fixtoi(x) pf_lib_fixtoi((x))
+#endif
+
+#ifndef ftofix
+static __inline fixed pf_lib_ftofix(double x)
+{
+    if (x > 32767.0) { *allegro_errno = ERANGE; return 0x7FFFFFFF; }
+    if (x < -32767.0) { *allegro_errno = ERANGE; return -0x7FFFFFFF; }
+    return (fixed)(x * 65536.0 + (x < 0 ? -0.5 : 0.5));
+}
+#define ftofix(x) pf_lib_ftofix((x))
+#endif
 
 /* ------------------------------------------------------------------ */
 /* constants (150): KEY_*, GFX_*, DRAW_MODE_*, MASK_COLOR_* -- hand-    */

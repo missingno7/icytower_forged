@@ -26,6 +26,9 @@ No other source of names is read; nothing wider than these two lists is ever bou
 | AL_INLINE vtable-dispatch macros curated (gfx.inl/draw.inl) | 23 |
 | AL_INLINE vtable-dispatch macros emitted | 23 |
 | AL_INLINE vtable-dispatch macros skipped (collision) | 0 |
+| AL_INLINE branching/math primitives curated (draw.inl/fmaths.inl) | 4 |
+| AL_INLINE branching/math primitives emitted | 4 |
+| AL_INLINE branching/math primitives skipped (collision) | 0 |
 
 ## Name -> address mapping rule
 Every allow-list name carries the disassembly/COFF spelling: the upstream C identifier plus MinGW's one leading cdecl underscore (`blit` -> `_blit`; an already-underscored upstream name doubles up, `_win_hcursor` -> `__win_hcursor`). Stripping exactly one leading underscore and looking the result up as a DWARF `DW_AT_name` in the scope=all model resolved **all 126 names uniquely** (0 unresolved, 0 ambiguous) -- verified this run, not assumed; the generator aborts (exit 1) if that ever stops being true.
@@ -37,6 +40,11 @@ Every allow-list name carries the disassembly/COFF spelling: the upstream C iden
 A second, DIFFERENT class of "inline function" from the fixed-point math above: `rectfill`/`putpixel`/... (`AL_INLINE_VTABLE_DISPATCH`, 23 curated names) are also `static inline` upstream, but their body is nothing more than `ASSERT(bmp)` plus one call through `bmp->vtable-><slot>(...)` with every argument passed through unchanged -- confirmed by hand-reading `allegro/inline/{gfx,draw}.inl` end to end (not scanned: there is no DWARF or call-edge evidence for an inline body's CONTENT, only for whether a name has an out-of-line callee at all). Because that body has no branch, rounding, or extra arithmetic to reproduce, it can be emitted as a macro with the same confidence as an ordinary VA binding, unlike a name such as `draw_sprite` (branches on color depth) that this generator deliberately leaves out of the curated list.
 
 **23 emitted, 0 skipped** (collision with a reserved CRT/Windows identifier, an existing game-scope name, or an allow-list VA binding -- see LIB_BINDINGS_NOTES.md's own "Name collisions" counts for whether any of those applied this run). Emitted only into `pf_lib_bindings.h` (the carrier-active world) -- `allegro_api.h`'s declare-only branches need no equivalent: real upstream Allegro (the `ICYTOWER_UPSTREAM_ALLEGRO`-defined world) already provides these as its own inline macros, and no project using this generator currently compiles a file that calls one of these names in the third, neither-guard-defined declare-only world.
+
+## AL_INLINE branching/math primitives
+A third class, distinct from both sections above: `draw_sprite`, `rotate_sprite`, `fixtoi`, `ftofix` (curated in `AL_INLINE_BRANCHING_OR_MATH`) are also `static inline` upstream, but unlike the vtable-dispatch names their body has a REAL branch (`draw_sprite`: 8bpp vs. not) or REAL arithmetic (`rotate_sprite`'s own fixed-point centering; `fixtoi`/`ftofix`'s own fixed<->int/double conversions, no vtable call at all) that has to be reproduced, not just redirected. Hand-transcribed from `allegro/inline/draw.inl` and `allegro/inline/fmaths.inl` (both third_party/allegro-4.4.1 and -4.4.3.1 checked, identical), each emitted as a `static` helper function plus a `#ifndef`-guarded forwarding macro -- see this generator's `AL_INLINE_BRANCHING_OR_MATH` module comment for the exact upstream line numbers and the per-name reasoning.
+
+**4 emitted, 0 skipped** (same three collision classes as the vtable-dispatch macros above). First closed for icytower_forged's own `src/icytower/draw_frame.c` (PROMOTIONS.md batch 10), which until now carried a private, `#ifndef`-guarded copy of exactly these four names -- this header's own `#define`s now win there automatically (force-included ahead of that file's own text), with no edit to that file.
 
 ## Type coverage
 `it_types.h` (game scope, already generated) already reaches 179 named type entities; the allow-list reaches 57, of which 34 were already in that set (BITMAP, FONT, RGB, SAMPLE, DATAFILE, PACKFILE, MIDI, PALETTE, `fixed`, ...) and **23 are new**, emitted into `pf_lib_bindings_types.h` / `allegro_api.h`: GFX_DRIVER, GFX_MODE, GFX_MODE_LIST, JOYSTICK_AXIS_INFO, JOYSTICK_BUTTON_INFO, JOYSTICK_INFO, JOYSTICK_STICK_INFO, SYSTEM_DRIVER, _DRIVER_INFO.
