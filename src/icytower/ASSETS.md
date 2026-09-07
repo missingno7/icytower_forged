@@ -502,21 +502,108 @@ the strongest evidence in this document: not "the code looks right" but
   ```
 
   Both empirical questions this section used to leave open are now
-  answered, and neither matched the guess: **`set_color_conversion` is
-  never touched before the datafiles load** in a real carrier run — Allegro's
-  default `COLORCONV_TOTAL` stays on — and the guest's own `set_gfx_mode`
-  installs a real **32bpp** screen, so every BITMAP object gets silently
-  up-converted from its native on-disk depth (MEASURED: `BGTILE`, 16bpp on
-  disk, reads back `vtable->color_depth == 32` inside the running carrier)
-  the moment `init_game()` loads `data.dat` — before `--dump-assets` or any
-  game code ever sees the object. This is not a `_rgb_shift_*` shift-
-  convention difference (this section's original guess) but a full depth
-  conversion, and it is a genuine, correctly-measured fact about how the
-  real game runs, not a defect in either serialization. "The carrier and
-  the standalone port read the same bytes" is therefore true at the level
-  that matters for gameplay (same file, same decoder, same pixel values,
-  losslessly up-sampled) but not at the raw-stored-byte level this
-  section's own canonical serialization checks.
+  answered, and neither matched the guess. Precisely, from
+  `artifacts/disasm.txt`'s own `init_game()` disassembly (VA `0x40e7dc`):
+  `set_color_conversion` IS touched, twice, both before any datafile
+  loads — `0x40edfe: set_color_conversion(0)` (`COLORCONV_NONE`) right
+  before `load_datafile("data/loading.dat")` at `0x40ee16` (the ephemeral,
+  never-kept splash-screen copy), then `0x40f199:
+  set_color_conversion(0xffffff)` (`COLORCONV_TOTAL`) right before the
+  persistent `data` global loads via `load_datafile_callback` at `0x40f1be`
+  — and it is never turned back off anywhere in `init_game()`'s own range,
+  nor (per a full-binary grep of every `set_color_conversion` call site) in
+  any code the recorded gates' scripted input ever reaches before the first
+  safepoint. So by the time `data.dat` (and, later, `sfx15.dat` at
+  `0x40f96f`) loads, `COLORCONV_TOTAL` is active, and the guest's own
+  `set_gfx_mode` installs a real **32bpp** screen — every BITMAP object from
+  that point on gets silently up-converted from its native on-disk depth
+  (MEASURED: `BGTILE`, 16bpp on disk, reads back `vtable->color_depth == 32`
+  inside the running carrier) the moment `init_game()` loads `data.dat` —
+  before `--dump-assets` or any game code ever sees the object. This is not
+  a `_rgb_shift_*` shift-convention difference (this section's original
+  guess) but a full depth conversion, and it is a genuine,
+  correctly-measured fact about how the real game runs, not a defect in
+  either serialization. "The carrier and the standalone port read the same
+  bytes" is therefore true at the level that matters for gameplay (same
+  file, same decoder, same pixel values, losslessly up-sampled) but not at
+  the raw-stored-byte level this section's own canonical serialization
+  checks.
+
+  **Closed, 2026-09-08 (this pass): `src/build/asset_oracle.c`'s `main()`
+  reconfigured to match** — `set_color_depth(32)` + a real 32bpp
+  `set_gfx_mode` + `set_color_conversion(COLORCONV_TOTAL)` instead of the
+  original 16bpp/`COLORCONV_NONE` setup (that ORIGINAL configuration is
+  still valid and still documented in `asset_oracle.c`'s own header comment
+  — it answers "do the extracted files losslessly describe the on-disk
+  bytes", a different, already-closed question; this is a SECOND run,
+  under different conditions, answering THIS section's question instead).
+  `assets_standalone.c` has no per-family special-casing (every one of the
+  7 datafiles loads through the identical lazy path), so setting this
+  globally, once, at the top of `main()`, uniformly reproduces the
+  carrier's own measured behaviour for every family, not just `data`. Real
+  build (mingw32 MSYS2, third_party/BUILD.md's toolchain), real run against
+  `assets/`, diffed by id against the carrier's own stored
+  `--dump-assets` output (`artifacts_batch9/carrier_assets_final.txt`, 257
+  lines):
+
+  ```
+  FONT:    5 / 5   EQUAL (unchanged)
+  info:    6 / 6   EQUAL (unchanged; 7th is sfx15.dat's own GrabberInfo, SKIP)
+  PALETTE: 5 / 6   EQUAL (unchanged — see below, not a colour-conversion issue)
+  BITMAP:  185 / 186 EQUAL (was 0 / 186) — only "loading" family's FLD_LOGO
+                     (this project's one 8bpp-on-disk BITMAP) still differs
+  ```
+
+  **PALETTE's "data" family AAAPAL mismatch is NOT a colour-conversion
+  issue** — switching this oracle from 16bpp/`COLORCONV_NONE` to
+  32bpp/`COLORCONV_TOTAL` changed zero PALETTE hashes (all 6 stayed exactly
+  what they were before), consistent with `PALETTE` being a raw
+  `load_data_object()` byte copy with no depth-dependent transform (already
+  documented above). Investigated instead by disassembly: the only place
+  `artifacts/disasm.txt` shows any code touching `data[0].dat` (the "data"
+  family's own AAAPAL, object index 0) at all is `select_palette(data[0].dat)`
+  at VA `0x40f928` (`init_game`, right after `data.dat` finishes loading,
+  right before `sfx15.dat` loads) — and `select_palette` itself (VA
+  `0x44df24`) is **confirmed read-only w.r.t. its argument** by direct
+  disassembly: it only reads `r`/`g`/`b` bytes out of the passed palette to
+  build Allegro's OWN internal colour-conversion lookup tables
+  (`_palette_color8` and friends); it never writes back into the source
+  struct. This rules out "the game mutates its own AAAPAL in place" as the
+  cause. The remaining, best-supported explanation: "data" is the ONE
+  family bound zero-copy to the game's own persistent, continuously-live
+  global (`carrier/gen/pf_asset_bindings.h`) — the SAME memory the game
+  itself has been reading for the whole session up to the first safepoint —
+  while the other 5 families (including "loading") are each a fresh,
+  private copy the CARRIER's own binding lazily loads on first request,
+  never touched by the game's own code at all. Whatever differs about
+  "data"'s AAAPAL is tied to it being the game's own long-lived in-process
+  copy, not to this file's load-time configuration; going further needs
+  live memory inspection of a running carrier process, out of scope for a
+  standalone-only file.
+
+  **FLD_LOGO (the one remaining BITMAP mismatch), diagnosed with a
+  temporary debug print (added, used, and reverted this pass — not part of
+  the committed file): this oracle DOES convert it** — `bpp=32, w=401,
+  h=210`, real (non-garbage) RGB bytes in its first row, proving Allegro's
+  own `load_datafile()` successfully resolved "loading" family's OWN AAAPAL
+  for the conversion in THIS process. The likely reason it still differs
+  from the carrier's hash: `select_palette()` sets GLOBAL, mutable,
+  process-wide state — "the currently selected palette" used for an 8bpp
+  object's load-time colour conversion is whichever palette some EARLIER
+  `select_palette()` call left active, not necessarily the one belonging to
+  the file being loaded right now. In a fresh run of this oracle,
+  "loading" family's own lazy load is the first thing that ever selects a
+  palette, so FLD_LOGO converts against loading's own AAAPAL. In a real
+  carrier run, `init_game()` has already called `select_palette(data[0].dat)`
+  (VA `0x40f928`) long before the carrier's own `pf_asset_bindings.h` ever
+  lazily loads "loading" family (on-demand, at/after the first
+  `--dump-assets` safepoint) — if Allegro's `load_datafile()` does not
+  itself re-select a fresh palette per new file (unconfirmed either way
+  without live tracing), FLD_LOGO would convert against `data`'s palette
+  instead of its own, producing different pixel values. This traces back to
+  the SAME kind of global, order-dependent `select_palette()` state as the
+  PALETTE finding above — consistent with it, though not independent proof
+  of it, and the same live-carrier-tracing gap closes both.
 
   A second, real, and independently confirmed environment fact: the
   persistent `sfx` global stays **NULL** in a `--det`/headless carrier run
