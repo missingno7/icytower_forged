@@ -38,7 +38,7 @@ BANNED_IDENT_RE = re.compile(
     r'(?:PF_[A-Za-z0-9_]*|pf_rt|pf_x87_t|pf_bindings[A-Za-z0-9_]*'
     r'|pf_harness[A-Za-z0-9_]*|pf_lift[A-Za-z0-9_]*|pf_import[A-Za-z0-9_]*'
     r'|pf_on_[A-Za-z0-9_]*|IT_G_[A-Za-z0-9_]*|IT_F_[A-Za-z0-9_]*'
-    r'|PFN_[A-Za-z0-9_]*|lifted_[A-Za-z0-9_]*)')[A-Za-z0-9_]*')
+    r'|PFN_[A-Za-z0-9_]*|lifted_[A-Za-z0-9_]*)')
 ASM_RE = re.compile(r'\b(?:__asm__|__asm|_asm|asm)\b')
 COMMENT_RE = re.compile(r'/\*.*?\*/|//[^\n]*', re.S)
 
