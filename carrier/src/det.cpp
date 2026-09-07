@@ -214,6 +214,10 @@ static LONGLONG det_now_ms() {
 }
 static int det_current_tick() { return (int)(det_now_ms() / 20); }
 
+// Public alias (det.hpp) - bind.cpp keys its per-invocation records on the
+// same T the per-tick digest lines use.
+int det_tick() { return det_current_tick(); }
+
 // ---------------------------------------------------------------------
 // B. Input script
 // ---------------------------------------------------------------------
@@ -542,6 +546,30 @@ static int register_breakpoint(DWORD_PTR va, void (*cb)(CONTEXT*)) {
     return g_bp_count++;
 }
 
+// Milestones 11-12 (bind.cpp): the same table, from a second consumer. See
+// det.hpp for the slot-budget rationale.
+int det_register_breakpoint(DWORD_PTR va, void (*cb)(CONTEXT*)) { return register_breakpoint(va, cb); }
+
+void det_ctx_arm_slot(CONTEXT* ctx, int slot, DWORD_PTR va) {
+    if (slot < 0 || slot > 3) return;
+    g_bp[slot].va = va;
+    DWORD* drs[4] = {&ctx->Dr0, &ctx->Dr1, &ctx->Dr2, &ctx->Dr3};
+    *drs[slot] = (DWORD)va;
+    ctx->Dr7 |= (1u << (slot * 2));   // Ln local-enable; RW/LEN stay 0 = execute, 1 byte
+    // NtContinue only reloads DR0-DR7 when the context it is handed claims
+    // to carry them; the exception context we were given may not.
+    ctx->ContextFlags |= CONTEXT_DEBUG_REGISTERS;
+}
+
+void det_ctx_disarm_slot(CONTEXT* ctx, int slot) {
+    if (slot < 0 || slot > 3) return;
+    g_bp[slot].va = 0;
+    DWORD* drs[4] = {&ctx->Dr0, &ctx->Dr1, &ctx->Dr2, &ctx->Dr3};
+    *drs[slot] = 0;
+    ctx->Dr7 &= ~(1u << (slot * 2));
+    ctx->ContextFlags |= CONTEXT_DEBUG_REGISTERS;
+}
+
 // MEASURED (carrier/NOTES.md "Milestones 5-7", two documented attempts):
 // hashing the FULL .data+.bss range never converges to equal across two
 // --det runs, even with the deterministic heap arena active. Byte-diffing
@@ -691,6 +719,7 @@ void det_arm_thread(HANDLE thread) {
     }
     DWORD* drs[4] = {&ctx.Dr0, &ctx.Dr1, &ctx.Dr2, &ctx.Dr3};
     for (int i = 0; i < g_bp_count; ++i) {
+        if (g_bp[i].va == 0) continue; // slot registered but armed later from a VEH callback (det_ctx_arm_slot)
         *drs[i] = (DWORD)g_bp[i].va;
         ctx.Dr7 |= (1u << (i * 2)); // Li local-enable bit (L0=bit0, L1=bit2, ...); RW/LEN bits stay 0 (execute, 1 byte)
     }

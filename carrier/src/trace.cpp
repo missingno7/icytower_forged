@@ -7,6 +7,7 @@
 #include "import_types.hpp"
 #include "symbols.hpp"
 #include "det.hpp" // report.json: input_policy / real_key_violations (see det_input_policy_name/det_real_key_violations)
+#include "bind.hpp" // report.json: the milestone 11-12 migration map (bind_report_json)
 
 #define PF_MAX_THREADS 32
 
@@ -133,8 +134,13 @@ void trace_write_report(const char* report_path) {
         fprintf(stderr, "trace_write_report: could not open '%s'\n", report_path);
         return;
     }
-    fprintf(f, "{\n  \"input_policy\": \"%s\",\n  \"real_key_violations\": %ld,\n  \"imports\": [\n",
+    fprintf(f, "{\n  \"input_policy\": \"%s\",\n  \"real_key_violations\": %ld,\n",
             det_input_policy_name(), det_real_key_violations());
+    // Milestones 11-12 migration map (win32_pilot.md SS8a). Emits nothing at
+    // all when no function was bound or sensed, so the report shape of every
+    // pre-milestone-11 run is unchanged.
+    bind_report_json(f);
+    fprintf(f, "  \"imports\": [\n");
     bool first = true;
     for (int id = 0; id < kNumImports && id < PF_MAX_IMPORTS; ++id) {
         long c = g_call_count[id];

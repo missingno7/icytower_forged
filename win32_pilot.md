@@ -432,9 +432,9 @@ vivo; the replay comparison verifies it after.
 | 9 | inspection/tracing from a snapshot | pending |
 | 9a | presentation-independent frame oracle (digest of the game's back buffer at `blit_to_screen`) and headless run (Allegro GDI driver into a hidden window, no sound device) | planned; feasibility: the game selects Allegro's config via `set_config_file` at 0x40f03a, so the driver choice can be overridden by an argument sensor at `set_gfx_mode` or `override_config_file`; a window handle is still required by Win32 (hidden, not absent) |
 | 10 | pick one small exercised game function | pending |
-| 11a | LIFTED form: generate C from its bytes, bind it, verify replay-equal | pending |
-| 11b | NATIVE form: readable C, bind it, verify replay-equal | pending |
-| 12 | automatic comparison of all three forms from equivalent state, with negative control | pending |
+| 11a | LIFTED form: generate C from its bytes, bind it, verify replay-equal | done — `update_frame` and `jump_player` bound at their original VAs and replay-equal to ORIGINAL (per-invocation and per-tick); `carrier/NOTES.md` "Milestones 11-12" |
+| 11b | NATIVE form: readable C, bind it, verify replay-equal | done — `update_frame` bound and replay-equal; `is_solid`'s NATIVE form binds but this workload never reaches it (gap recorded) |
+| 12 | automatic comparison of all three forms from equivalent state, with negative control | done — `carrier/src/bind.cpp` + `carrier/scripts/compare_fn_digests.py`: ORIGINAL/LIFTED/NATIVE all EQUAL (877 invocations, 876 ticks); `--fault-inject update_frame:k=300` is named as `k=300 field=post` and nothing earlier |
 
 ## 8a. Migration map (metrics reported by the carrier)
 

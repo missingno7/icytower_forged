@@ -64,6 +64,37 @@ void det_arm_main_thread();
 // there, not the main thread - see det.cpp).
 void det_arm_thread(HANDLE thread);
 
+// ---------------------------------------------------------------------
+// Shared hardware-breakpoint table (milestones 11-12, bind.cpp).
+//
+// The {VA, callback} table below Dr0-Dr3 was always generic (carrier/NOTES.md
+// "Milestones 5-7" part C); these three functions are the only thing that
+// was missing for a second consumer. Slot order is registration order:
+// det_init registers the tick safepoint first (DR0) and, when the input
+// policy is not Real, the keyboard neutralization second (DR1), so a replay
+// run leaves DR2/DR3 for bind.cpp's ORIGINAL-form entry/return sensing.
+// ---------------------------------------------------------------------
+
+// Adds a slot. Returns its index (0..3, i.e. which DrN it will occupy) or
+// -1 if all four are taken. Must be called BEFORE det_arm_main_thread().
+// `va` may be 0 for a slot that is armed later, from inside a callback,
+// with det_ctx_arm_slot.
+int det_register_breakpoint(DWORD_PTR va, void (*cb)(CONTEXT*));
+
+// Arms / disarms one slot by editing the CONTEXT a VEH callback is about to
+// resume. This is the only way to move a breakpoint from inside the
+// breakpoint's own handler: a thread cannot SetThreadContext itself, but
+// the context returned with EXCEPTION_CONTINUE_EXECUTION is applied
+// wholesale, debug registers included. Call only from a callback invoked by
+// det_veh_handler.
+void det_ctx_arm_slot(CONTEXT* ctx, int slot, DWORD_PTR va);
+void det_ctx_disarm_slot(CONTEXT* ctx, int slot);
+
+// The carrier tick index T (virtual_ms/20 in --det). Same value the
+// per-tick digest lines are keyed by, so a per-invocation record and a
+// per-tick digest can be lined up.
+int det_tick();
+
 // The vectored exception handler for our hardware breakpoints. Install with
 // AddVectoredExceptionHandler(1, det_veh_handler) AFTER main.cpp's own
 // veh_handler is registered, so this one runs first (last-registered-first

@@ -13,6 +13,7 @@
 #include "symbols.hpp"
 #include "import_types.hpp"
 #include "det.hpp"
+#include "bind.hpp"
 
 // KNOWN (measured, see carrier/NOTES.md): the guest's own CRT startup
 // (___mingw_CRTStartup -> __getmainargs, both inside the REAL msvcrt.dll we
@@ -62,6 +63,7 @@ static void carrier_shutdown(const char* reason) {
     trace_write_report(g_report_path);
     trace_close();
     det_shutdown();
+    bind_shutdown();
     fflush(stderr);
 }
 
@@ -185,6 +187,12 @@ struct Options {
     // InputPolicy (never left "unset") by the end of parse_args/options_from_env.
     InputPolicy input_policy;
     bool inject_real_test; // --inject-real-test: hidden diagnostic, see det.hpp
+    // Milestones 11-12 (bind.hpp) - binding table, entry patch, per-invocation
+    // sensor. All four are inert when empty; see win32_pilot.md SS3/SS7/SS8a.
+    char bind_spec[512];     // --bind name=lifted|native|original[,...]
+    char bind_file[MAX_PATH];// --bind-file PATH (same syntax, one per line)
+    char fn_digest_out[MAX_PATH]; // --fn-digest-out PATH
+    char fault_inject[128];  // --fault-inject name:k=N (negative control)
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -290,6 +298,10 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->digest_out[0] = 0;
     o->stop_at_tick = 0;
     o->inject_real_test = false;
+    o->bind_spec[0] = 0;
+    o->bind_file[0] = 0;
+    o->fn_digest_out[0] = 0;
+    o->fault_inject[0] = 0;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
@@ -335,6 +347,10 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "digest-out") == 0) { strncpy(o->digest_out, value, sizeof(o->digest_out) - 1); }
         else if (strcmp(name, "stop-at-tick") == 0) { o->stop_at_tick = atoi(value); }
         else if (strcmp(name, "input") == 0) { strncpy(input_policy_str, value, sizeof(input_policy_str) - 1); input_policy_str[sizeof(input_policy_str) - 1] = 0; }
+        else if (strcmp(name, "bind") == 0) { strncpy(o->bind_spec, value, sizeof(o->bind_spec) - 1); }
+        else if (strcmp(name, "bind-file") == 0) { strncpy(o->bind_file, value, sizeof(o->bind_file) - 1); }
+        else if (strcmp(name, "fn-digest-out") == 0) { strncpy(o->fn_digest_out, value, sizeof(o->fn_digest_out) - 1); }
+        else if (strcmp(name, "fault-inject") == 0) { strncpy(o->fault_inject, value, sizeof(o->fault_inject) - 1); }
         else if (strcmp(name, "inject-real-test") == 0) { o->inject_real_test = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
         else { fprintf(stderr, "warning: unknown option --%s\n", name); }
     }
@@ -393,6 +409,10 @@ static void options_to_env(const Options& o) {
     // the child just carries the decision forward, no re-validation needed.
     SetEnvironmentVariableA("PF_INPUT_POLICY", input_policy_name(o.input_policy));
     SetEnvironmentVariableA("PF_INJECT_REAL_TEST", o.inject_real_test ? "1" : "0");
+    SetEnvironmentVariableA("PF_BIND", o.bind_spec);
+    SetEnvironmentVariableA("PF_BIND_FILE", o.bind_file);
+    SetEnvironmentVariableA("PF_FN_DIGEST_OUT", o.fn_digest_out);
+    SetEnvironmentVariableA("PF_FAULT_INJECT", o.fault_inject);
 }
 
 static bool is_child_process() {
@@ -452,6 +472,10 @@ static void options_from_env(Options* o) {
     char inject_buf[8];
     get_env_or("PF_INJECT_REAL_TEST", inject_buf, sizeof(inject_buf), "0");
     o->inject_real_test = (strcmp(inject_buf, "0") != 0);
+    get_env_or("PF_BIND", o->bind_spec, sizeof(o->bind_spec), "");
+    get_env_or("PF_BIND_FILE", o->bind_file, sizeof(o->bind_file), "");
+    get_env_or("PF_FN_DIGEST_OUT", o->fn_digest_out, sizeof(o->fn_digest_out), "");
+    get_env_or("PF_FAULT_INJECT", o->fault_inject, sizeof(o->fault_inject), "");
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -611,6 +635,20 @@ int main(int argc, char** argv) {
         fprintf(stderr, "carrier: some imports failed to resolve - continuing anyway "
                          "(the guest will crash if it actually calls one of them).\n");
     }
+    // Milestones 11-12: install the binding table's 5-byte entry patches and
+    // register the ORIGINAL-form sensor breakpoints. Must run AFTER the image
+    // is mapped (there is nothing to patch before that) and BEFORE
+    // det_arm_main_thread (which loads the breakpoint table into DR0-DR3) and
+    // before the guest entry point runs. Inert unless --bind/--bind-file/
+    // --fn-digest-out was given; fails loudly (exit 3) rather than silently
+    // falling back to ORIGINAL.
+    BindOptions bind_opt;
+    bind_opt.bind_spec = o.bind_spec[0] ? o.bind_spec : nullptr;
+    bind_opt.bind_file = o.bind_file[0] ? o.bind_file : nullptr;
+    bind_opt.fn_digest_out = o.fn_digest_out[0] ? o.fn_digest_out : nullptr;
+    bind_opt.fault_inject = o.fault_inject[0] ? o.fault_inject : nullptr;
+    bind_init(bind_opt);
+
     det_arm_main_thread(); // no-op unless digest/record/stop-at-tick asked for a breakpoint
 
     HANDLE watchdog = nullptr;
