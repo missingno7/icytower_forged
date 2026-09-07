@@ -5,6 +5,8 @@ CyberStorm concept note after reconnaissance of the actual pilot target.
 Evidence lives in `notes/` (capsule, recon, census, replay format) and
 `artifacts/`; this file states decisions and their evidence labels.
 
+Long-term direction (end-state, constraints, distribution modes): `ROADMAP.md`.
+
 Labels used throughout:
 
 ```text
