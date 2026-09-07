@@ -4189,3 +4189,83 @@ the pre-009 baseline and only means anything as that pair.
   pointer *identities* rather than addresses) is bigger than this fix and was
   not attempted.
 
+
+---
+
+## Stage 2: the carrier core in port_forge
+
+`notes/extraction_plan.md` S2. The target-independent half of `carrier/src`
+now lives in the submodule as header-only units under
+`port_forge/src/platform/win32/`, in `namespace pf::win32` (or with C
+linkage where a naked stub or a generated table requires it). Every Icy
+Tower fact those mechanisms need arrives as data from ONE hand-written
+file, `carrier/win32_policy.hpp`.
+
+### The split, in one sentence each
+
+| unit | mechanism (port_forge) | policy (carrier/win32_policy.hpp) |
+|---|---|---|
+| 1 | `pe_image.hpp`, `bootstrap.hpp` — map at ImageBase, win the range from a suspended child, TEB stack swap | `kGuestImage`, `kChildMarkerEnv` |
+| 2 | `symbols.hpp`, `diagnostics.hpp` — VA→name+offset, the VEH crash dump | (a path, composed in `main.cpp`) |
+| 3 | `imports.hpp`, `trace.hpp` — DLL resolution, WRAP/TRACE/DIRECT, the counting trampoline | `kSidecars`; the wrapper table is `src/wrappers.cpp` |
+| 4 | `arena.hpp`, `rng.hpp` — the deterministic heap, the pinned LCG | `kArena`, `kRng` |
+| 5 | `breakpoints.hpp`, `virtual_clock.hpp`, `threads.hpp`, `input_channel.hpp`, `focus_channel.hpp` | `kTick`, `kThreads`, `kInputBinding`, `kKeyNames`, `kFocusChannel` |
+| 7 | `snapshot.hpp` — the region codec, manifest integrity, thread quiescence | `kSnapshotRegions`, `kSnapshotDomain` |
+| 8 | `arg_sensor.hpp`, `frame_oracle.hpp` | `kSensorSetGfxMode`, `kSensorInstallSound`, `kFrameOracle` |
+| 9 | `guest_identity.hpp` — the exit path, GetModuleFileNameA/GetCommandLineA | filled at run time from `--image` |
+
+`carrier/src` went from **7 654** hand-written lines to **5 853**;
+`port_forge/src/platform/win32` is **3 382**. The difference is not a
+contradiction — the framework headers carry the long-form reasoning that
+used to be inline comments in `det.cpp`, and `carrier/win32_policy.hpp`
+(376 lines) carries the addresses with their citations.
+
+### Things worth knowing before touching this
+
+- **`bind.cpp` and `print_globals.cpp` did NOT move.** Reasons in
+  `notes/extraction_plan.md` §4a items 7 and 8 — both are concrete
+  blockers (a generated array width; a generator that emits struct types),
+  not leftovers.
+
+- **Two headers cannot be `inline`, and the reason is the same both times.**
+  `pf_import_common` (`trace.hpp`) is reached only from inline assembly in
+  the generated stub file, and an asm `jmp` is not a C++ reference, so an
+  `inline` definition is emitted by NO translation unit and the link fails
+  (`LNK2019 _pf_import_common referenced in function _pf_stub_0`). The
+  header-only answer applies: every TU sees the declaration, and exactly one
+  TU — `src/imports.cpp` — defines `PF_WIN32_TRACE_IMPLEMENTATION` before
+  including it. `naked` may appear only on the definition (MSVC C2488), so
+  the shared declaration is plain.
+
+- **`build.cmd` now passes `/std:c++17`.** The framework headers use inline
+  variables. `src/pe_image.cpp`, `src/symbols.cpp` and `src/trace.cpp` are
+  gone from the link line; `src/report.cpp` is new (the `--report` document
+  is project composition — port_forge contributes only the
+  `imports`/`threads` arrays).
+
+- **Initialization ORDER is load-bearing in two places, both measured.**
+  `pf::win32::input_channel_init` must run BEFORE `load_script`, or every
+  `KEY_*` name `atoi()`s to 0, the run delivers scancode 0 for everything,
+  never reaches `play()`, and writes an EMPTY digest. And the virtual
+  clock's `advance_ms` must be a separate call from its `pump`, with the
+  carrier's sub-tick bookkeeping between them — fusing them shifted
+  `human_test`'s first recorded tick from 237 to 238.
+
+- **G4 is the gate that catches a whole-run shift.** That 237→238 change
+  left G1, G2 and G3 all EQUAL, because those three compare a binary against
+  itself and a uniformly shifted run is self-consistent. Only the comparison
+  against the stored `replays/human_test.digest` baseline saw it. Run
+  `scripts/s2_gate.ps1` (G1/G2/G3 + the all-bound human_test run + the purity
+  gate), not `scripts/gates.ps1` alone, after any change to the carrier core.
+
+### Gate verdicts after the final unit
+
+```
+G1: EQUAL (876 ticks)
+G2: EQUAL (877 invocations, src vs original)
+G3a: EQUAL (301 rows in-run T=400..699) and EQUAL (602 rows cold-vs-post-rewind T=400..1000)
+G3b: EQUAL (301 invocations, k=276..576)
+G4: EQUAL (2293 ticks, human_test all-bound vs replays/human_test.digest)
+PURITY: exit 0 (32 files under src/, 0 violations)
+--rng-selftest: OK (5000 values across 5 seeds, 0 mismatches)
+```

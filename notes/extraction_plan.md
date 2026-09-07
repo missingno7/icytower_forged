@@ -337,6 +337,63 @@ later stage, and the digest/`fn-digest` formats are the thing to migrate.
    Icy-Tower-specific by `win32_pilot.md` §7c and `docs/90` §4. Only the
    manifest *schemas* graduate, to `schemas/`.
 
+### 4a. Appended after S2 (2026-09-07): what stayed project-side, and why
+
+S2 moved nine of the eleven units in §3's order. Two did not, and one
+mechanism inside a moved unit did not. Recorded here rather than left as a
+gap, per this section's own rule ("do not force it").
+
+7. **The binding engine (`carrier/src/bind.cpp`, 871 lines).** Blocked on a
+   real design question, not on effort. `kBindMaxFns`, `kStubs[]`, the
+   `static_assert`s and the three per-function counter arrays in
+   `BindSavedState` are all sized by `gen/bind_table.inc`'s `kNumFns`, which
+   `build.cmd` REGENERATES on every build from whatever `src/icytower/*.c`
+   currently defines (it has already moved 8 → 35 → 42 → 60 under
+   concurrently-running promotion work). A framework header cannot own an
+   array whose width the consuming project's build decides, without either
+   threading a `constexpr` size parameter through `bind_pre`/`bind_post`/
+   the stub table/the saved state, or keeping a second copy of the count —
+   and the 60 naked stubs must be emitted project-side in any case, for the
+   same reason `trace.hpp`'s trampoline is (inline assembly is not a C++
+   reference, so an `inline` definition is emitted by no TU at all;
+   measured: LNK2019 `_pf_import_common` referenced in `pf_stub_0`).
+   *What DID move*: everything the engine shares with the other consumers —
+   the DR0-DR3 table, `ctx_arm_slot`/`ctx_disarm_slot`, the RF step-over and
+   `patch_entry_jmp` — at unit 5a. `bind.cpp` now calls
+   `pf::win32::register_breakpoint` and `pf::win32::patch_entry_jmp`
+   through det.cpp's thin aliases like every other consumer.
+   *Revisit when*: a second target needs a binding table, which is also
+   when the right size parameterization becomes visible instead of guessed.
+
+8. **The named-globals evaluator (`carrier/src/print_globals.cpp`, 379
+   lines).** Genuinely generic — no Icy Tower name appears in it, and it
+   walks the generated `gen/it_print_globals.inc` typed table — but moving
+   it requires the framework header to own that table's struct types
+   (`PfPGVal`/`PfPGGlobal`/`PfPGMember`/`PfPGStructSize`), which the
+   GENERATOR currently emits. That is a change to
+   `tools/pf_win32_gen_print_globals.py` with its own regenerate-and-
+   byte-diff verification loop — S1 territory, not a carrier-core move.
+   Doing it inside this pass would have meant an ungated generator change
+   in the middle of a gated live-code refactor.
+
+9. **The register-passed capture shim.** `InputBindingPolicy` was planned
+   to carry a `capture_abi` field. It does not: the shim that calls
+   `key_dinput_handle_scancode` with its arguments in EAX/EDX is a naked
+   function, and a naked function cannot be parameterized by an ABI enum
+   without one stub per ABI value. One ABI has been seen. The shim stays in
+   `det.cpp` with the disassembly citation beside it, and the field is not
+   invented until a second convention appears.
+
+Also recorded, because it is the pass's one real finding about the gates:
+the **absolute-reference gate is the one that works**. A first attempt at
+unit 5b fused the virtual clock's advance with its tick delivery, which
+moved the sub-tick coordinate by one slot and shifted `human_test`'s first
+recorded tick from 237 to 238. G1, G2 and G3 all stayed EQUAL — they
+compare a binary against itself, and a uniformly shifted run is
+self-consistent. Only G4, the run compared against the stored 2293-tick
+baseline, caught it. Any future stage that drops G4 to save time is
+dropping the only gate that can see a whole-run shift.
+
 ## 5. CyberStorm applicability (detail in `notes/cyberstorm_census_preview.md`)
 
 PE32, ImageBase 0x400000, SizeOfImage 0x126000, GUI subsystem, **21 926
