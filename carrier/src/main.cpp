@@ -14,6 +14,7 @@
 #include "import_types.hpp"
 #include "det.hpp"
 #include "bind.hpp"
+#include "snapshot.hpp"
 
 // KNOWN (measured, see carrier/NOTES.md): the guest's own CRT startup
 // (___mingw_CRTStartup -> __getmainargs, both inside the REAL msvcrt.dll we
@@ -64,6 +65,7 @@ static void carrier_shutdown(const char* reason) {
     trace_close();
     det_shutdown();
     bind_shutdown();
+    snapshot_shutdown();
     fflush(stderr);
 }
 
@@ -193,6 +195,16 @@ struct Options {
     char bind_file[MAX_PATH];// --bind-file PATH (same syntax, one per line)
     char fn_digest_out[MAX_PATH]; // --fn-digest-out PATH
     char fault_inject[128];  // --fault-inject name:k=N (negative control)
+    // Milestones 8-9 (snapshot.hpp): safepoint snapshot, in-process restore,
+    // and the bounded instruction trace. All inert when empty/zero.
+    int  snapshot_at_tick;             // --snapshot-at-tick T
+    char snapshot_out[MAX_PATH];       // --snapshot-out DIR
+    char restore_from[MAX_PATH];       // --restore-from DIR
+    int  restore_at_tick;              // --restore-at-tick T2
+    bool restore_fault;                // --restore-fault (negative control)
+    int  trace_window;                 // --trace-window N
+    char trace_window_out[MAX_PATH];   // --trace-window-out PATH
+    bool rng_selftest;                 // --rng-selftest (unit check, then exit)
 };
 
 static void get_exe_dir(char* buf, size_t n) {
@@ -302,6 +314,14 @@ static void parse_args(int argc, char** argv, Options* o) {
     o->bind_file[0] = 0;
     o->fn_digest_out[0] = 0;
     o->fault_inject[0] = 0;
+    o->snapshot_at_tick = 0;
+    o->snapshot_out[0] = 0;
+    o->restore_from[0] = 0;
+    o->restore_at_tick = 0;
+    o->restore_fault = false;
+    o->trace_window = 0;
+    o->trace_window_out[0] = 0;
+    o->rng_selftest = false;
     char input_policy_str[16] = ""; // "" = not given, resolved after the loop
 
     for (int i = 1; i < argc; ++i) {
@@ -320,7 +340,8 @@ static void parse_args(int argc, char** argv, Options* o) {
         } else {
             strncpy(name, arg + 2, sizeof(name) - 1);
             name[sizeof(name) - 1] = 0;
-            if (strcmp(name, "det") == 0 || strcmp(name, "inject-real-test") == 0) {
+            if (strcmp(name, "det") == 0 || strcmp(name, "inject-real-test") == 0 ||
+                strcmp(name, "restore-fault") == 0 || strcmp(name, "rng-selftest") == 0) {
                 value = "1"; // bare flags: --det / --inject-real-test (no value) means =1
             } else if (i + 1 < argc) {
                 strncpy(valbuf, argv[++i], sizeof(valbuf) - 1);
@@ -352,6 +373,14 @@ static void parse_args(int argc, char** argv, Options* o) {
         else if (strcmp(name, "fn-digest-out") == 0) { strncpy(o->fn_digest_out, value, sizeof(o->fn_digest_out) - 1); }
         else if (strcmp(name, "fault-inject") == 0) { strncpy(o->fault_inject, value, sizeof(o->fault_inject) - 1); }
         else if (strcmp(name, "inject-real-test") == 0) { o->inject_real_test = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "snapshot-at-tick") == 0) { o->snapshot_at_tick = atoi(value); }
+        else if (strcmp(name, "snapshot-out") == 0) { strncpy(o->snapshot_out, value, sizeof(o->snapshot_out) - 1); }
+        else if (strcmp(name, "restore-from") == 0) { strncpy(o->restore_from, value, sizeof(o->restore_from) - 1); }
+        else if (strcmp(name, "restore-at-tick") == 0) { o->restore_at_tick = atoi(value); }
+        else if (strcmp(name, "restore-fault") == 0) { o->restore_fault = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
+        else if (strcmp(name, "trace-window") == 0) { o->trace_window = atoi(value); }
+        else if (strcmp(name, "trace-window-out") == 0) { strncpy(o->trace_window_out, value, sizeof(o->trace_window_out) - 1); }
+        else if (strcmp(name, "rng-selftest") == 0) { o->rng_selftest = (_stricmp(value, "0") != 0 && _stricmp(value, "off") != 0 && _stricmp(value, "false") != 0); }
         else { fprintf(stderr, "warning: unknown option --%s\n", name); }
     }
 
@@ -413,6 +442,18 @@ static void options_to_env(const Options& o) {
     SetEnvironmentVariableA("PF_BIND_FILE", o.bind_file);
     SetEnvironmentVariableA("PF_FN_DIGEST_OUT", o.fn_digest_out);
     SetEnvironmentVariableA("PF_FAULT_INJECT", o.fault_inject);
+    // Milestones 8-9 (snapshot.hpp).
+    _snprintf(buf, sizeof(buf), "%d", o.snapshot_at_tick); buf[sizeof(buf) - 1] = 0;
+    SetEnvironmentVariableA("PF_SNAPSHOT_AT_TICK", buf);
+    SetEnvironmentVariableA("PF_SNAPSHOT_OUT", o.snapshot_out);
+    SetEnvironmentVariableA("PF_RESTORE_FROM", o.restore_from);
+    _snprintf(buf, sizeof(buf), "%d", o.restore_at_tick); buf[sizeof(buf) - 1] = 0;
+    SetEnvironmentVariableA("PF_RESTORE_AT_TICK", buf);
+    SetEnvironmentVariableA("PF_RESTORE_FAULT", o.restore_fault ? "1" : "0");
+    _snprintf(buf, sizeof(buf), "%d", o.trace_window); buf[sizeof(buf) - 1] = 0;
+    SetEnvironmentVariableA("PF_TRACE_WINDOW", buf);
+    SetEnvironmentVariableA("PF_TRACE_WINDOW_OUT", o.trace_window_out);
+    SetEnvironmentVariableA("PF_RNG_SELFTEST", o.rng_selftest ? "1" : "0");
 }
 
 static bool is_child_process() {
@@ -476,6 +517,21 @@ static void options_from_env(Options* o) {
     get_env_or("PF_BIND_FILE", o->bind_file, sizeof(o->bind_file), "");
     get_env_or("PF_FN_DIGEST_OUT", o->fn_digest_out, sizeof(o->fn_digest_out), "");
     get_env_or("PF_FAULT_INJECT", o->fault_inject, sizeof(o->fault_inject), "");
+
+    char snap_buf[16];
+    get_env_or("PF_SNAPSHOT_AT_TICK", snap_buf, sizeof(snap_buf), "0");
+    o->snapshot_at_tick = atoi(snap_buf);
+    get_env_or("PF_SNAPSHOT_OUT", o->snapshot_out, sizeof(o->snapshot_out), "");
+    get_env_or("PF_RESTORE_FROM", o->restore_from, sizeof(o->restore_from), "");
+    get_env_or("PF_RESTORE_AT_TICK", snap_buf, sizeof(snap_buf), "0");
+    o->restore_at_tick = atoi(snap_buf);
+    get_env_or("PF_RESTORE_FAULT", snap_buf, sizeof(snap_buf), "0");
+    o->restore_fault = (strcmp(snap_buf, "0") != 0);
+    get_env_or("PF_TRACE_WINDOW", snap_buf, sizeof(snap_buf), "0");
+    o->trace_window = atoi(snap_buf);
+    get_env_or("PF_TRACE_WINDOW_OUT", o->trace_window_out, sizeof(o->trace_window_out), "");
+    get_env_or("PF_RNG_SELFTEST", snap_buf, sizeof(snap_buf), "0");
+    o->rng_selftest = (strcmp(snap_buf, "0") != 0);
 }
 
 // TEMPORARY, structural: on this host, by the time ANY of our own code can
@@ -591,7 +647,20 @@ int main(int argc, char** argv) {
     det_opt.stop_at_tick = o.stop_at_tick;
     det_opt.image_path = o.image;
     det_opt.inject_real_test = o.inject_real_test;
+    // Milestones 8-9: snapshot/restore ride on the same tick safepoint.
+    SnapshotOptions snap_opt;
+    snap_opt.snapshot_at_tick = o.snapshot_at_tick;
+    snap_opt.snapshot_out = o.snapshot_out[0] ? o.snapshot_out : nullptr;
+    snap_opt.restore_from = o.restore_from[0] ? o.restore_from : nullptr;
+    snap_opt.restore_at_tick = o.restore_at_tick;
+    snap_opt.restore_fault = o.restore_fault;
+    snap_opt.trace_window = o.trace_window;
+    snap_opt.trace_window_out = o.trace_window_out[0] ? o.trace_window_out : nullptr;
+    snap_opt.image_path = o.image;
+    det_opt.force_safepoint = (o.snapshot_at_tick > 0 && o.snapshot_out[0]) ||
+                              o.restore_from[0] || o.restore_at_tick > 0;
     det_init(det_opt, carrier_shutdown);
+    snapshot_init(snap_opt);
 
     fprintf(stderr, "carrier: image=%s\n", o.image);
     fprintf(stderr, "carrier: cwd=%s\n", o.cwd);
@@ -634,6 +703,15 @@ int main(int argc, char** argv) {
     if (!imports_init(icfg)) {
         fprintf(stderr, "carrier: some imports failed to resolve - continuing anyway "
                          "(the guest will crash if it actually calls one of them).\n");
+    }
+    // Milestone 8, RNG pinning: the unit check that the carrier's pinned LCG
+    // reproduces the REAL msvcrt.dll rand() sequence. Runs here because
+    // imports_init has just resolved msvcrt's real rand/srand, and before
+    // anything of the guest executes; the process exits immediately after.
+    if (o.rng_selftest) {
+        int rc = det_rng_selftest();
+        carrier_shutdown("--rng-selftest finished");
+        return rc;
     }
     // Milestones 11-12: install the binding table's 5-byte entry patches and
     // register the ORIGINAL-form sensor breakpoints. Must run AFTER the image

@@ -31,6 +31,11 @@ static const char* kWrapNames[] = {
     // substituted to INFINITE (carrier/NOTES.md) - forwards to the real
     // function unchanged for every other thread/caller.
     "WaitForSingleObject",
+    // Milestone 8 (win32_pilot.md sec 5 "pin the LCG"): the RNG state must
+    // be carrier-owned to be snapshottable - msvcrt.dll's own per-thread
+    // seed is outside every snapshot component. Forwards to the real
+    // msvcrt rand/srand unless --det (see det.cpp).
+    "rand", "srand",
 };
 static bool is_wrapped(const char* name) {
     for (const char* w : kWrapNames)

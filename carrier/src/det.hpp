@@ -38,6 +38,12 @@ struct DetOptions {
     // recording hook, not bypassed by it. Lets an automated pass test the
     // record/replay round trip without a live human keyboard.
     bool inject_real_test;
+    // Milestones 8-9: the snapshot/restore machinery hangs off the SAME tick
+    // safepoint sensor (VA 0x4124f4) the digest uses, so a --snapshot-at-tick
+    // or --restore-from run needs that breakpoint armed even without
+    // --digest-out / --stop-at-tick. main.cpp sets this from the snapshot
+    // options; det_init ORs it into its own need_safepoint decision.
+    bool force_safepoint;
 };
 
 typedef void (*DetShutdownFn)(const char* reason);
@@ -116,6 +122,52 @@ void det_shutdown();
 // see trace.hpp's pf_count_import for the single-place fix).
 void det_bind_real(const char* name, void* real_proc, int id);
 
+// ---------------------------------------------------------------------
+// Milestone 8: the carrier-owned ("externalized") half of a snapshot.
+//
+// win32_pilot.md sec 6 lists this explicitly alongside the guest pages:
+// virtual time, replay cursor, RNG state. Everything below lives in
+// det.cpp's own statics - NOT in guest memory - so it is invisible to the
+// image/arena/stack components and has to be carried separately. POD,
+// fixed-size, memcpy-able: snapshot.cpp writes it verbatim into
+// carrier.bin and hashes it like any other component.
+// ---------------------------------------------------------------------
+struct DetSavedState {
+    long long virtual_ms;      // the virtual clock; det_tick() == virtual_ms/20
+    long long units_reported;  // total timer units already handed to _handle_timer_tick
+    unsigned  rng_state;       // pinned msvcrt LCG state (see det_wrap_rand)
+    long long rng_calls;
+    unsigned  script_cursor;   // --input-script replay cursor
+    unsigned  arena_offset;    // deterministic heap arena bump pointer
+    int       real_queue_head, real_queue_tail;
+    int       real_queue_code[256];   // kRealQueueCap
+    unsigned char real_queue_press[256];
+    unsigned char key_held[256];      // --record-input hygiene filter state
+    long      real_key_violations;
+};
+
+void det_state_save(DetSavedState* s);
+void det_state_load(const DetSavedState* s);
+
+// Guest-memory regions the snapshot captures, exposed here so snapshot.cpp
+// does not re-derive them (KNOWN: carrier/NOTES.md, notes/binary_recon.md).
+#define PF_GUEST_DATA_VA   0x004bc000u
+#define PF_GUEST_DATA_SIZE 0x000176f4u
+#define PF_GUEST_BSS_VA    0x004dd000u
+#define PF_GUEST_BSS_SIZE  0x00036978u
+#define PF_GUEST_ARENA_VA  0x20000000u
+#define PF_GUEST_STACK_VA  0x0e000000u
+#define PF_GUEST_STACK_SZ  0x00200000u
+
+// Milestone 8: the pinned RNG state, as an externalized snapshot component
+// (snapshot.cpp), plus the --rng-selftest unit check against the real
+// msvcrt.dll rand() (returns a process exit code: 0 = OK, 4 = mismatch).
+unsigned det_rng_state();
+void det_set_rng_state(unsigned s);
+long det_rng_calls();
+void det_set_rng_calls(long n);
+int det_rng_selftest();
+
 // --report JSON accessors (trace.cpp's trace_write_report calls these).
 const char* det_input_policy_name(); // "real" | "script" | "none" | "(unset)" before det_init runs
 long det_real_key_violations();      // see det_veh_handler's neutralize_keyboard_hit
@@ -149,6 +201,12 @@ extern "C" {
     // Windows and pointers into it get baked directly into .data/.bss
     // globals (e.g. Allegro's `screen` BITMAP*), which the digest sensor
     // (part C) would otherwise see as spurious per-run differences.
+    // Milestone 8 (win32_pilot.md sec 5 "pin the LCG"): moves the RNG state
+    // out of msvcrt.dll's per-thread CRT data - which no snapshot component
+    // can reach - into carrier memory, where it becomes part of the
+    // snapshot. Verified against the real msvcrt rand() by --rng-selftest.
+    int  __cdecl det_wrap_rand();
+    void __cdecl det_wrap_srand(unsigned seed);
     void* __cdecl det_wrap_malloc(size_t n);
     void* __cdecl det_wrap_calloc(size_t count, size_t size);
     void* __cdecl det_wrap_realloc(void* p, size_t n);

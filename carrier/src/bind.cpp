@@ -661,6 +661,29 @@ void bind_shutdown() {
     if (g_rec) { fflush(g_rec); fclose(g_rec); g_rec = nullptr; }
 }
 
+// Milestone 8 (bind.hpp's BindSavedState): the sensor's own counters are
+// carrier-owned state and must rewind with everything else.
+void bind_state_save(BindSavedState* s) {
+    memset(s, 0, sizeof(*s));
+    for (unsigned i = 0; i < kMaxFns; ++i) {
+        s->invocations[i] = g_invocations[i];
+        s->crossings[i] = g_crossings[i];
+        s->records[i] = g_records[i];
+    }
+    s->faults_applied = g_faults_applied;
+    s->domain_read_failures = g_domain_read_failures;
+}
+
+void bind_state_load(const BindSavedState* s) {
+    for (unsigned i = 0; i < kMaxFns; ++i) {
+        g_invocations[i] = (long)s->invocations[i];
+        g_crossings[i] = (long)s->crossings[i];
+        g_records[i] = (long)s->records[i];
+    }
+    g_faults_applied = (long)s->faults_applied;
+    g_domain_read_failures = (long)s->domain_read_failures;
+}
+
 void bind_report_json(FILE* f) {
     if (!g_any && g_sense_id < 0) return;
     // win32_pilot.md SS8a migration map.

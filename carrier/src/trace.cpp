@@ -8,6 +8,7 @@
 #include "symbols.hpp"
 #include "det.hpp" // report.json: input_policy / real_key_violations (see det_input_policy_name/det_real_key_violations)
 #include "bind.hpp" // report.json: the milestone 11-12 migration map (bind_report_json)
+#include "snapshot.hpp" // report.json: milestone 8-9 snapshot sizes/timings
 
 #define PF_MAX_THREADS 32
 
@@ -140,6 +141,7 @@ void trace_write_report(const char* report_path) {
     // all when no function was bound or sensed, so the report shape of every
     // pre-milestone-11 run is unchanged.
     bind_report_json(f);
+    snapshot_report_json(f);
     fprintf(f, "  \"imports\": [\n");
     bool first = true;
     for (int id = 0; id < kNumImports && id < PF_MAX_IMPORTS; ++id) {

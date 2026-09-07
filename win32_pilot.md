@@ -343,7 +343,7 @@ and the recorder logs the source with the event. This generalizes: each
 NONDETERMINISTIC channel (time, input, RNG, network) has exactly one active
 provider per run, host or carrier, never both.
 
-## 6. Snapshot model (HYPOTHESIS)
+## 6. Snapshot model (implemented 2026-09-07; in-process rewind KNOWN, cross-process restore KNOWN to fail)
 
 Safepoint: VA 0x4124f4, once per tick, no host call in flight on the main
 thread. Other threads are either parked (timer, input in deterministic mode)
@@ -378,6 +378,36 @@ Heap: the msvcrt `malloc`/`calloc`/`realloc`/`free` imports are the single
 control point. libpng3/zlib/pthread allocate host-side memory, but only
 transiently (PNG decode) or opaquely (one mutex); recorded as INFERRED, to be
 checked by the import trace.
+
+**Outcome (2026-09-07, `carrier/src/snapshot.cpp`, evidence in
+`carrier/NOTES.md` "Milestones 8-9"):**
+
+- Escalation step (1), the in-process rewind, is **KNOWN to work and is
+  certified**. `--snapshot-at-tick T --snapshot-out DIR` captures the
+  safepoint CONTEXT (x87 control word 0x037F round-trips through
+  `CONTEXT_FLOATING_POINT|CONTEXT_EXTENDED_REGISTERS`), the full .data/.bss,
+  the arena's used range, the guest stack's live range and the
+  carrier-owned state; `--restore-at-tick T2` rewinds inside the VEH and
+  resumes at the snapshot's EIP. `carrier/scripts/certify_snapshot.py`
+  applies capsule §D's `restore→suffix == cold→suffix` row by row: EQUAL.
+- The RNG had to be **externalized before it could be snapshotted**: msvcrt's
+  seed lives in its own per-thread CRT data, outside every component. The
+  LCG is now pinned in carrier memory (verified against the real msvcrt
+  `rand()` over 5000 values, and G1 stayed byte-identical).
+- Escalation step (2), a logical file table, is **not needed for this
+  workload**: measured, `play()`'s tick window makes zero file-I/O calls of
+  any kind; every file is opened and closed before gameplay starts, and
+  `log.txt` is opened/appended/closed per line.
+- Escalation step (3) is now **required, not optional**, for anything
+  cross-process: restoring a snapshot into a *fresh* process reproduces the
+  anchor tick's digest exactly and then crashes on the first frame that
+  touches a DirectDraw surface or DirectInput device, because those host
+  identities are baked into .bss and into arena-resident `BITMAP` structs.
+  An exclusion list cannot fix it (the stale pointers sit in arena blocks the
+  restoring process has not allocated yet). §9's "no logical-handle layer
+  until restore proves a resource cannot be re-bound" has been discharged:
+  restore proved it. The cheaper first move is §8 row 9a's headless mode,
+  which removes the host-backed surfaces entirely.
 
 ## 7. Verification model
 
@@ -581,8 +611,8 @@ source-port-only plus drop-in, because of the art licence).
 | 5 | gameplay reached | done — `carrier/scripts/newgame.txt`, `carrier/NOTES.md` "Milestones 5-7" |
 | 6 | time/input/RNG instrumented for determinism | done — `carrier/src/det.hpp`/`det.cpp` (`--det`), `carrier/NOTES.md` |
 | 7 | record and replay a short gameplay sequence, digest-equal | done — `carrier/scripts/compare_digests.py`: EQUAL across 3 `--det --pace=fast` runs; negative control diverges at the moved tick; non-`--det` runs diverge — `carrier/NOTES.md` |
-| 8 | safepoint snapshot at 0x4124f4 and restore | pending |
-| 9 | inspection/tracing from a snapshot | pending |
+| 8 | safepoint snapshot at 0x4124f4 and restore | done — in-process rewind certified (carrier/NOTES.md 'Milestones 8-9'); cross-process restore blocked by host pointers |
+| 9 | inspection/tracing from a snapshot | done — pf_inspect.py (named globals, diffs), --trace-window instruction trace |
 | 9a | presentation-independent frame oracle (digest of the game's back buffer at `blit_to_screen`) and headless run (Allegro GDI driver into a hidden window, no sound device) | planned; feasibility: the game selects Allegro's config via `set_config_file` at 0x40f03a, so the driver choice can be overridden by an argument sensor at `set_gfx_mode` or `override_config_file`; a window handle is still required by Win32 (hidden, not absent) |
 | 10 | pick one small exercised game function | pending |
 | 11a | LIFTED form: generate C from its bytes, bind it, verify replay-equal | done — `update_frame` and `jump_player` bound at their original VAs and replay-equal to ORIGINAL (per-invocation and per-tick); `carrier/NOTES.md` "Milestones 11-12" |

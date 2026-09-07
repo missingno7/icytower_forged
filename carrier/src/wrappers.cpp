@@ -147,5 +147,7 @@ void* wrappers_lookup(const char* name) {
     if (strcmp(name, "realloc") == 0) return (void*)det_wrap_realloc;
     if (strcmp(name, "free") == 0) return (void*)det_wrap_free;
     if (strcmp(name, "WaitForSingleObject") == 0) return (void*)det_wrap_WaitForSingleObject;
+    if (strcmp(name, "rand") == 0) return (void*)det_wrap_rand;
+    if (strcmp(name, "srand") == 0) return (void*)det_wrap_srand;
     return nullptr;
 }

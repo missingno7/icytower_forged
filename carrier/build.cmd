@@ -64,7 +64,7 @@ if errorlevel 1 (
 
 cl /nologo /Zi /Od /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
   /I gen /I lift\lifted ^
-  src\main.cpp src\pe_image.cpp src\imports.cpp src\trace.cpp src\wrappers.cpp src\symbols.cpp src\det.cpp src\bind.cpp ^
+  src\main.cpp src\pe_image.cpp src\imports.cpp src\trace.cpp src\wrappers.cpp src\symbols.cpp src\det.cpp src\bind.cpp src\snapshot.cpp ^
   gen\import_stubs.cpp ^
   lift\lifted\lifted_update_frame.c lift\lifted\lifted_is_solid.c lift\lifted\lifted_jump_player.c ^
   native\native_update_frame.c native\native_is_solid.c ^

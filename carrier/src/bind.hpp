@@ -55,3 +55,21 @@ void bind_shutdown();
 // bind_init was never given any option (keeps the pre-milestone-11 report
 // byte-shape for runs that do not use the binding table).
 void bind_report_json(FILE* f);
+
+// ---------------------------------------------------------------------
+// Milestone 8: the per-invocation sensor's counters are carrier-owned state
+// (they live in bind.cpp statics, not in guest memory), so an in-process
+// rewind has to rewind them too - otherwise the `k=` index in
+// --fn-digest-out would keep counting up across the rewind and
+// compare_fn_digests.py could not line the two passes up. Fixed-size POD,
+// written verbatim into the snapshot's carrier.bin.
+// ---------------------------------------------------------------------
+struct BindSavedState {
+    long long invocations[8];   // == bind.cpp's kMaxFns
+    long long crossings[8];
+    long long records[8];
+    long long faults_applied;
+    long long domain_read_failures;
+};
+void bind_state_save(BindSavedState* s);
+void bind_state_load(const BindSavedState* s);

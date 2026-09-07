@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 #include "det.hpp"
+#include "snapshot.hpp" // milestones 8-9: safepoint snapshot / in-process rewind
 #include "trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
 #include "../../port_forge/src/core/sha256.hpp"
 
@@ -87,6 +88,7 @@ static FARPROC g_real_malloc = nullptr, g_real_calloc = nullptr,
                g_real_realloc = nullptr, g_real_free = nullptr;
 static FARPROC g_real_Sleep = nullptr;
 static FARPROC g_real_WaitForSingleObject = nullptr; // item 3: parked timer thread
+static FARPROC g_real_rand = nullptr, g_real_srand = nullptr; // milestone 8: RNG pinning
 
 // Import ids (see wrappers.hpp/det_bind_real doc), one per always-installed
 // wrapper this file defines - each det_wrap_* below calls pf_count_import
@@ -95,7 +97,7 @@ static FARPROC g_real_WaitForSingleObject = nullptr; // item 3: parked timer thr
 static int g_id_Sleep = -1, g_id_QPC = -1, g_id_timeGetTime = -1, g_id_time = -1,
            g_id_clock = -1, g_id_beginthread = -1,
            g_id_malloc = -1, g_id_calloc = -1, g_id_realloc = -1, g_id_free = -1,
-           g_id_WaitForSingleObject = -1;
+           g_id_WaitForSingleObject = -1, g_id_rand = -1, g_id_srand = -1;
 
 void det_bind_real(const char* name, void* real_proc, int id) {
     if (strcmp(name, "QueryPerformanceCounter") == 0) { g_real_QPC = (FARPROC)real_proc; g_id_QPC = id; }
@@ -109,6 +111,90 @@ void det_bind_real(const char* name, void* real_proc, int id) {
     else if (strcmp(name, "free") == 0) { g_real_free = (FARPROC)real_proc; g_id_free = id; }
     else if (strcmp(name, "Sleep") == 0) { g_real_Sleep = (FARPROC)real_proc; g_id_Sleep = id; }
     else if (strcmp(name, "WaitForSingleObject") == 0) { g_real_WaitForSingleObject = (FARPROC)real_proc; g_id_WaitForSingleObject = id; }
+    else if (strcmp(name, "rand") == 0) { g_real_rand = (FARPROC)real_proc; g_id_rand = id; }
+    else if (strcmp(name, "srand") == 0) { g_real_srand = (FARPROC)real_proc; g_id_srand = id; }
+}
+
+// ---------------------------------------------------------------------
+// Milestone 8: RNG pinning (win32_pilot.md sec 5 "RNG ... wrap: record the
+// seed, pin the LCG ... so replay does not depend on the host msvcrt").
+//
+// Through milestone 7 rand()/srand() were left UNWRAPPED on purpose: the
+// effective seed is derived from time() (notes/replay_format.md sec 2),
+// which det_wrap_time already pins, and msvcrt's own LCG has no other
+// host-entropy input - so replay was already deterministic (measured, 876
+// ticks EQUAL). What was still missing for milestone 8 is that the RNG
+// STATE lived inside msvcrt.dll's per-thread CRT data, i.e. OUTSIDE every
+// region a snapshot can capture (guest image, arena, guest stack). Pinning
+// the LCG here moves that state into carrier memory, where it becomes an
+// ordinary snapshot component (see snapshot.cpp's CarrierState.rng_state).
+//
+// KNOWN (win32_pilot.md sec 5, and verified by --rng-selftest below against
+// the REAL msvcrt.dll rand() over 1000 values): msvcrt's generator is
+//     state = state * 214013 + 2531011;  return (state >> 16) & 0x7fff;
+// with the pre-srand default state 1.
+// ---------------------------------------------------------------------
+static unsigned g_rng_state = 1;      // msvcrt's documented default seed
+static long g_rng_calls = 0;          // diagnostics only (report/manifest)
+static long g_rng_seeds = 0;
+
+static int rng_next() {
+    g_rng_state = g_rng_state * 214013u + 2531011u;
+    return (int)((g_rng_state >> 16) & 0x7fffu);
+}
+
+extern "C" int __cdecl det_wrap_rand() {
+    pf_count_import(g_id_rand);
+    if (g_det_mode) { ++g_rng_calls; return rng_next(); }
+    if (g_real_rand) return ((int(__cdecl*)())g_real_rand)();
+    return 0;
+}
+
+extern "C" void __cdecl det_wrap_srand(unsigned seed) {
+    pf_count_import(g_id_srand);
+    if (g_det_mode) { g_rng_state = seed; ++g_rng_seeds; return; }
+    if (g_real_srand) ((void(__cdecl*)(unsigned))g_real_srand)(seed);
+}
+
+// Snapshot accessors (snapshot.cpp).
+unsigned det_rng_state() { return g_rng_state; }
+void det_set_rng_state(unsigned s) { g_rng_state = s; }
+long det_rng_calls() { return g_rng_calls; }
+void det_set_rng_calls(long n) { g_rng_calls = n; }
+
+// --rng-selftest: the unit check win32_pilot.md's milestone-8 brief asks for.
+// Runs AFTER imports_init (so g_real_rand/g_real_srand point at the REAL
+// msvcrt.dll entry points the guest would otherwise have used) and BEFORE
+// the guest starts; the process exits with 0 on match, 4 on mismatch.
+int det_rng_selftest() {
+    if (!g_real_rand || !g_real_srand) {
+        fprintf(stderr, "det: --rng-selftest: msvcrt rand/srand were not resolved\n");
+        return 4;
+    }
+    typedef int(__cdecl * RandFn)();
+    typedef void(__cdecl * SrandFn)(unsigned);
+    static const unsigned kSeeds[] = {1u, 12345u, 0u, 2531011u, 0xdeadbeefu};
+    int bad = 0, checked = 0;
+    for (unsigned seed : kSeeds) {
+        ((SrandFn)g_real_srand)(seed);
+        unsigned model = seed;
+        for (int i = 0; i < 1000; ++i) {
+            int real_v = ((RandFn)g_real_rand)();
+            model = model * 214013u + 2531011u;
+            int model_v = (int)((model >> 16) & 0x7fffu);
+            ++checked;
+            if (real_v != model_v) {
+                if (++bad <= 5)
+                    fprintf(stderr, "det: --rng-selftest MISMATCH seed=%u i=%d real=%d model=%d\n",
+                            seed, i, real_v, model_v);
+            }
+        }
+    }
+    fprintf(stderr, "det: --rng-selftest: %d values across %d seeds, %d mismatch(es) - %s\n",
+            checked, (int)(sizeof(kSeeds) / sizeof(kSeeds[0])), bad, bad ? "FAIL" : "OK");
+    printf("rng-selftest: %s (%d values, %d mismatches)\n", bad ? "FAIL" : "OK", checked, bad);
+    fflush(stdout);
+    return bad ? 4 : 0;
 }
 
 // ---------------------------------------------------------------------
@@ -886,6 +972,14 @@ static void hash_game_globals(pf::Sha256& sha) {
 }
 
 static void safepoint_hit(CONTEXT* ctx) {
+    // Milestones 8-9: an in-process rewind happens HERE, before T is read
+    // and before the digest line is written, so the line this safepoint
+    // emits is already the RESTORED tick's line. That is what makes
+    // "restore -> suffix == cold -> suffix" (notes/portforge_capsule.md SS D)
+    // a byte-for-byte comparison of two digest streams with no fixups: the
+    // cold run's T=400 line and the restored run's first line are computed
+    // from the same memory at the same safepoint.
+    snapshot_on_safepoint_pre(ctx);
     int T = det_current_tick();
     // TEMPORARY diagnostic (see carrier/NOTES.md "Milestones 5-7"): dump raw
     // .data+.bss once, at the tick named by DET_DUMP_MEM_TICK, to the path
@@ -919,6 +1013,9 @@ static void safepoint_hit(CONTEXT* ctx) {
                 (unsigned long)ctx->Ebx, (unsigned long)ctx->Esi, (unsigned long)ctx->Edi);
         fflush(g_digest_file);
     }
+    // Taken AFTER the digest line for the same tick, from the same memory at
+    // the same instant - see snapshot_on_safepoint_pre's comment above.
+    snapshot_on_safepoint_post(ctx);
     if (g_stop_at_tick > 0 && T >= g_stop_at_tick) {
         fprintf(stderr, "det: --stop-at-tick %d reached at T=%d, shutting down.\n", g_stop_at_tick, T);
         det_shutdown();
@@ -1064,9 +1161,21 @@ LONG WINAPI det_veh_handler(EXCEPTION_POINTERS* ep) {
             g_bp[i].on_hit(ctx);
         }
     }
-    if (!handled) return EXCEPTION_CONTINUE_SEARCH; // not one of ours
-    ctx->Dr6 = 0;
-    ctx->EFlags |= 0x10000; // RF (resume flag): step past this instruction once without retriggering
+    if (handled) {
+        ctx->Dr6 = 0;
+        ctx->EFlags |= 0x10000; // RF (resume flag): step past this instruction once without retriggering
+    } else if (snapshot_trace_active()) {
+        // Milestone 9's "--trace-window": a TRAP-FLAG single step, not one of
+        // our four hardware breakpoints. Dr6 bit 14 (BS) is set instead of
+        // bits 0-3, so the loop above found nothing - claim it here rather
+        // than letting it fall through to main.cpp's fatal-crash handler.
+        ctx->Dr6 = 0;
+    } else {
+        return EXCEPTION_CONTINUE_SEARCH; // not one of ours
+    }
+    // Logs this instruction and re-arms (or, at the end of the window,
+    // clears) EFlags.TF in the context we are about to resume.
+    if (snapshot_trace_active()) snapshot_trace_step(ctx);
     return EXCEPTION_CONTINUE_EXECUTION;
 }
 
@@ -1104,7 +1213,7 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
     g_parked_event = CreateEventA(nullptr, TRUE, FALSE, nullptr);
     if (g_det_mode) arena_init();
 
-    bool need_safepoint = opt.stop_at_tick > 0;
+    bool need_safepoint = opt.stop_at_tick > 0 || opt.force_safepoint;
     if (opt.digest_out && opt.digest_out[0]) {
         g_digest_file = fopen(opt.digest_out, "w");
         if (!g_digest_file) fprintf(stderr, "det: could not open --digest-out '%s'\n", opt.digest_out);
@@ -1178,6 +1287,57 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
             opt.digest_out && opt.digest_out[0] ? opt.digest_out : "(none)",
             opt.record_input && opt.record_input[0] ? opt.record_input : "(none)",
             opt.input_script && opt.input_script[0] ? opt.input_script : "(none)");
+}
+
+// ---------------------------------------------------------------------
+// Milestone 8: carrier-owned snapshot state (det.hpp's DetSavedState).
+// Everything here is a det.cpp static, i.e. outside the guest image, the
+// arena and the guest stack - so a snapshot that only captured guest
+// memory would rewind the game but not the clock, the script cursor or the
+// RNG, and the replay would not line up. See snapshot.cpp.
+// ---------------------------------------------------------------------
+void det_state_save(DetSavedState* s) {
+    memset(s, 0, sizeof(*s));
+    s->virtual_ms = g_virtual_ms;
+    s->units_reported = g_units_reported;
+    s->rng_state = g_rng_state;
+    s->rng_calls = g_rng_calls;
+    s->script_cursor = (unsigned)g_script_cursor;
+    s->arena_offset = (unsigned)g_arena_offset;
+    s->real_key_violations = g_real_key_violations;
+    memcpy(s->key_held, g_key_held, sizeof(g_key_held));
+    if (g_real_queue_cs_inited) EnterCriticalSection(&g_real_queue_cs);
+    s->real_queue_head = g_real_queue_head;
+    s->real_queue_tail = g_real_queue_tail;
+    for (int i = 0; i < kRealQueueCap; ++i) {
+        s->real_queue_code[i] = g_real_queue[i].allegro_code;
+        s->real_queue_press[i] = g_real_queue[i].press ? 1 : 0;
+    }
+    if (g_real_queue_cs_inited) LeaveCriticalSection(&g_real_queue_cs);
+}
+
+void det_state_load(const DetSavedState* s) {
+    g_virtual_ms = s->virtual_ms;
+    g_units_reported = s->units_reported;
+    g_rng_state = s->rng_state;
+    g_rng_calls = (long)s->rng_calls;
+    g_script_cursor = (size_t)s->script_cursor;
+    // The arena is bump-only, so rewinding the bump pointer is exactly the
+    // right semantics: every allocation made AFTER the snapshot is simply
+    // forgotten and its bytes will be handed out again in the same order
+    // (carrier/NOTES.md "Milestones 8-9", hazard list).
+    g_arena_offset = (size_t)s->arena_offset;
+    g_real_key_violations = s->real_key_violations;
+    memcpy(g_key_held, s->key_held, sizeof(g_key_held));
+    real_queue_init();
+    EnterCriticalSection(&g_real_queue_cs);
+    g_real_queue_head = s->real_queue_head;
+    g_real_queue_tail = s->real_queue_tail;
+    for (int i = 0; i < kRealQueueCap; ++i) {
+        g_real_queue[i].allegro_code = s->real_queue_code[i];
+        g_real_queue[i].press = s->real_queue_press[i] != 0;
+    }
+    LeaveCriticalSection(&g_real_queue_cs);
 }
 
 void det_shutdown() {
