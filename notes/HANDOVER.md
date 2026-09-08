@@ -25,7 +25,7 @@ cmd /c .\build.cmd
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/gates.ps1
 ```
 
-Expected: G1 EQUAL (876 ticks), G2 EQUAL (877 invocations), G3a/G3b EQUAL,
+Expected (as of the closing run): G1 EQUAL (876 ticks), G2 EQUAL (876 invocations), G3a/G3b EQUAL,
 G4 EQUAL (2293 ticks, human recording, all rows bound vs stored baseline),
 G5a/G5b EQUAL (157 ticks, `.itr` workload).
 

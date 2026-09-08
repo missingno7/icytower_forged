@@ -78,6 +78,8 @@ extern "C" {
     int __cdecl calc_replay_checksum_131(void*);
     int __cdecl calc_replay_checksum(void*);
     void __cdecl destroy_replay(void*);
+    void* __cdecl create_replay(int);
+    void* __cdecl load_replay(void*);
     int __cdecl save_replay(void*, void*, void*, int, int);
     void __cdecl reset_player(void*);
     void __cdecl take_screenshot(void*);
@@ -279,6 +281,8 @@ static const FnDesc kFns[] = {
     { "calc_replay_checksum_131", 0x0041ba10u, 1, true, nullptr, nullptr, (void*)calc_replay_checksum_131, nullptr, 0, -1 },
     { "calc_replay_checksum", 0x0041bac4u, 1, true, nullptr, nullptr, (void*)calc_replay_checksum, nullptr, 0, -1 },
     { "destroy_replay", 0x0041bd68u, 1, false, nullptr, nullptr, (void*)destroy_replay, nullptr, 0, -1 },
+    { "create_replay", 0x0041cce8u, 1, true, nullptr, nullptr, (void*)create_replay, nullptr, 0, -1 },
+    { "load_replay", 0x0041cde8u, 1, true, nullptr, nullptr, (void*)load_replay, nullptr, 0, -1 },
     { "save_replay", 0x0041dd78u, 5, true, nullptr, nullptr, (void*)save_replay, nullptr, 0, -1 },
     { "reset_player", 0x00418550u, 1, false, nullptr, nullptr, (void*)reset_player, regions_reset_player, 1, 0 },
     { "take_screenshot", 0x0041002cu, 1, false, nullptr, nullptr, (void*)take_screenshot, nullptr, 0, -1 },
