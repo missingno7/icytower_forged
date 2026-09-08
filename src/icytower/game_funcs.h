@@ -174,7 +174,7 @@ int __cdecl get_custom_characters_dir(char *buffer, it_orig_size_t buflen);
 int __cdecl get_logfile_path(char *buffer, it_orig_size_t buflen);
 #endif
 #ifndef get_profile_dir_for_profile
-int __cdecl get_profile_dir_for_profile(char *buffer, it_orig_size_t buflen, const char *profile);
+int __cdecl get_profile_dir_for_profile(char *buffer, it_orig_size_t buflen, const char *profile_arg);
 #endif
 #ifndef get_profiles_dir
 int __cdecl get_profiles_dir(char *buffer, it_orig_size_t buflen);
@@ -675,10 +675,10 @@ void __cdecl draw_profile_selector(BITMAP *bmp, Tprofile *current_profile, Tavai
 int __cdecl generate_profile_checksum(Tprofile *p);
 #endif
 #ifndef get_rank
-char * __cdecl get_rank(Tprofile *profile);
+char * __cdecl get_rank(Tprofile *profile_arg);
 #endif
 #ifndef get_rank_id
-int __cdecl get_rank_id(Tprofile *profile);
+int __cdecl get_rank_id(Tprofile *profile_arg);
 #endif
 #ifndef hash2
 unsigned int __cdecl hash2(unsigned int a);
@@ -708,7 +708,7 @@ Tprofile * __cdecl select_profile(Tprofile *current_profile, Tavailable_profile 
 void __cdecl set_next_rank_message(char *buf, Tprofile *p);
 #endif
 #ifndef view_profile
-int __cdecl view_profile(Tprofile *profile);
+int __cdecl view_profile(Tprofile *profile_arg);
 #endif
 
 /* ---- F:\projects\icytower\trunk\source\regpng.c ---- */

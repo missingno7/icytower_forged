@@ -80,15 +80,15 @@ int mkdir(const char *path);
  * All four comparisons are SIGNED (`jl`/`jge`), matching the `int` type
  * of both the tables and the profile fields.
  */
-int get_rank_id(Tprofile *profile)
+int get_rank_id(Tprofile *profile_arg)
 {
     int i;
 
     for (i = RANK_LEVELS - 1; i >= 0; i--) {
-        if (profile->best_floor >= rankFloors[i]
-         && profile->best_combo >= rankCombos[i]
-         && profile->no_combo_top_floor >= rankNMLs[i]
-         && profile->ccc[0] >= rankCCCs[i])
+        if (profile_arg->best_floor >= rankFloors[i]
+         && profile_arg->best_combo >= rankCombos[i]
+         && profile_arg->no_combo_top_floor >= rankNMLs[i]
+         && profile_arg->ccc[0] >= rankCCCs[i])
             return i;
     }
     return 0;
@@ -106,9 +106,9 @@ int get_rank_id(Tprofile *profile)
  * -O2 re-inlines it and emits the same code.  Writing the loop twice
  * would match the object code more literally and the source less.
  */
-char *get_rank(Tprofile *profile)
+char *get_rank(Tprofile *profile_arg)
 {
-    return rankLables[get_rank_id(profile)];
+    return rankLables[get_rank_id(profile_arg)];
 }
 
 /* ---------------------------------------------------------------------

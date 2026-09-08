@@ -26,6 +26,40 @@
  *                     arguments AND, for the pack_fwrite calls, the
  *                     BYTES written -- the call sequence IS the file.
  */
+/* ------------------------------------------------------------------ */
+/* MEMBER-ACCESS COLLISIONS -- the same class handle_player_input.c and */
+/* draw_frame.c already document, and the reason                        */
+/* carrier/win32_policy.json's `scan_exclude` temporarily listed this    */
+/* file.  Three `Treplay`/`Trecord` MEMBER names are also top-level      */
+/* game globals that carrier/gen/pf_bindings_src.h rewrites with a blunt */
+/* textual #define, which turns `r->data` / `r->rejump` /                */
+/* `r->data[i].cycle_count` into syntax errors in the carrier world:     */
+/*                                                                      */
+/*   data          `Treplay.data`, the Trecord array                     */
+/*                 vs `DATAFILE *data`         @0x4dd23c                 */
+/*   rejump        `Treplay.rejump`, the difficulty field                */
+/*                 vs `int rejump`             @0x4fdcd8                 */
+/*   cycle_count   `Trecord.cycle_count`, the RLE run length             */
+/*                 vs `volatile int cycle_count` @0x506938               */
+/*                                                                      */
+/* Dropping all three bindings for the rest of THIS translation unit is  */
+/* right rather than merely expedient: nothing in replay.c may touch the */
+/* datafile (that belongs behind ASSETS.md's asset_*() seam), the live   */
+/* difficulty global (the replay carries its OWN copy, which is the      */
+/* whole point of the field) or the tick counter (play()'s pacing).      */
+/* The real fix is the context-sensitive rewrite gen_bindings.py's own   */
+/* MEMBER_ACCESS_COLLISIONS comment describes; reported, not attempted.  */
+/* ------------------------------------------------------------------ */
+#ifdef data
+#undef data
+#endif
+#ifdef rejump
+#undef rejump
+#endif
+#ifdef cycle_count
+#undef cycle_count
+#endif
+
 #include "game_types.h"
 #include "game_state.h"
 #include "game_funcs.h"
