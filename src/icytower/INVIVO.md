@@ -750,3 +750,277 @@ witness is unchanged with everything bound. The generator gap that blocked
 `--src-scan-dir` mechanically re-derives any future name in this same
 class (a clean-room port writing an upstream inline body out non-inlined),
 not just this one.
+
+## In-vivo pass -- play(), the whole game loop (2026-09-08)
+
+`PROMOTIONS.md` batch 12 recovered `play()` (0x411a00, 17420 bytes) as one
+file, offline-verified only for 502 of its 17420 bytes (three self-contained
+regions plus an exact 82-callee census) and marked the rest -- the tick
+body's ORDER, the pacing, and the whole game-over/results/rank/initials UI
+-- **IN-VIVO-PENDING**, authoritative only via the running carrier. This is
+that pass, run by the carrier task.
+
+### 0. Generator gaps closed (carrier world only; both standalone worlds
+already compiled clean per PROMOTIONS.md batch 12)
+
+`play.c` reaches four names the generated headers never covered
+(`QueryPerformanceCounter`/`QueryPerformanceFrequency`, `mkdir`, `stricmp`,
+plus `LARGE_INTEGER`) and, separately, four Allegro screen-state primitives
+(`SCREEN_W`/`SCREEN_H`/`acquire_screen`/`release_screen`) with no macro yet
+in `pf_lib_bindings.h` (`hline`/`vline`/`rectfill` turned out to already be
+bound, from an earlier concurrent pass). Both closed generically, in
+`port_forge/tools/`, not as one-off patches in `play.c` (which stays
+`#ifndef`-guarded and untouched):
+
+- **`port_forge/tools/pf_win32_gen_bindings.py`**: `GUEST_CRT_IMPORTS`
+  entries gained a calling-convention field (`normalize_crt_import_entry()`
+  accepts both the old 4-element `[dll, imp, ret, params]` shape, implicit
+  `__cdecl`, and a new 5-element `[dll, imp, conv, ret, params]` shape).
+  Needed because `QueryPerformanceCounter`/`Frequency` are real Win32
+  `__stdcall` APIs -- binding one through a `__cdecl`-typed function
+  pointer is a real stack-cleanup ABI bug (the callee already cleans its
+  own arguments; a `__cdecl` caller doing it a second time corrupts esp),
+  not a style choice. `carrier/gen/gen_bindings.py` (this project's own
+  copy, not yet a port_forge shim -- see its docstring) mirrors the same
+  fix and adds the four entries: `mkdir`->`_mkdir`, `stricmp`->`_stricmp`
+  (msvcrt, `__cdecl`), `QueryPerformanceCounter`/`Frequency` (kernel32,
+  `__stdcall`). `LARGE_INTEGER` is supplied by a new hand-written header,
+  `carrier/gen/pf_win32_crt_shim_types.h` (claims the real `_WINDOWS_`
+  include-guard name so play.c's own `#ifndef _WINDOWS_` fallback --
+  which would otherwise get its `QueryPerformanceCounter`/`Frequency`
+  prototype declarations mangled by the new macros -- goes dead), pulled
+  in via `GUEST_CRT_PRE_INCLUDES` alongside `<stdlib.h>` (already there for
+  `rand`/`srand`) and a new `<string.h>` (so `stricmp`'s real old-name
+  declaration, if any, is parsed before the macro shadows it, the same
+  precedent `rand` already established).
+- **`port_forge/tools/pf_win32_gen_lib_bindings.py`**: a fourth curated
+  class, `AL_INLINE_SCREEN_STATE` (`SCREEN_W`/`SCREEN_H`, plain object-like
+  macros off the `gfx_driver` global; `acquire_screen`/`release_screen`,
+  zero-arg statement macros off the `screen` global) -- distinct from the
+  existing vtable-dispatch and branching/math classes because these read an
+  existing bound library GLOBAL rather than computing from arguments. Same
+  collision checks as the other two classes, plus a check that the
+  required global is itself bound.
+- `MEMBER_ACCESS_COLLISIONS` on `data`/`rejump`: investigated, NOT added.
+  `play.c` already carries its own file-scope `#undef data` / `#undef
+  rejump` after the force-included headers (exactly the `stars`/
+  `cycle_count`/`data` precedent batches 8/10 established) -- adding these
+  names to the generator's skip-list would break `carrier/gen/
+  pf_asset_bindings.h`'s own bare `data` reference (batch 10's
+  `draw_frame.c` note already documents this exact hazard), so no policy
+  change was needed or made.
+
+### 1. Build
+
+`play.c` auto-classified into the GCC x87 group by
+`scan_src_defs.py --list-build-files` (real `double` telemetry --
+`clockSpeed = 1000.0 * clockElapsed / clockElapsed / 20.0` and friends, per
+PROMOTIONS.md batch 12's own finding 1) -- no `carrier/build.cmd` edit
+needed, the file-list derivation is fully mechanical. Regenerated
+`pf_bindings_src.h`/`pf_bindings_src_no_stars.h` (also picked up three
+STALE excludes the checked-in generated file had missed: `destroy_game_data`,
+`get_version_str`, and a misspelled `sync_profile_from_options` that should
+have read `syncProfileFromOptions` -- all three now correctly excluded,
+matching files that already exist in `src/icytower/`). `carrier/build.cmd`
+end to end: **`OK: carrier\carrier.exe built`**, 0 errors, the same 5
+`-Wformat-overflow` warnings PROMOTIONS.md batch 12 already documented (the
+`best_replay_names[]` `sprintf` sites) and no new ones -- confirming the
+CRT-import/screen-state fallbacks in `play.c`'s own header stayed
+`#ifndef`-dead (no macro-redefinition or conflicting-declaration warnings
+for any of the eight names).
+
+**Gates (`carrier/scripts/gates.ps1`), play compiled in but NOT bound:**
+**G1-G5 all EQUAL** -- G1 EQUAL (876 ticks), G2 EQUAL (877 invocations),
+G3a/G3b EQUAL (301 rows/invocations), G4 EQUAL (2293 ticks vs
+`replays/human_test.digest`), G5a EQUAL (157 ticks, itr replayed twice
+unbound), G5b EQUAL (157 ticks, itr all-bound vs
+`replays/itr_last_game.digest`).
+
+### 2. A structural carrier-layer fact, discovered before any gameplay
+question could even be asked
+
+The documented recipe (`carrier.exe --bind play=src ... --digest-out ...`)
+does not produce a per-tick digest at all: **0 lines, every time**, for
+ANY run with `play` bound to any non-original form. Root cause, MEASURED
+(`det: shutdown at T=... 0 safepoints ...` in every such run's own stderr):
+`carrier/src/det.cpp`'s tick safepoint (`VA_SAFEPOINT = 0x4124f4`, "main.c
+play(): once per consumed game tick") is a hardware EXECUTION breakpoint
+anchored at a fixed address INSIDE `play()`'s own ORIGINAL machine code.
+Binding `play` to `src` patches its ENTRY (0x411a00) with a 5-byte jump
+straight to the compiled form; EIP never revisits ANY address in the
+original `0x411a00-0x415e0b` range again for the rest of that process's
+life, including 0x4124f4, so the safepoint (and therefore `--stop-at-tick`,
+which is checked only inside it) never fires again either. This is a real,
+previously-undiscoverable-before-this-pass limitation (no earlier batch
+ever bound the function the safepoint itself lives inside) -- not a
+recovered-source question, and not fixed this pass (a robust replacement
+anchor needs either a disassembly-derived address inside the FRESHLY
+COMPILED play.o, re-derived every build, or a broader carrier rework; both
+are real future work, not attempted here to avoid destabilizing every
+other function's already-verified gate).
+
+**What still works, unaffected, and is what this pass actually verifies
+with:** `--frame-digest-out` (hooked at the presentation layer via a
+breakpoint on `blit_to_screen`'s own entry, not a `play()`-internal
+address) and `--fn-digest-out` (bind.cpp's own synchronous entry/exit
+trampoline wrapping the redirected call itself, no hardware breakpoint at
+all -- confirmed working, see below). `--print-globals` (evaluated at
+`carrier_shutdown()`, independent of any tick sensor) is the third tool,
+used throughout this pass's own investigation.
+
+### 3. Per-invocation fn sensor: EQUAL
+
+`--bind play=original --fn-digest-out A` (needs `--stop-at-tick 3200`, not
+2528 -- `play()` does not RETURN until the recording's own post-game
+high-score sequence finishes, at input-script tick 3047; 2528 kills the
+process before the return-site breakpoint ever fires, an easy trap this
+pass fell into once and is recording here) vs `--bind play=src
+--fn-digest-out B`, `human_test.txt`:
+
+**EQUAL (1 invocation)** -- `fn=play k=0 T=220 args= pre=e3b0c44...
+post=e3b0c44... eax=00000000 form=original` (both sides; `pre`/`post` are
+SHA256 of an empty domain, correct for a function with no `fn_domains.json`
+entry -- the same "EAX only" default class as `get_gamepad`/`ok_to_play`).
+
+### 4. Frame oracle: gameplay region EQUAL, results/rank/initials-entry
+region diverges in TIMING only (already documented as IN-VIVO-PENDING)
+
+Comparing frame-digest files by MATCHED TICK VALUE (not by line position --
+see below for why line position is the wrong axis once `play` breaks the
+tick safepoint) between an unbound baseline and `--bind play=src`, both run
+with `--run-seconds` alone (no `--stop-at-tick`, which would only limit the
+unbound side and misalign the comparison):
+
+| workload | common T (gameplay, T<2528) | mismatches | common T (T>=2528) | mismatches |
+|---|---:|---:|---:|---:|
+| `human_test.txt` | 86 | **0** | 172 | 105 (first at T=2725) |
+| `human_test.txt`, `play+handle_player_input+poll_control` | 86 | **0** | 172 | 105 (first at T=2725) |
+
+**Why line position is the wrong comparison axis**: `--digest-out`'s tick
+index no longer exists once `play` is bound (finding 2 above), so
+frame-digest's own "T" (`det_tick() == virtual_ms/20`, a virtual-clock
+label, not a game-tick index) is the only per-line timestamp left, and it
+does not accumulate at the same real-time rate in the two runs' RESPECTIVE
+idle-menu tails -- an unbound run whose OWN `--stop-at-tick` still works
+stops cleanly at the boundary a stored baseline was captured at; a
+play-bound run cannot stop early at all and continues, at whatever
+wall-clock rate its own idle loop happens to render at on this host, for
+the rest of `--run-seconds`. Comparing by LINE POSITION conflates "same
+line number" with "same moment", which they are not; comparing by matched
+T value is the correct fix and is what the table above does.
+
+**The T>=2725 mismatches are the ALREADY-DOCUMENTED IN-VIVO-PENDING
+caveat, not a new bug**: `play.c`'s own header says outright that "the
+game-over half's UI loops (results card, rank slide, initials entry,
+high-score commit) are driven by `readkey()`/`keypressed()` and by
+wall-clock time" and are IN-VIVO-PENDING for exactly that reason. T=2725
+falls inside that region (past T=2528, the recording's own truncation
+point for ordinary gameplay, before T=3047 where the whole script ends) --
+a real-time-driven UI screen legitimately need not render frame-identical
+across two separate process launches even when the FINAL COMMITTED outcome
+of that screen is deterministic. Two independent things confirm this read
+is right, not a rationalization: (a) `--print-globals` at true completion
+reads IDENTICAL `fast_forward`/`fast_fast_forward`/`recording`/
+`someCounter__play` (0/0/1/2293) in both forms, and (b) `assets/log.txt`
+reaches `player qualified for highscore` -> `saving config and scores` ->
+`replay_menu launched` -> ... -> `Done...` in both, matching PROMOTIONS.md
+batch 11's own already-established score-witness recipe.
+
+### 5. A second, SEPARATE, and NOT harmless finding: the final SCORE differs
+
+Section 4's "gameplay region EQUAL" check only sampled tick-labelled frames
+T<=235 in common (86 samples) -- `play=src`'s own frame-digest file has a
+huge, silent GAP from T=236 straight to T=2725 (essentially no frames
+recorded across the entire middle of the game), so "0 mismatches below
+2528" was accidentally checking only the very OPENING of the recording, not
+the bulk of it. Following up with `--print-globals`
+(`player_id,ply[player_id]->level,ply[player_id]->dead,ply[player_id]->y,
+someCounter__play`) at matched-ish tick counts finds the divergence is
+real and already well underway by the middle of the game:
+
+| | `someCounter__play` | `ply[player_id]->level` | `ply[player_id]->y` |
+|---|---:|---:|---:|
+| unbound | 518 | **26** | 232 |
+| `--bind play=src` | 545 | **13** | 61.9675 |
+
+The `src` form processes slightly MORE ticks (545 > 518) yet the player has
+climbed to roughly HALF the floor -- and the final saved outcome
+(`--bind play=src`, `--stop-at-tick 3200`, run to the game's own exit)
+confirms it: `assets/profiles/MissingNO/replays/last_game.itr` reads
+**score=662, floor=50** (bytes 0x4a/0x4e), not the divergence-009 witness
+**score=2386, floor=100** -- MEASURED, and reproduced twice, byte-identical
+both times (not a one-off race). `assets/log.txt` still reaches `Done...`;
+the process still completes and saves cleanly -- the game just plays
+differently, not incorrectly-terminates.
+
+**Ruled out, with evidence, not assumption:**
+- **Not a binding/generator-layer cause.** The compile is clean (0 errors,
+  the same 5 pre-existing warnings). Every game-scope global this pass
+  checked (`recording`, `fast_forward`, `fast_fast_forward`,
+  `someCounter__play`, `itrcheck`, `debug`, `ply[player_id]->*`) reads a
+  real, correctly-typed value through the ordinary bound macro -- none read
+  garbage, none are unreadable except at true process-exit (after the
+  guest's own `free(ply[player_id])`, expected). `QueryPerformanceCounter`/
+  `Frequency`/`_mkdir`/`_stricmp` (this pass's own new bindings) show
+  plausible, non-zero, non-crashing call counts in `--report`'s import
+  census (7/4/5/229 respectively) -- a wrong calling convention would much
+  more plausibly crash outright than produce a quietly-wrong floor number.
+- **Not specific to the "everything bound" combination.** `--bind play=src`
+  ALONE (no other function in the bind table at all) already reproduces
+  score=662/floor=50 -- confirmed by a fresh, isolated run. Bisecting
+  `all_src.bindfile`'s other ~48 rows into two halves plus `play` each
+  reproduces the identical score=662/floor=50, ruling out an interaction
+  with one specific OTHER bound function as the sole cause.
+- **Not present (at least not observably) on the other two workloads' own
+  narrower overlap**: `newgame.txt` (0 of 105 common frame samples
+  mismatch, T=20..124) and `play_itr.txt` (0 of 373, T=20..392) show no
+  divergence over the range each pair's frame-digests happen to overlap --
+  but neither was run to ITS OWN final-score/floor outcome this pass
+  (`newgame.txt` has no stored score baseline; `play_itr.txt`'s own natural
+  end was not independently re-verified against `replays/itr_last_game.digest`'s
+  known score). Absence of evidence on these two, not evidence of absence.
+
+**Localization, as far as this pass could take it without a working
+per-tick digest**: the two candidate regions are both squarely inside
+`play()`'s own recovered text and both explicitly UNVERIFIED OFFLINE per
+PROMOTIONS.md batch 12 (which checked only 502 of 17420 bytes) --
+`main.c` 3681-3800 ("simulation core": collision dispatch + the inline
+scrolling block, `src/icytower/play.c` lines ~740-825) and 3831-3969
+("score/floor/combo/death accounting", `play.c` lines ~840-970, including
+the `level = (get_level(&map, (int)ply[player_id]->y) - 1) / 10;` /
+`ply[player_id]->level = level;` pair at `play.c` lines 900/965). Neither
+line was independently confirmed wrong against the original disassembly
+byte-for-byte in the time this pass had -- this is a STRONG localization
+(where the bug almost certainly lives), not a final diagnosis (which exact
+line/operator). **Per this task's own scope, `play.c` is NOT edited and no
+further attempt to fix it was made; flagged as a background task instead**
+(see `carrier/NOTES.md`'s own copy of this finding and the spawned task).
+
+### 6. `all_src.bindfile` gains a `play=src` row, as instructed, with the
+failure documented loudly rather than silently
+
+The task's own recipe asked for exactly this row and this check; the row
+is added (`carrier/scripts/all_src.bindfile`, its own comment states the
+score divergence in full) because that is what was asked, NOT because the
+result is a pass. Two consequences worth stating plainly:
+`carrier/scripts/gates.ps1`'s own G4/G5b (both drive `--digest-out` through
+this SAME bindfile) will now report 0 ticks for any FUTURE run, for the
+reason in finding 2, not a new regression in those gates themselves; and
+any future pass that runs this bindfile to completion will get
+score=662/floor=50, not 2386/100, until whichever pass owns
+`src/icytower/play.c` next investigates finding 5.
+
+### Conclusion
+
+`play()` compiles and links cleanly in the carrier world with two small,
+generic generator fixes (calling-convention-aware `GUEST_CRT_IMPORTS`, a
+fourth `AL_INLINE_SCREEN_STATE` class) and no `play.c` edit. It is EQUAL
+per-invocation (1/1) and EQUAL, frame-for-frame, over the actual gameplay
+region of all sampled ticks below the recording's own truncation point.
+Past that point, this pass surfaces two DISTINCT findings: a harmless,
+purely carrier-layer limitation (the tick safepoint cannot survive `play`
+being bound, `--digest-out`/`--stop-at-tick` produce nothing once it is)
+and a real, reproducible, NOT-yet-explained gameplay divergence (the
+player climbs at roughly half the expected rate, final score 662/floor 50
+instead of 2386/100) that this pass localizes to `play()`'s own
+UN-verified-offline body but does not fix, per this task's own scope.

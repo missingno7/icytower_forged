@@ -4,8 +4,8 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-07 23:56:11 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_player, draw_replay_hud, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_sprite, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, poll_control, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
+ * Generated: 2026-09-08 00:52:42 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, check_control_key, clear_replay_telemetry, clickedCloseButton, collect_game_data, create_particle, cycle_counter, destroy_game_data, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_pause_curtain, draw_player, draw_replay_hud, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, get_version_str, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_sprite, jump_player, line_intersect, new_rand, ok_to_play, play, play_jump_sound, poll_control, reset_map, reset_particles, reset_player, restart_scroller, restart_time_cheat_window, resync_music_counter, save_personal_bests, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, syncProfileFromOptions, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -31,13 +31,27 @@
 /* gen_bindings.py's docstring and notes/living_record.md).            */
 /* ------------------------------------------------------------------ */
 #include <stdlib.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
+#include <string.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
+#include "pf_win32_crt_shim_types.h"  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
 
+/* QueryPerformanceCounter  -> kernel32.dll!QueryPerformanceCounter IAT slot VA=0x005147a0  (the original's own `call _QueryPerformanceCounter -> jmp *[slot]`) */
+typedef int (__stdcall *PFN_crt_QueryPerformanceCounter)(LARGE_INTEGER *);
+#define QueryPerformanceCounter (*(PFN_crt_QueryPerformanceCounter *)0x005147a0)
+/* QueryPerformanceFrequency  -> kernel32.dll!QueryPerformanceFrequency IAT slot VA=0x005147a4  (the original's own `call _QueryPerformanceFrequency -> jmp *[slot]`) */
+typedef int (__stdcall *PFN_crt_QueryPerformanceFrequency)(LARGE_INTEGER *);
+#define QueryPerformanceFrequency (*(PFN_crt_QueryPerformanceFrequency *)0x005147a4)
+/* mkdir  -> msvcrt.dll!_mkdir IAT slot VA=0x005147f0  (the original's own `call __mkdir -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_mkdir)(const char *);
+#define mkdir (*(PFN_crt_mkdir *)0x005147f0)
 /* rand  -> msvcrt.dll!rand IAT slot VA=0x00514944  (the original's own `call _rand -> jmp *[slot]`) */
 typedef int (__cdecl *PFN_crt_rand)(void);
 #define rand (*(PFN_crt_rand *)0x00514944)
 /* srand  -> msvcrt.dll!srand IAT slot VA=0x0051495c  (the original's own `call _srand -> jmp *[slot]`) */
 typedef void (__cdecl *PFN_crt_srand)(unsigned);
 #define srand (*(PFN_crt_srand *)0x0051495c)
+/* stricmp  -> msvcrt.dll!_stricmp IAT slot VA=0x00514808  (the original's own `call __stricmp -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
+#define stricmp (*(PFN_crt_stricmp *)0x00514808)
 
 /* ------------------------------------------------------------------ */
 /* globals: <name> -> (*(T*)VA), identical to it_globals.h IT_G_<name> */
@@ -481,9 +495,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* destroy_datafile_png  VA=0x41b8e4  cu=F:\projects\icytower\trunk\source\regpng.c */
 /* prototype: void destroy_datafile_png(void *) */
 #define destroy_datafile_png ((PFN_destroy_datafile_png)0x41b8e4)
-/* destroy_game_data  VA=0x40418c  cu=F:\projects\icytower\trunk\source\game_data.c */
-/* prototype: void destroy_game_data(Tgame_data *) */
-#define destroy_game_data ((PFN_destroy_game_data)0x40418c)
+/* excluded by --exclude (compiled natively): destroy_game_data */
 /* destroy_hisc_table  VA=0x405818  cu=F:\projects\icytower\trunk\source\hisc.c */
 /* prototype: void destroy_hisc_table(Thisc_table *) */
 #define destroy_hisc_table ((PFN_destroy_hisc_table)0x405818)
@@ -662,9 +674,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* get_url_filename  VA=0x403d20  cu=F:\projects\icytower\trunk\source\fld_adspot.c */
 /* prototype: const char * get_url_filename(const char *) */
 #define get_url_filename ((PFN_get_url_filename)0x403d20)
-/* get_version_str  VA=0x406960  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: char * get_version_str() */
-#define get_version_str ((PFN_get_version_str)0x406960)
+/* excluded by --exclude (compiled natively): get_version_str */
 /* handle_menu  VA=0x417d24  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: int handle_menu(Tmenu *, Tmenu_params *, Tcontrol *, BITMAP *, void (__cdecl *)(void), int, int, int) */
 #define handle_menu ((PFN_handle_menu)0x417d24)
@@ -817,9 +827,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* open_web_browser  VA=0x40e510  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void open_web_browser(const char *) */
 #define open_web_browser ((PFN_open_web_browser)0x40e510)
-/* play  VA=0x411a00  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: int play() */
-#define play ((PFN_play)0x411a00)
+/* excluded by --exclude (compiled natively): play */
 /* excluded by --exclude (compiled natively): play_jump_sound */
 /* play_menu_move  VA=0x406ea4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void play_menu_move() */
@@ -978,9 +986,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* syncOptionsFromProfile  VA=0x40c820  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void syncOptionsFromProfile() */
 #define syncOptionsFromProfile ((PFN_syncOptionsFromProfile)0x40c820)
-/* syncProfileFromOptions  VA=0x406a14  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void syncProfileFromOptions() */
-#define syncProfileFromOptions ((PFN_syncProfileFromOptions)0x406a14)
+/* excluded by --exclude (compiled natively): syncProfileFromOptions */
 /* take_screenshot  VA=0x41002c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void take_screenshot(BITMAP *) */
 #define take_screenshot ((PFN_take_screenshot)0x41002c)

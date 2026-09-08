@@ -4915,3 +4915,156 @@ high-score entry, which runs to input-script tick 3047) still saves
 009's witness. Full detail (regex mechanism, false-positive investigation,
 per-workload tables) is in `src/icytower/INVIVO.md`'s own "In-vivo pass,
 batch 11" section.
+
+## In-vivo pass -- play(), the whole game loop (2026-09-08)
+
+`PROMOTIONS.md` batch 12 recovered `play()` (0x411a00, 17420 bytes, the
+largest single function in the image) offline-verified for only 502 of its
+17420 bytes; the rest was marked IN-VIVO-PENDING, authoritative only via a
+running carrier. Full detail (repro commands, --print-globals evidence,
+per-workload tables) is in `src/icytower/INVIVO.md`'s own "In-vivo pass --
+play()" section; this is the carrier-side summary.
+
+**Generator gaps closed** (`port_forge/tools/`, no `play.c` edit): (1)
+`pf_win32_gen_bindings.py`'s `GUEST_CRT_IMPORTS` gained a calling-convention
+field (`normalize_crt_import_entry()`, 4- or 5-element entries) --
+`QueryPerformanceCounter`/`Frequency` are real `__stdcall` Win32 APIs, and
+binding one through a `__cdecl`-typed function pointer is a real ABI bug
+(double stack cleanup), not cosmetic; `carrier/gen/gen_bindings.py` mirrors
+the fix (its own copy is not yet a port_forge shim) and adds
+`mkdir`->`_mkdir`/`stricmp`->`_stricmp` (msvcrt, cdecl) and
+`QueryPerformanceCounter`/`Frequency` (kernel32, stdcall); a new hand-written
+`carrier/gen/pf_win32_crt_shim_types.h` supplies `LARGE_INTEGER` and claims
+the real `_WINDOWS_` guard name so `play.c`'s own `#ifndef _WINDOWS_`
+fallback goes dead rather than getting macro-mangled. (2)
+`pf_win32_gen_lib_bindings.py` gained a fourth curated class,
+`AL_INLINE_SCREEN_STATE` (`SCREEN_W`/`SCREEN_H`/`acquire_screen`/
+`release_screen`, reading the already-bound `gfx_driver`/`screen` globals).
+`MEMBER_ACCESS_COLLISIONS` on `data`/`rejump`: investigated, correctly NOT
+added -- `play.c` already carries its own file-scope `#undef`, and adding
+either name to the generator's skip-list would break `pf_asset_bindings.h`'s
+own bare `data` reference (the same hazard batch 10's `draw_frame.c` note
+already documents).
+
+**Build**: `play.c` auto-classified into the GCC x87 group (real `double`
+telemetry) by the existing mechanical file-list derivation -- no
+`build.cmd` edit. `carrier/build.cmd`: **0 errors**, the same 5
+pre-existing `-Wformat-overflow` warnings, no new ones (confirming the
+CRT-import/screen-state fallbacks in `play.c`'s header stayed `#ifndef`-
+dead). Regenerating `pf_bindings_src.h` also caught three STALE excludes
+the checked-in generated file had missed (`destroy_game_data`,
+`get_version_str`, a misspelled `sync_profile_from_options`).
+
+**Gates (play compiled in, NOT bound): G1-G5 all EQUAL.**
+
+**A structural carrier-layer fact, found before any gameplay question
+could be asked**: `--digest-out`/`--stop-at-tick` produce **0 records**
+for ANY run with `play` bound to any non-original form. `det.cpp`'s tick
+safepoint (`VA_SAFEPOINT=0x4124f4`) is a hardware execution breakpoint
+anchored INSIDE `play()`'s own original machine code; binding `play`
+patches its entry with a redirect, so EIP never revisits that address
+again (MEASURED: `0 safepoints` at shutdown, every time). Not fixed this
+pass (would need a disassembly-derived address inside the freshly
+compiled `play.o`, re-derived every build, or a broader rework) --
+`--frame-digest-out` (presentation-layer hook) and `--fn-digest-out`
+(bind.cpp's own synchronous trampoline) are unaffected and are what this
+pass verifies with instead.
+
+**Per-invocation fn sensor: EQUAL (1 invocation)**, `human_test.txt`
+(needs `--stop-at-tick 3200`, not 2528 -- `play()` does not return until
+input-script tick 3047).
+
+**Frame oracle, matched by tick value (not line position -- see
+INVIVO.md for why)**: EQUAL on every common tick in the actual gameplay
+region (T<2528, 86/86 samples, both `play=src` alone and
+`play+handle_player_input+poll_control`). Mismatches past that point
+(T>=2725, first divergence) fall inside the results/rank/initials-entry
+screens `play.c`'s own header already marks IN-VIVO-PENDING (wall-clock/
+`readkey()`-driven UI) -- confirmed, not just asserted, by `--print-globals`
+reading identical `fast_forward`/`fast_fast_forward`/`recording`/
+`someCounter__play` (0/0/1/2293) at true completion in both forms.
+
+**A second, NOT-harmless finding: the final score differs.** The
+"gameplay region EQUAL" check above only actually sampled T<=235 in
+common -- `play=src`'s frame-digest has a large silent gap from T=236 to
+T=2725. Following up with `--print-globals` on `ply[player_id]->level`/
+`->y` at matched tick counts (~520-545) shows the player already at level
+26 (unbound) vs 13 (`play=src`) -- climbing at roughly HALF the expected
+rate -- and running to the game's own exit confirms it:
+`last_game.itr` reads **score=662, floor=50**, not the divergence-009
+witness **score=2386, floor=100** (MEASURED, reproduced twice,
+byte-identical). Ruled out as a binding/generator cause (clean compile,
+every checked global reads correctly, `--report`'s import census shows
+plausible non-crashing `QueryPerformanceCounter`/`_mkdir`/`_stricmp`
+call counts) and as an interaction with one specific other bound function
+(`--bind play=src` ALONE, and each half of a bisected `all_src.bindfile`,
+all reproduce the identical score). Localized, not diagnosed further, to
+`play()`'s own UNVERIFIED-OFFLINE body (`main.c` 3681-3800 "simulation
+core" / 3831-3969 "score-floor-combo-death accounting",
+`src/icytower/play.c` lines ~740-970) -- per this task's scope, `play.c`
+is not edited; flagged as a background task instead.
+
+**`all_src.bindfile` gains a `play=src` row**, as the task's own recipe
+asked, with the failure documented in the row's own comment rather than
+hidden. Consequence: `gates.ps1`'s own G4/G5b (drive `--digest-out`
+through this same bindfile) will report 0 ticks for any future run (the
+safepoint finding above, not a new regression in those gates), and this
+bindfile run to completion gives score=662/floor=50 until a future pass
+investigates the finding above.
+
+### win32_pilot.md SS8a metrics (`--bind-file all_src.bindfile --report`, human_test.txt, the run with the score-662 finding above -- the crossing COUNTS themselves are unaffected by which floor the player reaches, only the final score is)
+
+| metric | value |
+|---|---:|
+| functions bound (form=src) | 50 |
+| crossings ORIGINAL -> src (`crossings_original_to_bound_form`) | 5244 |
+| domain read failures | 0 |
+| of the 50 bound, invoked at least once this run (`crossings>0`) | 22 |
+| of the 50 bound, never reached this run (`crossings==0`) | 28 |
+| original bytes recovered as clean source, cumulative (PROMOTIONS.md, batches 1-12) | 55284 (37864 + `play`'s 17420) |
+
+Functions actually invoked at least once (crossings>0): `add_floor`,
+`blit_to_screen`, `cycle_counter`, `fps_counter`, `get_controls`,
+`get_gamepad`, `init_control`, `is_any`, `is_down`, `is_enter`, `is_fire`,
+`is_left`, `is_right`, `is_up`, `new_rand`, `play`, `poll_control`,
+`reset_map`, `reset_particles`, `reset_player`, `scroll_scroller`,
+`switchedToProgram` -- 21 of the 28 zero-crossing rows are functions
+`play.c` (or another already-src file it calls) ALSO calls by bare C
+symbol, which resolves at LINK TIME directly to the linked-in `src` form
+and never touches the callee's own guest VA at all (the same
+`new_rand`-called-from-`update_particle` phenomenon Milestone 12 at scale
+already documented) -- their true invocation count is nonzero, just
+invisible to this VA-crossing counter once their caller is ALSO `src`.
+
+**A full byte-level census of "which STILL-ORIGINAL game functions execute
+during gameplay" (the remaining recovery workload for the tick path) is
+NOT produced by this pass.** The only two mechanisms this project has for
+that today are (a) `bind.cpp`'s own crossing counter above, which by
+construction can only report on the ~50 functions ALREADY in
+`bind_table.inc` (a function nobody has attempted yet has no row to
+count crossings against at all), and (b) `pf::win32::trace_write_import_counts`'s
+per-DLL-import call census (`--report`'s `"imports"` array, 160-odd
+distinct KERNEL32/msvcrt/USER32/Allegro-adjacent DLL entries with call
+counts this run -- confirms, incidentally, that this pass's own new
+`QueryPerformanceCounter`/`QueryPerformanceFrequency`/`_mkdir`/`_stricmp`
+bindings fire with plausible, non-crashing counts: 7/4/5/229
+respectively), which measures IMPORTED library calls, not internal GAME
+function execution. Neither answers "which of the ~200 still-original
+GAME functions ran". Producing that would need either a real
+disassembly-driven basic-block coverage tool (a DynamoRio-style
+instrumentation pass over the guest `.text` range, which this carrier does
+not have) or mechanically extending `bind_table.inc` to cover every
+game-scope function (not just the promoted ones) so the SAME crossing
+counter could report on all of them -- both are real future work, flagged
+here rather than attempted, since this pass's own effort went to the
+score-divergence investigation above instead.
+
+### Conclusion
+
+`play()` builds clean in the carrier world via two small, generic
+generator fixes and zero `play.c` edits; it is EQUAL per-invocation and
+frame-for-frame over the entire actual-gameplay region of every workload
+sampled. This pass's main deliverable beyond that is two clearly-separated
+findings: a harmless carrier-layer limitation (the tick safepoint) and a
+real, reproducible, unexplained gameplay divergence in the final score --
+both documented in full in `src/icytower/INVIVO.md`, neither fixed here.

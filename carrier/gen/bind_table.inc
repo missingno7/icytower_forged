@@ -30,6 +30,7 @@ extern "C" {
     void __cdecl set_control(void*, int, int, int, int, int);
     void __cdecl init_control(void*);
     int __cdecl check_control_key(void*, int);
+    void __cdecl destroy_game_data(void*);
     int __cdecl draw_buffer(void*, void*, int, int);
     void __cdecl draw_frame(void*);
     int __cdecl draw_scroller(void*, void*, int, int, int);
@@ -47,6 +48,8 @@ extern "C" {
     void __cdecl switchedFromProgram(void);
     void __cdecl switchedToProgram(void);
     void __cdecl clickedCloseButton(void);
+    void* __cdecl get_version_str(void);
+    void __cdecl syncProfileFromOptions(void);
     void __cdecl getFloorData(void*, int, void*, void*, void*);
     void __cdecl reset_map(void*);
     int __cdecl get_level(void*, int);
@@ -56,6 +59,7 @@ extern "C" {
     void __cdecl reset_particles(void*);
     void __cdecl update_particle(void*);
     int __cdecl create_particle(void*, int, int);
+    int __cdecl play(void);
     void __cdecl play_jump_sound(void*);
     void __cdecl poll_control(void*, int);
     void __cdecl reset_player(void*);
@@ -208,6 +212,7 @@ static const FnDesc kFns[] = {
     { "set_control", 0x004017d4u, 6, false, nullptr, nullptr, (void*)set_control, regions_set_control, 1, 0 },
     { "init_control", 0x00401790u, 1, false, nullptr, nullptr, (void*)init_control, regions_init_control, 1, 0 },
     { "check_control_key", 0x00401808u, 2, true, nullptr, nullptr, (void*)check_control_key, regions_check_control_key, 1, 0 },
+    { "destroy_game_data", 0x0040418cu, 1, false, nullptr, nullptr, (void*)destroy_game_data, nullptr, 0, -1 },
     { "draw_buffer", 0x004191c8u, 4, true, nullptr, nullptr, (void*)draw_buffer, nullptr, 0, -1 },
     { "draw_frame", 0x0040929cu, 1, false, nullptr, nullptr, (void*)draw_frame, nullptr, 0, -1 },
     { "draw_scroller", 0x0041f0ecu, 5, true, nullptr, nullptr, (void*)draw_scroller, nullptr, 0, -1 },
@@ -222,6 +227,8 @@ static const FnDesc kFns[] = {
     { "switchedFromProgram", 0x00406a5cu, 0, false, nullptr, nullptr, (void*)switchedFromProgram, regions_switchedFromProgram, 1, 0 },
     { "switchedToProgram", 0x00406a6cu, 0, false, nullptr, nullptr, (void*)switchedToProgram, regions_switchedToProgram, 1, 0 },
     { "clickedCloseButton", 0x00406a7cu, 0, false, nullptr, nullptr, (void*)clickedCloseButton, regions_clickedCloseButton, 1, 0 },
+    { "get_version_str", 0x00406960u, 0, true, nullptr, nullptr, (void*)get_version_str, nullptr, 0, -1 },
+    { "syncProfileFromOptions", 0x00406a14u, 0, false, nullptr, nullptr, (void*)syncProfileFromOptions, nullptr, 0, -1 },
     { "getFloorData", 0x00416770u, 5, false, nullptr, nullptr, (void*)getFloorData, regions_getFloorData, 4, 0 },
     { "reset_map", 0x004166a4u, 1, false, nullptr, nullptr, (void*)reset_map, regions_reset_map, 1, 0 },
     { "get_level", 0x00416748u, 2, true, nullptr, nullptr, (void*)get_level, regions_get_level, 1, 0 },
@@ -231,6 +238,7 @@ static const FnDesc kFns[] = {
     { "reset_particles", 0x00418420u, 1, false, nullptr, nullptr, (void*)reset_particles, regions_reset_particles, 1, 0 },
     { "update_particle", 0x0041843cu, 1, false, nullptr, nullptr, (void*)update_particle, regions_update_particle, 2, 0 },
     { "create_particle", 0x00418490u, 3, true, nullptr, nullptr, (void*)create_particle, regions_create_particle, 2, 0 },
+    { "play", 0x00411a00u, 0, true, nullptr, nullptr, (void*)play, nullptr, 0, -1 },
     { "play_jump_sound", 0x00406eccu, 1, false, nullptr, nullptr, (void*)play_jump_sound, nullptr, 0, -1 },
     { "poll_control", 0x00401958u, 2, false, nullptr, nullptr, (void*)poll_control, nullptr, 0, -1 },
     { "reset_player", 0x00418550u, 1, false, nullptr, nullptr, (void*)reset_player, regions_reset_player, 1, 0 },

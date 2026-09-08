@@ -157,18 +157,86 @@ RESERVED_CRT_WINDOWS_IDENTS = {
 #          reason and to keep the seed/draw pair from ever splitting across
 #          two generators if one is promoted later.
 #
-# Each entry maps a plain C name to the msvcrt import whose IAT slot it must
-# call through; the slot VA is looked up in imports.json, never typed here.
+# Each entry maps a plain C name to the import whose IAT slot it must call
+# through; the slot VA is looked up in imports.json, never typed here. Two
+# shapes are accepted (normalize_crt_import_entry() below), both reduced to
+# the 5-tuple (dll, import_name, calling_convention, return_type_c, params_c):
+#   (dll, imp, ret, params)        -- convention defaults to '__cdecl'
+#   (dll, imp, conv, ret, params)  -- explicit convention
+#
+#   rand/srand   msvcrt, __cdecl (see the long-standing comment this project
+#                has carried since divergence 008, below).
+#   mkdir/stricmp
+#                PROMOTIONS.md batch 12 (play()): both reached through the
+#                import table as `_mkdir`/`_stricmp` (msvcrt, __cdecl); the
+#                plain names are what play.c's own recovered source calls
+#                (`mkdir(replay_directory)`, `stricmp(profile->handle,
+#                "guest")`), matching the original's own `call __mkdir` /
+#                `call __stricmp` thunks -- same "must reach the GUEST's
+#                import" reasoning as rand, just no shared-RNG-stream stake
+#                (there is no carrier-owned alternate state for a directory-
+#                create or a case-insensitive strcmp the way there is for
+#                rand's LCG); listed anyway so a promoted src/ function
+#                never has to declare or resolve a Win32/CRT import by hand.
+#   QueryPerformanceCounter/QueryPerformanceFrequency
+#                KERNEL32, __stdcall (a real Win32 SDK API -- unlike every
+#                other entry here, calling it through a __cdecl-typed
+#                function pointer would be a real stack-cleanup ABI bug, not
+#                a style choice: the callee is genuinely __stdcall-compiled
+#                and cleans its own arguments off the stack, so a __cdecl
+#                caller doing the same cleanup a second time corrupts esp).
+#                PROMOTIONS.md batch 12: play() reaches both directly (not
+#                just through Allegro's own internal timer thread, which
+#                carrier/src/det.cpp already wraps at
+#                det_wrap_QueryPerformanceCounter for --det determinism) --
+#                the same divergence-008-shaped stake applies: a src/ call
+#                that reached the CARRIER's own QueryPerformanceCounter
+#                instead of the guest's IAT slot would read the REAL host
+#                clock even in --det mode, bypassing det.cpp's pinned
+#                virtual-clock wrapper entirely.
 GUEST_CRT_IMPORTS = {
-    'rand':  ('msvcrt.dll', 'rand',  'int',  '(void)'),
-    'srand': ('msvcrt.dll', 'srand', 'void', '(unsigned)'),
+    'rand':                     ('msvcrt.dll',  'rand',                     'int', '(void)'),
+    'srand':                    ('msvcrt.dll',  'srand',                    'void', '(unsigned)'),
+    'mkdir':                    ('msvcrt.dll',  '_mkdir',                   'int', '(const char *)'),
+    'stricmp':                  ('msvcrt.dll',  '_stricmp',                 'int', '(const char *, const char *)'),
+    'QueryPerformanceCounter':  ('kernel32.dll', 'QueryPerformanceCounter',  '__stdcall', 'int', '(LARGE_INTEGER *)'),
+    'QueryPerformanceFrequency': ('kernel32.dll', 'QueryPerformanceFrequency', '__stdcall', 'int', '(LARGE_INTEGER *)'),
 }
 
-# System headers that must be pulled in BEFORE the macros above are defined,
-# so the macro rewrites CALLS in src/ and never the library's own
-# declaration text. Same trick, same reason, as carrier/lift/harness/
-# pf_harness_rand.h uses for the offline harness build.
-GUEST_CRT_PRE_INCLUDES = ['<stdlib.h>']
+
+def normalize_crt_import_entry(name, entry):
+    """Accept either the 4-element (dll, imp, ret, params) shape (implicit
+    __cdecl) or the 5-element (dll, imp, conv, ret, params) shape (explicit
+    convention) and return the 5-tuple (dll, imp, conv, ret, params).
+    Mirrors port_forge/tools/pf_win32_gen_bindings.py's own helper of the
+    same name (this file is not yet a thin shim over that generic tool --
+    see this module's own docstring "Guest-owned CRT imports" -- so the fix
+    is mirrored here by hand until a later pass completes that migration)."""
+    entry = list(entry)
+    if len(entry) == 5:
+        dll, imp, conv, ret, params = entry
+    elif len(entry) == 4:
+        dll, imp, ret, params = entry
+        conv = '__cdecl'
+    else:
+        raise ValueError('GUEST_CRT_IMPORTS[%r]: expected 4 or 5 elements '
+                          '([dll, import, ret, params] or [dll, import, conv, '
+                          'ret, params]), got %d: %r' % (name, len(entry), entry))
+    return (dll, imp, conv, ret, params)
+
+
+# System headers/local files that must be pulled in BEFORE the macros above
+# are defined, so the macro rewrites CALLS in src/ and never the library's
+# own declaration text. Same trick, same reason, as carrier/lift/harness/
+# pf_harness_rand.h uses for the offline harness build. The third entry is
+# NOT a system header: `pf_win32_crt_shim_types.h` (carrier/gen/, hand-
+# written project data, PROMOTIONS.md batch 12 "generator gap 1") supplies
+# just `LARGE_INTEGER` and claims the real `_WINDOWS_` include-guard name,
+# so play.c's own `#ifndef _WINDOWS_` fallback block (which would otherwise
+# redeclare QueryPerformanceCounter/Frequency as plain prototypes, and get
+# those declarations mangled by the macros this file emits for them) goes
+# dead automatically -- see that header's own comment.
+GUEST_CRT_PRE_INCLUDES = ['<stdlib.h>', '<string.h>', '"pf_win32_crt_shim_types.h"']
 
 
 def load_import_slots(path):
@@ -208,7 +276,7 @@ def emit_guest_crt_imports(slots, mem_macro):
     lines.append('')
     emitted = []
     for name in sorted(GUEST_CRT_IMPORTS):
-        dll, imp, ret, params = GUEST_CRT_IMPORTS[name]
+        dll, imp, conv, ret, params = normalize_crt_import_entry(name, GUEST_CRT_IMPORTS[name])
         found = sorted(set(slots.get((dll.lower(), imp), [])))
         if not found:
             raise ValueError('imports.json has no %s!%s -- GUEST_CRT_IMPORTS is '
@@ -225,7 +293,7 @@ def emit_guest_crt_imports(slots, mem_macro):
             addr = '%s(%s)' % (mem_macro, addr)
         lines.append('/* %s  -> %s!%s IAT slot VA=0x%08x  (the original\'s own '
                       '`call _%s -> jmp *[slot]`) */' % (name, dll, imp, va, imp))
-        lines.append('typedef %s (__cdecl *PFN_crt_%s)%s;' % (ret, name, params))
+        lines.append('typedef %s (%s *PFN_crt_%s)%s;' % (ret, conv, name, params))
         lines.append('#define %s (*(PFN_crt_%s *)%s)' % (name, name, addr))
         emitted.append(name)
     lines.append('')

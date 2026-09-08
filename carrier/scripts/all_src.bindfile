@@ -95,3 +95,44 @@ handle_player_collision_combo=src
 poll_control=src
 handle_player_input=src
 blit_to_screen=src
+# --- added by this in-vivo pass (play() -- PROMOTIONS.md batch 12,
+# 2026-09-08): the whole game loop, 17420 bytes, the largest single
+# function in the image. KNOWN, MEASURED, REPRODUCIBLE DIVERGENCE --
+# included here because the task asked for this exact row, NOT because it
+# is verified. Two separate findings, one carrier-layer (harmless) and one
+# in play()'s own recovered logic (NOT harmless):
+#
+# 1. Carrier-layer, harmless: --digest-out/--stop-at-tick produce 0
+#    records for ANY run with play bound -- det.cpp's tick safepoint
+#    (VA_SAFEPOINT=0x4124f4) is a hardware breakpoint anchored INSIDE
+#    play()'s own original machine code, which a src-bound entry-patch
+#    redirect bypasses entirely (0 safepoints, MEASURED at shutdown).
+#    Per-invocation fn sensor (bind.cpp's own synchronous trampoline, not
+#    a hardware breakpoint) is unaffected and reports EQUAL (1 invocation)
+#    on human_test.txt.
+#
+# 2. Recovered-source, NOT harmless: with ONLY play=src bound (no other
+#    row in this file), human_test.txt's own final outcome is score=662
+#    floor=50, not the divergence-009 witness score=2386 floor=100 --
+#    MEASURED, reproduced twice. The frame oracle is EQUAL on every common
+#    tick T<=235 (all samples caught before the game climbs far) but
+#    --print-globals at matched-ish tick counts shows the divergence is
+#    already underway by T~750 (ply[player_id]->level 26 vs 13,
+#    ->y 232 vs 61.9675 -- the player is climbing at roughly HALF the
+#    rate). All of recording/fast_forward/fast_fast_forward/
+#    someCounter__play read IDENTICAL at shutdown in both forms, and the
+#    compile is clean (0 errors, the same 5 documented -Wformat-overflow
+#    warnings) -- this rules out a binding/generator-layer cause and
+#    localizes the bug to play()'s own recovered logic in the region
+#    PROMOTIONS.md batch 12 could not verify offline (only 502 of 17420
+#    bytes were: the "simulation core" / "score-floor-combo-death"
+#    regions, main.c ~3681-3969, original VA ~0x4118xx-0x4121xx, are the
+#    leading candidates -- not yet narrowed to one line since the tool
+#    that would do it (a per-tick digest) is the very thing finding 1
+#    above breaks once play is bound). play_itr.txt and newgame.txt show
+#    NO mismatch over their own (narrower) observable overlap, but were
+#    not verified to their own score/final-outcome -- absence of evidence,
+#    not evidence of absence. See carrier/NOTES.md / src/icytower/
+#    INVIVO.md "In-vivo pass -- play()" for the full repro and
+#    src/icytower/*.c is out of this task's edit scope (play.c untouched).
+play=src
