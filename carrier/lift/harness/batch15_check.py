@@ -91,6 +91,19 @@ class Original(object):
         self.stub = bytes([0xDB, 0xE3, 0xD9, 0x2D]) + u32(pf.CW_SLOT)
         mu.mem_write(pf.CW_SLOT, struct.pack("<H", pf.CW_INIT))
         mu.mem_write(pf.CW_STUB, self.stub)
+        self.cover = None
+
+    def enable_coverage(self):
+        """Record every ORIGINAL instruction address actually executed --
+        "EQUAL over N vectors" is only worth something if the vectors reach
+        the branches, and this measures it instead of arguing it."""
+        from unicorn import UC_HOOK_CODE
+        self.cover = set()
+
+        def hook(uc, address, size, data):
+            self.cover.add(address)
+        self.mu.hook_add(UC_HOOK_CODE, hook,
+                         begin=FN_KEY_TO_STR, end=FN_KEY_TO_STR + 2600)
 
     def call(self, va, args):
         mu = self.mu
@@ -130,6 +143,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--vectors", type=int, default=20000)
     ap.add_argument("--seed", type=int, default=20260908)
+    ap.add_argument("--coverage", action="store_true",
+                    help="also report the fraction of the instruction "
+                         "addresses artifacts/disasm.txt lists for "
+                         "key_to_str that these vectors executed")
     ap.add_argument("--fault", action="store_true",
                     help="negative control: corrupt one ORIGINAL-side fact "
                          "at vector 5 and require a DIFFER")
@@ -158,6 +175,8 @@ def main():
         sys.exit(1)
 
     orig = Original()
+    if args.coverage:
+        orig.enable_coverage()
     fails = 0
     shown = 0
     for i, k in enumerate(vals):
@@ -176,6 +195,31 @@ def main():
                         print("    original:  %s" % a[:200])
                         print("    candidate: %s" % b[:200])
                         break
+    if args.coverage:
+        import re as _re
+        addrs, started = [], False
+        pat = _re.compile(r"^([0-9a-f]{6,8}) <_?key_to_str>:")
+        dis = os.path.join(PROJ, "artifacts", "disasm.txt")
+        with open(dis, encoding="utf-8", errors="replace") as f:
+            for ln in f:
+                if not started:
+                    if pat.match(ln):
+                        started = True
+                    continue
+                if _re.match(r"^[0-9a-f]{6,8} <", ln):
+                    break
+                # objdump wraps a long encoding onto an address-only second
+                # line; only lines that carry a mnemonic are instructions.
+                m = _re.match(r"^\s+([0-9a-f]{6,8}):	[0-9a-f ]+	\S", ln)
+                if m:
+                    addrs.append(int(m.group(1), 16))
+        hit = sum(1 for a in addrs if a in orig.cover)
+        miss = [a for a in addrs if a not in orig.cover]
+        print("key_to_str       coverage %d/%d instructions (%.1f%%)"
+              % (hit, len(addrs), 100.0 * hit / len(addrs) if addrs else 0.0))
+        if miss:
+            print("                 unexecuted: %s"
+                  % " ".join("0x%x" % a for a in miss[:20]))
     print("%-16s %d of %d vectors differ" % ("key_to_str", fails, len(vals)))
     if args.fault:
         if fails == 0:

@@ -252,8 +252,25 @@ class Original(object):
         self.trace = []
         self.script = {}
         self.syms = {}
+        self.cover = None
         for va, (name, argc) in CALLEES.items():
             mu.hook_add(UC_HOOK_CODE, self._mk(name, argc), begin=va, end=va)
+
+    def enable_coverage(self, ranges):
+        """Record every ORIGINAL instruction address actually executed.
+
+        "EQUAL over N vectors" is only worth something if the vectors reach
+        the branches, and the honest way to say so is to measure it: one
+        UC_HOOK_CODE per function range, a set of addresses, and afterwards
+        the fraction of the addresses artifacts/disasm.txt lists for that
+        range that the campaign entered at least once.  Slow, so it is a
+        separate --coverage run and not part of the equivalence check."""
+        self.cover = set()
+
+        def hook(uc, address, size, data):
+            self.cover.add(address)
+        for lo, hi in ranges:
+            self.mu.hook_add(UC_HOOK_CODE, hook, begin=lo, end=hi)
 
     # ---- guest helpers ----
     def gstr(self, va, cap=200000):
@@ -746,6 +763,14 @@ def gen(rnd, kind):
               for _ in range(5)]
         ccc = [rnd.choice([0, 1, rnd.randrange(-5, 40)]) for _ in range(5)]
         jc = [rnd.choice([0, 1, rnd.randrange(-5, 40)]) for _ in range(5)]
+        if rnd.random() < 0.25:
+            # DIRECTED: make the game data agree with the replay exactly.
+            # Fifteen independent random comparisons are a mismatch with
+            # probability ~1, so without this the `"match"` arm at 0x404746
+            # is never entered -- which the --coverage run says out loud.
+            gd = list(struct.unpack_from("<5i", rb, 0x50))
+            ccc = list(struct.unpack_from("<5i", rb, 0x64))
+            jc = list(struct.unpack_from("<5i", rb, 0x78))
         nc = rnd.choice([0, 1, 2, 5])
         nj = rnd.choice([0, 1, 3, 6])
         p = rb
@@ -967,6 +992,37 @@ def original_result(orig, kind, st):
     raise RuntimeError(kind)
 
 
+DISASM = os.path.join(PROJ, "artifacts", "disasm.txt")
+_ADDR_CACHE = {}
+
+
+def fn_addresses(name):
+    """Every instruction address artifacts/disasm.txt lists for `name`."""
+    import re as _re
+    if name in _ADDR_CACHE:
+        return _ADDR_CACHE[name]
+    pat = _re.compile(r"^([0-9a-f]{6,8}) <_?%s>:" % _re.escape(name))
+    out, started = [], False
+    with open(DISASM, encoding="utf-8", errors="replace") as f:
+        for ln in f:
+            if not started:
+                if pat.match(ln):
+                    started = True
+                continue
+            if _re.match(r"^[0-9a-f]{6,8} <", ln):
+                break
+            # objdump WRAPS a long instruction onto a second line that
+            # carries an address but no mnemonic ("  41cdfb:	00 ").
+            # Counting those as instructions would understate coverage by
+            # exactly the number of wrapped encodings, which is a lot in
+            # this code (every `movl $imm,disp(%esp)` wraps).
+            m = _re.match(r"^\s+([0-9a-f]{6,8}):	[0-9a-f ]+	\S", ln)
+            if m:
+                out.append(int(m.group(1), 16))
+    _ADDR_CACHE[name] = out
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--vectors", type=int, default=20000)
@@ -975,6 +1031,10 @@ def main():
     ap.add_argument("--fault", action="store_true",
                     help="negative control: corrupt one ORIGINAL-side record "
                          "at vector 5 of each kind and require a DIFFER")
+    ap.add_argument("--coverage", action="store_true",
+                    help="also report, per function, the fraction of the "
+                         "instruction addresses artifacts/disasm.txt lists "
+                         "for it that these vectors actually executed")
     args = ap.parse_args()
 
     kinds = [args.only] if args.only else KINDS
@@ -1009,6 +1069,8 @@ def main():
         sys.exit(1)
 
     orig = Original()
+    if args.coverage:
+        orig.enable_coverage([(FN[k], FN[k] + 8000) for k in kinds])
     fails = {k: 0 for k in kinds}
     shown = 0
     for i, (kind, k, st) in enumerate(expected):
@@ -1030,6 +1092,19 @@ def main():
                         print("    original:  %s" % a[:300])
                         print("    candidate: %s" % b[:300])
                         break
+    if args.coverage:
+        print("")
+        for kind in kinds:
+            addrs = fn_addresses(kind)
+            hit = sum(1 for a in addrs if a in orig.cover)
+            print("%-16s coverage %d/%d instructions (%.1f%%)"
+                  % (kind, hit, len(addrs),
+                     100.0 * hit / len(addrs) if addrs else 0.0))
+            miss = [a for a in addrs if a not in orig.cover]
+            if miss:
+                print("                 first unexecuted: %s"
+                      % " ".join("0x%x" % a for a in miss[:12]))
+        print("")
     bad = 0
     for kind in kinds:
         print("%-16s %d of %d vectors differ" % (kind, fails[kind],

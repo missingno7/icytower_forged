@@ -104,6 +104,41 @@
  *   data[ 7] 0x070  ASSET_DATA_BT_NO      data[ 8] ASSET_DATA_BT_NO_2
  */
 
+/* ------------------------------------------------------------------ */
+/* MEMBER-ACCESS COLLISION, and the one that CANNOT be fixed by simply  */
+/* dropping the binding.                                                */
+/*                                                                      */
+/* This function polls TWO control sets: the player's global `ctrl`     */
+/* (@0x5000c8) and the menu's `menu_params.ctrl`.  `Tmenu_params` has a */
+/* MEMBER called `ctrl`, so in the carrier world -- where the generated */
+/* bindings turn `ctrl` into a blunt textual #define -- the member       */
+/* access `menu_params.ctrl` is a syntax error.  replay.c's and         */
+/* game_data.c's answer (drop the binding for the whole file with       */
+/* #undef) is not available here, because this file also NEEDS the      */
+/* global: undefining it would leave `&ctrl` pointing at a declaration  */
+/* with no storage.                                                     */
+/*                                                                      */
+/* So the global's ADDRESS is captured into a file-static pointer while */
+/* the macro is still live, and only then is the macro dropped.  The    */
+/* two arms below are textually identical on purpose: in the carrier    */
+/* world the initialiser expands the binding, in the standalone world   */
+/* it takes the address of game_state.h's extern.  Everything after     */
+/* this point spells the player's set `player_ctrl` and the menu's      */
+/* `&menu_params.ctrl`, and both worlds see the same two addresses.     */
+/*                                                                      */
+/* This is the first case in the project where MEMBER_ACCESS_COLLISIONS */
+/* needs more than a #undef, and it is the sharpest argument yet for    */
+/* the context-sensitive rewrite gen_bindings.py's own comment          */
+/* describes: a generator that knew `x.ctrl` is a member reference      */
+/* would need none of this.                                             */
+/* ------------------------------------------------------------------ */
+#ifdef ctrl
+static Tcontrol *const player_ctrl = &ctrl;
+#undef ctrl
+#else
+static Tcontrol *const player_ctrl = &ctrl;
+#endif
+
 #ifndef ICYTOWER_UPSTREAM_ALLEGRO
 
 #ifndef SCREEN_W
@@ -184,10 +219,10 @@ int my_alert(char *func, char *txt, int choice, int enter_hint)
     release_bitmap(screen);
 
     /* drain whatever is still held down before the dialog listens */
-    poll_control(&ctrl, 0);
+    poll_control(player_ctrl, 0);
     poll_control(&menu_params.ctrl, 0);
-    while (is_any(&ctrl) || is_any(&menu_params.ctrl) || key[KEY_ESC]) {
-        poll_control(&ctrl, 0);
+    while (is_any(player_ctrl) || is_any(&menu_params.ctrl) || key[KEY_ESC]) {
+        poll_control(player_ctrl, 0);
         poll_control(&menu_params.ctrl, 0);
         rest(2);
     }
@@ -198,18 +233,18 @@ int my_alert(char *func, char *txt, int choice, int enter_hint)
     while (!closeButtonClicked && !done) {
         cycle_count = 0;
 
-        poll_control(&ctrl, 0);
+        poll_control(player_ctrl, 0);
         poll_control(&menu_params.ctrl, 0);
 
-        if (is_left(&ctrl) || is_left(&menu_params.ctrl))
+        if (is_left(player_ctrl) || is_left(&menu_params.ctrl))
             sel = -1;
-        if (is_right(&ctrl) || is_right(&menu_params.ctrl))
+        if (is_right(player_ctrl) || is_right(&menu_params.ctrl))
             sel = 0;
         if (key[KEY_ESC]) {
             done = -1;
             sel = 0;
         }
-        if (is_fire(&ctrl) || is_fire(&menu_params.ctrl)
+        if (is_fire(player_ctrl) || is_fire(&menu_params.ctrl)
             || is_enter(&menu_params.ctrl))
             done = -1;
 
@@ -230,11 +265,11 @@ int my_alert(char *func, char *txt, int choice, int enter_hint)
     }
 
     /* and drain again on the way out -- finding 6 */
-    poll_control(&ctrl, 0);
+    poll_control(player_ctrl, 0);
     poll_control(&menu_params.ctrl, 0);
-    while (is_any(&ctrl) || is_any(&menu_params.ctrl)
+    while (is_any(player_ctrl) || is_any(&menu_params.ctrl)
            || key[KEY_ESC] || key[KEY_ENTER]) {
-        poll_control(&ctrl, 0);
+        poll_control(player_ctrl, 0);
         poll_control(&menu_params.ctrl, 0);
         rest(2);
     }

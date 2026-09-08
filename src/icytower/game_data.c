@@ -82,6 +82,23 @@
  * 45 x the 5120 bytes `combos` has, so a full Tgame_data overruns this
  * frame.  Recovered, not repaired.
  */
+/* ------------------------------------------------------------------ */
+/* MEMBER-ACCESS COLLISION -- the class replay.c, handle_player_input.c */
+/* and draw_frame.c already document.  `Treplay.rejump` (the replay's   */
+/* own copy of the difficulty setting) shares its name with the         */
+/* top-level global `int rejump` @0x4fdcd8, which the carrier's         */
+/* generated bindings rewrite with a blunt textual #define -- turning   */
+/* `r->rejump` into a syntax error in that world.  Dropping the binding */
+/* for this translation unit is right on the merits and not just        */
+/* expedient: getGameDataXML reports what a REPLAY claims, and must     */
+/* never read the live difficulty global.  The real fix is the          */
+/* context-sensitive rewrite gen_bindings.py's own                      */
+/* MEMBER_ACCESS_COLLISIONS comment describes.                          */
+/* ------------------------------------------------------------------ */
+#ifdef rejump
+#undef rejump
+#endif
+
 #include "game_types.h"
 #include "game_state.h"
 #include "game_funcs.h"

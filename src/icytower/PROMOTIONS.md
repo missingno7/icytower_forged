@@ -4108,3 +4108,545 @@ so a future batch inherits the check rather than the lesson.
 | newgame | digest / frames | EQUAL 876 / EQUAL 982 |
 | `.itr` workload | digest / frames / written files | EQUAL 157 / 841 common ticks 0 mismatching / byte-identical |
 | gates.ps1 | G1-G5b | all EQUAL |
+
+## Batch 15 (2026-09-08 -- the rest of play()'s coastline, and the first menu function)
+
+Task: finish the five functions batch 14's closing table left ORIGINAL on
+`play()`'s coastline, and start target 3 (the menu screens).  **Four of
+the five are promoted here** (`load_replay`, `my_alert`, `draw_results`,
+`getGameDataXML`), plus `create_replay`, which comes with `load_replay`
+the way `hash` came with `calc_replay_checksum`, plus `key_to_str` from
+the menu list: **six functions, 8397 original bytes**, verified by two
+new standalone oracles.  `do_replay_menu` (2661 B) is the one that
+remains, and the reason is stated below rather than glossed.
+
+### The .itr format is closed, against real files
+
+`notes/replay_format.md` SS4 left two literals explicitly open: "Copies a
+6-byte magic from `REPLAY_HEADER` (**VA `0x4d7dd0`**) ... Exact magic
+bytes not extracted -- would need a raw hex dump at VA 0x4d7dd0", and a
+"7-byte tag from VA `0x4d7a7e`".  Both are now read out of the image with
+pefile:
+
+| VA | bytes | what |
+|---|---|---|
+| `0x4d7dd0` | **`"ITR140"`** | the `.itr` magic -- SIX bytes, NO terminator.  The file-format version is 1.4.0 even in a 1.5.1 binary, the same way `save_profile`'s stats header still says `ICY TOWER 1.4`. |
+| `0x4d7a7e` | **`"Harold"`** | the default player name a fresh `Treplay` carries (7 bytes with its NUL), i.e. the game's default character. |
+
+With those, batch 14's on-disk write order and batch 14's
+`calc_replay_checksum` were run against **all thirteen real `.itr` files**
+in `assets/profiles/MissingNO/replays` (read-only).  Every one parses
+with **zero trailing bytes** and every one's **stored checksum is
+reproduced exactly**:
+
+```
+MissingNO_best_cc1_84.itr          stored 57651884     computed 57651884     OK
+MissingNO_best_combo_59.itr        stored 1830374282   computed 1830374282   OK
+MissingNO_best_jj2_4.itr           stored -2122259635  computed -2122259635  OK
+MissingNO_best_lost_combo_38.itr   stored 57191562     computed 57191562     OK
+MissingNO_best_score_5059.itr      stored 57651884     computed 57651884     OK
+last_game.itr                      stored -2122259635  computed -2122259635  OK
+   ... 13 of 13, differ 0
+```
+
+That is a different KIND of evidence from the offline oracles below: it
+checks the recovered format against files the real game wrote on a real
+machine, not against the same bytes emulated.  It also confirms batch
+14's finding 1 from the outside -- every one of those thirteen `date`
+fields carries `"  ICYTOWERISGREAT "` in bytes 12..29.
+
+### Part 1 -- the pure one
+
+`carrier/lift/harness/batch15_check.py` + `batch15_check.c` (new).
+
+| function | VA | size | CU | offline result | domain | carrier bind |
+|---|---|---:|---|---|---|---|
+| `key_to_str` | 0x416a9c | 2543 | menu.c | **EQUAL** (80000) | the destination string's CONTENT and length, plus a 64-byte `0xA5` canary on EACH side of it | pending |
+
+`key_to_str` is the only function in this batch that is pure in the
+project's strongest sense: a `call` census over its whole
+0x416a9c..0x41748a range finds **zero call sites**, so the ORIGINAL side
+runs with NO unicorn hooks at all.  The oracle does not sample: every run
+enumerates **all of [-256, 512]** first -- 769 vectors, covering all 108
+branches, the nineteen scancodes inside `KEY_MAX` that have no branch of
+their own, both signs and both boundaries -- and spends the rest of
+`--vectors` on random 32-bit ints to prove the default arm is really the
+default.  20000 x 4 seeds = **80000**.
+
+The canary is the point of the extra work.  A 108-branch dispatch that
+writes string literals is exactly the shape where the wrong branch still
+produces plausible output and an off-by-one literal length is invisible
+unless the bytes AFTER the NUL are checked too.
+
+**How the 108-entry table was produced, stated plainly:** not by reading
+108 blocks by eye.  A throwaway decoder walked the compare chain, decoded
+each target block into the bytes it writes (three shapes: immediate
+`movb`/`movw`/`movl` stores, a `rep movsb` from `.rdata`, and GCC's
+alignment-aware `movsb`/`movsw`/`rep movsl` idiom) and read the `.rdata`
+sources out of the image with pefile.  `src/icytower/menu_keys.c` is that
+decoder's output, reviewed against the disassembly; the decoder is
+scaffolding and is not shipped, because the table it produced IS the
+evidence and the oracle is what checks it.
+
+### Part 2 -- the ordered-call-trace half
+
+`carrier/lift/harness/batch15b_check.py` + `batch15b_check.c` +
+`pf_harness_batch15.h` (new, all built by `build_batch15.sh`).
+
+| function | VA | size | CU | offline result | domain | carrier bind |
+|---|---|---:|---|---|---|---|
+| `create_replay` | 0x41cce8 | 254 | replay.c | **EQUAL** (80000) | ordered trace of both `malloc`s and `free`, plus the WHOLE 0x8a8-byte `Treplay` head and the `Trecord` array | pending |
+| `load_replay` | 0x41cde8 | 1136 | replay.c | **EQUAL** (1600) | ordered trace of `pack_fopen` x2 / ~534 x `pack_fread` WITH THE BYTES DELIVERED / `pack_fclose` x2 / `create_replay` / `calc_replay_checksum` / `log2file` / `destroy_replay`, plus the whole filled `Treplay` | pending |
+| `getGameDataXML` | 0x404254 | 1855 | game_data.c | **EQUAL** (8000) | ordered trace of `malloc` and all 14 `sprintf` calls with their formats AND their outputs, plus the RETURNED BUFFER byte for byte | pending |
+| `draw_results` | 0x4076c0 | 839 | main.c | **EQUAL** (48000) | ordered trace of `draw_sprite`/`draw_256_sprite` (vtable) / `textprintf_ex` / `textprintf_right_ex` / `stricmp` / `makecol` | pending |
+| `my_alert` | 0x40cd68 | 1770 | main.c | **EQUAL** (16000) | ordered trace of 22 distinct callees including the whole input loop, plus the return value and `gui_fg_color`/`gui_bg_color` | pending |
+
+**Vector budget, stated rather than implied.**  One `load_replay` vector
+is ~540 traced calls against 3-5 for `create_replay`, so `--vectors N` is
+split by an explicit WEIGHT table and every result line prints the count
+it actually ran.  Per seed: 20000 `create_replay`, 12000 `draw_results`,
+4000 `my_alert`, 2000 `getGameDataXML`, 400 `load_replay`.  Four seeds
+(20260908, 1, 777, 424242).  Total across both parts: **233 600 vectors,
+differ 0.**
+
+Three mechanisms are new in this harness and each earns its place:
+
+- **The heap is a bump allocator over an arena PRE-FILLED with `0xA5`,
+  identically on both sides.**  `create_replay` provably leaves part of
+  the block it returns uninitialised (finding 1 below), and a known fill
+  is what turns "uninitialised" from an incomparable fact into a visible
+  one: the domain can cover the WHOLE structure instead of stopping short
+  of it, and the two sides agree byte for byte on the bytes nothing
+  wrote.
+- **The control layer is stubbed from per-vector ANSWER QUEUES**, even
+  though `poll_control`/`is_left`/`is_right`/`is_fire`/`is_enter`/`is_any`
+  are all already promoted.  Running them for real would make `my_alert`'s
+  oracle a test of the keyboard and joystick globals rather than of
+  `my_alert`'s decision logic, and would make its branch coverage depend
+  on synthesising `Tcontrol` bit patterns.  All six have their own vector
+  oracles from batches 3 and 4.
+- **`key[]`, `closeButtonClicked` and `cycle_count` are driven by a
+  TIMELINE keyed on the `rest()` count** -- the mechanism batch 14 used
+  for the fades, generalised: the vector says "ESC goes down at rest 7 and
+  up at rest 10, the close button at rest 40", and both sides run the
+  identical little state machine inside their `rest` stub.  Without it the
+  ESC branch is unreachable (a constant non-zero `key[KEY_ESC]` makes the
+  pre-dialog drain loop spin forever on both sides).
+
+Negative control, all six (`--fault`), each detected and each named:
+
+```
+key_to_str       1 of 769  (str "undefined")
+create_replay    1 of 20   (malloc 2220 -> NULL)
+load_replay      1 of 20   (pack_fopen "replays/x.itr" "rb" -> packfile)
+getGameDataXML   1 of 20   (malloc 128000 -> heap0)
+draw_results     1 of 20   (draw_sprite target logo 249 -20)
+my_alert         1 of 20   (text_length obj51 "a b c d e f g h i j k l m n o p")
+```
+
+### Branch coverage, measured rather than argued
+
+Both check scripts grew a `--coverage` flag: one `UC_HOOK_CODE` over the
+function's range on the ORIGINAL side, a set of executed addresses, and
+afterwards the fraction of the instruction addresses
+`artifacts/disasm.txt` lists for that range that the campaign entered.
+(objdump WRAPS a long encoding onto a second line that carries an address
+but no mnemonic; counting those as instructions understates coverage by
+exactly the number of wrapped encodings, which is a lot in this code.
+Only lines with a mnemonic count.)
+
+| function | executed / listed | residue |
+|---|---:|---|
+| `key_to_str` | 559 / 597 | 38, all alignment padding |
+| `create_replay` | 74 / 75 | 1, `xchg %ax,%ax` |
+| `load_replay` | **258 / 258** | none |
+| `getGameDataXML` | 477 / 478 | 1, `nop` |
+| `draw_results` | 214 / 219 | 5, all padding |
+| `my_alert` | 366 / 376 | 10, all padding |
+
+Every residual address was looked up in `artifacts/disasm.txt` and is
+`nop`, `xchg %ax,%ax` or `lea 0x0(%esi),%esi`.  **Real-instruction
+coverage is 100% for all six.**
+
+The measurement did real work rather than confirming a hope:
+`getGameDataXML`'s `"match"` arm at 0x404746 was NEVER entered by the
+random vectors, because the verdict compares fifteen fields and fifteen
+independent random comparisons mismatch with probability ~1.  A directed
+sub-generator (25% of vectors copy the replay's fifteen comparands into
+the game data) fixed it, and the coverage line is what said so.
+
+### Findings
+
+**1. `create_replay` clears `name` twice and never clears `date`, and the
+checksum reads the difference.**  The 32-byte clearing loop is emitted
+TWICE (0x41cd48 and 0x41cd58) and BOTH write `0xc(%ebx,%eax,1)` -- that
+is `name`, at +0x0c, both times.  `date` (+0x2c) is never cleared; it only
+ever receives the 8 bytes of `"no date"`.  So `date[8..31]` of a
+freshly-created replay is whatever `malloc` handed back, and
+`calc_replay_checksum` hashes ALL 32 bytes of `date`.  `save_replay` then
+rewrites `date[0..30]` from its 31-byte watermark literal, leaving
+`date[31]` as the one byte of the checksum's input that nothing in the
+program ever defines.  (In all thirteen real `.itr` files that byte is 0,
+so the arena happens to be zeroed in practice; nothing guarantees it.)
+The recovered file writes the two loops the object code contains --
+collapsing them would hide the bug while being observationally identical.
+
+**2. A verified replay comes back with its `checksum` field left at 0.**
+`load_replay` saves the field (0x41d214), zeroes it (0x41d217) so the
+recomputation excludes it, and on the MATCH path jumps STRAIGHT to the
+return without restoring it (0x41d228 -> 0x41ce0f).  Every replay this
+function hands out therefore has `checksum == 0`, and `save_replay`'s
+later `r->checksum = calc_replay_checksum(r)` is what makes it right
+again.  Restoring it here would be tidier and wrong.
+
+**3. `load_replay` checks no `pack_fread` return value, and has three
+different failure shapes.**  A truncated file is not detected by the
+reader at all; it is detected by the checksum, which is the only
+integrity gate the function has.  The three failures are genuinely
+different in the object code: `create_replay` returning NULL returns NULL
+with no log line (0x41ce78); `pack_fopen` failing on the SECOND open
+jumps INTO the mismatch tail (0x41ce91 -> 0x41d249), so it destroys the
+replay but skips the log; only a real checksum mismatch logs
+`"Checksum failed for %s: got %d, expected %d"`.
+
+**4. `-tiny` is an EITHER/OR, not a filter, and the full `-check` output
+never says whether the replay verified.**  0x4046e5 loads `cmdline.tiny`
+and branches; the false arm (0x4047aa) appends every section and then
+jumps STRAIGHT to the closing tag, and the true arm (0x4046f3) runs the
+field comparison and emits `<result>match|mismatch</result>`.  Neither
+arm can reach the other's work.  So the verdict element exists ONLY in
+`-tiny` output.  That is surprising enough to be worth stating plainly;
+it is unambiguous in the object code and the oracle covers both arms.
+
+**5. `getGameDataXML`'s `<actual_results>` rows are gated on the CLAIMED
+values.**  Both loops that build that block test `gd->replay->ccc[i]` /
+`->jc[i]` (0x4043f0, 0x40442a -- the REPLAY's array) and then print
+`gd->ccc[i]` / `gd->jc[i]` (0x4043f8, 0x404434 -- the MEASURED one).  A
+level the player actually reached but the replay header does not claim is
+therefore INVISIBLE in the XML, while its mismatch still counts toward the
+verdict.  Reading the two loops as "the same loop over the actual data"
+would be the natural mistake; the two different base registers are the
+evidence.
+
+**6. `draw_results` suppresses the personal-best badge for the guest
+profile BY NAME.**  0x40781a compares `profile->handle` (the `Tprofile`
+field at +6) with the literal `"guest"` at 0x4d4b86 using `stricmp` -- a
+case-insensitive compare, so `"Guest"` and `"GUEST"` are suppressed too.
+A profile literally called `guest` never gets a PB icon no matter what it
+scores.  That is a name check, not a flag check, and nothing else in the
+function looks at the profile.  The same function draws THREE categories
+and not in category order: a five-int local cleared by `rep stos` with
+only `[1] = 2` and `[2] = 1` written afterwards, walked three times, i.e.
+`category_names[0]`, `[2]`, `[1]` -- Score, Floor, Best Combo.
+
+**7. `my_alert` calls `text_length` a third time and throws the answer
+away.**  0x40cd97 and 0x40cdba measure `func` and `txt`; 0x40cdef
+measures whichever of the two was LONGER -- and `%eax` is overwritten by
+the next `makecol` without ever being read.  A dead width computation,
+and it has to be reproduced exactly: `text_length` is not a pure function
+to the compiler, the call is in the object code, and an
+ordered-call-trace oracle sees it.  Two more from the same function: a
+NULL argument becomes the string `" "` for `text_length` ONLY (the later
+`textprintf_centre_ex` at 0x40cfbe gets the raw `func`, NULL and all,
+which both msvcrt and MinGW's printf render `"(null)"`), and the two
+drain loops are NOT the same -- the one before the dialog waits on
+`is_any` x2 plus `key[KEY_ESC]`, the one after adds `key[KEY_ENTER]`,
+which is what stops the Enter that dismissed the dialog from immediately
+activating whatever is behind it.
+
+**8. `my_alert` borrows the game's back buffer as its undo, one pixel
+short.**  0x40cf25 blits `screen` -> `swap_screen` before anything is
+drawn and 0x40d350 blits `swap_screen` -> `screen` on the way out: the
+double buffer is used as a saved rectangle.  Both blits are 639 x 479,
+not 640 x 480, in the original, on both calls.  Kept.  The dialog itself
+is drawn on `screen` between an `acquire_bitmap`/`release_bitmap` pair
+(the GFX_VTABLE +0x10 / +0x14 AL_INLINEs), and the button sprites are
+selected by an UNSIGNED comparison -- `cmp $1,%esi; sbb %eax,%eax` is
+`sel == 0`, because `sel` only ever holds 0 or -1 and -1 is a huge
+unsigned.  Recovering that as a signed `sel < 1` would be
+observationally identical on those two values and wrong about the object
+code.
+
+**9. `key_to_str` is an if/else chain, not a `switch`, and the proof is
+one out-of-order case.**  The object code tests the 108 values in SOURCE
+order, and that order is not sorted: `KEY_SEMICOLON` (105) is tested
+between `KEY_COLON` (68) and `KEY_QUOTE` (69), where the author grouped
+the punctuation keys by keyboard position.  GCC expands a `switch` by
+value (jump table or sorted binary search) and would have destroyed that
+order.  Three of the table's entries reach the player's screen as quirks:
+`KEY_R` renders the LOWERCASE `"r"` (0x416f28 stores 0x0072 -- the single
+exception among twenty-six letters), `KEY_BACKSLASH` and
+`KEY_BACKSLASH2` both render `\` (two physical keys the options screen
+cannot tell apart), and `KEY_TILDE` renders the literal word `"TILDE"` in
+capitals while every other punctuation key renders its glyph.
+
+### The recovery audit, run on all six
+
+`carrier/scripts/recovery_audit.py` (the delegator to port_forge's
+`pf_win32_recovery_audit.py`, added by the concurrent record task in
+`bf9570e` and already reporting 75/75) was run on this batch's six
+BEFORE they were declared done, exactly as PROMOTIONS.md's batch-12
+addendum asked:
+
+```
+python carrier/scripts/recovery_audit.py --function key_to_str create_replay        load_replay getGameDataXML draw_results my_alert
+6/6 function(s) pass both audits.
+
+python carrier/scripts/recovery_audit.py --src-dir src/icytower
+84/84 function(s) pass both audits.
+```
+
+**No magic-divide sites in any of the six** -- none of them divides by a
+constant at all, which the tool states rather than leaves implicit.
+
+The global-reference audit initially FAILED two of them, and both
+failures were real information about how the tool resolves addresses
+rather than about the recovery.  Both are now entries in
+`carrier/recovery_audit_policy.json` with their own derived evidence, as
+that file's `_purpose` requires:
+
+| function | mismatch | why it is a naming artifact, not a defect |
+|---|---|---|
+| `draw_results` | `profile.handle` in_source=1, in_original=0 | the ORIGINAL reaches the member THROUGH THE POINTER -- 0x40781a loads the `Tprofile *` global and 0x40781f does `add $0x6,%eax` -- so no absolute address for `handle` exists for the scan to match.  The pointer itself matches on both sides. |
+| `my_alert` | `menu_params.ctrl` in_source=11 vs `menu_params.use_joy` in_original=11 | ONE address, two spellings.  `menu_params.ctrl` is at menu_params+8 == 0x4f8e40, and `Tcontrol`'s first member `use_joy` is at offsetof 0, so the same address is both.  The tool flattens the path and drops the intermediate struct name; the counts agreeing exactly (11 and 11) is what says they are the same eleven sites. |
+
+Everything else resolved and matched: `REPLAY_HEADER` (the 4+2 split of
+the six-byte magic memcpy), all five `cmdline` members, `category_names`,
+`new_personal_best`, `profile`, `closeButtonClicked`, `cycle_count`,
+`gfx_driver`, `gui_fg_color`, `gui_bg_color`, `key[59]` (= `KEY_ESC`),
+`key[67]` (= `KEY_ENTER`), `screen`, `swap_screen`.  The tool's
+"referenced on only one side at all" INFO lines name `data` (which clean
+code must NOT name -- datafile objects go through ASSETS.md's
+`asset_bitmap()`/`asset_font()` seam) and `rejump` (the `#undef`ed
+collision, see gap 2), both expected.
+
+### Generator gaps found
+
+1. **`state.c` zero-fills a `.rodata` constant, and that is a SILENT data
+   bug, not a build error.**  `const char REPLAY_HEADER[6] = {0}` is what
+   the generator emits for every global, and its comment says why ("Every
+   global is zero-initialized, matching how the OS loader zero-fills the
+   original .bss").  But `REPLAY_HEADER` is not `.bss`: it is `.rodata`
+   with a real value, `"ITR140"`.  A standalone build of `replay.c`
+   therefore writes `.itr` files with a zero magic, which
+   `load_replay` then refuses -- and nothing warns.  `gen_src_headers.py`
+   already reads DWARF; a global whose DWARF location is in a read-only
+   initialised section should carry its initialiser, or at minimum a
+   `#error`-worthy comment.  Worked around only inside this batch's
+   harness (`pf_harness_batch15.h` renames the symbol so the oracle can
+   supply the real bytes).
+2. **`MEMBER_ACCESS_COLLISIONS` reaches a case a `#undef` cannot fix.**
+   `rejump` is one more file (`game_data.c`, for `Treplay.rejump`), and
+   that one takes the established idiom.  `ctrl` does not: `my_alert`
+   uses BOTH the global `ctrl` (@0x5000c8) and the member
+   `menu_params.ctrl`, so dropping the binding for the file would leave
+   the global with a declaration and no storage.  `alert.c` captures the
+   global's address into a file-static `player_ctrl` while the macro is
+   still live and only THEN `#undef`s it -- two textually identical arms,
+   one per world.  It works, it is documented at the site, and it is the
+   sharpest argument yet for the context-sensitive rewrite
+   `gen_bindings.py`'s own comment describes.
+3. **`scan_src_defs.py`'s file-level exclusion is still invisible to
+   `--exclude`** (batch 14's gap 2, unchanged and now larger):
+   `carrier/win32_policy.json`'s `scan_exclude` currently lists
+   `alert.c`, `game_data.c`, `menu_keys.c` and `results.c` in addition to
+   `state.c`, so four files' function names are missing from the
+   generated `--exclude` list while `src/` defines them.  **All four now
+   compile clean in the carrier world (0 errors), so those four entries
+   can be removed.**  This pass does not edit `win32_policy.json` -- that
+   file is the carrier task's.  The scanner should warn: "file X is
+   scan-excluded but defines N functions".
+4. **`floor_size_modifiers` still has to be added to `--exclude` by
+   hand** for `map.c` to compile in the carrier world, exactly as batch
+   14 reported; nothing changed.
+
+### What is still ORIGINAL on play()'s coastline
+
+| callee | state |
+|---|---|
+| `create_replay`, `load_replay`, `getGameDataXML`, `draw_results`, `my_alert` | **promoted (batch 15)** |
+| `do_replay_menu` (0x410f98, 2661 B) | **still ORIGINAL** -- the whole remainder of the coastline |
+
+`do_replay_menu` was scoped and not attempted, and the reason is its
+callee list rather than its size: it reaches **six functions that are
+still ORIGINAL themselves** -- `drawSlot` (x9), `replaceBadCharacters`
+(x3), `get_string` (x3), `handle_menu`, `run_demo`, `replace_extension`
+-- plus `exists`, `stretch_sprite` and the five `my_alert` calls this
+batch just promoted.  An ordered-trace oracle would have to stub all six
+with their DWARF prototypes, which is most of another batch's work, and
+three of them (`get_string`, `handle_menu`, `run_demo`) are themselves
+interactive loops.  It is the natural head of the next batch together
+with those six.
+
+### Target 2 (`init_game`) -- not attempted
+
+Unchanged from batch 14: `artifacts/init_game_callmap.txt` is its
+complete ordered call map (243 sites, 68 callees), and the ~20 still-ORIGINAL
+game functions it reaches (`load_options`, `load_hisc_table`,
+`make_hisc_table`, `reset_hisc_table`, `reset_options`, `load_profile`,
+`create_profile`, `rebuild_profile_list`, `syncOptionsFromProfile`,
+`check_characters`, `get_profiles_dir`, `get_gamepad_value`,
+`pwd_garble_string`, `getSampleFromOggDatafile`, `fldads_start`,
+`draw_progress_bar`, `install_timers`, `get_extension`, `get_filename`,
+`set_config_file`) are still the size of the job.  No budget remained
+after targets 1 and 3's first function.
+
+### Target 3 (the menu screens) -- one of five
+
+`key_to_str` (2543 B) is done.  `view_scores` (0x404c38, 2552 B),
+`select_profile` (0x41acc0, 3070 B), `main_menu_callback` (0x4100f8,
+3741 B), `replay_selector` (0x41d258, 2845 B) and
+`draw_replay_selector` (0x41be58, 3726 B) are untouched.  `view_scores`
+is the next cheapest (19 call sites, two of them the still-ORIGINAL
+`draw_table` and `checkMenuFocus`).
+
+### Purity gate (batch 15)
+
+```
+python scripts/check_native_layer.py
+pf_native_purity: scanned 56 file(s) under .../src, 0 violation(s)
+```
+
+### Compile (all three worlds, batch 15)
+
+The five files this batch touches (`replay.c`, `menu_keys.c`,
+`game_data.c`, `results.c`, `alert.c`): **0 errors in all three worlds.**
+
+```
+standalone (generated allegro_api.h, no bindings):
+  gcc -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall -Isrc/icytower \
+      -Iport_forge/tools/win32_oracle \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      -c src/icytower/{replay,menu_keys,game_data,results,alert}.c
+  -- 0 errors; warnings only on game_data.c's self-aliasing sprintf calls
+     (finding 4's item 6 -- the original's own behaviour)
+
+standalone (upstream Allegro, real <allegro.h>):
+  gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK \
+      -Ithird_party/allegro-4.4.3.1/include \
+      -Ithird_party/build-allegro-4.4.3.1/include \
+      -Ithird_party/allegro-4.4.3.1/addons/logg -Isrc/icytower \
+      -c <the same five>
+  -- 0 errors, the same warnings (results.c's and alert.c's SCREEN_W/
+     SCREEN_H/rectfill/draw_sprite/acquire_bitmap/release_bitmap stand-ins
+     are inside the #ifndef ICYTOWER_UPSTREAM_ALLEGRO block draw_frame.c
+     established, so the real macros win here)
+
+carrier (scratch bindings, GCC -- carrier/gen is owned by the concurrent
+carrier task and is NOT touched; the generator writes to a scratch dir):
+  python carrier/gen/scan_src_defs.py --src-dir src/icytower
+  python carrier/gen/gen_bindings.py \
+      --exclude <scanned + key_to_str,getGameDataXML,draw_results,my_alert,
+                 floor_size_modifiers> \
+      --guard-define ICYTOWER_BINDINGS_ACTIVE \
+      --out <SCRATCH>/pf_bindings_src.h --types-out <SCRATCH>/pf_bindings_src_types.h
+  gcc -m32 -Wall -DICYTOWER_BINDINGS_ACTIVE -Icarrier/gen -I<SCRATCH> -Isrc/icytower \
+      -include <SCRATCH>/pf_bindings_src.h \
+      -include carrier/gen/pf_lib_bindings.h \
+      -include carrier/gen/pf_asset_bindings.h \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      -c <every src/icytower/*.c>
+  -- the five batch-15 files: 0 errors.  Across the whole directory the
+     only failures are still draw_star_field.c (batch 8's documented
+     `stars` MEMBER_ACCESS_COLLISIONS gap) and the three standalone-world
+     fixtures assets_standalone.c / state.c / game_types_check.c, which
+     are not part of a carrier build -- the same set batches 13 and 14
+     reported, so no regression.
+  (The four new names had to be added to --exclude BY HAND: scan_src_defs.py
+   skips alert.c / game_data.c / menu_keys.c / results.c entirely, per gap 3.)
+
+offline oracles:
+  ./carrier/lift/harness/build_batch15.sh
+  python carrier/lift/harness/batch15_check.py  --vectors 20000  --seed <s>
+  python carrier/lift/harness/batch15_check.py  --fault
+  python carrier/lift/harness/batch15_check.py  --coverage
+  python carrier/lift/harness/batch15b_check.py --vectors 100000 --seed <s>
+  python carrier/lift/harness/batch15b_check.py --fault
+  python carrier/lift/harness/batch15b_check.py --coverage
+  -- part 1: 20000 x 4 seeds                        =  80000, differ 0
+  -- part 2: 5 functions, weight-split, x 4 seeds   = 153600, differ 0
+  -- all six faults detected; real-instruction coverage 100% on all six
+
+recovery audit:
+  python carrier/scripts/recovery_audit.py --batch batch15
+  -- 0 magic-divide sites; 3 global residues, all explained above
+```
+
+`icytower_specs.py` is untouched again -- the sixth batch running that
+way -- and so is `lift_check.py`; both new oracles are standalone
+executables on the shared engine.
+
+### In vivo (for the carrier task -- NOT run by this pass)
+
+This pass did not run `carrier.exe`.  Nothing in this batch is on the
+gameplay tick path, so none of it can be exercised by
+`replays/human_test.txt` alone.  The natural sequencing:
+
+```
+rem 0. unbound baseline first, as always.
+carrier.exe --replay replays\human_test.txt --frame-digest
+
+rem 1. key_to_str -- pure, no link blocker, no side effect.  It is only
+rem    entered from the options screen, so a digest run is a
+rem    NOT-ENTERED bind (the standing rule: a bind that is never entered
+rem    is not evidence) and needs a menu workload.
+carrier.exe --bind key_to_str=src --replay replays\human_test.txt --frame-digest
+
+rem 2. create_replay + load_replay.  The .itr workload DOES enter both.
+carrier.exe --bind create_replay=src,load_replay=src ^
+            --replay replays\play_itr.txt --frame-digest
+rem    and then the strongest check this batch admits: a BYTE COMPARISON
+rem    of a replay round-tripped through the bound reader against the
+rem    same file read unbound, plus `icytower15.exe -check` agreeing.
+
+rem 3. draw_results -- runs on the game-over screen, so human_test to the
+rem    game's own exit reaches it; the frame oracle is the check.
+carrier.exe --bind draw_results=src --replay replays\human_test.txt --frame-digest
+
+rem 4. my_alert + getGameDataXML need workloads nothing in the corpus has:
+rem    a dialog (quit_via_menu.txt comes closest) and a `-check` run.
+```
+
+Four things the offline oracle structurally cannot see here:
+
+1. **`load_replay` really reads a file.**  The oracle proves the
+   `pack_fread` sequence and the bytes it consumed; that a real `.itr` on
+   disk produces the same `Treplay` is an in-vivo fact.  The thirteen
+   real files above narrow the gap but do not close it: they were parsed
+   by a PYTHON reimplementation of the read order, not by the compiled
+   `load_replay`.
+2. **`getGameDataXML` allocates 128000 bytes and never frees them.**
+   Offline the arena absorbs it; in vivo it is a real 128 KB leak per
+   `-check` invocation, which is harmless for a one-shot command-line
+   mode and would not be for anything else.
+3. **`my_alert`'s loop is driven by the real 20 ms timer.**  Its
+   `while (!cycle_count) rest(2)` spin is scripted offline, so pacing --
+   and therefore how many frames the dialog holds -- is not under offline
+   test at all.
+4. **`draw_results` and `my_alert` draw.**  The oracle proves which
+   drawing calls happen with which arguments; that the resulting pixels
+   match is what the frame oracle is for.
+
+### Totals (updated)
+
+| | batch 15 (this pass) | cumulative (15 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 6 | 81 |
+| functions promoted (partially offline-verified, in-vivo-verified) | 0 | 1 (`play`) |
+| functions promoted (compile-only) | 0 | 2 (`draw_buffer`, `draw_star_field`) |
+| functions skipped (documented, all passes) | 1 on the coastline (`do_replay_menu`), 5 not attempted (`init_game`, `view_scores`, `select_profile`, `main_menu_callback`, `replay_selector`/`draw_replay_selector`) | 17 distinct (batch 14's 21, minus the four this pass promotes) |
+| original bytes recovered as clean source | 8397 | 52939 |
+| original bytes offline-verified | 8397 | 36021 |
+
+Batch 15's six: `key_to_str` (menu_keys.c, 2543 B); `create_replay`,
+`load_replay` (replay.c, 1390 B); `getGameDataXML` (game_data.c,
+1855 B); `draw_results` (results.c, 839 B); `my_alert` (alert.c,
+1770 B).
+
+File list this pass:
+`src/icytower/{menu_keys,game_data,results,alert}.c` (new),
+`src/icytower/replay.c` (+`create_replay`, +`load_replay`),
+`carrier/lift/harness/{batch15_check.py,batch15_check.c,batch15b_check.py,batch15b_check.c,pf_harness_batch15.h,build_batch15.sh}`
+(new), `carrier/recovery_audit_policy.json` (2 entries),
+`notes/replay_format.md` (SS4's two open literals closed),
+`artifacts/src_equivalence.json` (6 entries).
