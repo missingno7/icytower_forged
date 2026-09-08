@@ -1,0 +1,4 @@
+get_version_str: original='1.5.1' candidate='1.5.1' -> EQUAL
+sync_profile: 0 of 20000 vectors differ
+destroy_game_data: 0 of 20000 vectors differ
+EXIT=0

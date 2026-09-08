@@ -2565,5 +2565,62 @@
    "vectors": 200
   },
   "result": "EQUAL (GCC x87, modulo the signaling-NaN-payload note below); MSVC precision-only"
+ },
+ "get_version_str": {
+  "form": "src",
+  "result": "EQUAL",
+  "compared_return_value": "content",
+  "note": "comparison domain is the NUL-terminated byte content at the returned pointer (\"1.5.1\"), not the pointer VALUE -- a fresh string literal in the compiled candidate is never at the original's .rdata address (0x4d4b20). Verified by carrier/lift/harness/batch13_check.py against a pefile-extracted copy of the same bytes and against the ORIGINAL bytes executed under unicorn (both agree: '1.5.1').",
+  "negative_control": {
+   "attempted": true,
+   "method": "compared '1.5.1' against a deliberately wrong '1.5.2' in batch13_check.py --fault; reported DIFFER"
+  }
+ },
+ "syncProfileFromOptions": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 1360,
+  "domain_names": [
+   "Tprofile (profile->flash/jump_hold/msc_volume/snd_volume, full 0x550-byte struct compared to also prove nothing else is written)"
+  ],
+  "gcc": {
+   "toolchain": "tdm-gcc 4.4.1 (32-bit native), no -m32/-mfpmath flags needed -- 0 FPU instructions in this function",
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "negative_control": {
+   "fault": "sync_profile:5:0 (one byte of profile->flash corrupted in the candidate's captured result)",
+   "result": "DIFFER 1/200"
+  },
+  "harness": "carrier/lift/harness/batch13_check.py + batch13_check.c (new, this batch) -- a standalone additive oracle, not a lift_check.py SPECS row (see batch13_check.py's own module docstring for why)."
+ },
+ "destroy_game_data": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 0,
+  "domain_names": [
+   "free()'s call-trace slot (count, arg0) -- mechanism B, same as play_sound/poll_joystick"
+  ],
+  "call_trace_domain": {
+   "mechanism": "mechanism B: hook free()'s IAT-thunk entry VA (0x4bad08), capture its one argument, stub the return -- the block is never actually freed on either side of the comparison, matching how play_sound's trace hook never executes play_sample either.",
+   "traced_callee": "free",
+   "verifies": "that the gd pointer argument reaches free() unmodified (destroy_game_data itself performs no host/guest translation -- it never dereferences gd)"
+  },
+  "gcc": {
+   "toolchain": "tdm-gcc 4.4.1 (32-bit native)",
+   "result": "EQUAL",
+   "total_vectors": 20000
+  },
+  "negative_control": {
+   "fault": "destroy_game_data:5:0 (candidate's captured free() argument XORed with 0xFF)",
+   "result": "DIFFER 1/200"
+  },
+  "harness": "carrier/lift/harness/batch13_check.py + batch13_check.c (new, this batch)."
  }
 }

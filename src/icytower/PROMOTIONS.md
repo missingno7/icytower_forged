@@ -3099,3 +3099,60 @@ Four things the offline oracle structurally cannot see:
 (new), `src/icytower/ASSETS.md` (+3 resolved rows / the open paragraph),
 `notes/binary_recon.md` (item l, the catch-up correction),
 `artifacts/src_equivalence.json` (the `play` entry).
+
+## Batch 13 (2026-09-08 -- the last ORIGINAL callees inside the tick path)
+
+Task: promote the functions still ORIGINAL on the gameplay tick path, so
+that the whole tick becomes clean source.  The authoritative list is batch
+11's "What is still ORIGINAL in the tick body" table (`play_sound`,
+`log2file`, `take_screenshot`, `startGameMusic`, `stopGameMusic`) plus the
+by-name callees of batch 12's `play()` that batch 12 itself left ORIGINAL
+(`draw_reward`, `syncProfileFromOptions` @ 0x406a14, `destroy_game_data`,
+`get_version_str`, and the deferred draw helpers `draw_table` / `drawSlot`
+/ `draw_results` / `draw_progress_bar`).  The list was re-derived from
+`play.c`'s own call sites and `play_callsite_census.py`, not taken on
+trust -- see "Scope re-derivation" at the end of this batch.
+
+Batch 11 and batch 3 each named a *blocker* rather than a difficulty for
+these, and the blockers turn out to be properties of ONE harness build, not
+of the functions:
+
+- batch 11 on `play_sound`: "`pf_harness_calltrace.h` redirects the plain
+  name to the stub for the whole harness build -- promoting it means that
+  redirect would rename its own DEFINITION."  True of the SPECS-table
+  build.  This batch does not touch that build; it adds a SECOND, disjoint
+  executable that never links the SPECS harness, so the eight existing
+  entries that trace a stubbed `play_sound` are unchanged and `play_sound`
+  still gets a real definition and a real oracle.
+- batch 3 on `destroy_game_data`: "no comparison domain the offline harness
+  can express ... freeing a block leaves no game-owned bytes to diff."
+  True of a MEMORY domain.  "Which pointer reached `free()`" is a
+  call-trace fact, and the call-trace domain batch 7/9 built expresses it.
+- batch 3 on `get_version_str`: "recovering it cleanly needs the actual
+  string bytes extracted from the image, which this pass did not do."
+  Done this pass with `pefile`.
+
+### Part 1 -- the three small non-Allegro ones
+
+| function | VA | size | CU | offline result | notes | carrier bind |
+|---|---|---:|---|---|---|---|
+| `get_version_str` | 0x406960 | 10 | main.c | **EQUAL** (content domain) | `mov $0x4d4b20,%eax; ret`.  The `.rdata` run at 0x4d4b20 read out of the image with `pefile` is `"1.5.1"` (NUL-terminated, immediately followed by an unrelated `allegro_message` format string -- so the extraction demonstrably did not run past the end).  The recovered form returns a fresh literal, whose address is necessarily different, so the domain is the returned BYTES: the oracle executes the ORIGINAL bytes under unicorn, reads the C string at the guest VA in EAX, and compares to what the compiled candidate returns.  Closes batch 3's deferral. | pending |
+| `syncProfileFromOptions` | 0x406a14 | 58 | main.c | **EQUAL** (20000) | DWARF has only an ABSTRACT instance (`DW_AT_inline = 1`, decl_line 971, no `DW_AT_low_pc`) -- all three call sites inside `play()` are inlined, which is why batch 12's census reads "syncProfileFromOptions 0 -> 3".  The out-of-line copy of the same fourteen instructions has its own address at 0x406a14 and is what this row recovers.  Four stores, in the disassembly's own order (msc_volume, snd_volume, jump_hold, flash -- neither struct's declaration order); both structs' offsets confirmed by a compiled `offsetof()` probe on this project's `game_types.h`, not by eyeballing.  Domain is the FULL 0x550-byte `Tprofile`, so "nothing else is written" is proven too, not assumed. | pending |
+| `destroy_game_data` | 0x40418c | 12 | game_data.c | **EQUAL** (20000, call trace) | `push %ebp; mov %esp,%ebp; sub $0x8,%esp; leave; jmp _free` -- a tail call, so `free()`'s own `ret` pops straight back into *this* function's caller.  Domain: mechanism B, hook `free()`'s IAT-thunk entry VA (0x4bad08), capture the one argument, never execute the thunk -- so no real heap state is touched on either side, exactly as `play_sound`'s existing trace hook never executes `play_sample`.  Closes batch 3's deferral. | pending |
+
+Negative control, all three (`batch13_check.py --fault`), each reported and
+each naming the exact difference:
+
+```
+get_version_str: original='1.5.1' candidate='1.5.0' -> DIFFER
+  DIFFER at vector 5: profile+0x4dc (VA 0x7e04dc) original 0x4a candidate 0xb5
+sync_profile: 1 of 200 vectors differ
+  DIFFER at vector 5: free()'s arg -- original 0x3af6d46f (called 1) candidate 0x3af6d490 (called 1)
+destroy_game_data: 1 of 200 vectors differ
+```
+
+Harness: `carrier/lift/harness/batch13_check.py` + `batch13_check.c` +
+`build_batch13.sh` (new) -- a standalone additive oracle on the shared
+`pf_win32_offline_oracle` engine, in the same convention as
+`draw_frame_xcheck.py` / `play_xcheck.py`, **not** a new `lift_check.py`
+SPECS row; `icytower_specs.py` is untouched again.
