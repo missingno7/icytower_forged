@@ -1,0 +1,52 @@
+{
+  "_purpose": "Per-function allow-lists for port_forge/tools/pf_win32_recovery_audit.py (carrier/scripts/recovery_audit.py), the global-reference/magic-divide audit generalized from the ad-hoc checks that caught Divergence 010 (carrier/NOTES.md, notes/living_record.md). Every entry below is a MEASURED, understood difference between play()'s original disassembly and its recovered src/icytower/play.c, not a guess -- see '_evidence'. Adding an entry here without matching evidence defeats the audit; do not copy an entry to a new function without re-deriving its own evidence. Entries removed since this file was first written (ctrl.use_joy, map.empty, summary_scroller.horizontal, swap_screen.w, ply.x) are now resolved automatically by the tool's own provenance/alias tracking and no longer need an allow-list -- see the tool's git history for what changed.",
+
+  "*": {
+    "_evidence": {
+      "ply.y+4/ply.sx+4/ply.sy+4": "read the high 32 bits of a Tplayer double field (y offsetof 8, sx/sy offsetof 16/24) directly -- a sign/exponent bit-trick the ORIGINAL MSVC compiler chose for a fast comparison, recurring across play() and every collision handler that compares player position/velocity. The recovered source writes the same comparison as an ordinary `double` compare; GCC does not reproduce the trick. play()'s own instance is in-vivo verified byte-identical over the full human_test/.itr replay (carrier/NOTES.md Divergence 010 SS5) -- collision/physics is unaffected by construction, same digest.",
+      "swap_screen.vtable": "Allegro's vline()/hline()/etc. macros expand to `bmp->vtable->fn(...)` at COMPILE TIME in the original build (Allegro's own headers, not this project's code); a recovered function calls the higher-level drawing functions instead, without literally naming `.vtable`. A macro-level difference, not a functional one -- recurs in every function that draws (play(), fadeOut(), draw_frame())."
+    },
+    "allow_unmatched_original": ["ply.y+4", "ply.sx+4", "ply.sy+4", "swap_screen.vtable"]
+  },
+
+  "play": {
+    "_evidence": {
+      "options.msc_volume/snd_volume, profile.flash/jump_hold/msc_volume/snd_volume": "three physically separate `profile->{flash,jump_hold,msc_volume,snd_volume} = options.{...}; save_profile(profile);` blocks inlined in play()'s original bytes (one per pause-loop's ESC-quit path: VA ~0x4139f3, ~0x413e17, ~0x41449f). The recovered source reaches the SAME assignments + save_profile call exactly once, via syncProfileFromOptions()+save_profile(profile) after the shared tick-loop exit (play.c 'end of the tick loop' section) -- all three pause loops set quit/playing and fall through to that one shared call, so the end state is identical regardless of which path triggered it. Measured: carrier/NOTES.md Divergence 010 SS5 records G1-G5 all EQUAL and human_test/.itr replays byte-identical post-fix; this pass re-ran human_test.txt with play=src and got the same 2293/2293-tick EQUAL verdict. Consolidated by the recovery, not re-inlined 3x.",
+      "demo.data": "single site: the original takes &demo->data once ahead of a loop the recovered source re-evaluates demo->data[i] per iteration; same data, different codegen shape.",
+      "demo.key_flags": "`k = demo->data[i].key_flags;` (play.c ~line 326) is a TWO-hop dereference (demo -> data[i] -> key_flags) -- this tool's provenance tracker follows exactly one hop (see pf_win32_recovery_audit.py's own extract_refs docstring); a second hop is a known, documented scope limit, not investigated further.",
+      "profile.ccc/profile.jc": "profile->ccc[i-1]/jc[i-1] compared against p->ccc[i-1]/jcTop[i-1], immediately after profile->cccNum/cccTotal (which THIS tool's provenance tracker does resolve, a few lines earlier in the same block). Provenance for the `profile` register is lost across the intervening comparison/branch by this tool's linear, no-branch-following heuristic -- a known scope limit (see module docstring), not a functional claim; not investigated further given carrier/NOTES.md Divergence 010's own extensive in-vivo verification of this exact function."
+    },
+    "allow_unmatched_original": [
+      "options.msc_volume", "options.snd_volume",
+      "profile.flash", "profile.jump_hold", "profile.msc_volume", "profile.snd_volume",
+      "demo.data"
+    ],
+    "allow_unmatched_source": [
+      "demo.key_flags", "profile.ccc", "profile.jc"
+    ]
+  },
+
+  "draw_frame": {
+    "_evidence": {
+      "custom.h": "custom.frame[curr_char]->h -- a TWO-hop dereference (custom -> frame[i], a BITMAP*[15] member, -> ->h, the BITMAP's own height field); this tool's provenance tracker follows exactly one hop (known scope limit, see extract_refs' own docstring).",
+      "demo.cycle_count": "single site; not investigated further given the scale of this pass -- flagged here rather than silently dropped.",
+      "demo.name": "demo->name (a char[] field, Treplay offsetof 12) passed to sprintf/textout_ex/text_length; the address computation (`lea`) or the register carrying `demo` across these several calls is not resolved by this tool's one-hop, no-branch-following provenance heuristic in this specific, very large (8518-byte) function.",
+      "map.empty": "map.room[i].empty accessed through a runtime loop index in both forms, same class as play()'s own former map.empty finding (map.c's PROMOTIONS.md entry, offline-oracle-verified separately).",
+      "map.room": "same map.room[i] access, the reverse direction (source names it, this tool's original-side resolution does not reach the same leaf) -- see map.empty above.",
+      "ply.angle": "single site; not investigated further given the scale of this pass.",
+      "demo.key_flags": "same TWO-hop dereference (demo -> data[i] -> key_flags) as play()'s own entry -- see play's own _evidence."
+    },
+    "allow_unmatched_original": ["demo.data", "map.empty"],
+    "allow_unmatched_source": ["custom.h", "demo.cycle_count", "demo.name", "map.room", "ply.angle", "demo.key_flags"]
+  },
+
+  "fadeOut": {
+    "_evidence": {}
+  },
+
+  "handle_player_collision_old": { "_evidence": {} },
+  "handle_player_collision_original": { "_evidence": {} },
+  "handle_player_collision_vector": { "_evidence": {} },
+  "handle_player_collision_vector_2": { "_evidence": {} },
+  "handle_player_collision_combo": { "_evidence": {} }
+}

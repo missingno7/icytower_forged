@@ -161,3 +161,15 @@ instead of the real address range, and runs it against the original bytes
 in unicorn — 20 000 vectors per function, both EQUAL, plus a one-shot
 negative control per function that the comparator names exactly. Results:
 `artifacts/src_equivalence.json`.
+
+Neither this nor a call-site census can see a wrong-but-adjacent struct
+member or a wrong magic-divide constant (Divergence 010, `carrier/NOTES.md`
+— a 17 KB recovered function passed both and still halved every floor in
+vivo). Run the recovery audit before in vivo:
+`python carrier/scripts/recovery_audit.py --function NAME [NAME ...]` (or
+`--src-dir src/icytower` for every recovered function at once) — it
+resolves every absolute-address reference in the ORIGINAL disassembly to
+(global, member) and every `imul $magic`/`mul $magic` site to the divisor
+it implements, and compares both against the recovered .c source.
+Mechanism: `port_forge/tools/pf_win32_recovery_audit.py`; this project's own
+measured allow-list: `carrier/recovery_audit_policy.json`.
