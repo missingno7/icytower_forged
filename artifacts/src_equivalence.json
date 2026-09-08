@@ -2861,5 +2861,518 @@
    "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
   },
   "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
+ },
+ "qualify_hisc_table": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x404994",
+  "size": 39,
+  "cu": "hisc.c",
+  "domain": [
+   "return value (EAX)",
+   "Thisc posts[5] (180 bytes)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "Returns the 1-BASED position (1..5), not an index; `value == 0` returns 0 before looking at the table at all; the compare is UNSIGNED (jb), matching Thisc.value's `unsigned int`.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: ret 1FAULT vs ret 1"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "sort_hisc_table": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x4049bc",
+  "size": 147,
+  "cu": "hisc.c",
+  "domain": [
+   "Thisc posts[5] (180 bytes)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "Insertion sort, DESCENDING, and STABLE: the inner loop stops on `>=` (jae), so equal scores keep their existing order.  The 36-byte Thisc is moved by `rep movsl` three times per outer iteration; written as three struct assignments, bit-identical because Thisc has no padding.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: posts 2020...80969800FAULT vs the same hex without FAULT"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "enter_hisc_table": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x405790",
+  "size": 136,
+  "cu": "hisc.c",
+  "domain": [
+   "Thisc posts[5] (180 bytes)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "Does NOT insert in sorted position -- it overwrites the LAST slot that is strictly below a running threshold starting at 10000000, lowering the threshold at every hit.  On a sorted table that is the lowest score; on a partly-filled one it is the first free slot.  If nothing qualifies it writes nothing.  The name copy is a TAIL CALL into strcpy.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: posts 01ff7f...69b70100FAULT vs the same hex without FAULT"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "get_rank_id": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x418a84",
+  "size": 76,
+  "cu": "profile.c",
+  "domain": [
+   "return value (EAX)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "Counts DOWN from 11 and returns the first level whose FOUR thresholds are all met (best_floor/best_combo/no_combo_top_floor/ccc[0] against rankFloors/rankCombos/rankNMLs/rankCCCs).  Falling off the bottom returns 0, which is also what a successful match at i==0 returns -- indistinguishable by design.  All four compares are SIGNED.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: rank_id 0FAULT vs rank_id 0"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "get_rank": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x418ad0",
+  "size": 82,
+  "cu": "profile.c",
+  "domain": [
+   "the returned string's CONTENT (its address necessarily differs)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "get_rank_id's body inlined plus one load: `return rankLables[id];`.  Recovered as a CALL to get_rank_id; -O2 re-inlines it to the same code.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: rank_id 0FAULT vs rank_id 0 (same vector kind)"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "hash": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x41b9c8",
+  "size": 71,
+  "cu": "replay.c",
+  "domain": [
+   "return value (EAX)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "Thomas Wang's 32-bit integer mix, verbatim: ^61, ^>>16, *9, ^>>4, *0x27d4eb2d, ^>>15.  GCC expands the multiply into an 11-instruction lea/shl/add chain with no imul; every step was evaluated by hand rather than assumed.  All shifts are `shr`, which pins the parameter unsigned.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: ret 2137970045FAULT vs ret 2137970045"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "calc_replay_checksum_131": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x41ba10",
+  "size": 177,
+  "cu": "replay.c",
+  "domain": [
+   "return value (EAX)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "The LEGACY (1.3.1) checksum.  seed*17 + rejump*26 + (score+1)*7 + (floor+1)*13 + (combo+1)*23, then a rolling multiplier from 0x75 stepping 0x75 over name[32]*date[32], then every record as (key_flags*5 + cycle_count*3)*i.  GCC PEELS the record loop's first iteration; with i==0 it contributes 0, so the peel is invisible.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: ret -1452276412FAULT vs ret -1452276412"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "calc_replay_checksum": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds (20260908, 1, 777, 424242) = 80000 each",
+  "seed": 20260908,
+  "va": "0x41bac4",
+  "size": 676,
+  "cu": "replay.c",
+  "domain": [
+   "return value (EAX)"
+  ],
+  "oracle": "carrier/lift/harness/batch14_check.py + batch14_check.c (new) -- a standalone PURE/MEMORY-domain oracle on the shared pf_win32_offline_oracle engine, driven by a BINARY vector file because the payloads are raw structure images (a 2220-byte Treplay, a 180-byte Thisc[5]) that the '|'-separated text protocol cannot carry.  Not a lift_check.py SPECS row; icytower_specs.py untouched.",
+  "notes": "The CURRENT checksum, and the one save_replay stores.  Three findings: (a) tc_s_data and tc_f_data are NEVER hashed, though save_replay writes them; (b) the accumulator is provably `unsigned int` -- the 64-bit slot fed to fildll has its HIGH dword explicitly zeroed and the fistpll + take-low-dword pair is GCC's `(unsigned)<float expr>` idiom, so the three statistics statements must stay SEPARATE `sum = (unsigned)(sum + ...)` assignments; (c) the tail is hash() inlined instruction for instruction.  The header terms are one lea/shl/add tree with no imul, evaluated step by step; the bare +3702 is the folded remainder of whatever '+1's the original source spelled and is NOT recoverable from object code.",
+  "negative_control": {
+   "fault": "batch14_check.py --fault: the ORIGINAL side's first result line at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: ret 1805878246FAULT vs ret 1805878246"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "destroy_replay": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per seed x 4 seeds (20260908, 1, 777, 424242) = 80000.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x41bd68",
+  "size": 54,
+  "cu": "replay.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of free()"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "Two guarded frees, the second a TAIL CALL (jmp _free).  r == NULL does nothing at all; r->data == NULL skips the inner free but still frees r.  Both guards are real branches, not free()'s own NULL tolerance.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: free records"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "myDeleteFile": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per seed x 4 seeds (20260908, 1, 777, 424242) = 80000.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x40cd28",
+  "size": 63,
+  "cu": "config.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of sprintf() / delete_file()"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "The format at 0x4d4daa is \"%s%s\" and NOT \"%s/%s\": callers supply the trailing separator.  The deletion is ALLEGRO's delete_file (0x44623c), not the CRT's remove/unlink -- a bound library call, not a CRT symbol.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: sprintf \"%s%s\" -> \"replays/x\""
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "save_config": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per seed x 4 seeds (20260908, 1, 777, 424242) = 80000.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x40e130",
+  "size": 154,
+  "cu": "config.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of log2file / get_configfile_path / pack_fopen / save_options / 15 x save_hisc_table / pack_fclose"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "pack_fopen mode is \"wp\" -- Allegro PACKED write, so tower.cfg is LZSS compressed (save_replay uses \"wb\" for the same call, so the two formats genuinely differ and the mode string is the only thing that says so).  The 15 score tables are written in hisc_tables[] array order.  A failed open is logged and swallowed; the function is void.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: log2file \"  saving config and scores\""
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "init_scroller": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per seed x 4 seeds (20260908, 1, 777, 424242) = 80000.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x41f278",
+  "size": 200,
+  "cu": "scroller.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of text_height() / text_length()",
+    "the whole Tscroller (lines[] compared as OFFSETS into the text)",
+    "the caller's text buffer, which the function rewrites IN PLACE"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "The vertical path DESTROYS its input: every '\\n' is overwritten with '\\0' and lines[] points into the same buffer, so the text argument is an out-parameter, not just an input.  The row guard is `rows <= 511` and it skips the WHOLE body, so past 511 rows a newline is left un-terminated as well as unrecorded.  text_length() runs only on the horizontal path, so WHICH of the two Allegro calls happened is itself part of the compared trace.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: text_height font"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "fadeOut": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 1200,
+  "vectors_note": "1200 per seed x 4 seeds (20260908, 1, 777, 424242) = 4800.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x40bf5c",
+  "size": 609,
+  "cu": "fade.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of create_bitmap / blit / draw_sprite / set_trans_blender / drawing_mode / makecol / rectfill / solid_mode / blit_to_screen / rest / destroy_bitmap"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "The six gfx_driver null-guards are Allegro's SCREEN_W/SCREEN_H macros expanding in place, not hand-written checks (GFX_DRIVER's w/h are at +0x6c/+0x70, counted field by field).  The loop is GCC's rotation of `for (i = 0; i < 255; i += speed)` with `255-i-speed` strength-reduced into a second counter, reconstructed algebraically.  The FINAL black rectfill targets Allegro's `screen`, while everything inside the loop targets the game's `swap_screen` -- an asymmetry that is in the object code.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: create_bitmap 0 1753"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "fadeIn": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 1200,
+  "vectors_note": "1200 per seed x 4 seeds (20260908, 1, 777, 424242) = 4800.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x40c1c0",
+  "size": 424,
+  "cu": "fade.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of the same eleven callees"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "fadeOut's mirror with three real differences: no blit at the top (the image to fade in is the caller's bitmap, so the scratch bitmap is never initialised before the first draw_sprite), swap_screen is never touched, and the blend argument counts DOWN as 255-i.  destroy_bitmap is a TAIL CALL.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: create_bitmap 640 600"
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "save_replay": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 400,
+  "vectors_note": "400 per seed x 4 seeds (20260908, 1, 777, 424242) = 1600.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x41dd78",
+  "size": 1227,
+  "cu": "replay.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of sprintf / log2file / time / localtime / load_replay / pack_fopen / ~525 x pack_fwrite WITH THE BYTES WRITTEN / pack_fclose",
+    "return value",
+    "Treplay.date (32 bytes), .size, .checksum"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "TWO findings.  (1) The 31-byte literal copied into Treplay.date (0x41ddfe) looks dead because sprintf overwrites the same buffer on the next line -- it is not: the sprintf output is exactly 11 chars + NUL, so bytes 12..30 keep '  ICYTOWERISGREAT ', and calc_replay_checksum hashes all 32 bytes of date.  It is a watermark folded into every replay's integrity check.  (2) The on-disk order is NOT struct order: checksum (0x4c) is written near the END after comment (0xa8); the five float columns are INTERLEAVED BY INDEX as 500 separate 4-byte writes; each Trecord is written REVERSED and SHORT -- cycle_count (4B) then key_flags (1B), five bytes on disk against the struct's eight.  notes/replay_format.md S4's INFERRED 'near-verbatim serialization' is corrected by this trace.  Also recovered rather than fixed: the make_new_date==0 path leaks the Treplay load_replay() returns (no destroy_replay call exists on it).",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: sprintf \"%s%s\" -> \"a/\""
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "save_profile": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 5000,
+  "vectors_note": "5000 per seed x 4 seeds (20260908, 1, 777, 424242) = 20000.  The eight part-2 functions cost between 2 and ~550 traced calls per vector, so batch14b_check.py splits --vectors by an explicit WEIGHT table instead of evenly and prints the count it actually ran.",
+  "seed": 20260908,
+  "va": "0x41a3b8",
+  "size": 1073,
+  "cu": "profile.c",
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every library, CRT and unpromoted game callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records compared as an ORDERED sequence, not as first-call slots.  pack_fwrite/fwrite buffers are rendered as the HEX OF THE BYTES they would write, because for the two file writers the sequence of those buffers IS the file.  Traced strings are escaped identically on both sides (a newline inside a record would otherwise split it and desynchronise the block).",
+   "domain": [
+    "ordered trace of get_profile_dir_for_profile / file_exists / mkdir / sprintf / time / localtime / generate_profile_checksum / fopen / fwrite WITH THE BYTES / get_controls / save_control / fclose / fprintf / the four profile_data_page_* / fputs / fputc / free / log2file",
+    "Tprofile.checksum",
+    "Tprofile.saveDate (16 bytes)"
+   ]
+  },
+  "oracle": "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new).  Not a lift_check.py SPECS row: mechanism B records a COUNT plus the FIRST call's arguments, which would summarise save_replay's 525 different pack_fwrite buffers into one.  icytower_specs.py untouched (fifth batch running that way).",
+  "not_stubbed": "calc_replay_checksum (called by save_replay) and get_rank/get_rank_id (inlined into save_profile) run FOR REAL on both sides -- batch14_check.py verifies them independently, and the checksum's value is compared as data inside the pack_fwrite that writes it.  strcpy is hooked on the unicorn side but records NOTHING: save_replay has one strcpy both toolchains INLINE (a string literal) and one both really call, so tracing it would be asymmetric; the copies are checked through Treplay.date instead.",
+  "notes": "Writes TWO files: the binary .itp (one fwrite of 0x550 bytes -- exactly sizeof(Tprofile) as game_types.h reconstructs it, an independent confirmation of that struct -- followed by save_control) and a human-readable _stats.txt.  Zero-padding in the date is done with a STRING argument (\"0\" or \"\"), not a %02d width.  get_rank is INLINED at the Rank: line.  The two `sprintf(path, \"%s%s...\", path, ...)` calls read and write the same buffer -- undefined by C99 7.19.6.6 and kept, because 'fixing' it would change the trace; GCC's -Wrestrict/-Wformat-overflow warnings on those lines are the recovery being faithful, not a defect.",
+  "negative_control": {
+   "fault": "batch14b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/20 -- comparator names it: get_profile_dir_for_profile 1024 \"\""
+  },
+  "gcc": {
+   "toolchain": "32-bit MinGW GCC 16.2.0",
+   "flags": "-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall",
+   "note": "-mno-sse is kept for build_batch13.sh's own reason and needed again here: calc_replay_checksum multiplies a FLOAT column by an int and truncates to unsigned, exactly the cvttss2si shape -mno-sse2 alone does not forbid.",
+   "build": "carrier/lift/harness/build_batch14.sh",
+   "path_note": "cc1.exe loads its DLLs from mingw32/bin, so that directory must be on PATH even when gcc is invoked by absolute path -- without it gcc exits 1 printing nothing (STATUS_INVALID_IMAGE_FORMAT)."
+  },
+  "carrier_bind": "pending",
+  "pass": "pass_2026-09-08_batch14"
+ },
+ "pass_2026-09-08_batch14": {
+  "date": "2026-09-08",
+  "scope": "play()'s coastline -- the game-over, replay-menu and high-score halves.  Batch 13 named nineteen still-ORIGINAL callees; thirteen are promoted here plus three that came with them (get_rank, hash, calc_replay_checksum_131).",
+  "functions_promoted": 16,
+  "original_bytes": 5208,
+  "total_vectors": 911200,
+  "total_differ": 0,
+  "correction_to_batch13": "file_exists is NOT a game function -- it is Allegro's own (0x446150, C:\\Lib\\allegro4\\src\\file.c, 197 bytes), the same class as exists / delete_file / pack_fopen.  Batch 13's list of nineteen was really eighteen game functions; five now remain: do_replay_menu (2661 B), draw_results (839 B), getGameDataXML (1855 B), load_replay (1136 B), my_alert (1770 B) -- 8261 bytes.",
+  "carrier_blockers_closed": "carrier/win32_policy.json's scan_exclude had two TEMPORARY entries (profile.c, replay.c) with a note asking batch 14 to fix both in src/.  Done: replay.c gains the #ifdef/#undef idiom for data (vs DATAFILE *data @0x4dd23c), rejump (vs int rejump @0x4fdcd8) and cycle_count (vs volatile int cycle_count @0x506938); profile.c renames get_rank/get_rank_id's parameter to profile_arg per the policy's own param_renames.  Both compile clean in the carrier world, so the two entries can be removed by the carrier task.  This pass does not edit win32_policy.json.",
+  "generator_gaps_found": [
+   "MEMBER_ACCESS_COLLISIONS: `rejump` joins `data` and `cycle_count` on the list of struct members whose names are also bound globals and are therefore rewritten into syntax errors by a blunt textual #define.  Workaround is still a per-file #undef; the fix is the context-sensitive rewrite gen_bindings.py's own comment describes.",
+   "scan_src_defs.py's FILE-level exclusion is invisible to --exclude: a scan-excluded file contributes no function names, so everything it defines stays bound to its original address while src/ also defines it -- a silent wrong-target hazard, not a build error.  Worth a warning: 'file X is scan-excluded but defines N functions'.",
+   "game_funcs.h types save_control's second parameter as it_orig_FILE * (the MSVC-shaped FILE from DWARF) while <stdio.h>'s fopen returns the host FILE *; in a build whose CRT is not that one the two are distinct types for the same pointer value, so profile.c carries an explicit cast at the single call site.",
+   "build_batch13.sh's -I. no longer reaches pf_harness_msvc_types.h -- that header moved to port_forge/tools/win32_oracle/, so any GCC harness build still relying on -I. fails on `typedef unsigned __int64 uint64_t;`.  build_batch14.sh points at the new location explicitly."
+  ],
+  "environment_note": "The MinGW32 GCC in this tree fails SILENTLY (exit 1, no diagnostic) unless C:\\msys64\\mingw32\\bin is on PATH, even when gcc is invoked by absolute path: cc1.exe lives under lib/gcc/... and loads its DLLs from bin/, so Windows refuses the image with STATUS_INVALID_IMAGE_FORMAT (0xC000007B) and the driver prints nothing.  build_batch14.sh sets it.",
+  "init_game_scoping": "init_game (0x40e7dc, 5788 B) was MAPPED, not recovered: artifacts/init_game_callmap.txt (new) is its complete ordered call sequence from artifacts/disasm.txt -- 243 direct call sites over 68 distinct callees, with a per-callee census.  65 of the 243 are log2file and 15 are draw_progress_bar; 12 allegro_message calls (each preceded by set_gfx_mode(GFX_TEXT,0,0,0)) are twelve distinct failure exits; only one of the fifteen set_gfx_mode calls sets a real mode.  It reaches at least twenty still-ORIGINAL game functions (load_options, load_hisc_table, make_hisc_table, reset_hisc_table, reset_options, load_profile, create_profile, rebuild_profile_list, syncOptionsFromProfile, check_characters, get_profiles_dir, get_gamepad_value, pwd_garble_string, getSampleFromOggDatafile x22, fldads_start, draw_progress_bar, install_timers, get_extension, get_filename, set_config_file), every one of which an ordered-trace oracle would have to stub -- that is the size of the job, and it is a batch of its own.  Its asset half matches notes/asset_census.md S5 exactly (loading.dat / data.dat / sfx15.dat with their passwords); nothing new found there and nothing contradicted.",
+  "menus_not_reached": "main_menu_callback (3741 B), select_profile (3070 B), view_scores (2552 B) and key_to_str (2543 B) were not attempted -- no budget remained after the coastline.",
+  "harness_changes": [
+   "carrier/lift/harness/batch14_check.py + batch14_check.c (new): the pure/memory-domain oracle, binary vector file.",
+   "carrier/lift/harness/batch14b_check.py + batch14b_check.c + pf_harness_batch14.h (new): the ordered-call-trace oracle.",
+   "carrier/lift/harness/build_batch14.sh (new): builds both, wholly-GCC, -mno-sse kept.",
+   "Nothing under src/ is changed or seam-ed for either oracle; icytower_specs.py and lift_check.py are untouched."
+  ],
+  "purity_gate": "python scripts/check_native_layer.py -- scanned 52 file(s), 0 violation(s)"
  }
 }
