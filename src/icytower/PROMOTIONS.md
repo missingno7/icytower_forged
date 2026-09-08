@@ -4140,14 +4140,21 @@ with **zero trailing bytes** and every one's **stored checksum is
 reproduced exactly**:
 
 ```
-MissingNO_best_cc1_84.itr          stored 57651884     computed 57651884     OK
-MissingNO_best_combo_59.itr        stored 1830374282   computed 1830374282   OK
-MissingNO_best_jj2_4.itr           stored -2122259635  computed -2122259635  OK
-MissingNO_best_lost_combo_38.itr   stored 57191562     computed 57191562     OK
-MissingNO_best_score_5059.itr      stored 57651884     computed 57651884     OK
-last_game.itr                      stored -2122259635  computed -2122259635  OK
-   ... 13 of 13, differ 0
+file                              size  trail        stored      computed magic  tag
+MissingNO_best_cc1_84.itr          345      0      57651884      57651884 ITR140 yes
+MissingNO_best_combo_59.itr        105      0    1830374282    1830374282 ITR140 yes
+MissingNO_best_jj2_3.itr           381      0      -2786229      -2786229 ITR140 yes
+MissingNO_best_jj5_4.itr            38      0    -976447575    -976447575 ITR140 yes
+MissingNO_best_lost_combo_38.itr    98      0      57191562      57191562 ITR140 yes
+last_game.itr                       14      0     898674048     898674048 ITR140 yes
+   ... 13 of 13, 0 mismatches, 0 trailing bytes, all six magic bytes
+       and all thirteen ICYTOWERISGREAT watermarks present
 ```
+
+`scripts/itr_real_files_check.py` (new) is that check, and
+`artifacts/itr_real_files_check.txt` its full output.  It is read-only
+and re-runnable: the carrier task's own runs keep rewriting
+`last_game.itr`, and every regenerated file has passed too.
 
 That is a different KIND of evidence from the offline oracles below: it
 checks the recovered format against files the real game wrote on a real

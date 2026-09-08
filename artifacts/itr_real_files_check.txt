@@ -1,0 +1,28 @@
+itr_real_files_check -- PROMOTIONS.md batch 15
+
+Every .itr file in the tree, parsed with save_replay()'s recovered
+on-disk order (batch 14 finding 2) and re-checksummed with the
+recovered calc_replay_checksum (batch 14 finding 3), using the
+magic "ITR140" read out of the image at 0x4d7dd0 (batch 15).
+
+file                                    size  trail        stored      computed magic  tag verdict
+MissingNO_best_cc1_84.itr                345      0      57651884      57651884 ITR140  yes OK
+MissingNO_best_cc2_171.itr               345      0      57651884      57651884 ITR140  yes OK
+MissingNO_best_combo_59.itr              105      0    1830374282    1830374282 ITR140  yes OK
+MissingNO_best_floor_204.itr             345      0      57651884      57651884 ITR140  yes OK
+MissingNO_best_jj1_11.itr                 77      0     506889869     506889869 ITR140  yes OK
+MissingNO_best_jj2_3.itr                 381      0      -2786229      -2786229 ITR140  yes OK
+MissingNO_best_jj3_2.itr                 345      0      57651884      57651884 ITR140  yes OK
+MissingNO_best_jj4_4.itr                 207      0     246028741     246028741 ITR140  yes OK
+MissingNO_best_jj5_4.itr                  38      0    -976447575    -976447575 ITR140  yes OK
+MissingNO_best_lost_combo_38.itr          98      0      57191562      57191562 ITR140  yes OK
+MissingNO_best_no_combo_26.itr            77      0     506889869     506889869 ITR140  yes OK
+MissingNO_best_score_5059.itr            345      0      57651884      57651884 ITR140  yes OK
+last_game.itr                             14      0     898674048     898674048 ITR140  yes OK
+
+13 file(s), 0 mismatch(es).
+
+`magic` is the six bytes at file offset 0; `tag` is whether the
+32-byte date field still carries save_replay()'s
+"  ICYTOWERISGREAT " watermark in bytes 12..29 -- batch 14
+finding 1, confirmed here from the outside.
