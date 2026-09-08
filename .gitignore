@@ -53,3 +53,4 @@ assets_extracted/
 # rebuildable local proof artifact, not committed (src/icytower/ASSETS.md)
 src/build/obj/
 src/build/asset_oracle.exe
+artifacts/scratch_archive/
