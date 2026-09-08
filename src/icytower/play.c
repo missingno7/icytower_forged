@@ -590,12 +590,25 @@ int play(void)
     if (!itrcheck) {                                        /* 3494 */
         draw_frame(swap_screen);                            /* 3495 */
         fadeIn(swap_screen, 16);                            /* 3497 */
-        play_sound(custom.bg_music, 0, 0);                  /* 3498 */
+        /* KNOWN: 0x414199 loads 0x4fac08 = custom + 1232 =
+         * offsetof(Tcustom, yo) (carrier/gen/it_types_check.c), NOT
+         * +1240 = bg_music.  This is the character's "Yo!" at the start
+         * of a game.  Divergence 010: recovered as custom.bg_music,
+         * which is a different (usually NULL) SAMPLE*, so no voice was
+         * allocated and checkMusicVoiceID came out 0 instead of 3. */
+        play_sound(custom.yo, 0, 0);                        /* 3498 */
         startGameMusic();                                   /* 3499 */
     }
     if (!itrcheck) {                                        /* 3502 */
         if (bg_beat)                                        /* 3503 */
-            checkMusicVoiceID = play_sample(bg_beat, 128, 1000, 1, TRUE); /* 3504 */
+            /* play_sample(spl, vol, pan, freq, loop).  KNOWN, read off
+             * 0x4141c5-0x4141e8: [esp]=bg_beat, +4=0, +8=0x80, +c=0x3e8,
+             * +10=1 -- i.e. vol=0, pan=128, freq=1000, loop=TRUE.  This
+             * line used to read (bg_beat, 128, 1000, 1, TRUE), which is
+             * the same four numbers shifted one argument left: the
+             * leading vol=0 was dropped, so vol became 128, pan 1000 and
+             * freq 1.  Divergence 010's first differing global. */
+            checkMusicVoiceID = play_sample(bg_beat, 0, 128, 1000, TRUE); /* 3504 */
     }
 
     cycle_count = 0;                                        /* 3510 */
@@ -650,7 +663,10 @@ int play(void)
                 if (hasFocus) {                             /* 3551 */
                     if (bg_beat)                            /* 3552 */
                         checkMusicVoiceID =                 /* 3553 */
-                            play_sample(bg_beat, 128, 1000, 1, TRUE);
+                            /* same argument order as 3504 above, read
+                             * off 0x411c89-0x411cac: vol=0, pan=128,
+                             * freq=1000, loop=TRUE. */
+                            play_sample(bg_beat, 0, 128, 1000, TRUE);
                     startGameMusic();                       /* 3559 */
                     totMusics = 0;
                     accMusics = 0;
@@ -897,7 +913,19 @@ int play(void)
         }
 
         if (!ply[player_id]->status) {                       /* 3862 */
-            level = (get_level(&map, (int)ply[player_id]->y) - 1) / 10;  /* 3864 */
+            /* DIVISOR IS 5, NOT 10 (divergence 010, the score/floor bug).
+             * KNOWN, read off 0x412879-0x41288c: `lea -1(%eax),%ecx` then
+             * the signed magic-divide idiom `mov $0x66666667,%ebx; imul
+             * %ebx; sar %edx; sar $0x1f,%ecx; sub %ecx,%edx`.  The magic
+             * constant 0x66666667 is shared by /5 and /10; what picks
+             * between them is the SHIFT: `sar %edx` with no count is a
+             * 1-bit shift = /5, `sar $0x2,%edx` would be /10 (the other
+             * 0x66666667 site in this function, 0x412a0c, is the real /10
+             * and does carry the $0x2).  Recovered as /10, this line
+             * reported HALF the floor the player is on for the whole game
+             * -- the measured score=662/floor=50 instead of the witness
+             * score=2386/floor=100. */
+            level = (get_level(&map, (int)ply[player_id]->y) - 1) / 5;   /* 3864 */
 
             diff = level - ply[player_id]->level;            /* 3870 */
             if (diff) {
@@ -1020,7 +1048,12 @@ int play(void)
             if (!options.flash) {                            /* 4029 */
                 for (i = 0; i < next_aight / 2; i++) {
                     p = create_particle(stars, new_rand() % 600 + 20, 480);  /* 4030 */
-                    stars[p].sy = ((new_rand() % 200) << 16) / 10;           /* 4031 */
+                    /* NEGATED: 0x412a0c-0x412a12 is `sar $0x2,%edx; sar
+                     * $0x1f,%ecx; sub %edx,%ecx` -- the operands of the
+                     * final `sub` are the other way round from the plain
+                     * /10 idiom, so what is stored is -(x/10), not x/10
+                     * (the stars fly UP).  Divergence 010. */
+                    stars[p].sy = -(((new_rand() % 200) << 16) / 10);       /* 4031 */
                 }
             }
             if (next_aight > 999)                            /* 4033 */
@@ -1109,7 +1142,10 @@ int play(void)
                         asset_font(ASSET_DATA_FONT_MED_WHITE),
                         "Press ESC to exit", 320, 240, -1, -1);
                     blit_to_screen(swap_screen);             /* 4129 */
-                    play_sound(custom.yo, 0, 1);             /* 4130 */
+                    /* 0x412ea0 loads 0x4fac0c = custom + 1236 =
+                     * offsetof(Tcustom, wazup), not +1232 = yo
+                     * (divergence 010). */
+                    play_sound(custom.wazup, 0, 1);          /* 4130 */
 
                     poll_control(&ctrl, FALSE);              /* 4132 */
                     while (is_any(&ctrl) || is_pause(&ctrl)  /* 4133 */
@@ -1164,7 +1200,9 @@ int play(void)
                     asset_font(ASSET_DATA_FONT_MED_WHITE),
                     "Press any key to resume", 320, 210, -1, -1);
                 blit_to_screen(swap_screen);                 /* 4198 */
-                play_sound(custom.yo, 0, 1);                 /* 4199 */
+                /* 0x413468 loads 0x4fac0c = custom.wazup, same
+                 * correction as the ESC pause screen above. */
+                play_sound(custom.wazup, 0, 1);              /* 4199 */
 
                 poll_control(&ctrl, FALSE);                  /* 4200 */
                 while (is_any(&ctrl) || is_pause(&ctrl)) {   /* 4201 */

@@ -19,6 +19,8 @@
 #include <string>
 #include "frame.hpp"
 #include "det.hpp"
+#include "bind.hpp"   // divergence 010: the second entry address of the
+                       // present function, for a run whose callers are bound
 #include "../win32_policy.hpp"
 
 namespace {
@@ -66,6 +68,36 @@ void on_blit_to_screen(CONTEXT* ctx) {
     }
 }
 
+// ---------------------------------------------------------------------
+// Divergence 010: the present function has TWO entry addresses in one run.
+//
+// carrier/gen/pf_bindings_src.h leaves a promoted name free, so a promoted
+// CALLER (draw_frame, play, ...) compiled into the carrier calls the
+// carrier's own linked `blit_to_screen` symbol - the guest VA the framework
+// sensor is armed at is never executed for those calls. MEASURED before the
+// fix: with `play` bound, this oracle's stream simply STOPPED at the last
+// frame the original code drew (INVIVO.md batch 12 finding 4's "silent GAP
+// from T=236 straight to T=2725"), which reads exactly like "no frames
+// differ" - and is why a real gameplay divergence survived a frame-oracle
+// pass. So both addresses are armed.
+//
+// The one case where a SINGLE call crosses both is an ORIGINAL caller
+// reaching a BOUND present function: the call lands on the guest VA (which
+// now holds bind.cpp's 5-byte jmp), the stub then calls the src symbol, and
+// both breakpoints fire back to back on the same thread with nothing able
+// to interleave. g_skip_next_src collapses that pair into one frame.
+bool g_skip_next_src = false;
+
+void on_present_guest_entry(CONTEXT* ctx) {
+    on_blit_to_screen(ctx);
+    g_skip_next_src = bind_is_bound(icytower::kFrameOraclePresentFn);
+}
+
+void on_present_src_entry(CONTEXT* ctx) {
+    if (g_skip_next_src) { g_skip_next_src = false; return; }  // same call, already counted
+    on_blit_to_screen(ctx);
+}
+
 } // namespace
 
 void frame_init(const FrameOptions& opt) {
@@ -86,7 +118,7 @@ void frame_init(const FrameOptions& opt) {
     if (!g_digest_file && !want_dump) return; // fully inert
 
     pf::win32::frame_oracle_init(icytower::kFrameOracle);
-    int slot = pf::win32::frame_oracle_arm(on_blit_to_screen);
+    int slot = pf::win32::frame_oracle_arm(on_present_guest_entry);
     if (slot < 0) {
         fprintf(stderr, "frame: FATAL - no free debug register for the blit_to_screen "
                         "frame-oracle sensor (DR budget exhausted by --det/--bind/--record-input)\n");
@@ -98,6 +130,26 @@ void frame_init(const FrameOptions& opt) {
             icytower::kFrameOracle.present_fn_va, slot, g_every,
             g_digest_file ? " digest_out=yes" : "",
             want_dump ? " dump_at=yes" : "");
+    // The second address (see on_present_src_entry above). Absent when the
+    // present function has no src form linked at all, in which case one
+    // address is the whole truth and nothing is lost.
+    void* src_entry = bind_src_symbol(icytower::kFrameOraclePresentFn);
+    if (src_entry) {
+        int slot2 = det_register_breakpoint((DWORD_PTR)src_entry, on_present_src_entry);
+        if (slot2 < 0) {
+            fprintf(stderr, "frame: FATAL - no free debug register for the SECOND (src-form) "
+                            "%s entry at 0x%08lx. Arming only the guest entry would silently "
+                            "drop every frame a promoted caller draws (divergence 010), so this "
+                            "fails loudly instead.\n",
+                    icytower::kFrameOraclePresentFn, (unsigned long)(uintptr_t)src_entry);
+            fflush(stderr);
+            exit(3);
+        }
+        fprintf(stderr, "frame: armed the src-form %s entry at 0x%08lx (DR%d) as well - a promoted "
+                        "caller calls it by symbol, never through 0x%08lx (divergence 010)\n",
+                icytower::kFrameOraclePresentFn, (unsigned long)(uintptr_t)src_entry, slot2,
+                icytower::kFrameOracle.present_fn_va);
+    }
 }
 
 void frame_shutdown() {

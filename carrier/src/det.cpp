@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <string>
 #include "det.hpp"
+#include "bind.hpp"   // divergence 010: the tick safepoint asks the binding table
+                       // which entry address of its callee this run can reach
 #include "snapshot.hpp" // milestones 8-9: safepoint snapshot / in-process rewind
 #include "../../port_forge/src/platform/win32/trace.hpp" // pf_count_import - see det.hpp/wrappers.hpp (item 3)
 #include "../../port_forge/src/platform/win32/arena.hpp"
@@ -30,7 +32,14 @@
 // KNOWN (artifacts/functions.json + disasm.txt): Allegro internals this
 // module calls directly by address (they're outside the game's own 25 CUs,
 // so they're not in carrier/gen/it_funcs.h, which is game-scope only).
-#define VA_SAFEPOINT            0x4124f4u  // main.c play(): once per consumed game tick
+// The tick safepoint is POLICY now, not a literal: icytower::kTickSafepoint
+// (carrier/win32_policy.hpp) names the caller whose tick loop it is, the
+// callee that loop runs exactly once per consumed tick, and that callee's
+// original entry VA. It replaced the literal 0x4124f4 - an address INSIDE
+// play()'s own bytes, which stops existing the moment play is bound
+// (divergence 010; the full argument is in the policy header and in
+// carrier/NOTES.md). resolve_tick_safepoint(), below, turns the policy into
+// the one address THIS run can reach.
 
 // --- "Environment isolation" pass (carrier/NOTES.md) ---------------------
 // KNOWN, all four read out of artifacts/disasm.txt + artifacts/functions.json
@@ -198,6 +207,7 @@ static long long g_sleep_calls = 0;      // total det_wrap_Sleep calls on the ma
 static long long g_sub_in_tick = 0;      // Sleep calls so far within the current carrier tick
 static int  g_sub_tick = -1;             // the tick g_sub_in_tick is counting within
 static long g_safepoint_count = 0;       // play() safepoints seen so far
+static int  g_safepoint_slot = -1;       // DR slot the tick safepoint claimed, or -1
 static int  g_cyc_pre = 0, g_cyc_post = 0; // guest cycle_count around this Sleep's _handle_timer_tick
 #define IT_CYCLE_COUNT (*(volatile int*)(uintptr_t)0x506938u)
 
@@ -1876,7 +1886,64 @@ static void trace_replay_selector_confirm_hit(CONTEXT* ctx) {
 
 void det_arm_thread(HANDLE thread) { pf::win32::arm_thread(thread); }
 
-void det_arm_main_thread() { pf::win32::arm_thread_by_id(g_main_tid); }
+// ---------------------------------------------------------------------
+// Divergence 010: which of the tick safepoint's two entry addresses this
+// run can actually reach.
+//
+// icytower::kTickSafepoint names a CALLEE (update_player) that the caller's
+// (play's) tick loop runs exactly once per consumed tick. That callee has
+// two possible entry points and exactly one of them executes per run:
+//
+//   caller ORIGINAL  -> the guest VA. Correct even when the CALLEE itself
+//                       is bound: the call still lands on the callee's
+//                       original address, which then holds bind.cpp's
+//                       5-byte `jmp rel32`, and an exec breakpoint fires on
+//                       the address, not on the bytes at it.
+//   caller BOUND     -> the carrier's own linked symbol for the callee's
+//                       src form. carrier/gen/pf_bindings_src.h leaves a
+//                       promoted name undefined on purpose, so src play.c's
+//                       `update_player(...)` is a direct call to carrier
+//                       code and the guest VA is never executed.
+//
+// Resolved here rather than in det_init because det_init runs BEFORE
+// bind_init (main.cpp: the guest image is not even mapped yet), so "is the
+// caller bound this run" is not yet knowable there. ctx_arm_slot is the
+// framework's public "point slot N at VA" primitive; it also writes the
+// debug registers of the CONTEXT handed to it, which is why a throwaway
+// one is used - the real arming is arm_thread_by_id, which reads the
+// slot table this call updated.
+static void resolve_tick_safepoint() {
+    if (g_safepoint_slot < 0) return;   // no digest/stop-at-tick this run
+    const icytower::TickSafepointPolicy& P = icytower::kTickSafepoint;
+    DWORD_PTR va = P.callee_va;
+    const char* why = "caller is ORIGINAL: the callee's guest entry";
+    if (bind_is_bound(P.caller_name)) {
+        void* sym = bind_src_symbol(P.callee_name);
+        if (!sym) {
+            fprintf(stderr,
+                    "det: FATAL - the tick safepoint needs %s's src form (because '%s' is bound to "
+                    "%s, so its calls never reach the guest entry 0x%08lx), but the binding table "
+                    "has no src symbol for it.\n",
+                    P.callee_name, P.caller_name, bind_form_name(P.caller_name), P.callee_va);
+            fflush(stderr);
+            TerminateProcess(GetCurrentProcess(), 6);
+        }
+        va = (DWORD_PTR)sym;
+        why = "caller is bound: the carrier's own src symbol for the callee";
+    }
+    CONTEXT throwaway;
+    ZeroMemory(&throwaway, sizeof(throwaway));
+    pf::win32::ctx_arm_slot(&throwaway, g_safepoint_slot, va);
+    fprintf(stderr,
+            "det: tick safepoint = %s() entry at 0x%08lx (DR%d) - %s; caller '%s' is %s\n",
+            P.callee_name, (unsigned long)va, g_safepoint_slot, why,
+            P.caller_name, bind_form_name(P.caller_name));
+}
+
+void det_arm_main_thread() {
+    resolve_tick_safepoint();
+    pf::win32::arm_thread_by_id(g_main_tid);
+}
 
 // The framework's handler owns the DR6 decode, the RF resume flag and the
 // fall-through to the fatal-crash dump. The bounded-instruction tracer is
@@ -1944,7 +2011,12 @@ void det_init(const DetOptions& opt, DetShutdownFn shutdown_hook) {
         g_dump_assets_path = opt.dump_assets;
         need_safepoint = true;
     }
-    if (need_safepoint) register_breakpoint(VA_SAFEPOINT, safepoint_hit);
+    // The slot is claimed HERE (registration order == DR slot order, and
+    // the tick safepoint has always been DR0) but its ADDRESS is only
+    // resolved in det_arm_main_thread(), which main.cpp calls after
+    // bind_init() - see resolve_tick_safepoint().
+    if (need_safepoint)
+        g_safepoint_slot = register_breakpoint(icytower::kTickSafepoint.callee_va, safepoint_hit);
 
     // win32_pilot.md sec 5a: exclusive input policy. Real keyboard input is
     // parked (neutralize_keyboard_hit) whenever it is NOT the declared

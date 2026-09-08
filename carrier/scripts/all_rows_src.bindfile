@@ -1,0 +1,76 @@
+# all_rows_src.bindfile -- GENERATED-BY-HAND-FROM carrier/gen/bind_table.inc (divergence 010).
+#
+# WHY THIS FILE EXISTS, and why all_src.bindfile could not be used for the
+# divergence-010 A/B: carrier/gen/pf_bindings_src.h leaves every PROMOTED
+# name undefined ("excluded (compiled natively, name kept free)"), so a
+# src/icytower/*.c file compiled into the carrier calls another promoted
+# function through the LINKER, not through the guest's address space and
+# not through bind.cpp's entry patch. Binding `play=src` therefore silently
+# switches EVERY promoted callee of play() to its src form as well, whether
+# or not that callee has a row in the bindfile.
+#
+# So "play=original vs play=src" is only an isolating experiment if the
+# CALLEES are src on BOTH sides. These two files make that true:
+#
+#   all_rows_src_no_play.bindfile  every bind_table.inc row EXCEPT play
+#   all_rows_src.bindfile          every bind_table.inc row, play included
+#
+# The only difference between a run of the first and a run of the second is
+# the body of play() itself. Regenerate either by re-running the two-line
+# scan of bind_table.inc quoted in carrier/NOTES.md "Divergence 010".
+add_combo=src
+add_jump_sequence=src
+blit_to_screen=src
+handle_player_collision_old=src
+handle_player_collision_vector=src
+handle_player_collision_vector_2=src
+handle_player_collision_combo=src
+get_gamepad=src
+is_up=src
+is_down=src
+is_left=src
+is_right=src
+is_fire=src
+is_pause=src
+is_enter=src
+is_any=src
+set_control=src
+init_control=src
+check_control_key=src
+destroy_game_data=src
+draw_buffer=src
+draw_frame=src
+draw_scroller=src
+draw_star_field=src
+handle_player_collision_original=src
+handle_player_input=src
+is_solid=src
+jump_player=src
+line_intersect=src
+get_demo=src
+get_controls=src
+switchedFromProgram=src
+switchedToProgram=src
+clickedCloseButton=src
+get_version_str=src
+syncProfileFromOptions=src
+getFloorData=src
+reset_map=src
+get_level=src
+add_floor=src
+new_rand=src
+ok_to_play=src
+reset_particles=src
+update_particle=src
+create_particle=src
+play=src
+play_jump_sound=src
+poll_control=src
+reset_player=src
+scroll_scroller=src
+restart_scroller=src
+start_reward=src
+cycle_counter=src
+fps_counter=src
+update_frame=src
+update_player=src

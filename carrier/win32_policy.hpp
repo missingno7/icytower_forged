@@ -322,6 +322,18 @@ inline constexpr pf::win32::ArgSensor kSensorInstallSound = {
 // 0x44c47c is get_palette(RGB *pal) (carrier/gen/pf_lib_bindings.h:143),
 // used ONLY for the 8bpp case of --frame-dump-at's human-readable PPM; the
 // digest never needs palette interpretation because it hashes raw bytes.
+// Divergence 010: the frame oracle has the SAME two-address problem the
+// tick safepoint has (see kTickSafepoint below). present_fn_va is
+// blit_to_screen's guest entry, which a PROMOTED caller (draw_frame, play,
+// ...) never executes - it calls the carrier's own linked blit_to_screen
+// symbol instead. This name is what carrier/src/frame.cpp hands to
+// bind_src_symbol() so it can arm the second address as well; unlike the
+// tick safepoint, blit_to_screen has 22 call sites of BOTH kinds in one
+// run, so frame.cpp arms both and de-duplicates the one case where a
+// single call crosses both (an ORIGINAL caller reaching a BOUND
+// blit_to_screen: guest VA -> 5-byte jmp -> stub -> src symbol).
+inline constexpr const char* kFrameOraclePresentFn = "blit_to_screen";
+
 inline constexpr pf::win32::FrameOraclePolicy kFrameOracle = {
     /* present_fn_va    */ 0x0040b6bcul,
     /* bitmap_arg_index */ 0,
@@ -331,6 +343,74 @@ inline constexpr pf::win32::FrameOraclePolicy kFrameOracle = {
     /* line_array_off   */ 64u,
     /* color_depth_off  */ 0u,
     /* palette_fn_va    */ 0x0044c47cul,
+};
+
+// ---------------------------------------------------------------------
+// The tick safepoint (divergence 010, 2026-09-08).
+//
+// WAS: VA 0x4124f4, an address INSIDE play()'s own 17420 bytes (main.c
+// 4369, the `if (!itrcheck) rest(2)` that ends a tick).  That address is
+// only ever executed while play() runs as ORIGINAL machine code, so the
+// moment `play` is bound to its src form the sensor stops firing entirely
+// and --digest-out/--stop-at-tick/--snapshot-at-tick silently produce
+// NOTHING (src/icytower/INVIVO.md batch 12, finding 2).  A safepoint that
+// dies when the function it lives in is promoted cannot be the instrument
+// that verifies that promotion.
+//
+// NOW: a FUNCTION-BOUNDARY sensor - the ENTRY of one callee that play()'s
+// tick loop runs exactly once per consumed tick.  `update_player`
+// (player.c, 0x418740) is that callee, and the choice is forced rather
+// than preferred:
+//
+//   * KNOWN (artifacts/disasm.txt): `call 418740 <_update_player>` occurs
+//     at EXACTLY ONE address in the whole 794 KB image, 0x411f3e, which is
+//     main.c 3703 - unconditional in play()'s tick-loop body (play.c line
+//     760, eight-space indent, no `continue`/`goto` anywhere in play()).
+//     One call site in the image + unconditional in the loop = exactly one
+//     hit per consumed tick, and no hit at all outside the tick loop.
+//   * update_frame (0x406ac4, the task's first suggestion) has FOUR call
+//     sites (0x411aef main.c 3493 prologue, 0x41242a 4100 tick body,
+//     0x414628 4700 and 0x414976 4800 - both inside the game-over UI
+//     loops).  The two game-over loops are driven by readkey()/wall clock,
+//     so their iteration count is NOT deterministic across two launches
+//     (INVIVO.md batch 12 finding 4): using it would put a
+//     host-timing-dependent number of lines into every digest.
+//   * blit_to_screen (0x40b6bc) has 22 call sites and its tick-body one
+//     sits inside `if (!quit && someCounter__play % ffstep == 0)` - the
+//     frame-skip modulo - so it is not once per tick either.
+//
+// TWO ADDRESSES, ONE SLOT.  A promoted callee is NOT reached through its
+// original VA by a promoted caller: carrier/gen/pf_bindings_src.h lists
+// update_player (and 80 other promoted names) as "excluded (compiled
+// natively, name kept free)", so `update_player(...)` inside a src/ file
+// links to the carrier's own compiled symbol and the guest VA 0x418740 is
+// never executed.  The sensor therefore names BOTH addresses and arms the
+// one the run can actually reach (carrier/src/det.cpp
+// resolve_tick_safepoint, called from det_arm_main_thread after
+// bind_init):
+//
+//   caller ORIGINAL -> callee_va          (the guest's own entry; still
+//                                          correct when the CALLEE is
+//                                          bound, because the call lands
+//                                          on the 5-byte jmp patch AT
+//                                          that address)
+//   caller bound    -> bind.cpp's src symbol pointer for callee_name
+//
+// CONSEQUENCE, recorded as a baseline change: 0x418740's entry is main.c
+// 3703, near the START of a tick; 0x4124f4 was main.c 4369, its END.  The
+// two hash the same 151 globals at DIFFERENT points of the same tick, so
+// the digest streams legitimately differ and replays/human_test.digest +
+// replays/itr_last_game.digest were regenerated from unbound runs (see
+// carrier/NOTES.md "Divergence 010" and notes/living_record.md).
+struct TickSafepointPolicy {
+    const char*   caller_name;   // the function whose tick loop this is
+    const char*   callee_name;   // bind-table name of the once-per-tick callee
+    unsigned long callee_va;     // that callee's ORIGINAL entry VA
+};
+inline constexpr TickSafepointPolicy kTickSafepoint = {
+    /* caller_name */ "play",
+    /* callee_name */ "update_player",
+    /* callee_va   */ 0x00418740ul,
 };
 
 // ---------------------------------------------------------------------
@@ -349,7 +429,13 @@ inline constexpr pf::win32::FrameOraclePolicy kFrameOracle = {
 // image_identity is [0x400000, .data): headers + .text + .rdata, the
 // read-only half. Restoring into a differently-built image is nonsense.
 //
-// safepoint_va 0x4124f4 is main.c play(), once per consumed game tick.
+// safepoint_va is kTickSafepoint.callee_va (0x418740, update_player's own
+// entry - main.c 3703, once per consumed game tick; see the tick-safepoint
+// policy above for why it moved off 0x4124f4).  It is written into the
+// snapshot manifest for provenance only: the address the sensor is ACTUALLY
+// armed at is resolved per run by det.cpp (it is the carrier's own src
+// symbol when `play` is bound), and a snapshot is only ever restored into
+// the same process that took it.
 //
 // fault_probe_va 0x4fac28 is reward_scale, chosen because it is inside .bss
 // AND inside the 151-global digest domain (carrier/gen/game_globals.inc),
@@ -369,7 +455,7 @@ inline constexpr pf::win32::SnapshotDomainPolicy kSnapshotDomain = {
     /* region_count        */ 4,
     /* image_identity_va   */ 0x00400000ul,
     /* image_identity_size */ 0x004bc000ul - 0x00400000ul,
-    /* safepoint_va        */ 0x004124f4ul,
+    /* safepoint_va        */ 0x00418740ul,
     /* fault_probe_va      */ 0x004fac28ul,
 };
 

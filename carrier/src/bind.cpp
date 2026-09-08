@@ -548,6 +548,10 @@ BIND_STUB(40) BIND_STUB(41) BIND_STUB(42) BIND_STUB(43) BIND_STUB(44)
 BIND_STUB(45) BIND_STUB(46) BIND_STUB(47) BIND_STUB(48) BIND_STUB(49)
 BIND_STUB(50) BIND_STUB(51) BIND_STUB(52) BIND_STUB(53) BIND_STUB(54)
 BIND_STUB(55) BIND_STUB(56) BIND_STUB(57) BIND_STUB(58) BIND_STUB(59)
+BIND_STUB(60) BIND_STUB(61) BIND_STUB(62) BIND_STUB(63) BIND_STUB(64)
+BIND_STUB(65) BIND_STUB(66) BIND_STUB(67) BIND_STUB(68) BIND_STUB(69)
+BIND_STUB(70) BIND_STUB(71) BIND_STUB(72) BIND_STUB(73) BIND_STUB(74)
+BIND_STUB(75) BIND_STUB(76) BIND_STUB(77) BIND_STUB(78) BIND_STUB(79)
 #undef BIND_STUB
 
 namespace {
@@ -564,6 +568,10 @@ void* const kStubs[kMaxFns] = {
     (void*)bind_stub_45, (void*)bind_stub_46, (void*)bind_stub_47, (void*)bind_stub_48, (void*)bind_stub_49,
     (void*)bind_stub_50, (void*)bind_stub_51, (void*)bind_stub_52, (void*)bind_stub_53, (void*)bind_stub_54,
     (void*)bind_stub_55, (void*)bind_stub_56, (void*)bind_stub_57, (void*)bind_stub_58, (void*)bind_stub_59,
+    (void*)bind_stub_60, (void*)bind_stub_61, (void*)bind_stub_62, (void*)bind_stub_63, (void*)bind_stub_64,
+    (void*)bind_stub_65, (void*)bind_stub_66, (void*)bind_stub_67, (void*)bind_stub_68, (void*)bind_stub_69,
+    (void*)bind_stub_70, (void*)bind_stub_71, (void*)bind_stub_72, (void*)bind_stub_73, (void*)bind_stub_74,
+    (void*)bind_stub_75, (void*)bind_stub_76, (void*)bind_stub_77, (void*)bind_stub_78, (void*)bind_stub_79,
 };
 // A short kStubs initializer would zero-fill silently (a null stub pointer =
 // a crash the first time that row is bound), so pin the count too.
@@ -736,6 +744,36 @@ void parse_fault(const char* spec) {
 }
 
 } // namespace
+
+// ---------------------------------------------------------------------
+// Divergence 010: what the TICK SAFEPOINT needs to know from this table.
+//
+// carrier/gen/pf_bindings_src.h does NOT #define a promoted function's
+// name (its header lists them as "excluded (compiled natively, name kept
+// free)"), so a call to `update_player` from inside a src/ file that is
+// itself compiled into the carrier resolves to the CARRIER's own linked
+// symbol - it never touches the guest VA and never crosses the 5-byte
+// entry patch.  Which means: once `play` is bound, no sensor placed at a
+// guest address inside play() OR at the guest entry of any callee play()
+// reaches can fire.  det.cpp's tick safepoint therefore asks this table
+// which address a given callee's calls actually land on for the caller
+// form this run selected.  Both answers come from the SAME generated row,
+// so there is no second copy of anything to keep in step.
+// ---------------------------------------------------------------------
+bool bind_is_bound(const char* name) {
+    int id = lookup_fn(name);
+    return id >= 0 && g_form[id] != FORM_NONE && g_form[id] != FORM_ORIGINAL;
+}
+
+const char* bind_form_name(const char* name) {
+    int id = lookup_fn(name);
+    return form_name(id < 0 ? FORM_NONE : g_form[id]);
+}
+
+void* bind_src_symbol(const char* name) {
+    int id = lookup_fn(name);
+    return id < 0 ? nullptr : kFns[id].src;
+}
 
 // ---------------------------------------------------------------------
 void bind_init(const BindOptions& opt) {

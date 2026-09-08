@@ -50,6 +50,24 @@ void bind_init(const BindOptions& opt);
 // Flushes/closes the per-invocation record file. Safe to call twice.
 void bind_shutdown();
 
+// ---------------------------------------------------------------------
+// Divergence 010: the three questions det.cpp's tick safepoint asks this
+// table. A promoted CALLER does not reach its promoted CALLEE through the
+// guest's address space at all - carrier/gen/pf_bindings_src.h leaves a
+// promoted name undefined ("excluded (compiled natively, name kept free)")
+// so the call links straight to the carrier's own symbol - which means a
+// function-boundary sensor has to know WHICH of the two entry addresses a
+// given run can actually reach. Valid only after bind_init().
+// ---------------------------------------------------------------------
+// True when `name` is bound this run to a form other than ORIGINAL (i.e.
+// its body executes as carrier-compiled code, not as guest machine code).
+bool bind_is_bound(const char* name);
+// "original" | "src" | "lifted" | "native(transitional)" | "unbound".
+const char* bind_form_name(const char* name);
+// The carrier's own linked entry point for `name`'s src form, or nullptr
+// if the binding table has no src form for it (or no such row at all).
+void* bind_src_symbol(const char* name);
+
 // Migration-map metrics (win32_pilot.md SS8a) as JSON object members,
 // written into the --report JSON by trace_write_report. Emits nothing when
 // bind_init was never given any option (keeps the pre-milestone-11 report
@@ -79,7 +97,7 @@ void bind_report_json(FILE* f);
 // from this constant and static_asserts the GENERATED table's kNumFns
 // against it, so the two can no longer drift apart silently.
 // ---------------------------------------------------------------------
-const unsigned kBindMaxFns = 60;  // >= gen/bind_table.inc's kNumFns; bind.cpp
+const unsigned kBindMaxFns = 80;  // >= gen/bind_table.inc's kNumFns; bind.cpp
                                    // static_asserts that, and asserts it also
                                    // matches its BIND_STUB(N) count. Raised
                                    // 42 -> 60 (in-vivo verification pass,
@@ -93,7 +111,11 @@ const unsigned kBindMaxFns = 60;  // >= gen/bind_table.inc's kNumFns; bind.cpp
                                    // own comment above), with headroom this
                                    // time so a few more concurrently-promoted
                                    // functions don't immediately trip it
-                                   // again.
+                                   // again. Bumped 60 -> 80 again on
+                                   // 2026-09-08 (divergence 010's pass):
+                                   // batch 13's concurrently-promoted
+                                   // functions took gen/bind_table.inc to 62
+                                   // rows, tripping the same static_assert.
 struct BindSavedState {
     long long invocations[kBindMaxFns];
     long long crossings[kBindMaxFns];
