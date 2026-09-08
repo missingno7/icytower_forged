@@ -365,6 +365,19 @@ process a couple of buffered ticks back-to-back before waiting again — worth
 noting for a deterministic re-implementation (it's not strictly one-tick-in,
 one-frame-out under load).
 
+**Correction (PROMOTIONS.md batch 12, from reading `play()` in full).** The
+catch-up branch is not a load-adaptive path: it is guarded by
+`if (debug)` and then by `key[KEY_TAB] && key[KEY_LSHIFT]`
+(0x4132a1 / 0x4132d2 / 0x4132db, main.c 4356-4363). `debug` has no store
+anywhere in the image (PROMOTIONS.md batch 9), so **in vivo the branch is
+unreachable** and the loop really is one-tick-in, one-frame-out: the only
+reachable pacing is `while (!cycle_count) rest(2);` at main.c 4357. It is a
+developer frame-step, not a catch-up. `src/icytower/play.c` recovers all
+three arms as they are branched. Two further corrections batch 11 already
+recorded stand: 0x4124f4 is the tick's END (`rest(2)`, main.c 4369), not its
+start — the loop head is 0x411c30 — and there are four `draw_frame` and six
+`blit_to_screen` call sites in `play()`, not one of each.
+
 **Best safepoint candidate (KNOWN address): VA 0x4124f4** — the single point
 in `play()` reached exactly once per consumed 20ms tick, immediately after the
 Sleep-wait loop returns and before any per-frame game logic or Allegro/Win32

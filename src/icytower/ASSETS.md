@@ -287,8 +287,8 @@ intent, not a mechanical fact:
 | 0x409508 / 0x4095a5 / 0x409605 | `draw_frame` | `data[f]`, `data[f+1]`, `data[f+2]` (one floor's left/middle/right tile) | 17 = `FLOOR01` (`ASSET_DATA_FLOOR_01`) | **the full 33-wide range** (`ASSET_DATA_FLOOR_01`..`FLOOR_27`, indices 17-49 = 11 triples) — resolved batch 10: `f = 17 + 3*(profile->start_floor + room.tiles)`, clamped to 44 and then `+3` when that floor's level is past 4999, so `f+2 <= 49`, the family's last member exactly. |
 | 0x409690 | `draw_frame` | `data[s]` (a floor's number sign) | 101 = `SIGN01` (`ASSET_DATA_SIGN_01`) | **the full 11-wide range** (`ASSET_DATA_SIGN_01`..`SIGN_09`, indices 101-111) — resolved batch 10: `s = 101 + start_floor + room.tiles`, clamped to 110 and then `+1` past level 4999, so `s <= 111`. |
 | 0x409959 | `draw_frame` | `data[stars[i].color + 117]` | 117 = `STAR01` (`ASSET_DATA_STAR_01`) | **the full 8-wide range** (`ASSET_DATA_STAR_01`..`_08`, indices 117-124) — resolved batch 10: `create_particle()` (already promoted) draws `color` as `new_rand() % 8`, so the range is exact. |
-| 0x4146e4 | `play` | `data[local]` | results background | base object identity only |
-| 0x4149e6 | `play` | `data[local]` | results background | base object identity only |
+| 0x4146e4 / 0x4149e6 | `play` | `data[gameover_bmp_id]` | 55 = `GAMEOVER` (`ASSET_DATA_GAMEOVER`) | **not a range at all** — resolved PROMOTIONS.md batch 12: `gameover_bmp_id` takes exactly TWO literal values, 55 and 62, assigned at 0x413f3c/0x413f4f and 0x414fe3/0x414ffa; 55 is `GAMEOVER`, 62 is `HIGHSCORE`. It is a local only because ONE `draw_results()` call site serves both the “game over” and the “new highscore” card, so `play.c` spells the two ids themselves and no arithmetic on an `asset_id` happens here. |
+| 0x414a4a / 0x414fb3 | `play` | `data[74 + new_rank_id]` (the rank medal) | 74 = `RANK_00` (`ASSET_DATA_RANK_00`) | **the full 12-wide range** (`ASSET_DATA_RANK_00`..`RANK_11`, indices 74-85) — resolved batch 12: `get_rank_id()` returns an index into the 12-entry `rankLables[]`/`rankFloors[]` tables and `assets_table.inc` generates RANK_00..RANK_11 contiguously from the manifest's own consecutive names, so `ASSET_DATA_RANK_00 + new_rank_id` never leaves that one family. This site was not in the census's itemisation; reading `play()` found it. |
 
 The census's own table (SS3) enumerated 5 VAs plus one explicitly-ruled-out
 row (`view_profile` 0x419d34, "rank tables, not datafile" — not a `data[N]`
@@ -306,11 +306,15 @@ one. That does not change the census's own count of 7 *code locations*; it
 does mean this document's rows are now read off the disassembly rather than
 off the census summary.
 
-What remains genuinely open: the 2 `play` sites (0x4146e4, 0x4149e6), whose
-range/stride still needs the loop that drives them read off, and the 2 of
-the census's 7 that are still not individually itemized by VA anywhere. As
-before, this generator — correctly — does not synthesize per-index ids for
-any of those four. Every resolved row uses the same argument
+What remains genuinely open, after PROMOTIONS.md batch 12 read `play()` in
+full: **nothing in `play()`**. Its two rows above are resolved (and a third
+site, the rank medal at 0x414a4a/0x414fb3, was found and resolved in the
+same pass — it was never itemized by VA anywhere). Still not itemized are
+the 2 of the census's 7 *code locations* that no document names by VA; the
+count of 7 is the census's own prose, and every site a reader has actually
+been able to point at is now resolved. As before, this generator —
+correctly — does not synthesize per-index ids for a site whose range it
+cannot see. Every resolved row uses the same argument
 `start_reward`'s did: `assets_table.inc` GENERATES each family contiguously
 from the manifest's own consecutive object names, so `<base id> + k` is a
 mechanical offset inside one generator-guaranteed family, never "an

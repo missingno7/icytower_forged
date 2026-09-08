@@ -257,7 +257,7 @@
   "result": "EQUAL",
   "vectors": 20000
  },
- "checked": "2026-09-07",
+ "checked": "2026-09-08",
  "clickedCloseButton": {
   "compared_return_value": false,
   "domain_bytes": 4,
@@ -1917,6 +1917,121 @@
     "why": "same three new slots as startGameMusic."
    }
   ]
+ },
+ "play": {
+  "asset_sites_resolved": {
+   "0x4146e4 / 0x4149e6": "data[gameover_bmp_id] -- NOT a range: the local takes exactly two literal values, 55 = GAMEOVER (ASSET_DATA_GAMEOVER) and 62 = HIGHSCORE (ASSET_DATA_HIGHSCORE), assigned at 0x413f3c/0x413f4f and 0x414fe3/0x414ffa. It is a local only because one draw_results() call site serves both screens. This closes the last two rows of src/icytower/ASSETS.md's 'What remains genuinely open'.",
+   "0x414a4a / 0x414fb3": "data[74 + new_rank_id] -> ASSET_DATA_RANK_00 + new_rank_id (RANK_00..RANK_11 = data 74..85, twelve contiguous objects; get_rank_id() indexes the 12-entry rankLables[]/rankFloors[] tables, so the range is exact)"
+  },
+  "carrier_bind": "pending -- in-vivo command in PROMOTIONS.md batch 12",
+  "compile": {
+   "carrier_scratch_bindings": "0 errors; 27 of the 28 carrier-world src/icytower/*.c clean, the one failure still draw_star_field.c (batch 8's `stars` MEMBER_ACCESS_COLLISIONS gap)",
+   "standalone_generated_allegro": "0 errors, 5 warnings (all -Wformat-overflow, see findings)",
+   "standalone_upstream_allegro": "0 errors, the same 5 warnings"
+  },
+  "completeness_check": "carrier/lift/harness/play_callsite_census.py (new): every `call` in 0x411a00..0x415e0b, counted per callee, against the same names counted in the recovered source. 82 distinct callees, 0 mismatches; 8 of the 82 differ by a count that the census asserts EXACTLY together with its structural reason (helper factoring, GCC tail duplication, `rep movsb` vs strcpy).",
+  "cu": "F:\\projects\\icytower\trunk\\source\\main.c",
+  "file": "src/icytower/play.c",
+  "findings_in_the_original": [
+   "clockSpeed, the `c` channel of the anti-cheat telemetry, is algebraically CONSTANT. 0x4144d8-0x4144e2 computes `1000.0 * clockElapsed / clockElapsed / 20.0` = 50.0 whenever clockElapsed > 0, and -0.05 otherwise; GCC could not fold it (it may not assume x/x == 1 for floating point), so the fmul/fdivp pair really is in the object code. The other three channels (q, t, s) do vary. Recovered exactly, not 'corrected'.",
+   "The summary scroller's 'New personal records!    ' text is written and then immediately overwritten. 0x415bf8 rep-movsb's it into summary_scroller_message, and 0x415c0b unconditionally strcpy()s the random hint (or the guest-mode notice) over the top of it. Lines 4754-4769, which evidently meant to append the per-category record list, emitted NO code at all, and skipCategories/h/achs (declared 4750-4752) have no DWARF location.",
+   "sprintf(profile->best_replay_names[i], \"%s_best_X_%d.itr\", profile->handle, n) can overflow: best_replay_names[i] is char[32] and handle is char[32], so the worst case is 31 + 12..17 + 11 + 1 = well past 32. GCC -Wformat-overflow flags five of the seven sites in the recovered source; left uncorrected, same rule draw_frame.c's scrollerText overflow already set. These five are this pass's ONLY compiler warnings.",
+   "The `debug` arm of the end-of-game test (main.c 4050) reads inverted next to the recording arm: `if (ply->dead <= 99) playing = FALSE` versus `if (ply->dead > 100) playing = FALSE`. `debug` has no store anywhere in the image (batch 9), so the arm is unreachable; recovered exactly as branched rather than 'fixed'.",
+   "Three of the five telemetry channels are stored as `speed + totXTimes`, where totClockTimes/totQPCTimes/totTimeTimes are initialised to 0 at main.c 3453/3459/3463 and never accumulated -- dead scaffolding from an earlier averaging design that GCC folded to a single fldz."
+  ],
+  "form": "src",
+  "negative_controls": [
+   {
+    "mutation": "R1 telemetry loop bound 100 -> 99",
+    "result": "DIFFER 200/200"
+   },
+   {
+    "mutation": "R1 tc_posts reset dropped",
+    "result": "DIFFER 176/200"
+   },
+   {
+    "mutation": "R1 tc_s_data channel not cleared",
+    "result": "DIFFER 200/200"
+   },
+   {
+    "mutation": "R2 curtain step 2 -> 1",
+    "result": "DIFFER 8/8"
+   },
+   {
+    "mutation": "R2 vline bottom 480 -> 479",
+    "result": "DIFFER 8/8"
+   },
+   {
+    "mutation": "R2 hline right 640 -> 639",
+    "result": "DIFFER 8/8"
+   },
+   {
+    "mutation": "R2 vline/hline order swapped",
+    "result": "DIFFER 8/8"
+   },
+   {
+    "mutation": "R3 score = level*10 + score -> level*10 - score",
+    "result": "DIFFER 200/200"
+   },
+   {
+    "mutation": "R3 key_flag[0] 0x10 -> 0x20",
+    "result": "DIFFER 92/200"
+   },
+   {
+    "mutation": "R3 rising-edge test !last_keys[j] dropped",
+    "result": "DIFFER 102/200"
+   },
+   {
+    "mutation": "R3 jump/left counters swapped",
+    "result": "DIFFER 80/200"
+   },
+   {
+    "mutation": "R3 gd->jc from p->jc instead of p->jcTop",
+    "result": "DIFFER 200/200"
+   },
+   {
+    "mutation": "R3 census walks demo->size+1 records",
+    "result": "DIFFER 104/200 -- but only after the generator was strengthened. With a zeroed record tail the mutant survived 200 vectors (the extra record reads key_flags 0, which cannot change a count); the R3 generator now always seeds 320 record slots, so the record at index `size` is live data. Same class as batch 11's poll_control button-bound 33."
+   },
+   {
+    "mutation": "R3 inner census loop 7 -> 6 control bits",
+    "result": "EQUAL 0/200 -- an EQUIVALENT MUTANT in this domain, recorded not hidden. Only key_flag[0..2] (jump/left/right) reach Tgame_data; slots 3..6 (up/down/enter/the 0x80 terminator) are counted into keys_pressed[] and never read back out, so no observable state depends on the bound. The bound is verified from the low side only -- the original's own `cmp $0x7` at 0x4138a5/0x4138c0 is read off the disassembly."
+   }
+  ],
+  "offline_oracle": "carrier/lift/harness/play_xcheck.py + play_check.c + play_check_stubs.c (new). play_check.c #includes src/icytower/play.c verbatim, so the source under test is byte-identical to the three compile worlds' input.",
+  "regions_checked": {
+   "R1 clear_replay_telemetry": {
+    "domain": "memory: Treplay.tc_posts + the five 100-float telemetry channels (2004 bytes, FNV-1a per channel)",
+    "original": "0x411a61..0x411ab0 (main.c 3473-3480)",
+    "result": "EQUAL",
+    "vectors": 1206
+   },
+   "R2 draw_pause_curtain": {
+    "domain": "ORDERED call trace of 640 GFX_VTABLE calls (vline +0x28 / hline +0x2c, alternating), hooked with batch 9's synthetic-vtable-VA trick",
+    "original": "0x412d55..0x412db6 (main.c 4122-4124)",
+    "result": "EQUAL",
+    "vectors": 1201
+   },
+   "R3 collect_game_data": {
+    "domain": "memory: Tgame_data score/floor/combo/no_combo_top_floor/biggest_lost_combo/ccc[5]/jc[5] + left/right/jump",
+    "original": "0x4137ab..0x4138ee (main.c 4389-4418)",
+    "result": "EQUAL",
+    "vectors": 1210
+   }
+  },
+  "result": "PARTIAL -- 3 regions EQUAL offline, the rest IN-VIVO-PENDING",
+  "seeds": [
+   20260908,
+   1,
+   777,
+   424242
+  ],
+  "size_bytes": 17420,
+  "source_lines": "3405-5021 (plus 971-975, the inlined syncProfileFromOptions)",
+  "toolchain": "GCC x87, -m32 -mfpmath=387 -mno-sse2 -O2",
+  "va": "0x411a00",
+  "vectors_total": 3617,
+  "why_not_whole": "play() never returns until the game is over; it reaches ~45 game/Allegro/CRT callees, shares ~47 ebp-relative locals between its tick half and its game-over half, and its outer loop is paced by the 50 Hz cycle_count interrupt and by readkey()/keypressed(). No offline domain can express it (PROMOTIONS.md batch 11, 'why there is no play_tick.c'). The in-vivo per-tick digest + frame oracle over replays/human_test.txt is the authority."
  },
  "play_jump_sound": {
   "call_trace_domain": {
