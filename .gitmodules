@@ -1,4 +1,4 @@
 [submodule "port_forge"]
 	path = port_forge
 	url = git@github.com:missingno7/port_forge.git
-	branch = experimental/win32
+	branch = main
