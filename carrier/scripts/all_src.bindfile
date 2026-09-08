@@ -146,3 +146,33 @@ stopGameMusic=src
 log2file=src
 take_screenshot=src
 draw_reward=src
+
+# --- added by divergence 011 (2026-09-08): PROMOTIONS.md batch 14's sixteen,
+# play()'s game-over/replay/profile coastline. Held back by the batch-13 pass
+# (see the comment above) because they were still in flight; verified in vivo
+# here, one group at a time and all together, over the human_test recording
+# run to the game's OWN exit -- per-tick digest EQUAL vs replays/human_test.digest,
+# the score 2386 / floor 100 witness, log.txt reaching `Done...`, and the
+# game-saved last_game.itr / MissingNO.itp / MissingNO_stats.txt / tower.cfg
+# byte-identical to an unbound run's (carrier/scripts/compare_itr.py for the
+# .itr's one host-audio-nondeterministic column). Landing them needed the
+# carrier fix divergence 011 is named for: malloc/calloc/realloc/free, time,
+# clock and the stdio family now reach the GUEST's IAT slots from src/.
+# Batch 15's create_replay/load_replay rows are NOT here -- that pass's own
+# functions, still in flight while this one measured. ---
+qualify_hisc_table=src
+sort_hisc_table=src
+enter_hisc_table=src
+get_rank=src
+get_rank_id=src
+save_profile=src
+hash=src
+calc_replay_checksum_131=src
+calc_replay_checksum=src
+destroy_replay=src
+save_replay=src
+save_config=src
+myDeleteFile=src
+fadeOut=src
+fadeIn=src
+init_scroller=src

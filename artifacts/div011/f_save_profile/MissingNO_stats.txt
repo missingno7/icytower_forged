@@ -1,0 +1,50 @@
+ICY TOWER 1.4 PROFILE
+**********************************************
+Profile name:          MissingNO
+Last updated:          2026-09-08
+Rank:                  C
+Created:               2021-02-22
+
+Time played:           10 minutes, 7 seconds
+Games played:          21                Custom games played:      1
+Games quit:            4
+
+Best score ever:       5059
+Avg score per game:    1192
+Total score:          25047
+
+Highest floor ever:     204
+Avg floors per game:     52
+Floors jumped:         1100
+
+Top Floor, No Combo:     26
+
+Best combo ever:         59
+Avg combos per game:      2
+Avg combo length:        13
+Combos jumped:           50
+
+Longest Lost Combo:      38
+
+Singles in a Row:        11
+Doubles in a Row:         4
+Triples in a Row:         2
+Quadruples in a Row:      4
+Quintuples in a Row:      4
+
+Clock Challenge 1:       84
+Clock Challenge 2:      171
+
+Average CC 1:            76
+Average CC 2:           160
+
+Good:                    11
+Sweet:                   25
+Great:                   10
+Super:                    6
+WOW:                      1
+Amazing:                  1
+
+Total jumps:    571
+
+

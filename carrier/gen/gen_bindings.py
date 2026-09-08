@@ -214,6 +214,98 @@ RESERVED_CRT_WINDOWS_IDENTS = {
 #                pthreadGC2's own (__cdecl, like every pthreads-win32 entry
 #                point) and is left to DLL_DEFAULT_CONVENTION below rather
 #                than spelled out per-entry.
+#   malloc/calloc/realloc/free
+#                DIVERGENCE 011. The single most state-carrying CRT facility
+#                there is: a heap BLOCK is the state, and blocks cross the
+#                carrier/guest boundary in BOTH directions. carrier.exe is
+#                linked /BASE:0x10000000 with its own statically linked
+#                UCRT, and in --det carrier/src/det.cpp replaces the guest's
+#                four msvcrt heap IAT slots with det_wrap_malloc/calloc/
+#                realloc/free over the fixed-address arena
+#                (port_forge/src/platform/win32/arena.hpp) so that every
+#                guest pointer is snapshot-capturable and reproducible.
+#                A promoted src/ function that called the CARRIER's own
+#                free() therefore hands an ARENA pointer to the carrier's
+#                UCRT HeapFree -> STATUS_HEAP_CORRUPTION (0xc0000374).
+#                MEASURED, human_test run to the game's own exit, one bound
+#                function per run, twice independently:
+#                  destroy_replay=src  free(r->data)/free(r), both blocks
+#                                      malloc'd by the guest's create_replay
+#                  save_profile=src    free() of the four page buffers
+#                                      malloc'd by the still-ORIGINAL
+#                                      profile_data_page_* functions
+#                both crashed at exactly the same point (immediately after
+#                `saving replay: .../last_game.itr`, before `saving config
+#                and scores`), stack `_mangled_main -> 0x100xxxxx (the
+#                carrier's own UCRT) -> ntdll heap`. The reverse direction
+#                is just as real and merely not yet exercised: a block
+#                malloc'd by src/ and freed by still-ORIGINAL guest code
+#                would reach det_wrap_free with a pointer the arena does not
+#                own and be silently LEAKED (arena_count_free_foreign),
+#                which is a slow divergence rather than a loud one.
+#                Declared with size_t/void* only -- <stdlib.h> is already
+#                the first GUEST_CRT_PRE_INCLUDES entry, so size_t is in
+#                scope and the macros rewrite only src/'s own CALLS.
+#   fopen/fclose/fwrite/fprintf/fputs/fputc/vfprintf
+#                DIVERGENCE 011, the same argument one facility over: a
+#                `FILE *` is a handle INTO one CRT's stream table, and
+#                profile.c's save_profile hands the one it opens to the
+#                still-ORIGINAL guest function `save_control` (main.c's own
+#                `save_control(get_controls(), f)`), which writes to it with
+#                the GUEST's msvcrt. A carrier-UCRT FILE* interpreted by
+#                msvcrt is not a type mismatch that any compiler can catch
+#                -- game_funcs.h even types that parameter `it_orig_FILE *`,
+#                the DWARF-reconstructed MSVC shape, precisely because the
+#                two are different structs for the same pointer value.
+#                Once fopen is bound, EVERY stream call in src/ must be
+#                bound with it or the handle splits mid-file, which is why
+#                this is a family and not just the two names save_profile
+#                needs: logfile.c's log2file (fopen/vfprintf/fputc/fclose)
+#                is the other src/ user and must stay internally consistent.
+#                FILE* is spelled `void *` on purpose, the same reason
+#                pthread_mutex_lock's mutex is: this header is force-included
+#                AHEAD of everything, and a parameter type it emits must not
+#                depend on which <stdio.h> the consuming TU will later see.
+#                `FILE *` converts to `void *` implicitly in C, both
+#                directions, no cast and no warning.
+#                NOT bound, deliberately: sprintf/vsprintf/printf. They
+#                carry no cross-boundary state (sprintf and vsprintf write
+#                into a buffer the CALLER owns; printf goes to a console
+#                this carrier does not share with the guest), and log2file's
+#                own in-vivo oracle -- assets/log.txt byte-identical between
+#                an unbound and an all-bound run, batch 13 -- is the
+#                standing evidence that the carrier's own formatter already
+#                produces the guest's bytes.
+#   time/clock   DIVERGENCE 011, and the sharpest of the three because it
+#                fails SILENTLY rather than crashing. carrier/src/det.cpp
+#                wraps BOTH (det_wrap_time / det_wrap_clock): in --det they
+#                answer from the pinned virtual epoch and from the
+#                recording's own `T time <v>` channel, which is what makes
+#                play()'s three-clock anti-cheat telemetry
+#                (clock/QueryPerformanceCounter/time, main.c 3513-3661)
+#                reproducible across sessions -- and that telemetry is
+#                written into every saved .itr's tc_c_data/tc_t_data
+#                columns, which calc_replay_checksum HASHES.
+#                MEASURED: with `save_profile=src` and the heap already
+#                fixed, the run completed and wrote a profile whose
+#                `Last updated:` line read the REAL host date (2026-09-08)
+#                where the ORIGINAL form wrote the det-pinned one
+#                (2026-09-07) -- one line of a stats file, no crash, no
+#                digest difference (the tick digest samples game globals
+#                inside the tick loop; the profile is written after it).
+#                play.c has thirteen `time(NULL)` and three `clock()` call
+#                sites and was already promoted, so this was live in every
+#                `play=src` run since batch 12.
+#
+# THE MECHANICAL RULE behind all three, worth more than the three entries:
+# **every import the carrier WRAPS is an import src/ must call through.**
+# A wrapped slot is by definition a slot with carrier-owned state behind it
+# (the arena, the pinned clock, the pinned LCG, the parked timer thread);
+# reaching the carrier's own linked-in CRT instead does not merely take a
+# different code path, it takes a different STATE. carrier/src/wrappers.cpp's
+# kWrapTable is the authoritative list, and check_wrapped_imports_bound()
+# below now reads it and FAILS THE BUILD if src/ references a wrapped name
+# this table does not bind -- see that function.
 GUEST_CRT_IMPORTS = {
     'rand':                     ('msvcrt.dll',  'rand',                     'int', '(void)'),
     'srand':                    ('msvcrt.dll',  'srand',                    'void', '(unsigned)'),
@@ -223,6 +315,23 @@ GUEST_CRT_IMPORTS = {
     'QueryPerformanceFrequency': ('kernel32.dll', 'QueryPerformanceFrequency', '__stdcall', 'int', '(LARGE_INTEGER *)'),
     'pthread_mutex_lock':       ('pthreadGC2.dll', 'pthread_mutex_lock',    'int', '(void *)'),
     'pthread_mutex_unlock':     ('pthreadGC2.dll', 'pthread_mutex_unlock',  'int', '(void *)'),
+    # divergence 011 -- the guest's heap (blocks cross the boundary both ways)
+    'malloc':                   ('msvcrt.dll',  'malloc',                   'void *', '(size_t)'),
+    'calloc':                   ('msvcrt.dll',  'calloc',                   'void *', '(size_t, size_t)'),
+    'realloc':                  ('msvcrt.dll',  'realloc',                  'void *', '(void *, size_t)'),
+    'free':                     ('msvcrt.dll',  'free',                     'void', '(void *)'),
+    # divergence 011 -- the guest's DET-PINNED clock channel
+    'time':                     ('msvcrt.dll',  'time',                     'long', '(long *)'),
+    'clock':                    ('msvcrt.dll',  'clock',                    'long', '(void)'),
+    # divergence 011 -- the guest's stdio stream table (FILE* crosses into
+    # the still-ORIGINAL save_control)
+    'fopen':                    ('msvcrt.dll',  'fopen',                    'void *', '(const char *, const char *)'),
+    'fclose':                   ('msvcrt.dll',  'fclose',                   'int', '(void *)'),
+    'fwrite':                   ('msvcrt.dll',  'fwrite',                   'size_t', '(const void *, size_t, size_t, void *)'),
+    'fprintf':                  ('msvcrt.dll',  'fprintf',                  'int', '(void *, const char *, ...)'),
+    'fputs':                    ('msvcrt.dll',  'fputs',                    'int', '(const char *, void *)'),
+    'fputc':                    ('msvcrt.dll',  'fputc',                    'int', '(int, void *)'),
+    'vfprintf':                 ('msvcrt.dll',  'vfprintf',                 'int', '(void *, const char *, va_list)'),
 }
 
 # Default calling convention by DLL, consulted by normalize_crt_import_entry()
@@ -281,7 +390,20 @@ def normalize_crt_import_entry(name, entry):
 # redeclare QueryPerformanceCounter/Frequency as plain prototypes, and get
 # those declarations mangled by the macros this file emits for them) goes
 # dead automatically -- see that header's own comment.
-GUEST_CRT_PRE_INCLUDES = ['<stdlib.h>', '<string.h>', '"pf_win32_crt_shim_types.h"']
+#
+# <stdio.h> and <stdarg.h> joined the list with divergence 011's stdio family
+# (fopen/fclose/fwrite/fprintf/fputs/fputc/vfprintf): every one of those names
+# is declared by <stdio.h>, so without the pre-include the macros below would
+# mangle that header's own declarations in any TU that includes it (profile.c
+# and logfile.c both do) instead of only rewriting src/'s calls -- exactly the
+# hazard RESERVED_CRT_WINDOWS_IDENTS exists to describe. <stdarg.h> comes with
+# them for vfprintf's `va_list` parameter type, which this file now emits.
+# <time.h> likewise, for divergence 011's `time`/`clock`: without it the two
+# macros mangle ucrt/time.h's own `time`/`clock` declarations (MEASURED --
+# time.h(144)/time.h(548) C2059) in every TU that reaches that header, which
+# on this toolchain includes several that never call either function.
+GUEST_CRT_PRE_INCLUDES = ['<stdlib.h>', '<string.h>', '<stdio.h>', '<stdarg.h>',
+                          '<time.h>', '"pf_win32_crt_shim_types.h"']
 
 
 def load_import_slots(path):
@@ -431,6 +553,100 @@ def find_unbound_referenced_imports(src_idents, import_slots, guest_crt_imports,
     return out
 
 
+WRAP_ENTRY_RE = re.compile(r'^\s*\{\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*\(void\*\)')
+
+# Comments and string/char literals, stripped before the call-site scan below.
+COMMENT_OR_LITERAL_RE = re.compile(
+    r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
+# A CALL of a plain identifier: `name (` not preceded by `.` or `->` (which
+# would make it a struct-member call) and not part of a longer identifier.
+CALL_SITE_RE = re.compile(r'(?<![A-Za-z0-9_])(?<!\.)(?<!->)([A-Za-z_][A-Za-z0-9_]*)\s*\(')
+
+
+def scan_src_call_targets(src_dir):
+    """Every identifier src_dir's *.c/*.h files CALL as a plain function.
+
+    Stricter than scan_src_identifiers() on purpose. That one is a
+    completeness REPORT, where a false positive costs one glance; this one
+    feeds a hard build failure whose remedy (binding the name through a
+    blunt textual #define) can itself break a translation unit, so a false
+    positive here is expensive in both directions.
+    MEASURED, the case that forced it: `exit` appears in src/ only in prose
+    ('the "ran off the front" exit', 'Press ESC to exit') and as a STRUCT
+    MEMBER in allegro_api.h (`void (__cdecl *exit)(struct BITMAP *);` --
+    Allegro's own GFX_DRIVER/DIGI_DRIVER vtable slot).  Nothing calls
+    exit(); binding it would have rewritten those two declarations into
+    syntax errors -- the same MEMBER_ACCESS_COLLISIONS hazard this file
+    already documents, arriving from a new direction."""
+    calls = set()
+    for path in sorted(Path(src_dir).rglob('*')):
+        if path.suffix not in ('.c', '.h'):
+            continue
+        text = path.read_text(encoding='utf-8', errors='replace')
+        text = COMMENT_OR_LITERAL_RE.sub(' ', text)
+        calls.update(CALL_SITE_RE.findall(text))
+    return calls
+
+
+def load_carrier_wrapped_imports(path):
+    """The set of import NAMES carrier/src/wrappers.cpp installs a wrapper
+    for -- parsed out of kWrapTable's own `{ "Name", (void*)fn },` rows so
+    there is exactly ONE list, not a copy of it here that can rot.
+
+    Divergence 011's mechanical rule: a wrapped slot is a slot with
+    CARRIER-OWNED STATE behind it (det.cpp's arena, its pinned virtual
+    clock, its pinned LCG, the parked timer thread, the normalized device
+    enumeration). Clean src/ code that calls such a name and reaches the
+    carrier's own statically linked CRT instead of the guest's IAT slot does
+    not just take a different code path -- it reads and writes DIFFERENT
+    STATE than the original binary does, which is the whole failure this
+    project calls a divergence. So every one of these names that src/
+    references must be in GUEST_CRT_IMPORTS.
+
+    Missing file / no rows found is a hard error rather than a silent skip:
+    an empty wrap list would turn the check below into a no-op that still
+    reports success, which is the exact 'silent-empty instrument' failure
+    mode divergence 010 already cost this project a batch to find."""
+    text = Path(path).read_text(encoding='utf-8', errors='replace')
+    names = set()
+    for line in text.splitlines():
+        m = WRAP_ENTRY_RE.match(line)
+        if m:
+            names.add(m.group(1))
+    if not names:
+        raise ValueError('no `{ "name", (void*)... }` wrapper rows found -- '
+                          'has kWrapTable\'s shape changed?')
+    return names
+
+
+def find_wrapped_imports_unbound(src_calls, import_slots, wrapped_names,
+                                  guest_crt_imports, game_scope_names):
+    """[[dll, name], ...] for every carrier-WRAPPED import that src/
+    actually CALLS (scan_src_call_targets) and GUEST_CRT_IMPORTS does not
+    bind.
+
+    Unlike find_unbound_referenced_imports() below, this one deliberately
+    does NOT skip RESERVED_CRT_WINDOWS_IDENTS. That exclusion is exactly
+    what hid divergence 011 for three batches: `malloc`, `free`, `time` and
+    `clock` are all ordinary-libc names, all on the reserved list, and all
+    wrapped by the carrier -- so the existing report classified four real
+    state-splitting gaps as 'expected noise'. Being on the reserved list
+    only means the name needs the GUEST_CRT_PRE_INCLUDES treatment (pull the
+    declaring system header in FIRST so the macro rewrites calls and not
+    declarations); it says nothing about whether the name may be left
+    unbound."""
+    known = set(guest_crt_imports)
+    out = []
+    for dll, name in sorted(set(import_slots)):
+        if name not in wrapped_names:
+            continue
+        if name in known or name in game_scope_names:
+            continue
+        if name in src_calls:
+            out.append([dll, name])
+    return out
+
+
 HEX_ADDR_IN_BODY_RE = re.compile(r'0x[0-9a-fA-F]+')
 
 
@@ -499,6 +715,13 @@ def main():
                           'GUEST_CRT_IMPORTS (completeness report only, key '
                           '"referenced_unbound_imports" in the JSON summary; '
                           'pass an empty string to skip the scan).')
+    ap.add_argument('--wrap-table', default=str(HERE.parent / 'src' / 'wrappers.cpp'),
+                     help='carrier/src/wrappers.cpp -- the authoritative list '
+                          'of imports the carrier installs a wrapper for. '
+                          'Every wrapped name src/ references MUST be in '
+                          'GUEST_CRT_IMPORTS (divergence 011); this is a HARD '
+                          'ERROR, not a report. Pass an empty string to skip '
+                          '(offline harness builds that have no carrier).')
     args = ap.parse_args()
 
     exclude = set(n.strip() for n in args.exclude.split(',') if n.strip())
@@ -669,9 +892,41 @@ def main():
     Path(args.types_out).write_text('\n'.join(types_lines), encoding='utf-8')
 
     referenced_unbound_imports = []
+    wrapped_imports_unbound = []
     if args.src_dir:
         game_scope_names = set(global_bodies) | set(func_bodies)
         src_idents = scan_src_identifiers(args.src_dir)
+
+        # DIVERGENCE 011, and a HARD failure rather than a report: any import
+        # carrier/src/wrappers.cpp wraps has carrier-owned state behind it, so
+        # src/ reaching the carrier's own CRT copy of that name is a state
+        # split, not a style question. See load_carrier_wrapped_imports().
+        if args.wrap_table:
+            try:
+                wrapped_names = load_carrier_wrapped_imports(args.wrap_table)
+            except (OSError, ValueError) as e:
+                sys.stderr.write('gen_bindings.py: --wrap-table %s: %s\n'
+                                 % (args.wrap_table, e))
+                return 1
+            wrapped_imports_unbound = find_wrapped_imports_unbound(
+                scan_src_call_targets(args.src_dir), import_slots,
+                wrapped_names, GUEST_CRT_IMPORTS, game_scope_names)
+            if wrapped_imports_unbound:
+                sys.stderr.write(
+                    'gen_bindings.py: DIVERGENCE-011 CHECK FAILED -- %s '
+                    'references these imports that %s WRAPS but '
+                    'GUEST_CRT_IMPORTS does not bind: %s\n'
+                    'A wrapped slot has carrier-owned state behind it (the '
+                    'det arena, the pinned clock, the pinned LCG); a promoted '
+                    'src/ call that reaches the carrier\'s own CRT instead of '
+                    'the guest IAT slot reads different STATE than the '
+                    'original binary. Add each to GUEST_CRT_IMPORTS (and its '
+                    'declaring system header to GUEST_CRT_PRE_INCLUDES).\n'
+                    % (args.src_dir, args.wrap_table,
+                       ', '.join('%s!%s' % (dll, name)
+                                 for dll, name in wrapped_imports_unbound)))
+                return 1
+
         referenced_unbound_imports = find_unbound_referenced_imports(
             src_idents, import_slots, GUEST_CRT_IMPORTS, game_scope_names)
         if referenced_unbound_imports:
@@ -693,6 +948,7 @@ def main():
         'reserved_collisions': reserved_collisions,
         'member_name_collisions': member_collisions,
         'referenced_unbound_imports': referenced_unbound_imports,
+        'wrapped_imports_unbound': wrapped_imports_unbound,
         'out': args.out,
         'types_out': args.types_out,
         'mem_macro': mem_macro,

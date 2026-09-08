@@ -4,8 +4,8 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-08 03:02:41 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, calc_replay_checksum, calc_replay_checksum_131, check_control_key, clear_replay_telemetry, clickedCloseButton, collect_game_data, create_particle, cycle_counter, destroy_game_data, destroy_replay, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_pause_curtain, draw_player, draw_replay_hud, draw_reward, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, enter_hisc_table, fadeIn, fadeOut, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, get_rank, get_rank_id, get_version_str, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, hash, init_control, init_scroller, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtof, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_scaled_sprite, it_al_rotate_sprite, it_fade_draw_sprite, jump_player, line_intersect, log2file, myDeleteFile, new_rand, ok_to_play, play, play_jump_sound, play_sound, poll_control, qualify_hisc_table, reset_map, reset_particles, reset_player, restart_scroller, restart_time_cheat_window, resync_music_counter, save_config, save_personal_bests, save_profile, save_replay, scroll_scroller, set_control, sort_hisc_table, stars, startGameMusic, start_reward, stopGameMusic, switchedFromProgram, switchedToProgram, syncProfileFromOptions, take_screenshot, update_frame, update_particle, update_player
+ * Generated: 2026-09-08 03:40:02 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, calc_replay_checksum, calc_replay_checksum_131, check_control_key, clear_replay_telemetry, clickedCloseButton, collect_game_data, create_particle, create_replay, cycle_counter, destroy_game_data, destroy_replay, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_pause_curtain, draw_player, draw_replay_hud, draw_reward, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, enter_hisc_table, fadeIn, fadeOut, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, get_rank, get_rank_id, get_version_str, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, hash, init_control, init_scroller, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtof, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_scaled_sprite, it_al_rotate_sprite, it_fade_draw_sprite, jump_player, line_intersect, load_replay, log2file, myDeleteFile, new_rand, ok_to_play, play, play_jump_sound, play_sound, poll_control, qualify_hisc_table, reset_map, reset_particles, reset_player, restart_scroller, restart_time_cheat_window, resync_music_counter, save_config, save_personal_bests, save_profile, save_replay, scroll_scroller, set_control, sort_hisc_table, stars, startGameMusic, start_reward, stopGameMusic, switchedFromProgram, switchedToProgram, syncProfileFromOptions, take_screenshot, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -32,6 +32,9 @@
 /* ------------------------------------------------------------------ */
 #include <stdlib.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
 #include <string.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
+#include <stdio.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
+#include <stdarg.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
+#include <time.h>  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
 #include "pf_win32_crt_shim_types.h"  /* pulled in FIRST: the macros below must rewrite calls in src/, never this header's own declarations */
 
 /* QueryPerformanceCounter  -> kernel32.dll!QueryPerformanceCounter IAT slot VA=0x005147a0  (the original's own `call _QueryPerformanceCounter -> jmp *[slot]`) */
@@ -40,6 +43,36 @@ typedef int (__stdcall *PFN_crt_QueryPerformanceCounter)(LARGE_INTEGER *);
 /* QueryPerformanceFrequency  -> kernel32.dll!QueryPerformanceFrequency IAT slot VA=0x005147a4  (the original's own `call _QueryPerformanceFrequency -> jmp *[slot]`) */
 typedef int (__stdcall *PFN_crt_QueryPerformanceFrequency)(LARGE_INTEGER *);
 #define QueryPerformanceFrequency (*(PFN_crt_QueryPerformanceFrequency *)0x005147a4)
+/* calloc  -> msvcrt.dll!calloc IAT slot VA=0x005148ac  (the original's own `call _calloc -> jmp *[slot]`) */
+typedef void * (__cdecl *PFN_crt_calloc)(size_t, size_t);
+#define calloc (*(PFN_crt_calloc *)0x005148ac)
+/* clock  -> msvcrt.dll!clock IAT slot VA=0x005148b4  (the original's own `call _clock -> jmp *[slot]`) */
+typedef long (__cdecl *PFN_crt_clock)(void);
+#define clock (*(PFN_crt_clock *)0x005148b4)
+/* fclose  -> msvcrt.dll!fclose IAT slot VA=0x005148c4  (the original's own `call _fclose -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_fclose)(void *);
+#define fclose (*(PFN_crt_fclose *)0x005148c4)
+/* fopen  -> msvcrt.dll!fopen IAT slot VA=0x005148d8  (the original's own `call _fopen -> jmp *[slot]`) */
+typedef void * (__cdecl *PFN_crt_fopen)(const char *, const char *);
+#define fopen (*(PFN_crt_fopen *)0x005148d8)
+/* fprintf  -> msvcrt.dll!fprintf IAT slot VA=0x005148dc  (the original's own `call _fprintf -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_fprintf)(void *, const char *, ...);
+#define fprintf (*(PFN_crt_fprintf *)0x005148dc)
+/* fputc  -> msvcrt.dll!fputc IAT slot VA=0x005148e0  (the original's own `call _fputc -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_fputc)(int, void *);
+#define fputc (*(PFN_crt_fputc *)0x005148e0)
+/* fputs  -> msvcrt.dll!fputs IAT slot VA=0x005148e4  (the original's own `call _fputs -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_fputs)(const char *, void *);
+#define fputs (*(PFN_crt_fputs *)0x005148e4)
+/* free  -> msvcrt.dll!free IAT slot VA=0x005148ec  (the original's own `call _free -> jmp *[slot]`) */
+typedef void (__cdecl *PFN_crt_free)(void *);
+#define free (*(PFN_crt_free *)0x005148ec)
+/* fwrite  -> msvcrt.dll!fwrite IAT slot VA=0x005148fc  (the original's own `call _fwrite -> jmp *[slot]`) */
+typedef size_t (__cdecl *PFN_crt_fwrite)(const void *, size_t, size_t, void *);
+#define fwrite (*(PFN_crt_fwrite *)0x005148fc)
+/* malloc  -> msvcrt.dll!malloc IAT slot VA=0x0051491c  (the original's own `call _malloc -> jmp *[slot]`) */
+typedef void * (__cdecl *PFN_crt_malloc)(size_t);
+#define malloc (*(PFN_crt_malloc *)0x0051491c)
 /* mkdir  -> msvcrt.dll!_mkdir IAT slot VA=0x005147f0  (the original's own `call __mkdir -> jmp *[slot]`) */
 typedef int (__cdecl *PFN_crt_mkdir)(const char *);
 #define mkdir (*(PFN_crt_mkdir *)0x005147f0)
@@ -52,12 +85,21 @@ typedef int (__cdecl *PFN_crt_pthread_mutex_unlock)(void *);
 /* rand  -> msvcrt.dll!rand IAT slot VA=0x00514944  (the original's own `call _rand -> jmp *[slot]`) */
 typedef int (__cdecl *PFN_crt_rand)(void);
 #define rand (*(PFN_crt_rand *)0x00514944)
+/* realloc  -> msvcrt.dll!realloc IAT slot VA=0x00514948  (the original's own `call _realloc -> jmp *[slot]`) */
+typedef void * (__cdecl *PFN_crt_realloc)(void *, size_t);
+#define realloc (*(PFN_crt_realloc *)0x00514948)
 /* srand  -> msvcrt.dll!srand IAT slot VA=0x0051495c  (the original's own `call _srand -> jmp *[slot]`) */
 typedef void (__cdecl *PFN_crt_srand)(unsigned);
 #define srand (*(PFN_crt_srand *)0x0051495c)
 /* stricmp  -> msvcrt.dll!_stricmp IAT slot VA=0x00514808  (the original's own `call __stricmp -> jmp *[slot]`) */
 typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 #define stricmp (*(PFN_crt_stricmp *)0x00514808)
+/* time  -> msvcrt.dll!time IAT slot VA=0x00514990  (the original's own `call _time -> jmp *[slot]`) */
+typedef long (__cdecl *PFN_crt_time)(long *);
+#define time (*(PFN_crt_time *)0x00514990)
+/* vfprintf  -> msvcrt.dll!vfprintf IAT slot VA=0x0051499c  (the original's own `call _vfprintf -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_vfprintf)(void *, const char *, va_list);
+#define vfprintf (*(PFN_crt_vfprintf *)0x0051499c)
 
 /* ------------------------------------------------------------------ */
 /* globals: <name> -> (*(T*)VA), identical to it_globals.h IT_G_<name> */
@@ -451,9 +493,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* create_profile  VA=0x41a988  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: Tprofile * create_profile(char *, int) */
 #define create_profile ((PFN_create_profile)0x41a988)
-/* create_replay  VA=0x41cce8  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: Treplay * create_replay(int) */
-#define create_replay ((PFN_create_replay)0x41cce8)
+/* excluded by --exclude (compiled natively): create_replay */
 /* csv_add_field  VA=0x401a98  cu=F:\projects\icytower\trunk\source\csv.c */
 /* prototype: void csv_add_field(CSVParseContext *, char *) */
 #define csv_add_field ((PFN_csv_add_field)0x401a98)
@@ -767,9 +807,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* load_profile  VA=0x41a7ec  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: Tprofile * load_profile(char *) */
 #define load_profile ((PFN_load_profile)0x41a7ec)
-/* load_replay  VA=0x41cde8  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: Treplay * load_replay(const char *) */
-#define load_replay ((PFN_load_replay)0x41cde8)
+/* excluded by --exclude (compiled natively): load_replay */
 /* load_sound  VA=0x40ca4c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void load_sound(SAMPLE **, char *, BITMAP *, int) */
 #define load_sound ((PFN_load_sound)0x40ca4c)

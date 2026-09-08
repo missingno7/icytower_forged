@@ -1,51 +1,78 @@
 {
   "_purpose": "Single place holding icytower_forged's own Win32-carrier literals for port_forge's framework tools/pf_win32_*.py (notes/extraction_plan.md S1, S3). Every value here was previously hardcoded inside carrier/gen/*.py or carrier/scripts/*.py; each field is cited by the tool that consumes it.",
-
   "cu_prefix": "f:\\projects\\icytower\\trunk\\source\\",
   "names_json": "src/icytower/names.json",
   "src_dir": "src/icytower",
   "gen_dir": "carrier/gen",
   "link_manifest": "carrier/build.cmd",
-
   "bindings_guard": "ICYTOWER_BINDINGS_ACTIVE",
   "upstream_guard": "ICYTOWER_UPSTREAM_ALLEGRO",
   "src_headers_include_guard_prefix": "ICYTOWER",
   "lib_bindings_include_guard": "ICYTOWER_ALLEGRO_API_H",
-
   "param_renames": {
     "key": "key_arg",
     "ctrl": "ctrl_arg",
     "profile": "profile_arg"
   },
-
-  "purity_banned_prefixes": ["PF_", "IT_G_", "IT_F_", "PFN_", "lifted_"],
+  "purity_banned_prefixes": [
+    "PF_",
+    "IT_G_",
+    "IT_F_",
+    "PFN_",
+    "lifted_"
+  ],
   "orig_prefix": "icy_orig_",
-
   "guest_crt_imports": {
-    "rand": ["msvcrt.dll", "rand", "int", "(void)"],
-    "srand": ["msvcrt.dll", "srand", "void", "(unsigned)"]
+    "rand": [
+      "msvcrt.dll",
+      "rand",
+      "int",
+      "(void)"
+    ],
+    "srand": [
+      "msvcrt.dll",
+      "srand",
+      "void",
+      "(unsigned)"
+    ]
   },
-  "guest_crt_pre_includes": ["<stdlib.h>"],
-
-  "member_access_collisions": ["jump_sound"],
+  "guest_crt_pre_includes": [
+    "<stdlib.h>"
+  ],
+  "member_access_collisions": [
+    "jump_sound"
+  ],
   "_member_access_collisions_note": "carrier/gen/gen_bindings.py's own MEMBER_ACCESS_COLLISIONS comment (PROMOTIONS.md batch 8, 2026-09-07) also investigated and deliberately did NOT add 'stars': draw_star_field.c's `sf->stars` collides with the same bug class, but start_reward.c already relies on the bare top-level `stars` #define, so a flat skip-list would fix one file and break the other. Needs a context-sensitive rewrite (skip a .name/->name occurrence, rewrite a bare one) this generator's mechanism can't express yet -- left as a TODO there, not as a policy value here. gen_bindings.py itself is NOT shimmed in S1 (see notes/extraction_plan.md and the S1 completion report) precisely because this list is under active hand-curation by the concurrently-running src-promotion work; re-evaluate at S2.",
-
-  "scan_exclude": ["state.c"],
-  "asset_seam_funcs": ["asset_bitmap", "asset_font", "asset_palette", "asset_object", "asset_sample"],
-
+  "scan_exclude": [
+    "state.c",
+    "alert.c",
+    "game_data.c",
+    "menu_keys.c",
+    "results.c"
+  ],
+  "asset_seam_funcs": [
+    "asset_bitmap",
+    "asset_font",
+    "asset_palette",
+    "asset_object",
+    "asset_sample"
+  ],
   "digest_domain": {
     "data_va": "0x4bc000",
     "data_size": "0x176f4",
     "bss_va": "0x4dd000",
     "bss_size": "0x36978",
-    "exclude_names": ["gFLDADMutex", "sLogMutex__log2file", "gFLDADThread"],
+    "exclude_names": [
+      "gFLDADMutex",
+      "sLogMutex__log2file",
+      "gFLDADThread"
+    ],
     "size_override": {
       "eyecandy_selection": 8,
       "scroll_speed_selection": 8,
       "floor_size_selection": 8,
       "gravity_selection": 8
     },
-
     "_host_enumeration_policy_note": "DIVERGENCE 009 (2026-09-07). The rule below is stated GENERICALLY on purpose: it is not about audio. `exclude_names` above can only remove globals that HOLD a host identity; this rule covers the other, sneakier way a host value reaches the digest -- through the POSITIONS of the deterministic arena rather than through any hashed value. A host enumeration (the set / order / count / names of whatever devices the OS reports) makes the guest allocate once per enumerated item, sized by that item's name, from the same fixed-address arena the game later allocates from; every arena pointer stored in a digest-domain global is then displaced by that prefix. MEASURED on this project: 19 of the 151 globals are such pointers (swap_screen, data, demo, gameData, profiles, profile, combo_sound, bg_beat, bg_menu, speaker, menu_sounds, sounds, menu_params.font, play_char.bmp, custom.frame, characters, greeting_scroller.fnt, ply, gameover_bmp -- named by `pf_inspect diff` of two tick-237 snapshots taken with 1 vs 3 enumerated devices), so one device more or less on the host changes the digest from the FIRST gameplay tick while the game outcome is byte-identical. Excluding those 19 is the WRONG fix: they are real game state, not host identities. The right fix is at the seam -- the carrier normalizes the enumeration before the guest sees it (carrier/src/det.cpp det_wrap_DirectSoundEnumerateA) and keeps only the opaque host handle/GUID VALUE, which never lands in a game-owned global. This block is the written-down policy the carrier's constants cite; the carrier itself does not read this file at run time (nothing in carrier/src does -- see this file's top note), so the two are kept in step by name, exactly as `exclude_names` is kept in step with carrier/gen/gen_game_globals.py.",
     "host_enumeration_policy": {
       "rule": "In a carrier-owned deterministic run (--det, or input policy != real) no host ENUMERATION result may reach the guest. The carrier performs the enumeration itself into carrier memory and delivers a constant, carrier-owned list of fixed size with fixed-length synthetic names; only an opaque host handle needed to keep the subsequent open/create call working may be passed through, and only where that handle is provably outside the digest domain.",
@@ -58,72 +85,176 @@
           "delivered_devices": 1,
           "host_value_passed_through": "the device GUID bytes, copied into carrier memory; stored by the guest only in Allegro's _dsalmix_guid_list (0x004ed3e0), which is not one of the 151 game-owned globals",
           "regression_guard": "msvcrt.dll!strncat == 3 * delivered_devices + 3 in any --report; it is 6 for every host once normalized, and was 27 (8 devices) / 21 (6 devices) before the fix",
-          "audit_knobs": ["DET_ISOLATE_OFF=dsound", "DET_DSOUND_DEVICES=N"]
+          "audit_knobs": [
+            "DET_ISOLATE_OFF=dsound",
+            "DET_DSOUND_DEVICES=N"
+          ]
         }
       ],
       "unaudited_enumerations": "DirectInput device enumeration (dinput.dll!DirectInputCreateA x3 + EnumDevices) and joyGetDevCapsA x16 are called on this host but were measured constant across the drift window; they are NOT normalized yet and are the next candidates should the same signature (identical game outcome, digest differing from the first tick, arena top moved) ever reappear."
     }
   },
-
   "purity_gate": {
     "guest_ranges": [
-      ["0x00400000", "0x0078c000"],
-      ["0x20000000", "0x2fffffff"],
-      ["0x0e000000", "0x0e1fffff"]
+      [
+        "0x00400000",
+        "0x0078c000"
+      ],
+      [
+        "0x20000000",
+        "0x2fffffff"
+      ],
+      [
+        "0x0e000000",
+        "0x0e1fffff"
+      ]
     ],
     "banned_include_substr": [
-      "carrier/", "gen/", "port_forge",
-      "it_types.h", "it_globals.h", "it_funcs.h", "pf_rt.h", "pf_bindings",
+      "carrier/",
+      "gen/",
+      "port_forge",
+      "it_types.h",
+      "it_globals.h",
+      "it_funcs.h",
+      "pf_rt.h",
+      "pf_bindings",
       "pf_harness"
     ],
     "banned_ident_patterns": [
-      "PF_[A-Za-z0-9_]*", "pf_rt", "pf_x87_t", "pf_bindings[A-Za-z0-9_]*",
-      "pf_harness[A-Za-z0-9_]*", "pf_lift[A-Za-z0-9_]*", "pf_import[A-Za-z0-9_]*",
-      "pf_on_[A-Za-z0-9_]*", "IT_G_[A-Za-z0-9_]*", "IT_F_[A-Za-z0-9_]*",
-      "PFN_[A-Za-z0-9_]*", "lifted_[A-Za-z0-9_]*"
+      "PF_[A-Za-z0-9_]*",
+      "pf_rt",
+      "pf_x87_t",
+      "pf_bindings[A-Za-z0-9_]*",
+      "pf_harness[A-Za-z0-9_]*",
+      "pf_lift[A-Za-z0-9_]*",
+      "pf_import[A-Za-z0-9_]*",
+      "pf_on_[A-Za-z0-9_]*",
+      "IT_G_[A-Za-z0-9_]*",
+      "IT_F_[A-Za-z0-9_]*",
+      "PFN_[A-Za-z0-9_]*",
+      "lifted_[A-Za-z0-9_]*"
     ]
   },
-
   "assets": {
     "_purpose": "ASSETS-coastline literals (notes/asset_census.md, src/icytower/ASSETS.md): the 7 Allegro 4 datafile paths/passwords port_forge/tools/pf_allegro4_datafile.py needs per --policy 'files' entry (keyed by basename, generic tool contract), plus the family grouping and CHAR_SLOT game-visible slot names this project's own carrier/gen/gen_assets.py and scripts/extract_assets.py read -- moved here from tools_recon/assets_manifest.py's PASSWORDS/DATAFILES/CHAR_SLOT module constants so the passwords are ICY GAME DATA recorded once, not re-hardcoded in every tool that needs one (notes/asset_census.md SS5a for how CHEESE was recovered).",
     "root": "assets",
     "output": "assets_extracted",
     "families": {
-      "data": {"path": "data/data.dat", "password": "CHEESE", "clean_dir": "gfx"},
-      "sfx": {"path": "data/sfx15.dat", "password": "CHEESE", "strip_object_prefix": "S_", "clean_dir": "sfx"},
-      "loading": {"path": "data/loading.dat", "password": "(c) Free Lunch Design", "clean_dir": "gfx"},
-      "char:harold_the_homeboy": {"path": "characters/harold_the_homeboy/harold.dat", "password": null, "char_dir": "harold_the_homeboy"},
-      "char:disco_dave": {"path": "characters/disco_dave/dave.dat", "password": null, "char_dir": "disco_dave"},
-      "char:jungle_jane": {"path": "characters/jungle_jane/jane.dat", "password": null, "char_dir": "jungle_jane"},
-      "char:wild_wendy": {"path": "characters/wild_wendy/wendy.dat", "password": null, "char_dir": "wild_wendy"}
+      "data": {
+        "path": "data/data.dat",
+        "password": "CHEESE",
+        "clean_dir": "gfx"
+      },
+      "sfx": {
+        "path": "data/sfx15.dat",
+        "password": "CHEESE",
+        "strip_object_prefix": "S_",
+        "clean_dir": "sfx"
+      },
+      "loading": {
+        "path": "data/loading.dat",
+        "password": "(c) Free Lunch Design",
+        "clean_dir": "gfx"
+      },
+      "char:harold_the_homeboy": {
+        "path": "characters/harold_the_homeboy/harold.dat",
+        "password": null,
+        "char_dir": "harold_the_homeboy"
+      },
+      "char:disco_dave": {
+        "path": "characters/disco_dave/dave.dat",
+        "password": null,
+        "char_dir": "disco_dave"
+      },
+      "char:jungle_jane": {
+        "path": "characters/jungle_jane/jane.dat",
+        "password": null,
+        "char_dir": "jungle_jane"
+      },
+      "char:wild_wendy": {
+        "path": "characters/wild_wendy/wendy.dat",
+        "password": null,
+        "char_dir": "wild_wendy"
+      }
     },
     "_char_slot_note": "one shared table -- KNOWN, read off load_frames/load_sounds's disassembly (notes/asset_census.md SS3), identical index layout for all 4 character datafiles: 0 the palette, 1-15 the 15 animation frames, 16-23 the 8 named sounds.",
     "char_slot_names": {
       "0": "palette",
-      "1": "frame01", "2": "frame02", "3": "frame03", "4": "frame04", "5": "frame05",
-      "6": "frame06", "7": "frame07", "8": "frame08", "9": "frame09", "10": "frame10",
-      "11": "frame11", "12": "frame12", "13": "frame13", "14": "frame14", "15": "frame15",
-      "16": "snd_jump_lo", "17": "snd_jump_med", "18": "snd_jump_hi", "19": "snd_yo",
-      "20": "snd_wazup", "21": "snd_falling", "22": "snd_edge", "23": "music_bg"
+      "1": "frame01",
+      "2": "frame02",
+      "3": "frame03",
+      "4": "frame04",
+      "5": "frame05",
+      "6": "frame06",
+      "7": "frame07",
+      "8": "frame08",
+      "9": "frame09",
+      "10": "frame10",
+      "11": "frame11",
+      "12": "frame12",
+      "13": "frame13",
+      "14": "frame14",
+      "15": "frame15",
+      "16": "snd_jump_lo",
+      "17": "snd_jump_med",
+      "18": "snd_jump_hi",
+      "19": "snd_yo",
+      "20": "snd_wazup",
+      "21": "snd_falling",
+      "22": "snd_edge",
+      "23": "music_bg"
     }
   },
-
   "bind_all": {
     "_bind_all_note": "carrier/scripts/bind_all.py's own command-line literals (notes/extraction_plan.md S3): the 35 src/icytower functions in src/icytower/PROMOTIONS.md batches 1-4, in that table's own order; the subset of those whose src/ form has real x87 floating point and was built through the mingw32 GCC -mfpmath=387 -mno-sse2 mixed-toolchain path (carrier/build.cmd) -- 'particles' below means update_particle + create_particle; and the fixed carrier.exe flags every bind_all run passes (--det for deterministic mode, --pace=fast to skip real-time pacing, --input=script to replay a recording instead of live input).",
     "functions": [
-      "update_frame", "is_solid",
-      "jump_player", "getFloorData", "reset_map", "add_combo", "line_intersect",
-      "get_gamepad", "is_up", "is_down", "is_left", "is_right", "is_fire",
-      "is_pause", "is_enter", "is_any",
-      "set_control", "init_control", "check_control_key", "get_level",
-      "add_jump_sequence", "reset_particles", "scroll_scroller",
-      "restart_scroller", "cycle_counter", "fps_counter", "get_demo",
-      "get_controls", "switchedFromProgram", "switchedToProgram",
+      "update_frame",
+      "is_solid",
+      "jump_player",
+      "getFloorData",
+      "reset_map",
+      "add_combo",
+      "line_intersect",
+      "get_gamepad",
+      "is_up",
+      "is_down",
+      "is_left",
+      "is_right",
+      "is_fire",
+      "is_pause",
+      "is_enter",
+      "is_any",
+      "set_control",
+      "init_control",
+      "check_control_key",
+      "get_level",
+      "add_jump_sequence",
+      "reset_particles",
+      "scroll_scroller",
+      "restart_scroller",
+      "cycle_counter",
+      "fps_counter",
+      "get_demo",
+      "get_controls",
+      "switchedFromProgram",
+      "switchedToProgram",
       "clickedCloseButton",
-      "new_rand", "update_particle", "create_particle", "ok_to_play"
+      "new_rand",
+      "update_particle",
+      "create_particle",
+      "ok_to_play"
     ],
-    "x87_functions": ["jump_player", "line_intersect", "new_rand",
-                       "update_particle", "create_particle"],
-    "carrier_common_flags": ["--det", "--pace=fast", "--input=script"]
+    "x87_functions": [
+      "jump_player",
+      "line_intersect",
+      "new_rand",
+      "update_particle",
+      "create_particle"
+    ],
+    "carrier_common_flags": [
+      "--det",
+      "--pace=fast",
+      "--input=script"
+    ]
   }
 }

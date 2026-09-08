@@ -1,0 +1,23 @@
+ICY TOWER 1.4 PROFILE
+**********************************************
+Profile name:          guest
+Last updated:          2011-11-21
+Rank:                  no rank
+Created:               2011-11-21
+
+Time played:           none
+Games played:          0                 Custom games played:      0
+Games quit:            0
+
+Best score ever:          0
+Total score:              0
+
+Highest floor ever:       0
+Floors jumped:            0
+
+Best combo ever:          0
+Combos jumped:            0
+
+Total jumps:    0
+
+

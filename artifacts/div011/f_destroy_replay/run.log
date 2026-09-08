@@ -1,0 +1,323 @@
+﻿carrier.exe : symbols_load: loaded 2433 functions from 'D:\Games\DOS\dos_recosystem\icytower_forged\artifacts\functions
+.json'
+At C:\Users\jiriv\AppData\Local\Temp\claude\D--Games-DOS-dos-recosystem-icytower-forged\fcf2c059-efab-47af-a4ef-5ff1eea
+f0d18\scratchpad\run1.ps1:14 char:1
++ & .\carrier.exe @a 2>&1 | Out-File -Encoding utf8 "$out\run.log"
++ ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (symbols_load: l...functions.json':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+det: deterministic heap arena at 20000000, size=256MB (free-list allocator, first-fit + coalescing, state in-arena)
+det: real keyboard PARKED (input=script; key_dinput_handle_scancode short-circuited)
+det: loaded 228 input events and 13 recorded time value(s) from '..\replays\human_test.txt'
+det: interactive=0 window=hidden (an automated run never takes the operator's foreground - carrier/NOTES.md 'Environmen
+t isolation')
+det: det_mode=1 pace=fast input=script inject_real_test=0 stop_at_tick=3200 digest_out=D:\Games\DOS\dos_recosystem\icyt
+ower_forged\artifacts\div011\f_destroy_replay\ticks.txt record_input=(none) input_script=..\replays\human_test.txt
+carrier: image=D:\Games\DOS\dos_recosystem\icytower_forged\assets\icytower15.exe
+carrier: cwd=D:\Games\DOS\dos_recosystem\icytower_forged\assets
+carrier: ddraw=local count_imports=1 guest_stack=fixed run_seconds=240
+carrier: input_policy=script
+carrier: headless=0 (explicit=0) no_sound=0
+carrier: input_policy=script
+carrier: headless=0 (explicit=0) no_sound=0
+carrier: mapped image_base=0x00400000 size=0x0038c000 entry=0x00401110
+imports_init: loaded DDRAW.dll (assets\)
+imports_init: loaded dinput.dll
+imports_init: loaded dsound.dll
+imports_init: loaded GDI32.dll
+imports_init: loaded KERNEL32.dll
+imports_init: loaded msvcrt.dll
+imports_init: loaded OLE32.dll
+imports_init: loaded libpng3.dll (assets\)
+imports_init: loaded pthreadGC2.dll (assets\)
+imports_init: loaded SHELL32.DLL
+imports_init: loaded USER32.dll
+imports_init: loaded WINMM.DLL
+imports_init: loaded WSOCK32.DLL
+imports_init: resolved 320/320 imports (0 failures)
+bind: destroy_replay @0x0041bd68 -> src (5-byte jmp rel32 -> stub 63)
+det: _switch_in (dispsw.c) @0x004657e4 -> carrier stub (5-byte jmp rel32)
+det: _switch_out (dispsw.c) @0x00465808 -> carrier stub (5-byte jmp rel32)
+det: _handle_mouse_input (mouse.c) @0x0045f9bc -> carrier stub (5-byte jmp rel32)
+det: window-activation channel SUPPRESSED (nothing the operator does reaches the guest); DirectInput mouse PARKED (game
+ code reads mouse_x/y/b in exactly one function, main_menu_callback's pFLDAd-guarded ad hit-test - see carrier/NOTES.md
+ 'Environment isolation')
+det: tick safepoint = update_player() entry at 0x00418740 (DR0) - caller is ORIGINAL: the callee's guest entry; caller 
+'play' is unbound
+det: armed 2 hardware breakpoint(s) on the guest main thread
+carrier: entering guest at 0x00401110 (guest-stack=fixed)
+det: _beginthread(start=0x004790B8, stack=0)
+det: CreateWindowExA class='AllegroWindow' style=0x00ca0000->0x00ca0000 ex=0x00040000->0x08040000 (window=hidden, not -
+-interactive)
+det: ShowWindow(0353097C, 1) -> 0 (window=hidden, not --interactive)
+det: SetForegroundWindow(0353097C) SUPPRESSED (not --interactive)
+det: ad-fetch thread SUPPRESSED (pthread_create(fldads_threadmain @0x00404014) is a no-op in --det; the game observes t
+he constant 'no ads' result - carrier/NOTES.md 'Environment isolation')
+det: ShowWindow(0353097C, 3) -> 0 (window=hidden, not --interactive)
+det: SetForegroundWindow(0353097C) SUPPRESSED (not --interactive)
+det: _beginthread(start=0x00478584, stack=0)
+det: timer thread PARKED (entry=0x00478584): running the ORIGINAL entry point on a real thread whose WaitForSingleObjec
+t calls are substituted to INFINITE (carrier/NOTES.md 'parked timer thread' - fixes divergence 003, the _tim_win32_exit
+ join hang, generically)
+det: DirectSound enumeration NORMALIZED - host reported 6 render device(s), the guest was given 1 constant carrier-owne
+d one(s) (a host enumeration must not reach the digest domain - carrier/NOTES.md 'Divergence 009')
+det:   host dsound device [0] 'Reproduktory (Realtek(R) Audio)'  (GUID reused for the synthetic device)
+det:   host dsound device [1] 'Sluch�tka (Oculus Virtual Audio Device)'
+det:   host dsound device [2] 'Realtek Digital Output (Realtek(R) Audio)'
+det:   host dsound device [3] 'Reproduktory (Steam Streaming Speakers)'
+det:   host dsound device [4] 'Reproduktory (Steam Streaming Microphone)'
+det:   host dsound device [5] 'Reproduktory (Voice.ai Audio Cable)'
+det: T=0 delivered switch in (from script)
+det: T=185 delivered press scancode=67
+det: T=188 delivered release scancode=67
+det: T=203 delivered press scancode=67
+det: T=207 delivered release scancode=67
+det: T=242 delivered press scancode=83
+det: T=284 delivered press scancode=75
+det: T=286 delivered press scancode=82
+det: T=287 delivered release scancode=83
+det: T=288 delivered release scancode=75
+det: T=333 delivered press scancode=75
+det: T=343 delivered release scancode=75
+det: T=347 delivered release scancode=82
+det: T=348 delivered press scancode=83
+det: T=382 delivered press scancode=75
+det: T=391 delivered release scancode=75
+det: T=396 delivered release scancode=83
+det: T=398 delivered press scancode=82
+det: T=440 delivered press scancode=75
+det: T=449 delivered release scancode=75
+det: T=456 delivered release scancode=82
+det: T=457 delivered press scancode=83
+det: T=493 delivered press scancode=75
+det: T=502 delivered release scancode=75
+det: T=505 delivered release scancode=83
+det: T=506 delivered press scancode=82
+det: T=543 delivered press scancode=75
+det: T=546 delivered press scancode=83
+det: T=547 delivered release scancode=82
+det: T=555 delivered release scancode=75
+det: T=582 SUPPRESSED window switch in (input=script; the operator's desktop may not reach the guest in an automated ru
+n)
+det: T=587 delivered press scancode=75
+det: T=593 delivered press scancode=82
+det: T=594 delivered release scancode=83
+det: T=595 delivered release scancode=75
+det: T=630 delivered press scancode=75
+det: T=635 delivered press scancode=83
+det: T=636 delivered release scancode=82
+det: T=641 delivered release scancode=75
+det: T=674 delivered press scancode=75
+det: T=679 delivered press scancode=82
+det: T=680 delivered release scancode=83
+det: T=681 delivered release scancode=75
+det: T=714 delivered press scancode=75
+det: T=720 delivered press scancode=83
+det: T=721 delivered release scancode=82
+det: T=728 delivered release scancode=75
+det: T=761 delivered press scancode=75
+det: T=768 delivered press scancode=82
+det: T=769 delivered release scancode=83
+det: T=771 delivered release scancode=75
+det: T=812 delivered press scancode=75
+det: T=825 delivered release scancode=75
+det: T=830 delivered release scancode=82
+det: T=831 delivered press scancode=83
+det: T=857 delivered press scancode=75
+det: T=868 delivered release scancode=75
+det: T=874 delivered release scancode=83
+det: T=875 delivered press scancode=82
+det: T=900 delivered press scancode=75
+det: T=914 delivered release scancode=75
+det: T=917 delivered release scancode=82
+det: T=918 delivered press scancode=83
+det: T=949 delivered press scancode=75
+det: T=960 delivered release scancode=75
+det: T=962 delivered release scancode=83
+det: T=963 delivered press scancode=82
+det: T=990 delivered press scancode=75
+det: T=996 delivered press scancode=83
+det: T=997 delivered release scancode=82
+det: T=1001 delivered release scancode=75
+det: T=1024 delivered release scancode=83
+det: T=1025 delivered press scancode=82
+det: T=1029 delivered release scancode=82
+det: T=1030 delivered press scancode=83
+det: T=1038 delivered release scancode=83
+det: T=1039 delivered press scancode=82
+det: T=1055 delivered press scancode=75
+det: T=1070 delivered release scancode=75
+det: T=1082 delivered press scancode=75
+det: T=1087 delivered release scancode=75
+det: T=1090 delivered release scancode=82
+det: T=1091 delivered press scancode=83
+det: T=1127 delivered press scancode=75
+det: T=1135 delivered release scancode=75
+det: T=1136 delivered release scancode=83
+det: T=1137 delivered press scancode=82
+det: T=1165 delivered press scancode=75
+det: T=1170 delivered release scancode=82
+det: T=1171 delivered press scancode=83
+det: T=1173 delivered release scancode=75
+det: T=1206 delivered press scancode=75
+det: T=1222 delivered press scancode=82
+det: T=1224 delivered release scancode=75
+det: T=1224 delivered release scancode=83
+det: T=1272 delivered press scancode=75
+det: T=1273 delivered press scancode=83
+det: T=1275 delivered release scancode=82
+det: T=1278 delivered release scancode=75
+det: T=1301 delivered release scancode=83
+det: T=1301 delivered press scancode=82
+det: T=1313 delivered release scancode=82
+det: T=1314 delivered press scancode=83
+det: T=1320 delivered release scancode=83
+det: T=1332 delivered press scancode=83
+det: T=1334 delivered press scancode=75
+det: T=1345 delivered release scancode=75
+det: T=1363 delivered press scancode=75
+det: T=1370 delivered press scancode=82
+det: T=1371 delivered release scancode=83
+det: T=1372 delivered release scancode=75
+det: T=1391 delivered release scancode=82
+det: T=1397 delivered press scancode=75
+det: T=1400 delivered press scancode=82
+det: T=1409 delivered release scancode=75
+det: T=1410 delivered release scancode=82
+det: T=1414 delivered press scancode=82
+det: T=1417 delivered press scancode=75
+det: T=1422 delivered release scancode=82
+det: T=1437 delivered press scancode=83
+det: T=1444 delivered release scancode=75
+det: T=1446 delivered release scancode=83
+det: T=1460 delivered press scancode=82
+det: T=1465 delivered release scancode=82
+det: T=1476 delivered press scancode=83
+det: T=1484 delivered press scancode=75
+det: T=1495 delivered release scancode=75
+det: T=1514 delivered release scancode=83
+det: T=1516 delivered press scancode=82
+det: T=1544 delivered press scancode=75
+det: T=1555 delivered release scancode=75
+det: T=1561 delivered release scancode=82
+det: T=1562 delivered press scancode=83
+det: T=1575 delivered release scancode=83
+det: T=1577 delivered press scancode=75
+det: T=1586 delivered release scancode=75
+det: T=1600 delivered press scancode=83
+det: T=1605 delivered press scancode=75
+det: T=1613 delivered release scancode=75
+det: T=1636 delivered press scancode=75
+det: T=1642 delivered release scancode=83
+det: T=1643 delivered press scancode=82
+det: T=1644 delivered release scancode=75
+det: T=1663 delivered release scancode=82
+det: T=1669 delivered press scancode=83
+det: T=1674 delivered release scancode=83
+det: T=1689 delivered press scancode=83
+det: T=1698 delivered press scancode=75
+det: T=1707 delivered release scancode=75
+det: T=1724 delivered press scancode=75
+det: T=1732 delivered release scancode=83
+det: T=1734 delivered press scancode=82
+det: T=1736 delivered release scancode=75
+det: T=1750 delivered release scancode=82
+det: T=1751 delivered press scancode=83
+det: T=1760 delivered release scancode=83
+det: T=1761 delivered press scancode=82
+det: T=1765 delivered release scancode=82
+det: T=1767 delivered press scancode=83
+det: T=1772 delivered release scancode=83
+det: T=1773 delivered press scancode=82
+det: T=1788 delivered press scancode=75
+det: T=1795 delivered release scancode=75
+det: T=1812 delivered press scancode=75
+det: T=1822 delivered release scancode=82
+det: T=1824 delivered release scancode=75
+det: T=1824 delivered press scancode=83
+det: T=1837 delivered release scancode=83
+det: T=1838 delivered press scancode=82
+det: T=1845 delivered release scancode=82
+det: T=1848 delivered press scancode=82
+det: T=1855 delivered release scancode=82
+det: T=1861 delivered press scancode=82
+det: T=1866 delivered release scancode=82
+det: T=1870 delivered press scancode=83
+det: T=1884 delivered press scancode=75
+det: T=1902 delivered release scancode=75
+det: T=1911 delivered press scancode=75
+det: T=1920 delivered release scancode=75
+det: T=1922 delivered release scancode=83
+det: T=1924 delivered press scancode=82
+det: T=1934 delivered release scancode=82
+det: T=1940 delivered press scancode=82
+det: T=1941 delivered release scancode=82
+det: T=1957 delivered press scancode=82
+det: T=1965 delivered press scancode=75
+det: T=1972 delivered release scancode=75
+det: T=1977 delivered release scancode=82
+det: T=1986 delivered press scancode=75
+det: T=1987 delivered press scancode=83
+det: T=1994 delivered release scancode=83
+det: T=2036 delivered press scancode=82
+det: T=2046 delivered release scancode=82
+det: T=2059 delivered press scancode=82
+det: T=2065 delivered release scancode=82
+det: T=2079 delivered press scancode=83
+det: T=2084 delivered release scancode=83
+det: T=2086 delivered release scancode=75
+det: T=2110 delivered press scancode=83
+det: T=2123 delivered press scancode=75
+det: T=2130 delivered release scancode=75
+det: T=2149 delivered press scancode=75
+det: T=2156 delivered release scancode=75
+det: T=2157 delivered release scancode=83
+det: T=2157 delivered press scancode=82
+det: T=2165 delivered release scancode=82
+det: T=2174 delivered press scancode=83
+det: T=2182 delivered release scancode=83
+det: T=2183 delivered press scancode=82
+det: T=2224 delivered release scancode=82
+det: T=2250 delivered press scancode=83
+det: T=2263 delivered release scancode=83
+det: T=2320 delivered press scancode=83
+det: T=2343 delivered release scancode=83
+det: T=2345 delivered press scancode=82
+det: T=2367 delivered release scancode=82
+det: T=2370 delivered press scancode=83
+det: T=2375 delivered release scancode=83
+
+=== UNHANDLED EXCEPTION ===
+code=0xc0000374 addr=0x77f0cdef (<unknown>(near _register_frame_ctor+0x77a51df3)+0x77f0cdef)
+EIP=0x77f0cdef EAX=0x0e1fed50 EBX=0x00000000 ECX=0x0e1fed80 EDX=0x77f46970 ESI=0x00000002 EDI=0x20a7b658 EBP=0x0e1fed60
+ ESP=0x0e1fed28 EFLAGS=0x00000246
+stack walk (EBP chain):
+  #0 ebp=0x0e1fed60 ret=0x77f0cdc1 (<unknown>(near _register_frame_ctor+0x77a51dc5)+0x77f0cdc1)
+  #1 ebp=0x0e1fedf4 ret=0x77f16322 (<unknown>(near _register_frame_ctor+0x77a5b326)+0x77f16322)
+  #2 ebp=0x0e1fee30 ret=0x77f140b9 (<unknown>(near _register_frame_ctor+0x77a590bd)+0x77f140b9)
+  #3 ebp=0x0e1fee48 ret=0x77ea2c6c (<unknown>(near _register_frame_ctor+0x779e7c70)+0x77ea2c6c)
+  #4 ebp=0x0e1feea0 ret=0x77e4edca (<unknown>(near _register_frame_ctor+0x77993dce)+0x77e4edca)
+  #5 ebp=0x0e1feed4 ret=0x100c7ebc (<unknown>(near _register_frame_ctor+0xfc0cec0)+0x100c7ebc)
+  #6 ebp=0x0e1feee8 ret=0x10047216 (<unknown>(near _register_frame_ctor+0xfb8c21a)+0x10047216)
+  #7 ebp=0x0e1feef4 ret=0x10035d3a (<unknown>(near _register_frame_ctor+0xfb7ad3e)+0x10035d3a)
+  #8 ebp=0x0e1ff938 ret=0x004162f9 (_mangled_main+0x3e9)
+  #9 ebp=0x0e1ffe78 ret=0x00462a1b (_WinMain+0x143)
+  #10 ebp=0x0e1ffec8 ret=0x00406cde (WinMain+0x2e)
+  #11 ebp=0x0e1ffef8 ret=0x004b2816 (_main+0xd6)
+  #12 ebp=0x0e1fff78 ret=0x004010b6 (___mingw_CRTStartup+0x96)
+  #13 ebp=0x0e1fffc8 ret=0x00401128 (_WinMainCRTStartup+0x18)
+  #14 ebp=0x0e1fffe8 ret=0x100245f2 (<unknown>(near _register_frame_ctor+0xfb695f6)+0x100245f2)
+carrier_shutdown: unhandled exception
+det: shutdown at T=2528 (virtual_ms=50576, 25288 main-thread Sleep calls, 2293 safepoints, guest cycle_count=1)
+det: switch_in_cb = 00406A6C 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+det: switch_out_cb= 00406A5C 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+det: guest window 0353097C wndproc=0x004791e0 (Allegro's own directx_wnd_proc) style=0x84000000 exstyle=0x08040000 rect
+=(0,0,640,480) activation-messages seen=0
+det: environment isolation - window switch: captured=0 suppressed=1 delivered=1 recorded=0; mouse events parked=1; ad t
+hread suppressed=1; clock: recorded=0 replayed=11/13 underflow=0 offthread=0; getenv calls=16 over 3 distinct name(s)
+det:   getenv("ALLEGRO") x1 -> NULL (unset on this host)
+det:   getenv("PRINTF_EXPONENT_DIGITS") x13 -> NULL (unset on this host)
+det:   getenv("SCREEN_GAMMA") x2 -> NULL (unset on this host)
+det: arena high-water 29690624 bytes (28.32 MB), live 25988464 bytes in 2644 blocks, peak live 27215312 bytes; calls ma
+lloc=61211 calloc=4239 realloc=1561 free=62835 (foreign 0, bad 0)
