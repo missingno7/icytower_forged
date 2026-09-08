@@ -31,7 +31,22 @@ if [ ! -x "$GCC" ]; then GCC=/c/msys64/mingw32/bin/gcc.exe; fi
 if [ ! -x "$GCC" ]; then GCC=gcc; fi
 
 SRC=../../../src/icytower
-COMMON_FLAGS="-m32 -mfpmath=387 -mno-sse2 -O2 -Wall -Wno-unused-variable -I. -I$SRC"
+# -mno-sse is NOT redundant next to -mno-sse2, and batch 13 is where that
+# stopped being theoretical.  With -mno-sse2 alone, GCC still reaches for
+# SSE1's `cvttss2si` to convert a FLOAT expression to int -- and to use it
+# it must first spill the 80-bit x87 value to a 32-bit float slot, adding a
+# rounding step the original does not have.  play_sound's
+# `(int)(pan_x * 192.0f + 32.0f)` is exactly that shape, and the extra
+# rounding showed up as 1 differing vector in 20000 (seed 20260908, vector
+# 18904: pan -563 against the original's -562).  With -mno-sse, GCC emits
+# the original's own sequence byte for byte -- fstps/flds, fmuls, fadds,
+# fnstcw/fldcw/fistpl -- and the vector matches.
+#
+# Earlier batches are not silently affected: cvttss2si only applies to
+# FLOAT sources, and every float-to-int conversion promoted before this
+# batch (line_intersect, draw_frame, draw_reward, ...) converts from
+# DOUBLE, which needs SSE2's cvttsd2si and was already forbidden.
+COMMON_FLAGS="-m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall -Wno-unused-variable -I. -I$SRC"
 
 # ---- batch13_check.exe -----------------------------------------------------
 mkdir -p obj_batch13
@@ -46,15 +61,15 @@ mkdir -p obj_batch13
 echo "OK: harness/batch13_check.exe"
 
 # ---- batch13b_check.exe ----------------------------------------------------
-"$GCC" $COMMON_FLAGS -include pf_harness_batch13.h \
+# The traced-callee stubs live inside batch13b_check.c itself (there are
+# only ~15 of them, all one-liners); pf_harness_batch13.h is what makes the
+# CRT/pthreads calls inside logfile.c and screenshot.c reach them.
+"$GCC" $COMMON_FLAGS -Wno-unused-function -include pf_harness_batch13.h \
     batch13b_check.c \
-    batch13_stubs.c \
     "$SRC/sound.c" \
     "$SRC/logfile.c" \
     "$SRC/screenshot.c" \
     "$SRC/draw_reward.c" \
-    "$SRC/main_state.c" \
     "$SRC/state.c" \
-    "$SRC/new_rand.c" \
     -o batch13b_check.exe
 echo "OK: harness/batch13b_check.exe"

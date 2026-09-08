@@ -2622,5 +2622,244 @@
    "result": "DIFFER 1/200"
   },
   "harness": "carrier/lift/harness/batch13_check.py + batch13_check.c (new, this batch)."
+ },
+ "play_sound": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds = 80000 each",
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 4,
+  "domain_names": [
+   "any11 (0x4dd170)"
+  ],
+  "call_trace_domain": {
+   "mechanism": "ordered call trace: every callee hooked at its own VA on the unicorn side and stubbed identically on the compiled side; records are compared as an ORDERED sequence, not as first-call slots.",
+   "traced_callees": [
+    "new_rand (0x406984)",
+    "play_sample (0x440404)"
+   ],
+   "verifies": "the pitch roll consumes a new_rand() draw even when the SAMPLE * is NULL (the NULL check is AFTER the roll -- load-bearing for replay determinism), the x87 pan (rounded through a 32-bit float slot, as the original's fstps/flds does), the fast_forward / fast_fast_forward frequency doublings, and every play_sample argument."
+  },
+  "negative_control": {
+   "fault": "batch13b_check.py --fault: the ORIGINAL side's first trace record at vector 5 is corrupted",
+   "result": "DIFFER 1/40 -- comparator names it: original 'play_sample sample 255 -422 1000 0 FAULT' against candidate 'play_sample sample 255 -422 1000 0'"
+  },
+  "closes": "PROMOTIONS.md batch 11's blocker (the SPECS build's CALLTRACE_PLAY_SOUND_VA redirect would rename play_sound's own definition) -- true of that ONE build; batch13b_check.exe never links it, so the eight existing SPECS entries that trace a stubbed play_sound are untouched.",
+  "gcc": {
+   "toolchain": "MinGW GCC (32-bit), -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2",
+   "result": "EQUAL",
+   "total_vectors": 80000,
+   "seeds": [
+    20260908,
+    1,
+    777,
+    424242
+   ],
+   "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
+  },
+  "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
+ },
+ "startGameMusic": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds = 80000 each",
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 4,
+  "domain_names": [
+   "gameMusicVoiceID (0x4bc178)"
+  ],
+  "call_trace_domain": {
+   "mechanism": "ordered call trace",
+   "traced_callees": [
+    "play_sample (0x440404)",
+    "set_volume (0x440990)",
+    "play_midi (0x443648)"
+   ],
+   "verifies": "the three-source priority (custom.bg_music, then custom.bg_midi, then bg_beat), that gameMusicVoiceID is reset to -1 FIRST and stays -1 on the MIDI path, and that options.msc_volume == 0 returns before any source is even looked at."
+  },
+  "negative_control": {
+   "fault": "batch13b_check.py --fault",
+   "result": "DIFFER 1/40 (play_sample bg_music 255 128 1000 1)"
+  },
+  "gcc": {
+   "toolchain": "MinGW GCC (32-bit), -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2",
+   "result": "EQUAL",
+   "total_vectors": 80000,
+   "seeds": [
+    20260908,
+    1,
+    777,
+    424242
+   ],
+   "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
+  },
+  "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
+ },
+ "stopGameMusic": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds = 80000 each",
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 4,
+  "domain_names": [
+   "gameMusicVoiceID (0x4bc178)"
+  ],
+  "call_trace_domain": {
+   "mechanism": "ordered call trace",
+   "traced_callees": [
+    "voice_stop (0x43fe10)",
+    "stop_sample (0x43fc64)",
+    "stop_midi (0x4438d8)"
+   ],
+   "verifies": "that all THREE teardowns are attempted unconditionally, each guarded only on the state it needs -- it is not the inverse of startGameMusic and also cleans up after a source a PREVIOUS startGameMusic left running."
+  },
+  "negative_control": {
+   "fault": "batch13b_check.py --fault",
+   "result": "DIFFER 1/40 (voice_stop 0)"
+  },
+  "gcc": {
+   "toolchain": "MinGW GCC (32-bit), -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2",
+   "result": "EQUAL",
+   "total_vectors": 80000,
+   "seeds": [
+    20260908,
+    1,
+    777,
+    424242
+   ],
+   "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
+  },
+  "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
+ },
+ "log2file": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds = 80000 each",
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 256,
+  "domain_names": [
+   "last_log (0x4f89e8, char[256]) -- compared as its NUL-terminated CONTENT, i.e. the FORMATTED log text"
+  ],
+  "call_trace_domain": {
+   "mechanism": "ordered call trace; pthread_mutex_lock/unlock are reached as call *0x514a5c / call *0x514a60 (IAT slots, pefile-resolved to pthreadGC2.dll), so the slots are rewritten with unused guest VAs and those are hooked like any named callee.",
+   "traced_callees": [
+    "pthread_mutex_lock",
+    "get_logfile_path (0x4039f4)",
+    "fopen (0x4bad28)",
+    "vfprintf (0x4badb0)",
+    "vsprintf (0x4badb8)",
+    "fputc (0x4badc0)",
+    "fclose (0x4bad30)",
+    "pthread_mutex_unlock"
+   ],
+   "verifies": "the itrcheck early return BEFORE the mutex is taken, the lazy one-shot get_logfile_path resolution, the mode string 'at' (not 'a'), the fopen==NULL path that still unlocks, and that the SAME va_list pointer reaches both vfprintf and vsprintf."
+  },
+  "corrects_batch_11": "batch 11 recorded log2file's blocker as 'its only observable effect is outside any domain the offline harness can express'. That is wrong in one particular: at 0x40daca log2file also runs the same format string and the same va_list through vsprintf into the game global last_log, so the FORMATTED output is an ordinary memory domain and is diffed here.",
+  "printf_subset": "Scanning the whole image (every call to 0x40da58 preceded by a literal format pointer -- 187 of the 188 call sites) yields exactly three distinct conversions in the entire game: %s, %d, %-12s. Python's own % operator is byte-identical to C's for all three, so the oracle's format subset is closed over what the binary can actually produce.",
+  "negative_control": {
+   "fault": "batch13b_check.py --fault",
+   "result": "DIFFER 1/40 (mutex_lock sLogMutex)"
+  },
+  "gcc": {
+   "toolchain": "MinGW GCC (32-bit), -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2",
+   "result": "EQUAL",
+   "total_vectors": 80000,
+   "seeds": [
+    20260908,
+    1,
+    777,
+    424242
+   ],
+   "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
+  },
+  "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
+ },
+ "take_screenshot": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds = 80000 each",
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 4,
+  "domain_names": [
+   "number__take_screenshot (0x4dd334)"
+  ],
+  "call_trace_domain": {
+   "mechanism": "ordered call trace; the filename is resolved to its CONTENT AT CALL TIME, since the name buffer is rewritten on every loop iteration (draw_frame_xcheck.py's convention).",
+   "traced_callees": [
+    "sprintf (0x4bad60)",
+    "exists (0x446218)",
+    "log2file (0x40da58) -- executed for real on BOTH sides, not stubbed, so its own call trace nests inside this one",
+    "get_palette (0x44c47c)",
+    "create_sub_bitmap (0x44f448)",
+    "save_bitmap (0x452ef8)",
+    "destroy_bitmap (0x44f14c)"
+   ],
+   "verifies": "the filename search loop (sprintf/exists per iteration, the %04d numbering, the post-increment), that exists() is called BEFORE the >9999 test on every iteration including the last, the too-many arm's log2file call, and the create_sub_bitmap / save_bitmap / destroy_bitmap triple with bmp->w and bmp->h."
+  },
+  "negative_control": {
+   "fault": "batch13b_check.py --fault",
+   "result": "DIFFER 1/40 (sprintf screenshots/icytower_%04d.png)"
+  },
+  "gcc": {
+   "toolchain": "MinGW GCC (32-bit), -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2",
+   "result": "EQUAL",
+   "total_vectors": 80000,
+   "seeds": [
+    20260908,
+    1,
+    777,
+    424242
+   ],
+   "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
+  },
+  "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
+ },
+ "draw_reward": {
+  "form": "src",
+  "result": "EQUAL",
+  "vectors": 20000,
+  "vectors_note": "20000 per function per seed, 4 seeds = 80000 each",
+  "seed": 20260908,
+  "compared_return_value": false,
+  "domain_bytes": 0,
+  "domain_names": [
+   "none -- draw_reward writes no game global; the whole domain is the ordered call trace"
+  ],
+  "call_trace_domain": {
+   "mechanism": "ordered call trace, including GFX_VTABLE's +0xa4 slot (pivot_scaled_sprite_flip) reached through Allegro's rotate_scaled_sprite AL_INLINE -- batch 9's synthetic-vtable-VA trick, the same slot draw_frame_xcheck.py traces as VT_PIVOT.",
+   "traced_callees": [
+    "stretch_sprite (0x463398)",
+    "GFX_VTABLE+0xa4 pivot_scaled_sprite_flip"
+   ],
+   "verifies": "the three-way options.flash branch (0 -> rotate_scaled_sprite, 1 -> stretch_sprite, >=2 -> draw nothing at all), every fixtoi/fixtof term, and all nine pivot arguments."
+  },
+  "finding": "The one real recovery bug this batch, caught by the oracle on its first run: objdump's AT&T rendering of the two-operand x87 subtracts is reversed relative to Intel's, so fsubrp %st,%st(1) at 0x407287 READS as st(1)=st(0)-st(1) but COMPUTES st(1)=st(1)-st(0). The naive reading gave y = 360-(int)(fixtof(scale/2)*h - fixtof(scale)*120) and DIFFERED at draw_reward vector 4 (flash 0, scale 24878, w 1, h 32: pivot y argument 26546912 against the original's 21435104, i.e. y=399 against 321). The correct form is 360-(int)(fixtof(scale)*120 - fixtof(scale/2)*h). The same trap is waiting in any other x87 function in this image using the non-commutative fsub/fsubr/fdiv/fdivr pairs.",
+  "negative_control": {
+   "fault": "batch13b_check.py --fault; where a vector produces NO records at all (options.flash >= 2 draws nothing and writes nothing) a spurious record is injected instead, so 'correctly did nothing' is itself under test rather than trivially passing",
+   "result": "DIFFER 1/40"
+  },
+  "gcc": {
+   "toolchain": "MinGW GCC (32-bit), -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2",
+   "result": "EQUAL",
+   "total_vectors": 80000,
+   "seeds": [
+    20260908,
+    1,
+    777,
+    424242
+   ],
+   "mno_sse_note": "-mno-sse is load-bearing for play_sound and was added this batch. With -mno-sse2 alone GCC converts the FLOAT expression (int)(pan_x*192.0f+32.0f) with SSE1 cvttss2si, which first spills the 80-bit x87 value to a 32-bit float slot -- one rounding step the original does not have. Measured cost: 1 differing vector in 20000 (seed 20260908, vector 18904, pan -563 against the original's -562). With -mno-sse GCC emits the original's own sequence (fstps/flds, fmuls, fadds, fnstcw/fldcw/fistpl). Earlier batches are not silently affected: cvttss2si applies only to FLOAT sources, and every float-to-int conversion promoted before batch 13 converts from DOUBLE, which needs SSE2 cvttsd2si and was already forbidden."
+  },
+  "harness": "carrier/lift/harness/batch13b_check.py + batch13b_check.c + pf_harness_batch13.h + build_batch13.sh (new, this batch) -- a standalone additive ordered-call-trace oracle on the shared pf_win32_offline_oracle engine, in the draw_frame_xcheck.py / play_xcheck.py convention. NOT a lift_check.py SPECS row; icytower_specs.py is untouched."
  }
 }

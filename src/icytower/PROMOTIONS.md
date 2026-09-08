@@ -3156,3 +3156,353 @@ Harness: `carrier/lift/harness/batch13_check.py` + `batch13_check.c` +
 `pf_win32_offline_oracle` engine, in the same convention as
 `draw_frame_xcheck.py` / `play_xcheck.py`, **not** a new `lift_check.py`
 SPECS row; `icytower_specs.py` is untouched again.
+
+### Part 2 -- the tick path's last ORIGINAL callees
+
+Six functions, 1390 original bytes, all verified by ONE new ordered
+call-trace oracle (`carrier/lift/harness/batch13b_check.py` +
+`batch13b_check.c` + `pf_harness_batch13.h`, built by `build_batch13.sh`).
+The unicorn side hooks every callee at its own VA and appends one record
+per call, IN ORDER, with its arguments; the compiled side stubs the same
+callees and prints the same records; the two sequences are compared
+verbatim.  Pointers are rendered as stable symbols and `const char *`
+arguments as their CONTENT AT CALL TIME, so the guest and host address
+spaces never have to agree -- `draw_frame_xcheck.py`'s convention, reused
+rather than reinvented.
+
+**20000 vectors per function, per seed, over four seeds (20260908, 1,
+777, 424242) = 80000 each, 480000 total: differ 0.**
+
+| function | VA | size | CU | offline result | domain | carrier bind |
+|---|---|---:|---|---|---|---|
+| `play_sound` | 0x406da4 | 215 | main.c | **EQUAL** (80000) | ordered trace of `new_rand` + `play_sample`, plus the memory global `any11` | pending |
+| `startGameMusic` | 0x40cb30 | 144 | main.c | **EQUAL** (80000) | ordered trace of `play_sample` / `set_volume` / `play_midi`, plus `gameMusicVoiceID` | pending |
+| `stopGameMusic` | 0x40caf4 | 58 | main.c | **EQUAL** (80000) | ordered trace of `voice_stop` / `stop_sample` / `stop_midi`, plus `gameMusicVoiceID` | pending |
+| `log2file` | 0x40da58 | 189 | main.c | **EQUAL** (80000) | ordered trace of `pthread_mutex_lock` / `get_logfile_path` / `fopen` / `vfprintf` / `vsprintf` / `fputc` / `fclose` / `pthread_mutex_unlock`, plus the FORMATTED text in `last_log` | **blocked** -- see "The one carrier-side blocker" below |
+| `take_screenshot` | 0x41002c | 203 | main.c | **EQUAL** (80000) | ordered trace of `sprintf` / `exists` / `log2file` / `get_palette` / `create_sub_bitmap` / `save_bitmap` / `destroy_bitmap`, plus `number__take_screenshot` | pending |
+| `draw_reward` | 0x4070fc | 581 | main.c | **EQUAL** (80000) | ordered trace of `stretch_sprite` and of GFX_VTABLE's +0xa4 `pivot_scaled_sprite_flip` | pending |
+
+Negative control, all six (`batch13b_check.py --fault`), each detected and
+each named:
+
+```
+play_sound       1 of 40 vectors differ
+  original:  play_sample sample 255 -422 1000 0 FAULT
+  candidate: play_sample sample 255 -422 1000 0
+startGameMusic   1 of 40   (play_sample bg_music 255 128 1000 1)
+stopGameMusic    1 of 40   (voice_stop 0)
+log2file         1 of 40   (mutex_lock sLogMutex)
+take_screenshot  1 of 40   (sprintf "screenshots/icytower_%04d.png" -> ...)
+draw_reward      1 of 40   (spurious record injected into an empty trace)
+```
+
+`draw_reward`'s control needed one extra provision worth recording: a
+vector with `options.flash >= 2` produces NO records at all (the function
+draws nothing and writes nothing), so corrupting "the first record" would
+have been a silent no-op and the control would have passed vacuously.  It
+injects a spurious record into the empty trace instead, which puts
+"correctly did nothing" under test rather than letting it pass for free.
+The first `--fault` run caught exactly this and reported `NEGATIVE CONTROL
+FAILED: draw_reward fault not detected`.
+
+### Two blockers named in earlier batches, and what they actually were
+
+- **batch 11 on `play_sound`:** "`pf_harness_calltrace.h` redirects the
+  plain name to the stub for the whole harness build -- promoting it means
+  that redirect would rename its own DEFINITION."  Correct, and still
+  correct -- of the SPECS-table build.  It is not a property of the
+  function.  `batch13b_check.exe` never links `pf_harness_calltrace.h`, so
+  the two builds are disjoint: the eight existing SPECS entries keep
+  tracing a stubbed `play_sound` through `CALLTRACE_PLAY_SOUND_VA`
+  unchanged (their domain is "which value reached play_sound's arguments",
+  which is unaffected by play_sound acquiring a real definition in a
+  different executable), and `play_sound` still gets a real definition and
+  a real oracle.  `icytower_specs.py` is untouched again -- the fourth
+  batch running that way.
+- **batch 11 on `log2file`:** "its only observable effect is outside any
+  domain the offline harness can express."  This one was **wrong**, and
+  reading the disassembly is what shows it.  At 0x40daca `log2file` runs
+  the same format string and the same `va_list` through `vsprintf` into
+  the game global `last_log` (0x4f89e8, `char [256]`, named in
+  `interop_index.json`) -- so the fully FORMATTED text of the most recent
+  log line lands in an ordinary, diffable byte array.  The oracle compares
+  it.  The correction is recorded here rather than silently fixed: the
+  earlier claim was reasoned from the function's *purpose* (it writes a
+  file) instead of from its instructions.
+
+### The variadic problem, and why the printf subset is closed
+
+`log2file` is variadic, so the unicorn side has to format too.  Rather
+than assume a subset, this batch measured one: every `call 0x40da58` in
+the image preceded by a literal format pointer -- **187 of the 188 call
+sites** -- was resolved with `pefile` and its format string parsed.  The
+entire game uses exactly **three** conversions: `%s`, `%d`, `%-12s`.
+Python's own `%` operator is byte-identical to C's for all three, so
+`batch13b_check.py`'s formatter is closed over what the binary can
+actually produce, not merely over what the vectors happen to exercise.
+The va_list itself needs no ABI guesswork: on x86 cdecl it is a plain
+pointer into the caller's argument block, which is why the original can
+hand the SAME `%edi` to `vfprintf` and then to `vsprintf` and get the same
+text twice.
+
+### Findings
+
+**1. `-mno-sse` is not redundant next to `-mno-sse2`, and this batch is
+where that stopped being theoretical.**  With `-mno-sse2` alone, GCC still
+reaches for SSE1's `cvttss2si` to convert a **float** expression to `int`
+-- and to use it, it must first spill the 80-bit x87 value to a 32-bit
+float slot, adding a rounding step the original does not have.
+`play_sound`'s `(int)(pan_x * 192.0f + 32.0f)` is exactly that shape.  Cost,
+measured: **1 differing vector in 20000** (seed 20260908, vector 18904:
+`pan` -563 against the original's -562).  With `-mno-sse` GCC emits the
+original's own sequence instruction for instruction --
+`fstps`/`flds`, `fmuls`, `fadds`, `fnstcw`/`fldcw`/`fistpl` -- and the
+vector matches.  Earlier batches are **not** silently affected, and the
+reason is structural rather than lucky: `cvttss2si` applies only to FLOAT
+sources, and every float-to-int conversion promoted before this batch
+(`line_intersect`, `draw_frame`, and `draw_reward`'s own casts) converts
+from **double**, which needs SSE2's `cvttsd2si` and was already forbidden.
+`play_sound` is the first promoted function with a float-domain
+conversion.  The flag is now in `build_batch13.sh` with this reasoning
+next to it.
+
+**2. objdump's AT&T rendering of the two-operand x87 subtracts is reversed
+relative to Intel's** -- and it produced the one real recovery bug of this
+batch.  `fsubrp %st,%st(1)` at 0x407287 READS as `st(1) = st(0) - st(1)`
+and COMPUTES `st(1) = st(1) - st(0)`.  The naive reading gave
+`y = 360 - (int)(fixtof(scale/2)*h - fixtof(scale)*120)`; the oracle
+DIFFERED on its very first run, at `draw_reward` vector 4 (flash 0,
+scale 24878, w 1, h 32 -- the pivot call's `y` argument came out 26546912
+against the original's 21435104, i.e. y = 399 where the original computes
+321).  The correct form is
+`y = 360 - (int)(fixtof(scale)*120 - fixtof(scale/2)*h)`, and it matches on
+every vector of every seed.  Recorded at length in `draw_reward.c`'s own
+header too, because the same trap is waiting in any other x87 function in
+this image that uses the non-commutative `fsub`/`fsubr`/`fdiv`/`fdivr`
+pairs -- and unlike a precision gap, it is a **whole-number** error that a
+small vector count can easily miss.
+
+**3. `take_screenshot`'s loop calls `exists()` before its own bounds
+check**, on every iteration including the last.  GCC cannot have
+introduced that call (it would put a call on a path the source did not
+have one on), so the original really evaluates it first, and the "too
+many screenshots" arm's observable sequence is `sprintf, exists, log2file`
+-- not `sprintf, log2file`.  Two source shapes produce exactly this and
+cannot be told apart from the object code; `screenshot.c` spells the one
+that makes the ordering explicit and documents the other.
+
+**4. `draw_reward`'s vtable call is `rotate_scaled_sprite`, not a
+hand-rolled pivot call**, and the thing that pins it is an asymmetry that
+looks like a misreading: the POSITION arguments carry scaled offsets
+(`(w * scale) / 2`) while the PIVOT arguments carry unscaled ones
+(`w << 15`).  That asymmetry is Allegro's own -- `draw.inl:374-377`,
+verbatim -- and checking it against the real header in `third_party/` is
+what turned "some 9-argument vtable call" into a named AL_INLINE.
+
+### The one carrier-side blocker
+
+`src/icytower/logfile.c` compiles cleanly in all three worlds but will not
+LINK into the carrier yet: `pthread_mutex_lock` / `pthread_mutex_unlock`
+are unresolved.  This is a generator gap, not a defect in `src/` -- the
+carrier task has already recorded it independently in
+`carrier/gen/build_blockers.json` ("it needs a guest-IAT binding for
+pthreadGC2.dll that does not exist yet").  Stating it precisely so it can
+be closed mechanically:
+
+- `pf_lib_bindings.h` binds a library name to a VA inside the embedded
+  Allegro/logg copy.  pthreadGC2 is a real imported DLL, so there is no
+  such VA -- the original reaches both functions INDIRECTLY, through the
+  IAT slots at **0x514a5c** (`pthread_mutex_lock`) and **0x514a60**
+  (`pthread_mutex_unlock`), resolved from the import directory with
+  `pefile`.
+- The binding a generator would emit is therefore one indirection deeper
+  than the Allegro ones: `((PFN)(*(void **)0x514a5c))`, reading the slot
+  the loader has already filled in, rather than a direct VA.
+- `sLogMutex__log2file` (0x4bdb44) itself is already a normal game global
+  and already bound; only the two entry points are missing.
+- Until that lands, `logfile.c`'s row above stays **blocked** for the
+  carrier and **EQUAL** offline.  The remaining five part-2 functions have
+  no such gap: every callee they name is either already bound or a plain
+  CRT symbol the carrier's own CRT supplies.
+
+### Scope: what "the gameplay tick path" actually contains
+
+The batch brief's candidate list was re-derived rather than taken on
+trust, from `play.c`'s own call sites and from
+`play_callsite_census.py --verbose` (82 distinct callees, 0 mismatches).
+Result, corrected in two places:
+
+- `draw_reward` is **not** a `play()` callee at all.  It is `draw_frame`'s
+  ONE call to another game-scope function (`draw_frame.c` line 717), so it
+  reaches the tick through the frame renderer, once per frame.  In scope,
+  and promoted.
+- `draw_table` (0x404a7c, hisc.c), `drawSlot` (0x406fb4) and
+  `draw_progress_bar` (0x407a08) are **not** on the tick path and are not
+  `play()` callees either -- they belong to the menu and high-score
+  screens.  Not attempted; not blockers for the tick.
+- `draw_results` (0x4076c0, 839 B) **is** a `play()` callee (2 sites,
+  `play.c` lines 1396 and 1504) but both sites are in the game-over half,
+  after the tick loop has exited.  Not attempted this batch; it is the
+  next function on the `play()` coastline, not on the tick one.
+
+### What is still ORIGINAL in the tick body
+
+Nothing.  Batch 11's table, re-run after this batch:
+
+| callee | state |
+|---|---|
+| every function in batch 11's table (`update_frame`, `handle_player_input`, `poll_control`, `update_player`, `jump_player`, `play_jump_sound`, `is_any`, `is_pause`, `is_left`, `is_right`, `is_fire`, `add_floor`, `get_level`, `add_combo`, `add_jump_sequence`, `new_rand`, `create_particle`, `update_particle`, `start_reward`, all five `handle_player_collision_*`, `draw_frame`, `blit_to_screen`) | promoted (batches 1-11) |
+| `play_sound`, `log2file`, `take_screenshot`, `startGameMusic`, `stopGameMusic` | **promoted (batch 13)** -- batch 11's "five functions, 809 bytes" |
+| `draw_reward` (via `draw_frame`) | **promoted (batch 13)** |
+| `play` itself | promoted (batch 12) |
+
+Everything else the tick body reaches is Allegro (`rest`, `blit`,
+`textout_centre_ex`, `voice_get_position`, `voice_stop`, `stop_sample`,
+`play_sample`, `clear_keybuf`, `keypressed`, `allegro_message`, the
+inlined `vline`/`hline`/`pivot_scaled_sprite_flip` vtable dispatch,
+`exists`, `get_palette`, `create_sub_bitmap`, `save_bitmap`,
+`destroy_bitmap`, `stretch_sprite`) or CRT/Win32/pthreads (`time`,
+`clock`, `QueryPerformanceCounter`/`Frequency`, `sprintf`, `fopen`,
+`vfprintf`, `vsprintf`, `fputc`, `fclose`, `pthread_mutex_lock`/`unlock`).
+
+The `play()` coastline is a different and longer list: 19 of its 82
+callees remain ORIGINAL, all of them in the game-over, replay-menu and
+high-score halves -- `calc_replay_checksum`, `destroy_replay`,
+`do_replay_menu`, `draw_results`, `enter_hisc_table`, `fadeIn`, `fadeOut`,
+`file_exists`, `getGameDataXML`, `get_rank_id`, `init_scroller`,
+`load_replay`, `myDeleteFile`, `my_alert`, `qualify_hisc_table`,
+`save_config`, `save_profile`, `save_replay`, `sort_hisc_table`.
+
+## Purity gate (batch 13)
+
+```
+python scripts/check_native_layer.py
+pf_native_purity: scanned 47 file(s) under .../src, 0 violation(s)
+```
+
+## Compile (all three worlds, batch 13)
+
+The four new files plus the two batch-13 additions to existing files
+(`main_state.c`, `destroy_game_data.c`): **0 errors and 0 warnings in all
+three worlds.**
+
+```
+standalone (generated allegro_api.h, no bindings):
+  gcc -m32 -mfpmath=387 -mno-sse -mno-sse2 -O2 -Wall -Isrc/icytower \
+      -Iport_forge/tools/win32_oracle \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      -c src/icytower/{sound,logfile,screenshot,draw_reward,destroy_game_data,main_state}.c
+  -- 0 errors, 0 warnings
+
+standalone (upstream Allegro, real <allegro.h>):
+  gcc -m32 -mfpmath=387 -Wall -DICYTOWER_UPSTREAM_ALLEGRO -DALLEGRO_STATICLINK \
+      -Ithird_party/allegro-4.4.3.1/include \
+      -Ithird_party/build-allegro-4.4.3.1/include \
+      -Ithird_party/allegro-4.4.3.1/addons/logg -Isrc/icytower \
+      -c <the same six>
+  -- 0 errors, 0 warnings (draw_reward.c's fixtoi/fixtof/rotate_scaled_sprite
+     stand-ins are inside the same #ifndef ICYTOWER_UPSTREAM_ALLEGRO block
+     draw_frame.c already uses, so the real AL_INLINEs win here)
+
+carrier (scratch bindings, GCC -- carrier/gen is owned by the concurrent
+carrier task and is NOT touched; the generator writes to a scratch dir):
+  python carrier/gen/scan_src_defs.py --src-dir src/icytower
+  python carrier/gen/gen_bindings.py --exclude <scanned + this batch's 6 names
+      + the 4 new file-static AL_INLINE stand-ins>,floor_size_modifiers \
+      --guard-define ICYTOWER_BINDINGS_ACTIVE \
+      --out <SCRATCH>/pf_bindings_src.h --types-out <SCRATCH>/pf_bindings_src_types.h
+  gcc -m32 -Wall -DICYTOWER_BINDINGS_ACTIVE -Icarrier/gen -I<SCRATCH> -Isrc/icytower \
+      -include <SCRATCH>/pf_bindings_src.h \
+      -include carrier/gen/pf_lib_bindings.h \
+      -include carrier/gen/pf_asset_bindings.h \
+      -include port_forge/tools/win32_oracle/pf_harness_msvc_types.h \
+      -c <every src/icytower/*.c>
+  -- 1013-line scratch binding header; the six batch-13 files: 0 errors,
+     0 warnings.  Across the whole directory the only ERROR is still
+     draw_star_field.c, batch 8's documented `stars`
+     MEMBER_ACCESS_COLLISIONS gap, and the only src-file warnings are
+     batch 10/12's known -Wformat-overflow sites in draw_frame.c and
+     play.c.  (assets_standalone.c, state.c and game_types_check.c are
+     standalone-world-only fixtures and are not part of a carrier build.)
+
+offline oracles:
+  ./carrier/lift/harness/build_batch13.sh
+  python carrier/lift/harness/batch13_check.py  --vectors 20000 --seed 20260908
+  python carrier/lift/harness/batch13_check.py  --fault
+  python carrier/lift/harness/batch13b_check.py --vectors 120000 --seed <s>
+  python carrier/lift/harness/batch13b_check.py --fault
+  -- part 1: get_version_str EQUAL (content), sync_profile 0/20000,
+     destroy_game_data 0/20000; all three faults detected
+  -- part 2: 6 functions x 20000 vectors x 4 seeds (20260908, 1, 777,
+     424242) = 480000 vectors, differ 0; all six faults detected
+```
+
+## In vivo (for the carrier task -- NOT run by this pass)
+
+This pass did not run `carrier.exe`.  The natural sequencing, given that
+`play()` (batch 12) is itself not yet bound in vivo:
+
+```
+rem 0. unbound baseline FIRST (blit_to_screen is the digest sample point).
+carrier.exe --replay replays\human_test.txt --frame-digest
+
+rem 1. the tick's audio seam alone -- no new link blocker.
+carrier.exe --bind play_sound=src,startGameMusic=src,stopGameMusic=src ^
+            --replay replays\human_test.txt --frame-digest
+
+rem 2. plus the frame renderer's last game-scope callee.
+carrier.exe --bind draw_reward=src,draw_frame=src ^
+            --replay replays\human_test.txt --frame-digest
+
+rem 3. take_screenshot: the human_test replay never presses F1, so this
+rem    one needs a workload that does -- otherwise the bind is a no-op and
+rem    proves nothing (the standing "a bind that is never entered is not
+rem    evidence" rule).
+
+rem 4. log2file: BLOCKED until the pthreadGC2 IAT binding exists (above).
+
+rem 5. the whole tick as source, once play() itself is bound.
+carrier.exe --bind play=src,<every name above>=src ^
+            --replay replays\human_test.txt --frame-digest
+```
+
+Every bound run must stay EQUAL to the unbound baseline for all 2293 ticks
+and end on the same score 2386 / floor 100 witness (divergence 009's
+regenerated baseline).
+
+Three things the offline oracle structurally cannot see here:
+
+1. **`take_screenshot` and `log2file` really touch the filesystem.**  The
+   oracle proves which calls happen with which arguments; that a PNG and a
+   log line actually appear is an in-vivo fact, and the `screenshots/` and
+   `log.txt` on disk after a bound run are the check.
+2. **`play_sound`'s `new_rand()` draw is a determinism coupling, not a
+   sound effect.**  A skipped or extra draw desynchronises the replay,
+   which the frame digest catches immediately and the offline trace only
+   catches for the one invocation under test.
+3. **The mutex is real.**  `sLogMutex__log2file` is already on
+   `carrier/win32_policy.json`'s digest-domain exclude list; nothing
+   offline exercises contention on it.
+
+## Totals (updated)
+
+| | batch 13 (this pass) | cumulative (13 passes) |
+|---|---:|---:|
+| functions promoted (offline-verified) | 9 | 59 |
+| functions promoted (partially offline-verified, in-vivo-pending) | 0 | 1 (`play`) |
+| functions promoted (compile-only) | 0 | 2 (`draw_buffer`, `draw_star_field`) |
+| functions skipped (documented, all passes) | 4 new (`draw_results`, `draw_table`, `drawSlot`, `draw_progress_bar` -- all off the tick path) | 16 distinct |
+| original bytes recovered as clean source | 1470 | 39334 |
+| original bytes offline-verified | 1470 | 22416 |
+
+Batch 13's nine: `get_version_str`, `syncProfileFromOptions`,
+`destroy_game_data` (part 1, 80 bytes) and `play_sound`,
+`startGameMusic`, `stopGameMusic`, `log2file`, `take_screenshot`,
+`draw_reward` (part 2, 1390 bytes).
+
+File list this pass:
+`src/icytower/{sound,logfile,screenshot,draw_reward,destroy_game_data}.c`
+(new), `src/icytower/main_state.c` (+`get_version_str`,
++`syncProfileFromOptions`),
+`carrier/lift/harness/{batch13_check.py,batch13_check.c,batch13b_check.py,batch13b_check.c,pf_harness_batch13.h,build_batch13.sh}`
+(new), `artifacts/src_equivalence.json` (9 entries).
