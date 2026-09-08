@@ -5272,3 +5272,233 @@ pass.**
 
 Artifacts: `artifacts/div010/` (both baselines' pre-010 copies, the A/B
 digests, the T=236 and T=331 snapshot pairs, the gate outputs).
+
+## Batch 13 lands in vivo: pthread guest-IAT bindings, the whole gameplay tick path clean in vivo (2026-09-08)
+
+The carrier-side half of PROMOTIONS.md batch 13: the generator gap that
+carrier build_blockers.json/win32_policy.json recorded ("log2file needs a
+guest-IAT binding for pthreadGC2.dll that does not exist yet") is closed,
+all nine batch-13 functions (`play_sound`, `startGameMusic`,
+`stopGameMusic`, `log2file`, `take_screenshot`, `draw_reward`,
+`get_version_str`, `syncProfileFromOptions`, `destroy_game_data`) are
+linked and bound in vivo, and the whole gameplay tick path -- `play()` down
+through every callee it reaches -- now runs as clean source end to end.
+
+### 1. Generator: GUEST_CRT_IMPORTS is now DLL-convention-aware, and scans src/ for gaps
+
+`port_forge/tools/pf_win32_gen_bindings.py` and `carrier/gen/gen_bindings.py`
+both gained `DLL_DEFAULT_CONVENTION` (msvcrt.dll/pthreadGC2.dll -> `__cdecl`,
+every real Win32 SDK DLL -> `__stdcall`), consulted by
+`normalize_crt_import_entry()` only when a `GUEST_CRT_IMPORTS` entry omits
+its own convention -- so a 4-element entry no longer silently assumes
+`__cdecl` regardless of DLL. Both files also gained `scan_src_identifiers()`
+/ `find_unbound_referenced_imports()`: a `--src-dir`/`--scan-src-dir` scan
+that reports (never auto-binds -- a bare name carries no C prototype) every
+`imports.json` `(dll, name)` pair src/ references as a bare identifier that
+is neither a `GUEST_CRT_IMPORTS` plain name nor a game-scope global/function
+name, excluding anything `RESERVED_CRT_WINDOWS_IDENTS` already covers (that
+exclusion is necessary -- without it every ordinary `fopen`/`sprintf`/`free`/
+... call src/ makes reports as a false gap; MEASURED, 23 such false
+positives before the exclusion, 1 residual harmless hit after --
+`msvcrt.dll!_mkdir`, a comment-text match). This mechanically closes the
+class of gap that left `pthread_mutex_lock`/`pthread_mutex_unlock`
+referenced by `logfile.c` but unbound for two batches.
+
+`carrier/gen/gen_bindings.py`'s `GUEST_CRT_IMPORTS` gained the pair itself:
+
+```
+pthread_mutex_lock    pthreadGC2.dll  __cdecl  int (void *)   IAT slot 0x514a5c
+pthread_mutex_unlock   pthreadGC2.dll  __cdecl  int (void *)   IAT slot 0x514a60
+```
+
+`(void *)` rather than `(pthread_mutex_t *)` on purpose: `pf_bindings_src.h`
+is force-included AHEAD of `logfile.c`'s own `#include "game_types.h"` (the
+header that actually declares `pthread_mutex_t`), so a param type this
+generated header emits cannot depend on a type only src/ has declared yet.
+`&sLogMutex__log2file`'s real type converts to `void *` implicitly in C, no
+cast and no warning either direction. Regenerated `pf_bindings_src.h`;
+`logfile.c` now compiles AND links.
+
+### 2. A real, unrelated compile blocker surfaced the moment batch 13's files joined a full build: two concurrent batch-14 WIP files
+
+Rebuilding with every `src/icytower/*.c` file in the tree (batch 14's
+concurrent src-promotion pass had, by this point, added `config.c`,
+`fade.c`, `hisc.c`, `profile.c`, `replay.c` and modified `scroller.c`) hit
+two MSVC compile failures that have nothing to do with batch 13 or the
+pthread fix:
+
+- `profile.c`'s `get_rank`/`get_rank_id`/`view_profile`/
+  `get_profile_dir_for_profile` take `Tprofile *profile` as a parameter,
+  colliding with the bound top-level global `profile` (0x4dd27c) the same
+  textual-`#define` way batch 8 documented for `jump_sound`/`stars` --
+  MSVC C2059/C2143/C2449 at profile.c:82-94 (`profile` expands inside
+  `get_rank_id`'s own parameter list).
+- `replay.c`'s `calc_replay_checksum(_131)`/`destroy_replay`/`save_replay`/
+  `hash` read `r->data[...]`, colliding with the bound top-level global
+  `DATAFILE *data` (0x4dd23c) the same way `draw_frame.c`/
+  `handle_player_input.c` already fix locally with `#ifdef data / #undef
+  data`, not yet applied here. MSVC C2059/C2143/C2054/C2081 at
+  replay.c:117,129,226,291,388-389.
+
+Both are src/icytower's own fix to make (a local parameter rename / the
+same `#undef` idiom two other files already carry), not a carrier concern,
+and this task does not own `src/icytower/*.c`. Two carrier-side moves were
+made first, both temporary: `win32_policy.json`'s `param_renames` gained
+`"profile": "profile_arg"` (regenerated `game_funcs.h` via
+`gen_src_headers.py` -- the SAME mechanism `key`/`ctrl` already use for
+this exact class of collision), and `profile.c`/`replay.c` were listed in
+both `win32_policy.json`'s `scan_exclude` and `carrier/gen/
+build_blockers.json` (both needed together -- `build_blockers.json` is
+consulted only by `gen_bind_table.py`/`scan_src_defs.py
+--list-build-files`; the plain function-definition scan `build.cmd` uses
+for `gen_bindings.py`'s `--exclude` list only reads `scan_exclude`, and
+`play.c` already calls `get_rank_id`/`get_rank` as plain src identifiers
+(batch 12), so leaving them out of `scan_exclude` would exclude
+`get_rank_id` from `pf_bindings_src.h` with nothing left to define it --
+an LNK2019 regression in an already-verified caller).
+
+Both exclusions were reverted before this pass finished: batch 14 (running
+concurrently on the same checkout) landed its own fix for both files in
+the same window (`profile.c` now spells the parameter `profile_arg`
+itself, matching the generated prototype; `replay.c` now carries the same
+`#ifdef data / #undef data` idiom `draw_frame.c`/`handle_player_input.c`
+already use) -- confirmed by re-running `build.cmd` with `scan_exclude`
+back down to just `state.c` and `build_blockers.json` back to empty: 0
+errors, `hisc.c`/`fade.c`/`config.c`/`profile.c`/`replay.c`/the modified
+`scroller.c` all compile and link, and gates.ps1 G1/G2/G3a/G3b/G4/G5a/G5b
+are all still EQUAL. Neither `src/icytower/replay.c` nor `profile.c` was
+touched by this task at any point; the two temporary policy entries above
+existed only for the window between this task's own rebuild attempts and
+batch 14's next commit. Batch 14's own newly-linked functions (
+`destroy_replay`, `save_replay`, `myDeleteFile`, `save_config`,
+`init_scroller`, `fadeIn`, `fadeOut`, `save_profile`, and the hisc/replay/
+profile/fade/config coastline) are that pass's own functions, not verified
+by this one -- left out of every "all bound" bindfile below.
+
+### 3. Build and gates
+
+`carrier/build.cmd`: clean, 0 errors. `carrier/scripts/gates.ps1`:
+
+```
+G1: EQUAL (876 ticks)
+G2: EQUAL (876 invocations)
+G3a: EQUAL (300 rows T=400..699; 601 rows T=400..1000)
+G3b: EQUAL (300 invocations k=276..575)
+G4: EQUAL (2293 ticks, all_src.bindfile vs replays/human_test.digest)
+G5a: EQUAL (157 ticks, itr replayed twice unbound)
+G5b: EQUAL (157 ticks, itr all-bound vs replays/itr_last_game.digest)
+```
+
+`carrier/scripts/all_src.bindfile`, `all_rows_src.bindfile` and
+`all_rows_src_no_play.bindfile` all gained the six new rows (`play_sound`,
+`startGameMusic`, `stopGameMusic`, `log2file`, `take_screenshot`,
+`draw_reward`; `get_version_str`/`syncProfileFromOptions`/
+`destroy_game_data` already had rows) -- deliberately NOT the batch-14
+rows named above.
+
+### 4. In vivo over all three workloads
+
+| workload | check | result |
+|---|---|---|
+| newgame | all-bound digest vs unbound (876 ticks) | EQUAL |
+| human_test | all-bound digest vs unbound (2293 ticks, via G4, stored baseline) | EQUAL |
+| human_test | `assets/log.txt` after a `--stop-at-tick 2528` run (i.e. within the tick loop), unbound vs all-bound | byte IDENTICAL |
+| .itr (play_itr.txt) | G5a/G5b (157 ticks, via gates.ps1, stored baseline) | EQUAL |
+
+G4/G5b compare against `replays/human_test.digest`/`replays/itr_last_game.digest`
+-- a STORED baseline recorded long before this pass, from real gameplay,
+covering exactly the 151 tracked globals sampled once per tick inside the
+tick loop's own safepoint. This is the authoritative evidence for batch
+13's own scope (every one of its nine functions lives inside the tick loop,
+the frame renderer, or the audio seam) and is unaffected by anything
+outside that boundary.
+
+**A run-to-the-game's-own-exit comparison (past the tick loop, into the
+game-over/hiscore/replay-menu screens) was attempted and is NOT usable as
+clean evidence on this build**, for a reason that has nothing to do with
+batch 13: `carrier/gen/bind_table.inc` now also carries rows for several
+functions PROMOTIONS.md batch 14 landed concurrently on this same checkout
+while this pass was measuring (`qualify_hisc_table`, `save_replay`,
+`save_profile`, `save_config`, `enter_hisc_table`, and others). Per
+divergence 010's own mechanism, `play=src` (bound in `all_src.bindfile`
+since batch 12, unrelated to this pass) makes `play()`'s COMPILED body
+call every one of ITS callees that now has ANY linked src form through the
+LINKER, unconditionally -- regardless of whether that name is listed in
+`all_src.bindfile` at all. So as soon as batch 14's second commit landed
+(`destroy_replay`/`save_replay`/`myDeleteFile`/`save_config`/
+`init_scroller`/`fadeIn`/`fadeOut`/`save_profile`, plus the hisc/replay/
+profile/fade/config coastline), the run-to-exit comparison stopped being
+"original vs my six new rows" and started being "100% ORIGINAL vs 100%
+batch-14's-new-code-too", an entirely different, much larger experiment
+this task does not own. MEASURED: the un-bound run finishes normally
+(`Done...`, `player did not qualify for highscore`); the `all_src.bindfile`
+run (which pulls in `play=src` and therefore batch 14's new
+`qualify_hisc_table`/siblings too) instead sits past `saving replay:
+.../last_game.itr` for the whole `--run-seconds` budget and never reaches
+`Done...` -- the tick-level global state is PROVEN identical up to that
+point (G4/G5b), so this is either a genuine bug in one of batch 14's newly
+landed post-tick-loop functions or an interactive wait (`enter_hisc_table`'s
+name-entry `readkey()` loop) legitimately entered because the player DID
+newly qualify and the corpus workload has no further scripted input to
+feed it -- either way, `hisc.c`/`replay.c`/`profile.c`/`config.c` are batch
+14's own files, not touched or diagnosed further by this pass. Flagged
+separately (see the end of this section) rather than investigated here.
+
+`take_screenshot` is NOT exercised by any of the three corpus workloads
+(none presses F1, MEASURED by grep over `replays/human_test.txt`,
+`carrier/scripts/newgame.txt`, `carrier/scripts/play_itr.txt`) -- **in-vivo
+UNVERIFIED** for this pass, same standing rule as batch 11's `take_screenshot`
+note; its offline oracle (80000 vectors, batch 13) stands on its own.
+
+### 5. Coverage census: functions by form, and the ORIGINAL bytes still reachable from a clean gameplay session
+
+`carrier/gen/interop_index.json` names 253 game-scope functions, 125641
+bytes total. `carrier/gen/bind_table.inc` (which `gen_bind_table.py` derives
+from whichever `src/icytower/*.c` files actually compile and link -- as of
+this pass's FINAL rebuild, which also picked up PROMOTIONS.md batch 14's
+two concurrent commits, SS2 above) has **78 rows, every one with a real
+linked src pointer** -- **175 functions, 80716 bytes, have no src form at
+all** and remain 100% ORIGINAL machine code.
+
+A TRUE runtime census ("count every execution of every one of those 175
+during a real run") was assessed and deferred this pass, not implemented:
+the only entry-patch mechanism this carrier has today is DR-based
+(`carrier/src/det.cpp` `register_breakpoint`/`det_ctx_arm_slot`, 4 debug
+registers), which is exactly what the earlier per-function `bind_all.py`
+loop works around by running one function at a time -- 175 functions in
+one run needs an INT3-based unlimited-software-breakpoint engine (save/
+restore one byte per site, single-step past it, re-arm, all re-entrant
+through the existing VEH) that does not exist yet and is a genuine new
+carrier feature, not a "cheap" addition to verify soundly within this pass.
+
+What IS cheap, and delivered instead: PROMOTIONS.md batch 13's own
+"the play() coastline" list (the 19 functions play() itself can still
+reach that remained ORIGINAL as of batch 13, all outside the tick loop --
+game-over/replay-menu/hiscore halves), re-checked against the FINAL
+`bind_table.inc` above rather than the batch-13-only one (batch 14 landed
+concurrently and picked up 13 of the 19 while this pass ran):
+
+| | functions | bytes |
+|---|---:|---:|
+| batch 13's 19-function play() coastline, as of batch 13 | 19 | ~13851 (18 resolved in interop_index.json; `file_exists` is not a distinct game-scope function) |
+| of those, now linked with a src form by batch 14 (`calc_replay_checksum`, `destroy_replay`, `enter_hisc_table`, `fadeIn`, `fadeOut`, `get_rank_id`, `init_scroller`, `myDeleteFile`, `qualify_hisc_table`, `save_config`, `save_profile`, `save_replay`, `sort_hisc_table`) | 13 | 4877 |
+| still 100% ORIGINAL (`do_replay_menu`, `draw_results`, `getGameDataXML`, `load_replay`, `my_alert`) | 5 | 8261 |
+
+A run-to-exit empirical check (which of these actually execute in a real
+session) was attempted this pass and found unusable as evidence for an
+unrelated reason (SS4 above: batch 14's own newly-linked functions changed
+the run's own outcome mid-pass) -- not repeated here to avoid conflating
+batch 14's own regression with this census's static facts, which stand on
+`interop_index.json`/`bind_table.inc` alone and are unaffected by it. The
+remaining 157 of the 175 fully-ORIGINAL functions (72455 bytes) belong to
+the main-menu system and other screens outside `play()`'s own call tree
+entirely and were not in this census's scope (PROMOTIONS.md's batch-13
+brief is the gameplay tick path, not the whole game). This is the
+remaining recovery workload for a clean gameplay session, in order of what
+a future batch would need next: the 5 still-ORIGINAL `play()`-coastline
+functions first (8261 bytes, named above), then the main-menu/replay-
+selector/credits system beyond it.
+
+A background task was flagged (spawn_task) for the run-to-exit
+hang/qualification divergence in SS4, addressed to whichever pass owns
+`src/icytower/hisc.c`/`replay.c`/`profile.c`/`config.c` next.

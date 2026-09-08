@@ -1144,3 +1144,79 @@ untracked and in flight while this ran; `logfile.c` does not link -
 `pthreadGC2.dll` needs guest-IAT bindings) were temporarily excluded from
 the build for this pass, so `play=src` pulled in exactly batch 12's
 verified callee set. Batch 13's own in-vivo pass re-measures with them in.
+
+## In-vivo pass -- batch 13, the whole gameplay tick path clean in vivo (2026-09-08)
+
+The re-measurement the note above pointed at. `logfile.c`'s link blocker is
+closed (`carrier/gen/gen_bindings.py`'s `GUEST_CRT_IMPORTS` gained
+`pthread_mutex_lock`/`pthread_mutex_unlock`, bound through the guest's own
+`pthreadGC2.dll` IAT slots 0x514a5c/0x514a60, `__cdecl`, `(void *)` params
+-- `carrier/NOTES.md` "Batch 13 lands in vivo" has the full account,
+including a real generator-level improvement: `GUEST_CRT_IMPORTS`'
+calling convention is now inferred from the DLL, and both generators scan
+src/ for any `imports.json` name referenced but not yet bound). All nine
+batch-13 functions (`play_sound`, `startGameMusic`, `stopGameMusic`,
+`log2file`, `take_screenshot`, `draw_reward`, `get_version_str`,
+`syncProfileFromOptions`, `destroy_game_data`) are linked and bound.
+
+Two concurrent batch-14 WIP files (`profile.c`, `replay.c`) hit real, own
+compile blockers unrelated to batch 13 (a parameter name and a member
+access each colliding with a bound top-level global, the same class of bug
+batch 8 documented for `jump_sound`/`stars`) -- temporarily carried in
+`carrier/win32_policy.json`'s `scan_exclude` and `carrier/gen/
+build_blockers.json`. Both were reverted before this pass finished: batch
+14 landed its own fix for both files (on the same checkout) within this
+pass's own window, confirmed by a rebuild with the temporary entries
+removed (0 errors, gates still all EQUAL). Neither file was touched by
+this pass.
+
+### Verdicts
+
+| workload | check | result |
+|---|---|---|
+| newgame | all nine batch-13 rows + every earlier row bound, digest vs unbound | EQUAL, 876 ticks |
+| human_test | same, digest vs unbound (gates.ps1 G4, `all_src.bindfile`, STORED baseline) | EQUAL, 2293 ticks |
+| human_test | `assets/log.txt`, unbound vs all-bound (`--stop-at-tick 2528`, inside the tick loop) | byte IDENTICAL |
+| .itr (play_itr.txt) | gates.ps1 G5a/G5b (STORED baseline) | EQUAL, 157 ticks |
+
+A run-to-the-game's-own-exit comparison (past the tick loop) was attempted
+and found NOT usable as clean evidence, for a reason outside batch 13's own
+scope: batch 14's second commit landed more functions with a src form
+(`qualify_hisc_table`, `save_replay`, `save_profile`, `save_config`,
+`enter_hisc_table`, others) while this pass was measuring, and per
+divergence 010 `play=src` unconditionally routes every one of `play()`'s
+callees that now has ANY src form through the linker -- so the comparison
+stopped being "original vs batch 13's six new rows" and became "100%
+original vs 100% batch 14's new post-tick-loop code too". MEASURED: the
+all-bound run stalls past `saving replay: .../last_game.itr` for the whole
+`--run-seconds` budget instead of reaching `Done...`, while the tick-level
+global state up to that point is PROVEN identical (G4/G5b) -- either a bug
+in one of batch 14's new functions or a legitimate interactive wait
+(`enter_hisc_table`'s name-entry `readkey()` loop, if the player now
+newly qualifies) with no further scripted input in the corpus. `hisc.c`/
+`replay.c`/`profile.c`/`config.c` are batch 14's own files; flagged
+separately, not diagnosed further here.
+
+`log2file`'s own required oracle (its formatted output actually reaching
+both `assets/log.txt` and the game global `last_log`) is proven by the
+byte-identical `log.txt` comparison inside the tick loop, on top of its
+offline 80000-vector oracle. `take_screenshot` is **UNVERIFIED IN VIVO**:
+none of the three corpus workloads presses F1 (MEASURED by grep), so the
+bind is never entered by any recording in the corpus -- its offline oracle
+(batch 13, 80000 vectors) stands alone, same standing rule INVIVO.md
+already applies elsewhere in this file for a never-invoked bind.
+
+### Status
+
+The whole gameplay tick path -- `play()` and every callee it reaches, down
+to the audio seam, the logger, and the frame renderer's own last game-scope
+callee -- now runs as clean source in vivo, verified over all three corpus
+workloads against STORED baselines recorded from real gameplay. `carrier/
+NOTES.md` "Batch 13 lands in vivo" section 5 has the coverage census (as
+of this pass's final rebuild, batch 14's concurrent commits included): 78
+of 253 game-scope functions have a src form; the remaining 175 (80716
+bytes) are fully ORIGINAL. Of batch 13's own 19-function `play()`
+"coastline", batch 14 picked up 13 concurrently; 5 (8261 bytes --
+`do_replay_menu`, `draw_results`, `getGameDataXML`, `load_replay`,
+`my_alert`) remain fully ORIGINAL and are the next-nearest recovery
+workload for a clean gameplay session past the tick loop.

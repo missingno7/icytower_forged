@@ -74,3 +74,21 @@ cycle_counter=src
 fps_counter=src
 update_frame=src
 update_player=src
+# --- added by the carrier task's in-vivo pass over PROMOTIONS.md batch 13
+# (2026-09-08): the tick's audio seam, the frame renderer's last game-scope
+# callee, and log2file/take_screenshot -- all nine batch-13 functions except
+# get_version_str/syncProfileFromOptions/destroy_game_data, which already
+# had rows above (added by an earlier pass). log2file needed the
+# pthread_mutex_lock/unlock guest-IAT bindings this same pass added to
+# carrier/gen/gen_bindings.py's GUEST_CRT_IMPORTS before it would even link.
+# Deliberately NOT including this pass's concurrently-compiled batch-14
+# rows (save_config, myDeleteFile, fadeOut, fadeIn, qualify_hisc_table,
+# sort_hisc_table, enter_hisc_table, init_scroller): those files link
+# cleanly but are a different, still-in-flight pass's own functions, not
+# verified by this one. ---
+play_sound=src
+startGameMusic=src
+stopGameMusic=src
+log2file=src
+take_screenshot=src
+draw_reward=src

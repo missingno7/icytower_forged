@@ -4,8 +4,8 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-08 00:52:42 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, check_control_key, clear_replay_telemetry, clickedCloseButton, collect_game_data, create_particle, cycle_counter, destroy_game_data, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_pause_curtain, draw_player, draw_replay_hud, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, get_version_str, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_sprite, jump_player, line_intersect, new_rand, ok_to_play, play, play_jump_sound, poll_control, reset_map, reset_particles, reset_player, restart_scroller, restart_time_cheat_window, resync_music_counter, save_personal_bests, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, syncProfileFromOptions, update_frame, update_particle, update_player
+ * Generated: 2026-09-08 03:02:41 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, calc_replay_checksum, calc_replay_checksum_131, check_control_key, clear_replay_telemetry, clickedCloseButton, collect_game_data, create_particle, cycle_counter, destroy_game_data, destroy_replay, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_pause_curtain, draw_player, draw_replay_hud, draw_reward, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, enter_hisc_table, fadeIn, fadeOut, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, get_rank, get_rank_id, get_version_str, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, hash, init_control, init_scroller, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtof, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_scaled_sprite, it_al_rotate_sprite, it_fade_draw_sprite, jump_player, line_intersect, log2file, myDeleteFile, new_rand, ok_to_play, play, play_jump_sound, play_sound, poll_control, qualify_hisc_table, reset_map, reset_particles, reset_player, restart_scroller, restart_time_cheat_window, resync_music_counter, save_config, save_personal_bests, save_profile, save_replay, scroll_scroller, set_control, sort_hisc_table, stars, startGameMusic, start_reward, stopGameMusic, switchedFromProgram, switchedToProgram, syncProfileFromOptions, take_screenshot, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -43,6 +43,12 @@ typedef int (__stdcall *PFN_crt_QueryPerformanceFrequency)(LARGE_INTEGER *);
 /* mkdir  -> msvcrt.dll!_mkdir IAT slot VA=0x005147f0  (the original's own `call __mkdir -> jmp *[slot]`) */
 typedef int (__cdecl *PFN_crt_mkdir)(const char *);
 #define mkdir (*(PFN_crt_mkdir *)0x005147f0)
+/* pthread_mutex_lock  -> pthreadGC2.dll!pthread_mutex_lock IAT slot VA=0x00514a5c  (the original's own `call _pthread_mutex_lock -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_pthread_mutex_lock)(void *);
+#define pthread_mutex_lock (*(PFN_crt_pthread_mutex_lock *)0x00514a5c)
+/* pthread_mutex_unlock  -> pthreadGC2.dll!pthread_mutex_unlock IAT slot VA=0x00514a60  (the original's own `call _pthread_mutex_unlock -> jmp *[slot]`) */
+typedef int (__cdecl *PFN_crt_pthread_mutex_unlock)(void *);
+#define pthread_mutex_unlock (*(PFN_crt_pthread_mutex_unlock *)0x00514a60)
 /* rand  -> msvcrt.dll!rand IAT slot VA=0x00514944  (the original's own `call _rand -> jmp *[slot]`) */
 typedef int (__cdecl *PFN_crt_rand)(void);
 #define rand (*(PFN_crt_rand *)0x00514944)
@@ -410,12 +416,8 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* build_menu_string  VA=0x4174dc  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: void build_menu_string(Tmenu *, char *) */
 #define build_menu_string ((PFN_build_menu_string)0x4174dc)
-/* calc_replay_checksum  VA=0x41bac4  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: int calc_replay_checksum(Treplay *) */
-#define calc_replay_checksum ((PFN_calc_replay_checksum)0x41bac4)
-/* calc_replay_checksum_131  VA=0x41ba10  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: int calc_replay_checksum_131(Treplay *) */
-#define calc_replay_checksum_131 ((PFN_calc_replay_checksum_131)0x41ba10)
+/* excluded by --exclude (compiled natively): calc_replay_checksum */
+/* excluded by --exclude (compiled natively): calc_replay_checksum_131 */
 /* change_profile  VA=0x40e1cc  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void change_profile() */
 #define change_profile ((PFN_change_profile)0x40e1cc)
@@ -499,9 +501,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* destroy_hisc_table  VA=0x405818  cu=F:\projects\icytower\trunk\source\hisc.c */
 /* prototype: void destroy_hisc_table(Thisc_table *) */
 #define destroy_hisc_table ((PFN_destroy_hisc_table)0x405818)
-/* destroy_replay  VA=0x41bd68  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: void destroy_replay(Treplay *) */
-#define destroy_replay ((PFN_destroy_replay)0x41bd68)
+/* excluded by --exclude (compiled natively): destroy_replay */
 /* do_replay_menu  VA=0x410f98  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int do_replay_menu() */
 #define do_replay_menu ((PFN_do_replay_menu)0x410f98)
@@ -525,9 +525,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* draw_results  VA=0x4076c0  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void draw_results(BITMAP *, BITMAP *, int, int *, int *, int) */
 #define draw_results ((PFN_draw_results)0x4076c0)
-/* draw_reward  VA=0x4070fc  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void draw_reward(BITMAP *) */
-#define draw_reward ((PFN_draw_reward)0x4070fc)
+/* excluded by --exclude (compiled natively): draw_reward */
 /* excluded by --exclude (compiled natively): draw_scroller */
 /* excluded by --exclude (compiled natively): draw_star_field */
 /* draw_table  VA=0x404a7c  cu=F:\projects\icytower\trunk\source\hisc.c */
@@ -539,18 +537,12 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* end_game  VA=0x40e110  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void end_game() */
 #define end_game ((PFN_end_game)0x40e110)
-/* enter_hisc_table  VA=0x405790  cu=F:\projects\icytower\trunk\source\hisc.c */
-/* prototype: void enter_hisc_table(Thisc_table *, int, char *) */
-#define enter_hisc_table ((PFN_enter_hisc_table)0x405790)
+/* excluded by --exclude (compiled natively): enter_hisc_table */
 /* extractHTTPResponse  VA=0x405a90  cu=F:\projects\icytower\trunk\source\httpget.c */
 /* prototype: HTTPResponse * extractHTTPResponse(const unsigned char *, int) */
 #define extractHTTPResponse ((PFN_extractHTTPResponse)0x405a90)
-/* fadeIn  VA=0x40c1c0  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void fadeIn(BITMAP *, int) */
-#define fadeIn ((PFN_fadeIn)0x40c1c0)
-/* fadeOut  VA=0x40bf5c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void fadeOut(int) */
-#define fadeOut ((PFN_fadeOut)0x40bf5c)
+/* excluded by --exclude (compiled natively): fadeIn */
+/* excluded by --exclude (compiled natively): fadeOut */
 /* first_day  VA=0x41f5c4  cu=F:\projects\icytower\trunk\source\strptime.c */
 /* prototype: int first_day(int) */
 #define first_day ((PFN_first_day)0x41f5c4)
@@ -647,12 +639,8 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* get_profiles_dir  VA=0x403a1c  cu=F:\projects\icytower\trunk\source\directories.c */
 /* prototype: int get_profiles_dir(char *, it_orig_size_t) */
 #define get_profiles_dir ((PFN_get_profiles_dir)0x403a1c)
-/* get_rank  VA=0x418ad0  cu=F:\projects\icytower\trunk\source\profile.c */
-/* prototype: char * get_rank(Tprofile *) */
-#define get_rank ((PFN_get_rank)0x418ad0)
-/* get_rank_id  VA=0x418a84  cu=F:\projects\icytower\trunk\source\profile.c */
-/* prototype: int get_rank_id(Tprofile *) */
-#define get_rank_id ((PFN_get_rank_id)0x418a84)
+/* excluded by --exclude (compiled natively): get_rank */
+/* excluded by --exclude (compiled natively): get_rank_id */
 /* get_replay_property  VA=0x41e244  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: int get_replay_property(const char *, int) */
 #define get_replay_property ((PFN_get_replay_property)0x41e244)
@@ -684,9 +672,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* excluded by --exclude (compiled natively): handle_player_collision_vector */
 /* excluded by --exclude (compiled natively): handle_player_collision_vector_2 */
 /* excluded by --exclude (compiled natively): handle_player_input */
-/* hash  VA=0x41b9c8  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: unsigned int hash(unsigned int) */
-#define hash ((PFN_hash)0x41b9c8)
+/* excluded by --exclude (compiled natively): hash */
 /* hash2  VA=0x4189cc  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: unsigned int hash2(unsigned int) */
 #define hash2 ((PFN_hash2)0x4189cc)
@@ -703,9 +689,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* init_game  VA=0x40e7dc  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int init_game(int, char **) */
 #define init_game ((PFN_init_game)0x40e7dc)
-/* init_scroller  VA=0x41f278  cu=F:\projects\icytower\trunk\source\scroller.c */
-/* prototype: void init_scroller(Tscroller *, FONT *, char *, int, int, int) */
-#define init_scroller ((PFN_init_scroller)0x41f278)
+/* excluded by --exclude (compiled natively): init_scroller */
 /* init_star_field  VA=0x41f52c  cu=F:\projects\icytower\trunk\source\stars.c */
 /* prototype: void init_star_field(Tstar_field *, int, int, int, int, int, int, int) */
 #define init_star_field ((PFN_init_star_field)0x41f52c)
@@ -795,9 +779,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* loadpng_init  VA=0x41b990  cu=F:\projects\icytower\trunk\source\regpng.c */
 /* prototype: int loadpng_init() */
 #define loadpng_init ((PFN_loadpng_init)0x41b990)
-/* log2file  VA=0x40da58  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void log2file(const char *, ...) */
-#define log2file ((PFN_log2file)0x40da58)
+/* excluded by --exclude (compiled natively): log2file */
 /* main_menu_callback  VA=0x4100f8  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void main_menu_callback() */
 #define main_menu_callback ((PFN_main_menu_callback)0x4100f8)
@@ -807,9 +789,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* match_string  VA=0x41f5d8  cu=F:\projects\icytower\trunk\source\strptime.c */
 /* prototype: int match_string(const char **, const char **) */
 #define match_string ((PFN_match_string)0x41f5d8)
-/* myDeleteFile  VA=0x40cd28  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void myDeleteFile(char *, char *) */
-#define myDeleteFile ((PFN_myDeleteFile)0x40cd28)
+/* excluded by --exclude (compiled natively): myDeleteFile */
 /* my_alert  VA=0x40cd68  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int my_alert(char *, char *, int, int) */
 #define my_alert ((PFN_my_alert)0x40cd68)
@@ -835,9 +815,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* play_menu_select  VA=0x406e7c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void play_menu_select() */
 #define play_menu_select ((PFN_play_menu_select)0x406e7c)
-/* play_sound  VA=0x406da4  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void play_sound(SAMPLE *, int, int) */
-#define play_sound ((PFN_play_sound)0x406da4)
+/* excluded by --exclude (compiled natively): play_sound */
 /* excluded by --exclude (compiled natively): poll_control */
 /* profile_data_page_advanced  VA=0x419284  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: char * profile_data_page_advanced(Tprofile *) */
@@ -854,9 +832,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* pwd_garble_string  VA=0x4073c4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void pwd_garble_string(char *, int) */
 #define pwd_garble_string ((PFN_pwd_garble_string)0x4073c4)
-/* qualify_hisc_table  VA=0x404994  cu=F:\projects\icytower\trunk\source\hisc.c */
-/* prototype: int qualify_hisc_table(Thisc_table *, int) */
-#define qualify_hisc_table ((PFN_qualify_hisc_table)0x404994)
+/* excluded by --exclude (compiled natively): qualify_hisc_table */
 /* read_data  VA=0x4068c4  cu=F:\projects\icytower\trunk\source\loadpng.c */
 /* prototype: void read_data(png_structp, png_bytep, png_uint_32) */
 #define read_data ((PFN_read_data)0x4068c4)
@@ -906,9 +882,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* run_demo  VA=0x415e0c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void run_demo(char *) */
 #define run_demo ((PFN_run_demo)0x415e0c)
-/* save_config  VA=0x40e130  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void save_config() */
-#define save_config ((PFN_save_config)0x40e130)
+/* excluded by --exclude (compiled natively): save_config */
 /* save_control  VA=0x40192c  cu=F:\projects\icytower\trunk\source\control.c */
 /* prototype: void save_control(Tcontrol *, it_orig_FILE *) */
 #define save_control ((PFN_save_control)0x40192c)
@@ -924,12 +898,8 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* save_png  VA=0x41f000  cu=F:\projects\icytower\trunk\source\savepng.c */
 /* prototype: int save_png(const char *, BITMAP *, const RGB *) */
 #define save_png ((PFN_save_png)0x41f000)
-/* save_profile  VA=0x41a3b8  cu=F:\projects\icytower\trunk\source\profile.c */
-/* prototype: int save_profile(Tprofile *) */
-#define save_profile ((PFN_save_profile)0x41a3b8)
-/* save_replay  VA=0x41dd78  cu=F:\projects\icytower\trunk\source\replay.c */
-/* prototype: int save_replay(const char *, const char *, Treplay *, int, int) */
-#define save_replay ((PFN_save_replay)0x41dd78)
+/* excluded by --exclude (compiled natively): save_profile */
+/* excluded by --exclude (compiled natively): save_replay */
 /* excluded by --exclude (compiled natively): scroll_scroller */
 /* scroll_star_field  VA=0x41f408  cu=F:\projects\icytower\trunk\source\stars.c */
 /* prototype: void scroll_star_field(Tstar_field *, double, double) */
@@ -962,19 +932,13 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* show_name  VA=0x406d44  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int show_name(const char *, int, void *) */
 #define show_name ((PFN_show_name)0x406d44)
-/* sort_hisc_table  VA=0x4049bc  cu=F:\projects\icytower\trunk\source\hisc.c */
-/* prototype: void sort_hisc_table(Thisc_table *) */
-#define sort_hisc_table ((PFN_sort_hisc_table)0x4049bc)
-/* startGameMusic  VA=0x40cb30  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void startGameMusic() */
-#define startGameMusic ((PFN_startGameMusic)0x40cb30)
+/* excluded by --exclude (compiled natively): sort_hisc_table */
+/* excluded by --exclude (compiled natively): startGameMusic */
 /* startMenuMusic  VA=0x406d68  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void startMenuMusic() */
 #define startMenuMusic ((PFN_startMenuMusic)0x406d68)
 /* excluded by --exclude (compiled natively): start_reward */
-/* stopGameMusic  VA=0x40caf4  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void stopGameMusic() */
-#define stopGameMusic ((PFN_stopGameMusic)0x40caf4)
+/* excluded by --exclude (compiled natively): stopGameMusic */
 /* stopMenuMusic  VA=0x406f5c  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void stopMenuMusic() */
 #define stopMenuMusic ((PFN_stopMenuMusic)0x406f5c)
@@ -987,9 +951,7 @@ typedef int (__cdecl *PFN_crt_stricmp)(const char *, const char *);
 /* prototype: void syncOptionsFromProfile() */
 #define syncOptionsFromProfile ((PFN_syncOptionsFromProfile)0x40c820)
 /* excluded by --exclude (compiled natively): syncProfileFromOptions */
-/* take_screenshot  VA=0x41002c  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void take_screenshot(BITMAP *) */
-#define take_screenshot ((PFN_take_screenshot)0x41002c)
+/* excluded by --exclude (compiled natively): take_screenshot */
 /* testWindowResolution  VA=0x40db18  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void testWindowResolution() */
 #define testWindowResolution ((PFN_testWindowResolution)0x40db18)

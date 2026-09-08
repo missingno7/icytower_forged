@@ -18,6 +18,8 @@ extern "C" {
     void __cdecl handle_player_collision_vector(int, int);
     void __cdecl handle_player_collision_vector_2(int, int);
     void __cdecl handle_player_collision_combo(int, int);
+    void __cdecl save_config(void);
+    void __cdecl myDeleteFile(void*, void*);
     void* __cdecl get_gamepad(void);
     int __cdecl is_up(void*);
     int __cdecl is_down(void*);
@@ -33,16 +35,23 @@ extern "C" {
     void __cdecl destroy_game_data(void*);
     int __cdecl draw_buffer(void*, void*, int, int);
     void __cdecl draw_frame(void*);
+    void __cdecl draw_reward(void*);
     int __cdecl draw_scroller(void*, void*, int, int, int);
     void __cdecl draw_star_field(void*, void*, int, int);
+    void __cdecl fadeOut(int);
+    void __cdecl fadeIn(void*, int);
     void __cdecl handle_player_collision_original(int, int);
     void __cdecl handle_player_input(void*);
+    int __cdecl qualify_hisc_table(void*, int);
+    void __cdecl sort_hisc_table(void*);
+    void __cdecl enter_hisc_table(void*, int, void*);
     int __cdecl is_solid(void*, int, int);
     int __cdecl lifted_is_solid(void*, int, int);
     int __cdecl native_is_solid(void*, int, int);
     int __cdecl jump_player(void*, int);
     int __cdecl lifted_jump_player(void*, int);
     int __cdecl line_intersect(int, int, int, int, int, int, int, int, void*, void*);
+    void __cdecl log2file(void*, int);
     void* __cdecl get_demo(void);
     void* __cdecl get_controls(void);
     void __cdecl switchedFromProgram(void);
@@ -62,9 +71,22 @@ extern "C" {
     int __cdecl play(void);
     void __cdecl play_jump_sound(void*);
     void __cdecl poll_control(void*, int);
+    int __cdecl get_rank_id(void*);
+    void* __cdecl get_rank(void*);
+    int __cdecl save_profile(void*);
+    int __cdecl hash(int);
+    int __cdecl calc_replay_checksum_131(void*);
+    int __cdecl calc_replay_checksum(void*);
+    void __cdecl destroy_replay(void*);
+    int __cdecl save_replay(void*, void*, void*, int, int);
     void __cdecl reset_player(void*);
+    void __cdecl take_screenshot(void*);
     void __cdecl scroll_scroller(void*, int);
     void __cdecl restart_scroller(void*);
+    void __cdecl init_scroller(void*, void*, void*, int, int, int);
+    void __cdecl play_sound(void*, int, int);
+    void __cdecl startGameMusic(void);
+    void __cdecl stopGameMusic(void);
     int __cdecl start_reward(int);
     void __cdecl cycle_counter(void);
     void __cdecl fps_counter(void);
@@ -200,6 +222,8 @@ static const FnDesc kFns[] = {
     { "handle_player_collision_vector", 0x00408d08u, 2, false, nullptr, nullptr, (void*)handle_player_collision_vector, nullptr, 0, -1 },
     { "handle_player_collision_vector_2", 0x004088c8u, 2, false, nullptr, nullptr, (void*)handle_player_collision_vector_2, nullptr, 0, -1 },
     { "handle_player_collision_combo", 0x00408358u, 2, false, nullptr, nullptr, (void*)handle_player_collision_combo, nullptr, 0, -1 },
+    { "save_config", 0x0040e130u, 0, false, nullptr, nullptr, (void*)save_config, nullptr, 0, -1 },
+    { "myDeleteFile", 0x0040cd28u, 2, false, nullptr, nullptr, (void*)myDeleteFile, nullptr, 0, -1 },
     { "get_gamepad", 0x004017fcu, 0, true, nullptr, nullptr, (void*)get_gamepad, nullptr, 0, -1 },
     { "is_up", 0x00401844u, 1, true, nullptr, nullptr, (void*)is_up, regions_is_up, 1, 0 },
     { "is_down", 0x0040185cu, 1, true, nullptr, nullptr, (void*)is_down, regions_is_down, 1, 0 },
@@ -215,13 +239,20 @@ static const FnDesc kFns[] = {
     { "destroy_game_data", 0x0040418cu, 1, false, nullptr, nullptr, (void*)destroy_game_data, nullptr, 0, -1 },
     { "draw_buffer", 0x004191c8u, 4, true, nullptr, nullptr, (void*)draw_buffer, nullptr, 0, -1 },
     { "draw_frame", 0x0040929cu, 1, false, nullptr, nullptr, (void*)draw_frame, nullptr, 0, -1 },
+    { "draw_reward", 0x004070fcu, 1, false, nullptr, nullptr, (void*)draw_reward, nullptr, 0, -1 },
     { "draw_scroller", 0x0041f0ecu, 5, true, nullptr, nullptr, (void*)draw_scroller, nullptr, 0, -1 },
     { "draw_star_field", 0x0041f340u, 4, false, nullptr, nullptr, (void*)draw_star_field, nullptr, 0, -1 },
+    { "fadeOut", 0x0040bf5cu, 1, false, nullptr, nullptr, (void*)fadeOut, nullptr, 0, -1 },
+    { "fadeIn", 0x0040c1c0u, 2, false, nullptr, nullptr, (void*)fadeIn, nullptr, 0, -1 },
     { "handle_player_collision_original", 0x00407e10u, 2, false, nullptr, nullptr, (void*)handle_player_collision_original, nullptr, 0, -1 },
     { "handle_player_input", 0x0040b3e4u, 1, false, nullptr, nullptr, (void*)handle_player_input, nullptr, 0, -1 },
+    { "qualify_hisc_table", 0x00404994u, 2, true, nullptr, nullptr, (void*)qualify_hisc_table, nullptr, 0, -1 },
+    { "sort_hisc_table", 0x004049bcu, 1, false, nullptr, nullptr, (void*)sort_hisc_table, nullptr, 0, -1 },
+    { "enter_hisc_table", 0x00405790u, 3, false, nullptr, nullptr, (void*)enter_hisc_table, nullptr, 0, -1 },
     { "is_solid", 0x004166dcu, 3, true, (void*)lifted_is_solid, (void*)native_is_solid, (void*)is_solid, regions_is_solid, 1, 0 },
     { "jump_player", 0x00418678u, 2, true, (void*)lifted_jump_player, nullptr, (void*)jump_player, regions_jump_player, 1, 0 },
     { "line_intersect", 0x00406b80u, 10, true, nullptr, nullptr, (void*)line_intersect, regions_line_intersect, 2, 0 },
+    { "log2file", 0x0040da58u, 2, false, nullptr, nullptr, (void*)log2file, nullptr, 0, -1 },
     { "get_demo", 0x0040696cu, 0, true, nullptr, nullptr, (void*)get_demo, regions_get_demo, 1, -1 },
     { "get_controls", 0x00406978u, 0, true, nullptr, nullptr, (void*)get_controls, nullptr, 0, -1 },
     { "switchedFromProgram", 0x00406a5cu, 0, false, nullptr, nullptr, (void*)switchedFromProgram, regions_switchedFromProgram, 1, 0 },
@@ -241,9 +272,22 @@ static const FnDesc kFns[] = {
     { "play", 0x00411a00u, 0, true, nullptr, nullptr, (void*)play, nullptr, 0, -1 },
     { "play_jump_sound", 0x00406eccu, 1, false, nullptr, nullptr, (void*)play_jump_sound, nullptr, 0, -1 },
     { "poll_control", 0x00401958u, 2, false, nullptr, nullptr, (void*)poll_control, nullptr, 0, -1 },
+    { "get_rank_id", 0x00418a84u, 1, true, nullptr, nullptr, (void*)get_rank_id, nullptr, 0, -1 },
+    { "get_rank", 0x00418ad0u, 1, true, nullptr, nullptr, (void*)get_rank, nullptr, 0, -1 },
+    { "save_profile", 0x0041a3b8u, 1, true, nullptr, nullptr, (void*)save_profile, nullptr, 0, -1 },
+    { "hash", 0x0041b9c8u, 1, true, nullptr, nullptr, (void*)hash, nullptr, 0, -1 },
+    { "calc_replay_checksum_131", 0x0041ba10u, 1, true, nullptr, nullptr, (void*)calc_replay_checksum_131, nullptr, 0, -1 },
+    { "calc_replay_checksum", 0x0041bac4u, 1, true, nullptr, nullptr, (void*)calc_replay_checksum, nullptr, 0, -1 },
+    { "destroy_replay", 0x0041bd68u, 1, false, nullptr, nullptr, (void*)destroy_replay, nullptr, 0, -1 },
+    { "save_replay", 0x0041dd78u, 5, true, nullptr, nullptr, (void*)save_replay, nullptr, 0, -1 },
     { "reset_player", 0x00418550u, 1, false, nullptr, nullptr, (void*)reset_player, regions_reset_player, 1, 0 },
+    { "take_screenshot", 0x0041002cu, 1, false, nullptr, nullptr, (void*)take_screenshot, nullptr, 0, -1 },
     { "scroll_scroller", 0x0041f0c0u, 2, false, nullptr, nullptr, (void*)scroll_scroller, regions_scroll_scroller, 1, 0 },
     { "restart_scroller", 0x0041f0d0u, 1, false, nullptr, nullptr, (void*)restart_scroller, regions_restart_scroller, 1, 0 },
+    { "init_scroller", 0x0041f278u, 6, false, nullptr, nullptr, (void*)init_scroller, nullptr, 0, -1 },
+    { "play_sound", 0x00406da4u, 3, false, nullptr, nullptr, (void*)play_sound, nullptr, 0, -1 },
+    { "startGameMusic", 0x0040cb30u, 0, false, nullptr, nullptr, (void*)startGameMusic, nullptr, 0, -1 },
+    { "stopGameMusic", 0x0040caf4u, 0, false, nullptr, nullptr, (void*)stopGameMusic, nullptr, 0, -1 },
     { "start_reward", 0x00407c38u, 1, true, nullptr, nullptr, (void*)start_reward, nullptr, 0, -1 },
     { "cycle_counter", 0x0041fed4u, 0, false, nullptr, nullptr, (void*)cycle_counter, regions_cycle_counter, 1, 0 },
     { "fps_counter", 0x0041fea4u, 0, false, nullptr, nullptr, (void*)fps_counter, regions_fps_counter, 4, 0 },

@@ -194,6 +194,26 @@ RESERVED_CRT_WINDOWS_IDENTS = {
 #                instead of the guest's IAT slot would read the REAL host
 #                clock even in --det mode, bypassing det.cpp's pinned
 #                virtual-clock wrapper entirely.
+#   pthread_mutex_lock/pthread_mutex_unlock
+#                PROMOTIONS.md batch 13 (log2file): reached through the
+#                import table at IAT slots 0x514a5c/0x514a60
+#                (pthreadGC2.dll, resolved with pefile -- see
+#                logfile.c's own header comment). Declared with `(void *)`
+#                rather than `(pthread_mutex_t *)` on purpose: pf_bindings_src.h
+#                is force-included AHEAD of logfile.c's own
+#                `#include "game_types.h"` (the header that actually
+#                declares pthread_mutex_t), so a param type this header
+#                emits cannot depend on a type only src/ has declared yet.
+#                `&sLogMutex__log2file`'s real type (`pthread_mutex_t *`,
+#                itself a pointer) converts to `void *` implicitly in C,
+#                no cast and no warning either direction -- the same
+#                "declare the macro's own minimal type, let src/'s richer
+#                declaration stay guarded out by its own #ifndef" trick
+#                logfile.c's header comment already documents for why its
+#                hand-written prototypes are guarded. Convention is
+#                pthreadGC2's own (__cdecl, like every pthreads-win32 entry
+#                point) and is left to DLL_DEFAULT_CONVENTION below rather
+#                than spelled out per-entry.
 GUEST_CRT_IMPORTS = {
     'rand':                     ('msvcrt.dll',  'rand',                     'int', '(void)'),
     'srand':                    ('msvcrt.dll',  'srand',                    'void', '(unsigned)'),
@@ -201,23 +221,48 @@ GUEST_CRT_IMPORTS = {
     'stricmp':                  ('msvcrt.dll',  '_stricmp',                 'int', '(const char *, const char *)'),
     'QueryPerformanceCounter':  ('kernel32.dll', 'QueryPerformanceCounter',  '__stdcall', 'int', '(LARGE_INTEGER *)'),
     'QueryPerformanceFrequency': ('kernel32.dll', 'QueryPerformanceFrequency', '__stdcall', 'int', '(LARGE_INTEGER *)'),
+    'pthread_mutex_lock':       ('pthreadGC2.dll', 'pthread_mutex_lock',    'int', '(void *)'),
+    'pthread_mutex_unlock':     ('pthreadGC2.dll', 'pthread_mutex_unlock',  'int', '(void *)'),
+}
+
+# Default calling convention by DLL, consulted by normalize_crt_import_entry()
+# ONLY when a GUEST_CRT_IMPORTS entry omits its own convention (the 4-element
+# shape) -- mirrors port_forge/tools/pf_win32_gen_bindings.py's table of the
+# same name. Every real Win32 SDK entry point is __stdcall; msvcrt's C
+# library exports and pthreads-win32's pthreadGC2 API are both __cdecl. A DLL
+# not listed here still falls back to '__cdecl', matching this function's
+# pre-existing (pre-batch-13) default.
+DLL_DEFAULT_CONVENTION = {
+    'msvcrt.dll': '__cdecl',
+    'pthreadgc2.dll': '__cdecl',
+    'kernel32.dll': '__stdcall',
+    'user32.dll': '__stdcall',
+    'gdi32.dll': '__stdcall',
+    'advapi32.dll': '__stdcall',
+    'ws2_32.dll': '__stdcall',
+    'winmm.dll': '__stdcall',
+    'shell32.dll': '__stdcall',
+    'ole32.dll': '__stdcall',
+    'dsound.dll': '__stdcall',
+    'dinput.dll': '__stdcall',
 }
 
 
 def normalize_crt_import_entry(name, entry):
-    """Accept either the 4-element (dll, imp, ret, params) shape (implicit
-    __cdecl) or the 5-element (dll, imp, conv, ret, params) shape (explicit
-    convention) and return the 5-tuple (dll, imp, conv, ret, params).
-    Mirrors port_forge/tools/pf_win32_gen_bindings.py's own helper of the
-    same name (this file is not yet a thin shim over that generic tool --
-    see this module's own docstring "Guest-owned CRT imports" -- so the fix
-    is mirrored here by hand until a later pass completes that migration)."""
+    """Accept either the 4-element (dll, imp, ret, params) shape (convention
+    inferred from the DLL via DLL_DEFAULT_CONVENTION) or the 5-element
+    (dll, imp, conv, ret, params) shape (explicit convention) and return the
+    5-tuple (dll, imp, conv, ret, params). Mirrors
+    port_forge/tools/pf_win32_gen_bindings.py's own helper of the same name
+    (this file is not yet a thin shim over that generic tool -- see this
+    module's own docstring "Guest-owned CRT imports" -- so the fix is
+    mirrored here by hand until a later pass completes that migration)."""
     entry = list(entry)
     if len(entry) == 5:
         dll, imp, conv, ret, params = entry
     elif len(entry) == 4:
         dll, imp, ret, params = entry
-        conv = '__cdecl'
+        conv = DLL_DEFAULT_CONVENTION.get(dll.lower(), '__cdecl')
     else:
         raise ValueError('GUEST_CRT_IMPORTS[%r]: expected 4 or 5 elements '
                           '([dll, import, ret, params] or [dll, import, conv, '
@@ -338,6 +383,54 @@ MEMBER_ACCESS_COLLISIONS = {
 }
 
 
+IDENT_RE = re.compile(r'\b[A-Za-z_][A-Za-z0-9_]*\b')
+
+
+def scan_src_identifiers(src_dir):
+    """Every bare identifier token appearing anywhere under src_dir's
+    *.c/*.h files -- mirrors port_forge/tools/pf_win32_gen_bindings.py's
+    helper of the same name. Deliberately NOT a real C tokenizer
+    (comments/strings are not stripped): this is a COMPLETENESS check, not
+    a binding decision, so a false positive costs one glance and a false
+    negative is the failure mode it exists to close (exactly the gap that
+    left pthread_mutex_lock/pthread_mutex_unlock unbound after logfile.c
+    started calling them, PROMOTIONS.md batch 13)."""
+    idents = set()
+    for path in sorted(Path(src_dir).rglob('*')):
+        if path.suffix not in ('.c', '.h'):
+            continue
+        idents.update(IDENT_RE.findall(
+            path.read_text(encoding='utf-8', errors='replace')))
+    return idents
+
+
+def find_unbound_referenced_imports(src_idents, import_slots, guest_crt_imports,
+                                     game_scope_names):
+    """[[dll, name], ...] for every imports.json (dll, name) pair src/
+    actually references as a bare identifier, that is neither already a
+    GUEST_CRT_IMPORTS plain name nor a game-scope global/function name
+    (those go through the ordinary it_globals.h/it_funcs.h path). Reported
+    for a human to add a prototype for -- never auto-bound, since a bare
+    name alone does not carry a C prototype.
+
+    Also excludes anything RESERVED_CRT_WINDOWS_IDENTS already covers (and
+    its leading-underscore import-table spelling, e.g. `_mkdir` for
+    `mkdir`): those names are DELIBERATELY left to the carrier's own
+    statically-linked CRT (no shared-stream/shared-handle stake the way
+    rand/mkdir/stricmp/QueryPerformanceCounter/pthread_mutex_* have), so a
+    hit there is expected noise, not a gap -- this report exists to catch
+    the pthread_mutex_lock/unlock class (a real IAT-only entry point src/
+    calls that nothing binds), not every ordinary libc call src/ makes."""
+    known = set(guest_crt_imports)
+    out = []
+    for dll, name in sorted(set(import_slots)):
+        if name.lstrip('_') in RESERVED_CRT_WINDOWS_IDENTS:
+            continue
+        if name in src_idents and name not in known and name not in game_scope_names:
+            out.append([dll, name])
+    return out
+
+
 HEX_ADDR_IN_BODY_RE = re.compile(r'0x[0-9a-fA-F]+')
 
 
@@ -400,6 +493,12 @@ def main():
                           'PF_/IT_G_/IT_F_/PFN_ prefixes in src/); NAME '
                           'should therefore be an ordinary, non-reserved '
                           'name, e.g. ICYTOWER_BINDINGS_ACTIVE.')
+    ap.add_argument('--src-dir', default=str(HERE.parent.parent / 'src' / 'icytower'),
+                     help='directory scanned for bare identifiers matching '
+                          'an imports.json (dll, name) pair not yet in '
+                          'GUEST_CRT_IMPORTS (completeness report only, key '
+                          '"referenced_unbound_imports" in the JSON summary; '
+                          'pass an empty string to skip the scan).')
     args = ap.parse_args()
 
     exclude = set(n.strip() for n in args.exclude.split(',') if n.strip())
@@ -569,6 +668,20 @@ def main():
     ]
     Path(args.types_out).write_text('\n'.join(types_lines), encoding='utf-8')
 
+    referenced_unbound_imports = []
+    if args.src_dir:
+        game_scope_names = set(global_bodies) | set(func_bodies)
+        src_idents = scan_src_identifiers(args.src_dir)
+        referenced_unbound_imports = find_unbound_referenced_imports(
+            src_idents, import_slots, GUEST_CRT_IMPORTS, game_scope_names)
+        if referenced_unbound_imports:
+            sys.stderr.write(
+                'gen_bindings.py: %s references these imports.json names, '
+                'not yet in GUEST_CRT_IMPORTS: %s\n' %
+                (args.src_dir,
+                 ', '.join('%s!%s' % (dll, name)
+                           for dll, name in referenced_unbound_imports)))
+
     summary = {
         'globals_total': len(idx_globals),
         'globals_emitted': len(emitted_globals),
@@ -579,6 +692,7 @@ def main():
         'guest_crt_imports': emitted_crt_imports,
         'reserved_collisions': reserved_collisions,
         'member_name_collisions': member_collisions,
+        'referenced_unbound_imports': referenced_unbound_imports,
         'out': args.out,
         'types_out': args.types_out,
         'mem_macro': mem_macro,

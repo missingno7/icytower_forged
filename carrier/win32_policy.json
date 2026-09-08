@@ -14,7 +14,8 @@
 
   "param_renames": {
     "key": "key_arg",
-    "ctrl": "ctrl_arg"
+    "ctrl": "ctrl_arg",
+    "profile": "profile_arg"
   },
 
   "purity_banned_prefixes": ["PF_", "IT_G_", "IT_F_", "PFN_", "lifted_"],

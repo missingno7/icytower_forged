@@ -128,3 +128,21 @@ blit_to_screen=src
 # scripts/all_rows_src_no_play.bindfile / all_rows_src.bindfile when the
 # question is "what does play()'s own body change".
 play=src
+# --- added by the carrier task's in-vivo pass over PROMOTIONS.md batch 13
+# (2026-09-08): play_sound/startGameMusic/stopGameMusic (the tick's audio
+# seam), log2file (needed pthread_mutex_lock/unlock guest-IAT bindings,
+# added to gen_bindings.py's GUEST_CRT_IMPORTS this same pass, before it
+# would link), take_screenshot, and draw_reward (draw_frame's one
+# game-scope callee). get_version_str/syncProfileFromOptions/
+# destroy_game_data already had rows above. Deliberately NOT including
+# this pass's concurrently-compiled batch-14 rows (save_config,
+# myDeleteFile, fadeOut, fadeIn, qualify_hisc_table, sort_hisc_table,
+# enter_hisc_table, init_scroller) or draw_frame/draw_scroller/
+# draw_star_field (all out of THIS pass's own scope, same discipline this
+# file's own header comment already uses for draw_scroller). ---
+play_sound=src
+startGameMusic=src
+stopGameMusic=src
+log2file=src
+take_screenshot=src
+draw_reward=src
