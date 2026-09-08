@@ -54,3 +54,4 @@ assets_extracted/
 src/build/obj/
 src/build/asset_oracle.exe
 artifacts/scratch_archive/
+carrier/lift/harness/*_vectors.txt
