@@ -13,6 +13,7 @@
 extern "C" {
     void __cdecl add_combo(void*, void*);
     void __cdecl add_jump_sequence(void*, void*);
+    void __cdecl blit_to_screen(void*);
     void __cdecl handle_player_collision_old(int, int);
     void __cdecl handle_player_collision_vector(int, int);
     void __cdecl handle_player_collision_vector_2(int, int);
@@ -34,6 +35,7 @@ extern "C" {
     int __cdecl draw_scroller(void*, void*, int, int, int);
     void __cdecl draw_star_field(void*, void*, int, int);
     void __cdecl handle_player_collision_original(int, int);
+    void __cdecl handle_player_input(void*);
     int __cdecl is_solid(void*, int, int);
     int __cdecl lifted_is_solid(void*, int, int);
     int __cdecl native_is_solid(void*, int, int);
@@ -55,6 +57,7 @@ extern "C" {
     void __cdecl update_particle(void*);
     int __cdecl create_particle(void*, int, int);
     void __cdecl play_jump_sound(void*);
+    void __cdecl poll_control(void*, int);
     void __cdecl reset_player(void*);
     void __cdecl scroll_scroller(void*, int);
     void __cdecl restart_scroller(void*);
@@ -188,6 +191,7 @@ static const FnDesc kFns[] = {
     // name  va  argc  returns_value  lifted  native  src  regions  num_regions  fault_region
     { "add_combo", 0x0040414cu, 2, false, nullptr, nullptr, (void*)add_combo, regions_add_combo, 1, 0 },
     { "add_jump_sequence", 0x004040f4u, 2, false, nullptr, nullptr, (void*)add_jump_sequence, regions_add_jump_sequence, 1, 0 },
+    { "blit_to_screen", 0x0040b6bcu, 1, false, nullptr, nullptr, (void*)blit_to_screen, nullptr, 0, -1 },
     { "handle_player_collision_old", 0x00407fd8u, 2, false, nullptr, nullptr, (void*)handle_player_collision_old, nullptr, 0, -1 },
     { "handle_player_collision_vector", 0x00408d08u, 2, false, nullptr, nullptr, (void*)handle_player_collision_vector, nullptr, 0, -1 },
     { "handle_player_collision_vector_2", 0x004088c8u, 2, false, nullptr, nullptr, (void*)handle_player_collision_vector_2, nullptr, 0, -1 },
@@ -209,6 +213,7 @@ static const FnDesc kFns[] = {
     { "draw_scroller", 0x0041f0ecu, 5, true, nullptr, nullptr, (void*)draw_scroller, nullptr, 0, -1 },
     { "draw_star_field", 0x0041f340u, 4, false, nullptr, nullptr, (void*)draw_star_field, nullptr, 0, -1 },
     { "handle_player_collision_original", 0x00407e10u, 2, false, nullptr, nullptr, (void*)handle_player_collision_original, nullptr, 0, -1 },
+    { "handle_player_input", 0x0040b3e4u, 1, false, nullptr, nullptr, (void*)handle_player_input, nullptr, 0, -1 },
     { "is_solid", 0x004166dcu, 3, true, (void*)lifted_is_solid, (void*)native_is_solid, (void*)is_solid, regions_is_solid, 1, 0 },
     { "jump_player", 0x00418678u, 2, true, (void*)lifted_jump_player, nullptr, (void*)jump_player, regions_jump_player, 1, 0 },
     { "line_intersect", 0x00406b80u, 10, true, nullptr, nullptr, (void*)line_intersect, regions_line_intersect, 2, 0 },
@@ -227,6 +232,7 @@ static const FnDesc kFns[] = {
     { "update_particle", 0x0041843cu, 1, false, nullptr, nullptr, (void*)update_particle, regions_update_particle, 2, 0 },
     { "create_particle", 0x00418490u, 3, true, nullptr, nullptr, (void*)create_particle, regions_create_particle, 2, 0 },
     { "play_jump_sound", 0x00406eccu, 1, false, nullptr, nullptr, (void*)play_jump_sound, nullptr, 0, -1 },
+    { "poll_control", 0x00401958u, 2, false, nullptr, nullptr, (void*)poll_control, nullptr, 0, -1 },
     { "reset_player", 0x00418550u, 1, false, nullptr, nullptr, (void*)reset_player, regions_reset_player, 1, 0 },
     { "scroll_scroller", 0x0041f0c0u, 2, false, nullptr, nullptr, (void*)scroll_scroller, regions_scroll_scroller, 1, 0 },
     { "restart_scroller", 0x0041f0d0u, 1, false, nullptr, nullptr, (void*)restart_scroller, regions_restart_scroller, 1, 0 },

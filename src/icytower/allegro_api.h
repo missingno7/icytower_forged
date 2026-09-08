@@ -2,7 +2,7 @@
  * Produced by tools/pf_win32_gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model)
- * Generated: 2026-09-07 23:19:13 UTC
+ * Generated: 2026-09-07 23:55:39 UTC
  *
  * This port's STAND-IN for <allegro.h>, address-free, upstream spelling
  * only (win32_pilot.md SS7b): declares exactly the 100 functions and 26
@@ -364,8 +364,9 @@ typedef unsigned __int64 uint64_t;
 #define MASK_COLOR_24 0xff00ff
 #define MASK_COLOR_32 0xff00ff
 
-/* ---- globals (26), extern, no address (win32_pilot.md SS7a style) ---- */
+/* ---- globals (27), extern, no address (win32_pilot.md SS7a style) ---- */
 
+extern fixed _cos_tbl[512];  /* raw=_cos_tbl cu=C:\Lib\allegro4\src\math.c */
 extern int _rgb_a_shift_32;  /* raw=__rgb_a_shift_32 cu=C:\Lib\allegro4\src\graphics.c */
 extern int _rgb_b_shift_15;  /* raw=__rgb_b_shift_15 cu=C:\Lib\allegro4\src\graphics.c */
 extern int _rgb_b_shift_16;  /* raw=__rgb_b_shift_16 cu=C:\Lib\allegro4\src\graphics.c */

@@ -13,8 +13,8 @@ No other source of names is read; nothing wider than these two lists is ever bou
 | functions emitted as `#define` | 100 |
 | functions excluded (`--exclude`) | 0 |
 | globals in allow-list | 26 |
-| globals resolved 1:1 against scope=all DWARF | 26 |
-| globals emitted as `#define` | 26 |
+| globals resolved 1:1 against scope=all DWARF | 27 |
+| globals emitted as `#define` | 27 |
 | globals excluded (`--exclude`) | 0 |
 | unresolved names (would abort the run) | 0 |
 | ambiguous names (would abort the run) | 0 |
@@ -26,9 +26,20 @@ No other source of names is read; nothing wider than these two lists is ever bou
 | AL_INLINE vtable-dispatch macros curated (gfx.inl/draw.inl) | 23 |
 | AL_INLINE vtable-dispatch macros emitted | 23 |
 | AL_INLINE vtable-dispatch macros skipped (collision) | 0 |
-| AL_INLINE branching/math primitives curated (draw.inl/fmaths.inl) | 4 |
-| AL_INLINE branching/math primitives emitted | 4 |
+| AL_INLINE branching/math primitives curated (draw.inl/fmaths.inl) | 5 |
+| AL_INLINE branching/math primitives emitted | 5 |
 | AL_INLINE branching/math primitives skipped (collision) | 0 |
+| extra symbols found by --src-scan-dir / --extra-symbols | 1 |
+| extra symbols skipped (ambiguous) | 0 |
+
+## Extra symbols (--extra-symbols / --src-scan-dir)
+`--src-scan-dir src/icytower` (markers: allegro4).
+
+See this module's docstring "--extra-symbols / --src-scan-dir" for why this second source of names exists: `lib_boundary.json`'s allow-list is a call/read-edge census of the ORIGINAL binary, so it can never name a symbol the original never called/read directly -- exactly the case for a data table (`_cos_tbl`) an upstream `static inline` reads, when a clean-room port writes that inline out non-inlined and therefore references the table by name for the first time in this project's history (icytower_forged PROMOTIONS.md batch 11).
+
+**0 function(s), 1 global(s) bound this run:** `_cos_tbl`
+
+0 skipped as ambiguous.
 
 ## Name -> address mapping rule
 Every allow-list name carries the disassembly/COFF spelling: the upstream C identifier plus MinGW's one leading cdecl underscore (`blit` -> `_blit`; an already-underscored upstream name doubles up, `_win_hcursor` -> `__win_hcursor`). Stripping exactly one leading underscore and looking the result up as a DWARF `DW_AT_name` in the scope=all model resolved **all 126 names uniquely** (0 unresolved, 0 ambiguous) -- verified this run, not assumed; the generator aborts (exit 1) if that ever stops being true.
@@ -42,9 +53,9 @@ A second, DIFFERENT class of "inline function" from the fixed-point math above: 
 **23 emitted, 0 skipped** (collision with a reserved CRT/Windows identifier, an existing game-scope name, or an allow-list VA binding -- see LIB_BINDINGS_NOTES.md's own "Name collisions" counts for whether any of those applied this run). Emitted only into `pf_lib_bindings.h` (the carrier-active world) -- `allegro_api.h`'s declare-only branches need no equivalent: real upstream Allegro (the `ICYTOWER_UPSTREAM_ALLEGRO`-defined world) already provides these as its own inline macros, and no project using this generator currently compiles a file that calls one of these names in the third, neither-guard-defined declare-only world.
 
 ## AL_INLINE branching/math primitives
-A third class, distinct from both sections above: `draw_sprite`, `rotate_sprite`, `fixtoi`, `ftofix` (curated in `AL_INLINE_BRANCHING_OR_MATH`) are also `static inline` upstream, but unlike the vtable-dispatch names their body has a REAL branch (`draw_sprite`: 8bpp vs. not) or REAL arithmetic (`rotate_sprite`'s own fixed-point centering; `fixtoi`/`ftofix`'s own fixed<->int/double conversions, no vtable call at all) that has to be reproduced, not just redirected. Hand-transcribed from `allegro/inline/draw.inl` and `allegro/inline/fmaths.inl` (both third_party/allegro-4.4.1 and -4.4.3.1 checked, identical), each emitted as a `static` helper function plus a `#ifndef`-guarded forwarding macro -- see this generator's `AL_INLINE_BRANCHING_OR_MATH` module comment for the exact upstream line numbers and the per-name reasoning.
+A third class, distinct from both sections above: `draw_sprite`, `rotate_sprite`, `fixtoi`, `ftofix`, `fixsin` (curated in `AL_INLINE_BRANCHING_OR_MATH`) are also `static inline` upstream, but unlike the vtable-dispatch names their body has a REAL branch (`draw_sprite`: 8bpp vs. not) or REAL arithmetic (`rotate_sprite`'s own fixed-point centering; `fixtoi`/`ftofix`'s own fixed<->int/double conversions, no vtable call at all) that has to be reproduced, not just redirected. Hand-transcribed from `allegro/inline/draw.inl` and `allegro/inline/fmaths.inl` (both third_party/allegro-4.4.1 and -4.4.3.1 checked, identical), each emitted as a `static` helper function plus a `#ifndef`-guarded forwarding macro -- see this generator's `AL_INLINE_BRANCHING_OR_MATH` module comment for the exact upstream line numbers and the per-name reasoning.
 
-**4 emitted, 0 skipped** (same three collision classes as the vtable-dispatch macros above). First closed for icytower_forged's own `src/icytower/draw_frame.c` (PROMOTIONS.md batch 10), which until now carried a private, `#ifndef`-guarded copy of exactly these four names -- this header's own `#define`s now win there automatically (force-included ahead of that file's own text), with no edit to that file.
+**5 emitted, 0 skipped** (same three collision classes as the vtable-dispatch macros above). First closed for icytower_forged's own `src/icytower/draw_frame.c` (PROMOTIONS.md batch 10), which until now carried a private, `#ifndef`-guarded copy of exactly these four names -- this header's own `#define`s now win there automatically (force-included ahead of that file's own text), with no edit to that file.
 
 ## Type coverage
 `it_types.h` (game scope, already generated) already reaches 179 named type entities; the allow-list reaches 57, of which 34 were already in that set (BITMAP, FONT, RGB, SAMPLE, DATAFILE, PACKFILE, MIDI, PALETTE, `fixed`, ...) and **23 are new**, emitted into `pf_lib_bindings_types.h` / `allegro_api.h`: GFX_DRIVER, GFX_MODE, GFX_MODE_LIST, JOYSTICK_AXIS_INFO, JOYSTICK_BUTTON_INFO, JOYSTICK_INFO, JOYSTICK_STICK_INFO, SYSTEM_DRIVER, _DRIVER_INFO.

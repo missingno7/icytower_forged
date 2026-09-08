@@ -4,8 +4,8 @@
  *   it_globals.h (reused cast expressions)
  *   it_funcs.h (reused PFN_* typedefs + cast expressions)
  *   imports.json (IAT slot VAs for GUEST_CRT_IMPORTS)
- * Generated: 2026-09-07 22:48:15 UTC
- * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_player, draw_replay_hud, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixtoi, it_al_ftofix, it_al_rotate_sprite, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
+ * Generated: 2026-09-07 23:56:11 UTC
+ * Excluded (compiled natively, name kept free): add_combo, add_floor, add_jump_sequence, asset_sample, assets_standalone_family, assets_standalone_raw, blit_to_screen, check_control_key, clickedCloseButton, create_particle, cycle_counter, draw_background, draw_buffer, draw_clock, draw_combo_meter, draw_debug_overlay, draw_floors, draw_frame, draw_hurry_sign, draw_player, draw_replay_hud, draw_score, draw_scroller, draw_side_rails, draw_star_field, draw_stars, floor_size_modifiers, fps_counter, getFloorData, get_controls, get_demo, get_gamepad, get_level, handle_player_collision_combo, handle_player_collision_old, handle_player_collision_original, handle_player_collision_vector, handle_player_collision_vector_2, handle_player_input, init_control, is_any, is_down, is_enter, is_fire, is_left, is_pause, is_right, is_solid, is_up, it_al_draw_sprite, it_al_fixfloor, it_al_fixfloor2, it_al_fixsin, it_al_fixtoi, it_al_fixtoi2, it_al_ftofix, it_al_rotate_sprite, jump_player, line_intersect, new_rand, ok_to_play, play_jump_sound, poll_control, reset_map, reset_particles, reset_player, restart_scroller, scroll_scroller, set_control, stars, start_reward, switchedFromProgram, switchedToProgram, update_frame, update_particle, update_player
  * Also defines the purity-safe guard: ICYTOWER_BINDINGS_ACTIVE
  *
  * See win32_pilot.md SS7a: this header is forced-included (/FI) ONLY
@@ -392,9 +392,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* add_profile  VA=0x40c8c0  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: int add_profile(const char *, int, void *) */
 #define add_profile ((PFN_add_profile)0x40c8c0)
-/* blit_to_screen  VA=0x40b6bc  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void blit_to_screen(BITMAP *) */
-#define blit_to_screen ((PFN_blit_to_screen)0x40b6bc)
+/* excluded by --exclude (compiled natively): blit_to_screen */
 /* build_menu_string  VA=0x4174dc  cu=F:\projects\icytower\trunk\source\menu.c */
 /* prototype: void build_menu_string(Tmenu *, char *) */
 #define build_menu_string ((PFN_build_menu_string)0x4174dc)
@@ -675,9 +673,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* excluded by --exclude (compiled natively): handle_player_collision_original */
 /* excluded by --exclude (compiled natively): handle_player_collision_vector */
 /* excluded by --exclude (compiled natively): handle_player_collision_vector_2 */
-/* handle_player_input  VA=0x40b3e4  cu=F:\projects\icytower\trunk\source\main.c */
-/* prototype: void handle_player_input(Tcontrol *) */
-#define handle_player_input ((PFN_handle_player_input)0x40b3e4)
+/* excluded by --exclude (compiled natively): handle_player_input */
 /* hash  VA=0x41b9c8  cu=F:\projects\icytower\trunk\source\replay.c */
 /* prototype: unsigned int hash(unsigned int) */
 #define hash ((PFN_hash)0x41b9c8)
@@ -834,9 +830,7 @@ typedef void (__cdecl *PFN_crt_srand)(unsigned);
 /* play_sound  VA=0x406da4  cu=F:\projects\icytower\trunk\source\main.c */
 /* prototype: void play_sound(SAMPLE *, int, int) */
 #define play_sound ((PFN_play_sound)0x406da4)
-/* poll_control  VA=0x401958  cu=F:\projects\icytower\trunk\source\control.c */
-/* prototype: void poll_control(Tcontrol *, int) */
-#define poll_control ((PFN_poll_control)0x401958)
+/* excluded by --exclude (compiled natively): poll_control */
 /* profile_data_page_advanced  VA=0x419284  cu=F:\projects\icytower\trunk\source\profile.c */
 /* prototype: char * profile_data_page_advanced(Tprofile *) */
 #define profile_data_page_advanced ((PFN_profile_data_page_advanced)0x419284)

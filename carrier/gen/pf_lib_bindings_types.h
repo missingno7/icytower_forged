@@ -1,6 +1,6 @@
 /* pf_lib_bindings_types.h -- GENERATED FILE. DO NOT EDIT.
  * Produced by tools/pf_win32_gen_lib_bindings.py.
- * Generated: 2026-09-07 23:19:13 UTC
+ * Generated: 2026-09-07 23:55:39 UTC
  *
  * Additive type provider for pf_lib_bindings.h: the 23 struct/typedef
  * entities reachable from the library-scope allow-list that are NOT

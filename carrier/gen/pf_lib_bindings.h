@@ -2,7 +2,7 @@
  * Produced by tools/pf_win32_gen_lib_bindings.py from:
  *   artifacts/lib_boundary.json (allow-list: summary.allegro_family_api_names + shared_globals.lib_globals_touched_by_game.globals)
  *   artifacts/dwarf_info.txt, artifacts/functions.json (scope=all DWARF model, reused from gen_interop.py)
- * Generated: 2026-09-07 23:19:13 UTC
+ * Generated: 2026-09-07 23:55:39 UTC
  *
  * win32_pilot.md SS7b "NEXT": the library-call layer game-scope
  * pf_bindings.h does not cover. One #define per allow-listed name,
@@ -345,9 +345,11 @@ typedef void (__cdecl *PFN_LIB_vsync)(void);
 #define vsync ((PFN_LIB_vsync)0x44c340)
 
 /* ------------------------------------------------------------------ */
-/* globals (26): <name> -> (*(T*)VA)                                  */
+/* globals (27): <name> -> (*(T*)VA)                                  */
 /* ------------------------------------------------------------------ */
 
+/* _cos_tbl  raw=_cos_tbl  VA=0x4ce100  type=fixed [512]  cu=C:\Lib\allegro4\src\math.c */
+#define _cos_tbl (*(fixed (*)[512])0x4ce100)
 /* _rgb_a_shift_32  raw=__rgb_a_shift_32  VA=0x4cc9f4  type=int  cu=C:\Lib\allegro4\src\graphics.c */
 #define _rgb_a_shift_32 (*(int *)0x4cc9f4)
 /* _rgb_b_shift_15  raw=__rgb_b_shift_15  VA=0x4cc9d8  type=int  cu=C:\Lib\allegro4\src\graphics.c */
@@ -460,7 +462,7 @@ typedef void (__cdecl *PFN_LIB_vsync)(void);
 #define draw_gouraud_sprite(a0, a1, a2, a3, a4, a5, a6, a7) ((a0)->vtable->draw_gouraud_sprite((a0), (a1), (a2), (a3), (a4), (a5), (a6), (a7)))
 
 /* ------------------------------------------------------------------ */
-/* AL_INLINE branching/math primitives (4): a real upstream branch or */
+/* AL_INLINE branching/math primitives (5): a real upstream branch or */
 /* real arithmetic, not a bare vtable passthrough -- see this          */
 /* generator's AL_INLINE_BRANCHING_OR_MATH comment for the upstream    */
 /* draw.inl/fmaths.inl bodies reproduced below and why each is NOT in  */
@@ -520,6 +522,21 @@ static __inline fixed pf_lib_ftofix(double x)
     return (fixed)(x * 65536.0 + (x < 0 ? -0.5 : 0.5));
 }
 #define ftofix(x) pf_lib_ftofix((x))
+#endif
+
+#ifndef fixsin
+static __inline fixed pf_lib_fixsin(fixed x)
+{
+    /* fmaths.inl:201 verbatim -- upstream spells the quarter-turn
+     * offset 0x400000 (64.0 in 16.16 fixed point); written the same
+     * way here (not e.g. (64 << 16)) since this file, unlike a
+     * project's own src/, is not subject to a guest-address-shaped-
+     * literal purity gate. Depends on _cos_tbl, which MUST already be
+     * a bound macro by this point (checked by the emission loop below
+     * via cos_tbl_bound, not assumed here). */
+    return _cos_tbl[((x - 0x400000 + 0x4000) >> 15) & 0x1FF];
+}
+#define fixsin(x) pf_lib_fixsin((x))
 #endif
 
 /* ------------------------------------------------------------------ */

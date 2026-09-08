@@ -4857,3 +4857,61 @@ break is fixed by whichever pass owns `src/icytower/blit_to_screen.c`.
 185/186), PALETTE 5/6 (unchanged, now root-caused to a carrier-only fact
 rather than an oracle gap). `src/icytower/ASSETS.md`'s own "Extraction and
 the asset oracle" section has the full byte-level account.
+
+## In-vivo pass, batch 11 — library globals referenced by clean code (2026-09-08)
+
+`PROMOTIONS.md` batch 11 (`poll_control`, `handle_player_input`,
+`blit_to_screen`) was offline-EQUAL but `blit_to_screen.c` would not LINK:
+its own transcription of Allegro's `fixsin` (an upstream `static inline`,
+so the ORIGINAL binary never called it as a distinct function) reads
+`_cos_tbl`, a 512-entry data table with no binding anywhere —
+`carrier/gen/pf_lib_bindings.h`'s allow-list is a call/read-edge census of
+the original binary, and the original never referenced `_cos_tbl` by name,
+only executed the inlined bytes.
+
+**Fixed generically, not as a one-name patch**: `port_forge/tools/pf_win32_gen_lib_bindings.py`
+gained `--src-scan-dir`, a mechanical scan of a project's clean-room source
+tree for two narrow signals of a real library-scope reference — a function
+needs CALL syntax (excluding vtable/member-access style calls), a global
+needs an explicit `extern <type> name;` declaration. A first, unguarded
+bare-identifier draft was tried and rejected (16 of 17 matches in this
+project's own `src/icytower/` were false positives — `FONT_VTABLE` struct-
+member names and ordinary local variables sharing a spelling with some
+Allegro-CU symbol); the two-signal version finds exactly one name here:
+`_cos_tbl`. Bound the same way an allow-list entry is (same DWARF
+resolution, same collision checks, same emission into `pf_lib_bindings.h`/
+`pf_lib_bindings_types.h`/`src/icytower/allegro_api.h`). A coupled fix was
+needed too: `fixsin` joins the generator's existing `AL_INLINE_BRANCHING_OR_MATH`
+curated list (real `fmaths.inl:199` body, depending on the now-bound
+`_cos_tbl`) so `blit_to_screen.c`'s own `#ifndef fixsin` guard — which wraps
+BOTH its private implementation AND a bare `extern fixed _cos_tbl[];`
+redeclaration — sees `fixsin` already defined by the force-included header
+and skips its entire local block, avoiding a macro-substitution syntax
+error the `_cos_tbl` binding would otherwise cause inside that file's own
+extern line. A real, pre-existing wrapper bug was fixed along the way:
+`carrier/gen/gen_lib_bindings.py` never injected `--out`/`--types-out`/
+`--notes-out`, so its zero-argument form silently wrote to `port_forge/tools/`
+instead of `carrier/gen/` (already flagged as a gap in this document's own
+"Asset oracle" section) — now injects all three from `win32_policy.json`.
+
+**Build**: clean (`blit_to_screen.c` now compiles AND links). **Gates
+(`gates.ps1`): G1-G5 all EQUAL.**
+
+**In-vivo**: `poll_control`/`handle_player_input`/`blit_to_screen`, each vs
+`original`, over `human_test.txt`/`newgame.txt`/`play_itr.txt` — EQUAL
+per-invocation and EQUAL per-tick digest on all three (the `play_itr.txt`
+idle-menu wall-clock-tail artifact `draw_frame`'s own pass already
+documented reappears for `poll_control`/`blit_to_screen`, content-EQUAL on
+every common record; `handle_player_input` is naturally immune, firing only
+on real gameplay ticks). Frame oracle (`blit_to_screen`/`handle_player_input`
+vs the unbound baseline) EQUAL on all three workloads. All-bound
+(`carrier/scripts/all_src.bindfile` gains the three new rows): per-tick and
+frame digests EQUAL vs unbound/stored baselines on all three workloads;
+`gates.ps1` G4/G5b reconfirmed EQUAL with the updated bindfile. The
+human_test recording run to the game's own exit with everything bound
+(`--stop-at-tick 3200` — 2528 truncates the recording's own post-game
+high-score entry, which runs to input-script tick 3047) still saves
+`last_game.itr` at **score 2386 / floor 100**, unchanged from divergence
+009's witness. Full detail (regex mechanism, false-positive investigation,
+per-workload tables) is in `src/icytower/INVIVO.md`'s own "In-vivo pass,
+batch 11" section.

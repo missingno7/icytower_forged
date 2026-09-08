@@ -570,3 +570,183 @@ workloads, at both the frame-oracle level (every pixel `blit_to_screen`
 receives) and the per-tick game-global digest level (the value that
 actually gates correctness). Recorded here rather than left "compile-only"
 as `PROMOTIONS.md` batch 10 had it pending.
+
+## In-vivo pass, batch 11 — library globals referenced by clean code (2026-09-08)
+
+`PROMOTIONS.md` batch 11 promoted `poll_control`, `handle_player_input` and
+`blit_to_screen`, all offline-EQUAL, but `blit_to_screen.c` **compiled and
+would not link**: its own transcription of Allegro's `fixsin` (upstream
+`static inline`, so the ORIGINAL binary never called it as a distinct
+function — it is folded straight into `blit_to_screen`'s own compiled
+bytes) reads `_cos_tbl`, Allegro's 512-entry quarter-wave table, and that
+global had no binding anywhere. Not a missed case of an existing mechanism:
+`carrier/gen/pf_lib_bindings.h`'s allow-list (`artifacts/lib_boundary.json`)
+is a CALL/READ-EDGE census of the ORIGINAL binary, so it can only ever name
+a library symbol the original game code itself directly called or read —
+and the original never referenced `_cos_tbl` by name, only executed the
+inlined bytes that happen to index it. A clean-room port that writes the
+same inline body out non-inlined needs a real binding the call-graph-derived
+allow-list was never going to produce.
+
+### 0. The generator fix (generic, not a `_cos_tbl` special case)
+
+`port_forge/tools/pf_win32_gen_lib_bindings.py` gained a SECOND, mechanical
+source of library-scope names, on top of the allow-list: `--src-scan-dir`
+scans every `*.c` file in a project's clean-room source tree (comments/
+string literals stripped) for two narrow signals —
+
+- a **function** reference needs CALL syntax (`name(`), excluding a
+  member/vtable-style access (`a->name(`/`a.name(`) immediately before it —
+  the same already-vetted precedent `pf_win32_scan_src_defs.py`'s own
+  `file_needs_extra_fi()` uses for exactly this reason;
+- a **global** reference needs an explicit `extern <type> name;`
+  declaration of that exact name somewhere in the source — precisely the
+  shape `blit_to_screen.c` already writes for `_cos_tbl`
+  (`extern fixed _cos_tbl[];`).
+
+A first, unguarded draft (bare identifier tokens, no signal at all) was
+tried and rejected: it matched 17 names in this project's own
+`src/icytower/`, and 16 of the 17 were false positives — `FONT_VTABLE`
+struct-member names (`extract_font_range`, `font_height`,
+`get_font_range_begin`, ...) only ever written as
+`offsetof(struct FONT_VTABLE, <member>)` in the generated
+`game_types_check.c`, and ordinary local variables (`ms`, `msg`, `mx`, `my`,
+`name`, `length`, `palette`, `set_clip`) that merely share a spelling with
+some unrelated Allegro-CU symbol. The two-signal version above finds
+**exactly one** name in this project: `_cos_tbl` (0 functions, 1 global, 0
+ambiguous) — logged in `carrier/gen/LIB_BINDINGS_NOTES.md`'s new "Extra
+symbols" section every regeneration.
+
+A found name is bound exactly like an ordinary allow-list entry (same
+DWARF resolution against the scope='all' model, same collision checks,
+same emission into `pf_lib_bindings.h` / `pf_lib_bindings_types.h` /
+`src/icytower/allegro_api.h`) — `_cos_tbl` now has a real
+`#define _cos_tbl (*(fixed (*)[512])0x4ce100)` and a real
+`extern fixed _cos_tbl[512];` declaration in the standalone world.
+
+**One coupled fix, needed because `_cos_tbl` alone would have broken the
+build a different way**: `blit_to_screen.c`'s own `#ifndef fixsin` guard
+wraps BOTH its private `it_al_fixsin` body AND a bare
+`extern fixed _cos_tbl[];` redeclaration. Binding `_cos_tbl` to a macro
+without also pre-defining `fixsin` would make the force-included
+`pf_lib_bindings.h` macro-substitute `_cos_tbl` INSIDE that file's own
+extern line the moment its text is lexed — `extern fixed
+(*(fixed(*)[512])0x4ce100)[];`, a syntax error, not a link error. Fixed the
+same way batch 10 already closed `draw_sprite`/`rotate_sprite`/`fixtoi`/
+`ftofix`: `fixsin` joins `AL_INLINE_BRANCHING_OR_MATH` (its real
+`fmaths.inl:199` body, hand-transcribed, depending on the now-bound
+`_cos_tbl`), so `blit_to_screen.c`'s own `#ifndef fixsin` sees it already
+defined (force-included ahead of its own text) and skips its ENTIRE local
+block — extern redeclaration included — with no edit to that file. The
+generator only emits this entry when `_cos_tbl` is itself bound
+(`cos_tbl_bound` check), so a project where the scan finds nothing gets no
+broken `fixsin` body either. `fixcos` (same table, different phase) is
+deliberately NOT added — nothing in this project's clean-room source calls
+it; this list is curated per named need, not per upstream family.
+
+Also fixed in the same pass, a real (if minor) pre-existing bug: the
+project wrapper `carrier/gen/gen_lib_bindings.py` never injected
+`--out`/`--types-out`/`--notes-out`, so its documented zero-argument
+invocation silently wrote all three generated files under
+`port_forge/tools/` instead of `carrier/gen/` (already flagged in
+`carrier/NOTES.md`'s "Asset oracle" section as a real gap, worked around by
+hand every prior pass). Now injects all three from `win32_policy.json`'s
+`gen_dir`.
+
+### 1. Carrier build
+
+`carrier/build.cmd` (MSVC x86, `vcvars32.bat`) — clean: `blit_to_screen.c`
+now compiles AND links (previously `LNK2019: unresolved external symbol
+_cos_tbl`). `carrier.exe` built.
+
+**Gates re-verified (`carrier/scripts/gates.ps1`)**: **G1-G5 all EQUAL** —
+G1 EQUAL (876 ticks), G2 EQUAL (877 invocations), G3a/G3b EQUAL (301 rows/
+invocations each), G4 EQUAL (2293 ticks vs `replays/human_test.digest`),
+G5a EQUAL (157 ticks, itr replayed twice unbound), G5b EQUAL (157 ticks,
+itr all-bound vs `replays/itr_last_game.digest`).
+
+### 2. Per-function in-vivo pass, all three workloads
+
+`carrier/scripts/bind_all.py --fn poll_control,handle_player_input,blit_to_screen`,
+each vs `original` (DR-sensed), per-invocation AND per-tick digest, over
+all three scripted workloads (`newgame`/`play_itr`'s per-tick comparison
+against a freshly-captured UNBOUND baseline digest for that workload, no
+stored baseline existing for `newgame.txt` per batch 9/10 precedent):
+
+| function | `human_test.txt` (2293 ticks) | `newgame.txt` (876 ticks) | `play_itr.txt` (157 ticks) |
+|---|---|---|---|
+| `poll_control` | EQUAL (2341 invocations) | EQUAL (962 invocations) | EQUAL on every common record (see note) |
+| `handle_player_input` | EQUAL (2293 invocations) | EQUAL (876 invocations) | **EQUAL (157 invocations)** |
+| `blit_to_screen` | EQUAL (2381 invocations) | EQUAL (983 invocations) | EQUAL on every common record (see note) |
+
+Per-tick game-global digest: **EQUAL** for all three functions on all three
+workloads (`human_test.txt` vs `replays/human_test.digest`; `play_itr.txt`
+vs `replays/itr_last_game.digest`; `newgame.txt` vs this pass's own fresh
+unbound baseline).
+
+**`play_itr.txt` note, same wall-clock-tail class `draw_frame`'s own INVIVO
+entry already documents**: `poll_control` and `blit_to_screen` are invoked
+every tick of the idle menu loop that follows `.itr` playback, so the
+`--bind fn=original` (DR-sensed, slower per call) and `--bind fn=src`
+runs — each independently stopped by `--run-seconds`' wall-clock watchdog —
+make a different number of idle-tail calls before stopping (784 and 3677
+extra records respectively this run). Every COMMON record compares equal
+(last common invocation: `poll_control` k=20812 T=20735; `blit_to_screen`
+k=17423 T=17463); only the trailing length differs. `handle_player_input`
+is naturally immune to this artifact — unlike the other two, it fires only
+on a REAL gameplay tick, never during the idle-menu tail, so its count
+(157) matches exactly on both sides with no caveat needed. This is a new,
+notable fact about the shape of the artifact, not a new instance of it.
+
+### 3. Frame oracle: unbound vs `blit_to_screen=src` / `handle_player_input=src`
+
+`blit_to_screen` IS the frame-digest sample point (mode 0's `blit`); binding
+it changes the instrument, so the unbound baseline was captured first, per
+`PROMOTIONS.md` batch 11's own stated caveat. `handle_player_input`'s frame
+oracle checks that binding the input seam does not change what gets drawn.
+
+| workload | `blit_to_screen=src` vs unbound | `handle_player_input=src` vs unbound |
+|---|---|---|
+| `replays/human_test.txt` | **EQUAL (2381 frame lines)** | **EQUAL (2381 frame lines)** |
+| `carrier/scripts/newgame.txt` | **EQUAL (983 frame lines)** | **EQUAL (983 frame lines)** |
+| `carrier/scripts/play_itr.txt` | EQUAL on every common line (610 common ticks, last common T=652; +19 idle-tail lines) | EQUAL on every common line (+17 idle-tail lines) | 
+
+Same `play_itr.txt` wall-clock-tail artifact as §2 and as `draw_frame`'s own
+entry above — content-EQUAL everywhere the two runs both reached, length
+differs only in the idle tail.
+
+### 4. All-bound: `carrier/scripts/all_src.bindfile` gains three rows
+
+`poll_control=src`, `handle_player_input=src`, `blit_to_screen=src` added
+(draw_frame/draw_scroller, verified in vivo by a concurrently-running pass,
+deliberately left out — not this pass's own rows). Re-ran with
+`--bind-file`:
+
+| workload | per-tick digest | frame digest |
+|---|---|---|
+| `replays/human_test.txt` | **EQUAL (2293 ticks)** vs `replays/human_test.digest` (also reconfirmed via `gates.ps1` G4) | **EQUAL (2381 frame lines)** vs unbound |
+| `carrier/scripts/newgame.txt` | **EQUAL (876 ticks)** vs this pass's own unbound baseline | **EQUAL (983 frame lines)** vs unbound |
+| `carrier/scripts/play_itr.txt` | **EQUAL (157 ticks)** vs `replays/itr_last_game.digest` (also reconfirmed via `gates.ps1` G5b) | EQUAL on every common line (same wall-clock-tail artifact) |
+
+**The score/floor witness, everything bound**: `replays/human_test.txt` run
+to the game's own exit (`--stop-at-tick 3200` — 2528 truncates the
+recording's own post-game high-score-entry key sequence, which runs to
+input-script tick 3047; `--run-seconds 180`) with
+`--bind-file carrier/scripts/all_src.bindfile`: per-tick digest still
+**EQUAL (2293 ticks)** vs `replays/human_test.digest`, and the saved
+`assets/profiles/MissingNO/replays/last_game.itr` reads **score 2386 @0x4a,
+floor 100 @0x4e** — unchanged from divergence 009's own witness, now with
+three more functions bound.
+
+### Conclusion
+
+`poll_control`, `handle_player_input` and `blit_to_screen` are **EQUAL** in
+vivo on all three of this project's scripted workloads — per-invocation,
+per-tick digest, and (for the two with real presentation/input-seam
+stakes) the frame oracle — both individually and all-bound together with
+every other promoted function, and the human_test score-2386/floor-100
+witness is unchanged with everything bound. The generator gap that blocked
+`blit_to_screen` from linking at all (`_cos_tbl`) is closed generically:
+`--src-scan-dir` mechanically re-derives any future name in this same
+class (a clean-room port writing an upstream inline body out non-inlined),
+not just this one.

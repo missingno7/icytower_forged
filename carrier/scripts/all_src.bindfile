@@ -81,3 +81,17 @@ handle_player_collision_old=src
 handle_player_collision_vector=src
 handle_player_collision_vector_2=src
 handle_player_collision_combo=src
+# --- added by this in-vivo pass (batch 11 generator-gap fix, 2026-09-08):
+# poll_control/handle_player_input/blit_to_screen (PROMOTIONS.md batch 11)
+# were link-blocked until _cos_tbl (an Allegro data table blit_to_screen's
+# own transcribed fixsin() needs) gained a binding -- see carrier/NOTES.md
+# "in-vivo pass, library globals referenced by clean code". Verified
+# EQUAL (per-invocation, per-tick digest, and the frame oracle for
+# blit_to_screen/handle_player_input) over all three scripted workloads
+# before being added here. draw_frame/draw_scroller (batches 8/10, verified
+# in vivo by a concurrently-running pass) are deliberately left OUT of this
+# list, same discipline as the comment above for draw_scroller -- not this
+# pass's own rows to add. ---
+poll_control=src
+handle_player_input=src
+blit_to_screen=src
