@@ -4503,9 +4503,44 @@ after targets 1 and 3's first function.
 `key_to_str` (2543 B) is done.  `view_scores` (0x404c38, 2552 B),
 `select_profile` (0x41acc0, 3070 B), `main_menu_callback` (0x4100f8,
 3741 B), `replay_selector` (0x41d258, 2845 B) and
-`draw_replay_selector` (0x41be58, 3726 B) are untouched.  `view_scores`
-is the next cheapest (19 call sites, two of them the still-ORIGINAL
-`draw_table` and `checkMenuFocus`).
+`draw_replay_selector` (0x41be58, 3726 B) are not recovered.
+
+`view_scores` WAS read end to end before being set aside, and the scoping
+is the deliverable so the next batch does not repeat it.  It is the next
+cheapest of the five and still bigger than anything in this batch:
+
+- **Two ORIGINAL callees to stub**, `draw_table` (0x404a7c, called five
+  times across two passes -- once with `bmp = NULL` purely to MEASURE the
+  height, once for real) and `checkMenuFocus` (0x406f78, called once per
+  frame in each of the two loops).
+- **Two nearly-identical animation loops**, one scrolling in (0x404fe1)
+  and one fading out (0x4052dc), each with its own `cycle_count = 0` /
+  `while (!cycle_count) rest(2)` pacing, its own `set_trans_blender` /
+  `drawing_mode` / `rectfill` / `solid_mode` dim and its own
+  `blit_to_screen`.  Telling them apart in a trace is easy; recovering
+  them as one helper would be wrong, because their sprite arguments and
+  their exit conditions differ.
+- **An x87 smoothing filter run three times** against the double at
+  0x4d4910, each instance the `fldl` / `fimull` / `fiaddl` /
+  control-word-to-RC=11 / `fistpl` shape this batch met once in
+  `getGameDataXML` -- i.e. `pos = (int)(f * (target - pos) + pos)`, a
+  truncating cast, three separate statements.  Batch 13's `-mno-sse`
+  rule applies.
+- **A tall scroll bitmap assembled at runtime** from `data[66]` (header),
+  N x `data[65]` (middle) and `data[64]` (footer), where N comes from an
+  `idiv` of the measured table height by the footer's own height and is
+  clamped at 2, then `clear_to_color`ed magenta (`makecol(255, 0, 255)`)
+  through GFX_VTABLE +0xa0 -- a vtable slot no recovered function has
+  used yet, so batch15b_check.c's synthetic-vtable table needs one more
+  entry.
+- **A three-key release latch**: `key[KEY_ESC]`, `key[KEY_ENTER]` and
+  `key[KEY_SPACE]` (0x5069c3 / 0x5069cb / 0x5069d3) are read directly,
+  and a press only counts once ALL THREE have been seen released, which
+  is what the `-0x34(%ebp)` flag is for.  The rest()-keyed timeline this
+  batch built for `my_alert` already drives exactly that.
+- It TAIL-CALLS `destroy_bitmap` after overwriting its own first stack
+  argument (0x405553 `mov %ebx,0x8(%ebp)`), so its two bitmaps are freed
+  by two different mechanisms.
 
 ### Purity gate (batch 15)
 
@@ -4655,5 +4690,7 @@ File list this pass:
 `src/icytower/replay.c` (+`create_replay`, +`load_replay`),
 `carrier/lift/harness/{batch15_check.py,batch15_check.c,batch15b_check.py,batch15b_check.c,pf_harness_batch15.h,build_batch15.sh}`
 (new), `carrier/recovery_audit_policy.json` (2 entries),
+`scripts/itr_real_files_check.py` +
+`artifacts/itr_real_files_check.txt` (new),
 `notes/replay_format.md` (SS4's two open literals closed),
 `artifacts/src_equivalence.json` (6 entries).
