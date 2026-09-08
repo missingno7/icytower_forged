@@ -25,6 +25,25 @@
  *   save_replay       ordered trace of every library call with its
  *                     arguments AND, for the pack_fwrite calls, the
  *                     BYTES written -- the call sequence IS the file.
+ *
+ * PROMOTIONS.md batch 15 adds the two readers at the bottom of the file:
+ *
+ *   create_replay     the malloc'd Treplay's DEFINED bytes (the domain
+ *                     stops short of the fields this function provably
+ *                     leaves uninitialised -- see its own header).
+ *   load_replay       ordered trace of pack_fopen / 30 x pack_fread /
+ *                     pack_fclose / create_replay / calc_replay_checksum
+ *                     / log2file / destroy_replay, plus the whole
+ *                     Treplay it fills in.
+ *
+ * Batch 15 also closes notes/replay_format.md SS4's two open literals:
+ * the .itr magic at 0x4d7dd0 is "ITR140" (six bytes, no terminator) and
+ * the 7-byte name tag at 0x4d7a7e is "Harold".  Both were read out of
+ * the image with pefile.  With them, the write order save_replay()
+ * documents parses all thirteen real .itr files under
+ * assets/profiles/MissingNO/replays exactly, and calc_replay_checksum()
+ * reproduces every one of their stored checksums -- the format is closed
+ * against real data, not only against the emulated original.
  */
 /* ------------------------------------------------------------------ */
 /* MEMBER-ACCESS COLLISIONS -- the same class handle_player_input.c and */
@@ -329,6 +348,239 @@ void destroy_replay(Treplay *r)
     if (r->data != 0)
         free(r->data);
     free(r);
+}
+
+/* ---------------------------------------------------------------------
+ * create_replay  (0x41cce8, 254 bytes)
+ * ---------------------------------------------------------------------
+ * PROMOTIONS.md batch 15.  Recovered from artifacts/disasm.txt
+ * 0x41cce8..0x41cde5.  load_replay() below is its only caller in this
+ * file, and the reason it comes with it.
+ *
+ * Three literals, all READ OUT OF THE IMAGE with pefile rather than
+ * inferred -- notes/replay_format.md SS4 explicitly left two of them
+ * open ("Exact magic bytes not extracted ... would need a raw hex dump
+ * at VA 0x4d7dd0"):
+ *
+ *   0x4d7dd0  REPLAY_HEADER   "ITR140"   -- SIX bytes, NO terminator.
+ *                             The .itr magic is "ITR140", not "ITR15":
+ *                             the file-format version is 1.4.0 even in a
+ *                             1.5.1 binary, exactly as save_profile()'s
+ *                             stats header still says "ICY TOWER 1.4".
+ *                             Copied as `mov`+`mov %ax` (4+2), i.e. a
+ *                             6-byte memcpy, not a strcpy.
+ *   0x4d7a7e  "Harold"        -- the default player name (7 bytes with
+ *                             its NUL, a `rep movsb`), the same default
+ *                             character the game boots with.  This is
+ *                             notes/replay_format.md's "7-byte tag from
+ *                             VA 0x4d7a7e", now named.
+ *   "no date"                 -- immediate stores (0x64206f6e /
+ *                             0x00657461), overwritten by save_replay().
+ *
+ * TWO facts here are defects in the original, reproduced rather than
+ * repaired, and both are visible only in the object code:
+ *
+ *  1. The 32-byte clearing loop is emitted TWICE (0x41cd48 and 0x41cd58)
+ *     and BOTH write `0xc(%ebx,%eax,1)` -- that is `name`, at +0x0c,
+ *     both times.  `date` (+0x2c) is never cleared; it only ever
+ *     receives the 8 bytes of "no date".  So date[8..31] of a
+ *     freshly-created replay is whatever malloc() handed back --
+ *     and calc_replay_checksum() hashes all 32 bytes of `date`.
+ *     save_replay() then rewrites date[0..30] from a 31-byte literal,
+ *     leaving date[31] as the one byte of the checksum's input that
+ *     nothing in the program ever defines.  (In all thirteen real .itr
+ *     files under assets/profiles/MissingNO/replays that byte is 0, so
+ *     the arena happens to be zeroed in practice; nothing guarantees it.)
+ *     Written below as the two loops the object code contains, because
+ *     collapsing them to one would hide the bug while being
+ *     observationally identical.
+ *  2. `malloc(0x20 + size * 8)` over-allocates the record array by 32
+ *     bytes and the zero-init loop only covers `size` records -- the
+ *     slack is never touched.  notes/replay_format.md SS4 already called
+ *     this "INFERRED padding"; the call map confirms it, and it is kept.
+ *
+ * The two malloc failure paths differ: a failed HEADER malloc returns
+ * NULL immediately (0x41cd0d), a failed RECORD malloc free()s the header
+ * first (0x41cdd5) and then returns NULL.  Both are real branches.
+ */
+Treplay *create_replay(int size)
+{
+    Treplay *r;
+    int i;
+
+    r = (Treplay *)malloc(sizeof(Treplay));
+    if (r == 0)
+        return 0;
+
+    memcpy(r->header, REPLAY_HEADER, 6);
+    r->comment[0] = 0;
+    r->size = size;
+    r->score = 0;
+    r->floor = 0;
+    r->combo = 0;
+
+    for (i = 0; i < 32; i++)
+        r->name[i] = 0;
+    /* the original's second clearing loop -- see note 1 above; it clears
+     * `name` again instead of `date`. */
+    for (i = 0; i < 32; i++)
+        r->name[i] = 0;
+
+    strcpy(r->name, "Harold");
+    strcpy(r->date, "no date");
+
+    r->data = (Trecord *)malloc(0x20 + r->size * 8);
+    if (r->data == 0) {
+        free(r);
+        return 0;
+    }
+
+    for (i = 0; i < size; i++) {
+        r->data[i].key_flags = 0;
+        r->data[i].cycle_count = 0;
+    }
+
+    return r;
+}
+
+/* ---------------------------------------------------------------------
+ * load_replay  (0x41cde8, 1136 bytes)
+ * ---------------------------------------------------------------------
+ * PROMOTIONS.md batch 15.  Recovered from artifacts/disasm.txt
+ * 0x41cde8..0x41d257.  save_replay()'s exact inverse, and the reason
+ * batch 14's closing paragraph named it as the obvious next one: the
+ * on-disk order that function's trace established is read back here in
+ * the SAME order, which is what makes the two mutually checkable.
+ *
+ * The file is opened TWICE, and that is not redundant:
+ *
+ *   pass 1 (0x41ce02..0x41ce53)  read the 6-byte magic and the 4-byte
+ *       record count into STACK locals, close.  Compare the magic with
+ *       REPLAY_HEADER ("ITR140") using a 6-byte `repz cmpsb` -- a
+ *       memcmp, not a strcmp, so a file whose magic differs anywhere in
+ *       those six bytes is rejected.  The count is needed before
+ *       create_replay() can size the record array, and Allegro's
+ *       PACKFILE has no seek, which is why the file is reopened rather
+ *       than rewound.
+ *   pass 2 (0x41ce88..0x41d20f)  create_replay(size), then read every
+ *       field into it.
+ *
+ * The read order below is the object code's, field for field, and it is
+ * the same NOT-struct-order save_replay() writes: `checksum` (+0x4c) is
+ * read near the end, after `comment`; the five statistics columns are
+ * read INTERLEAVED BY INDEX in one 100-iteration loop of five 4-byte
+ * reads (0x41d108); each record is read REVERSED and SHORT --
+ * `cycle_count` (4 bytes) first, `key_flags` (1 byte) second, five bytes
+ * on disk against the struct's eight (0x41d1bb / 0x41d1e0).  The `ccc[]`
+ * and `jc[]` arrays are ten separate 4-byte reads (0x41cf70, 0x41cfa0).
+ *
+ * Three things worth naming, all of which a reader would otherwise get
+ * wrong:
+ *
+ *  1. NO pack_fread RETURN VALUE IS EVER CHECKED.  A truncated file is
+ *     not detected here; it is detected by the checksum, which is the
+ *     only integrity gate this function has.
+ *  2. THE VERIFIED REPLAY IS RETURNED WITH `checksum` LEFT AT 0.
+ *     0x41d214 saves the field, 0x41d217 zeroes it, and
+ *     calc_replay_checksum() is called on the zeroed struct (the field
+ *     has to be excluded from its own hash).  On the MATCH path the
+ *     saved value is never written back -- the object code jumps
+ *     straight to the return.  So every replay this function hands out
+ *     has checksum == 0, and save_replay()'s later
+ *     `r->checksum = calc_replay_checksum(r)` is what makes it right
+ *     again.  Restoring it here would be "tidier" and wrong.
+ *  3. The MISMATCH path logs and then destroy_replay()s, and the
+ *     create_replay-returned-NULL path (0x41ce78) does NOT: it returns
+ *     NULL without a log line.  The pack_fopen-failed-on-pass-2 path
+ *     (0x41ce91) jumps INTO the mismatch tail at 0x41d249, so it
+ *     destroys the replay but skips the log line -- three different
+ *     failure shapes, all in the object code.
+ *
+ * The log format at 0x4d7a88 is
+ *     "Checksum failed for %s: got %d, expected %d"
+ * with `got` = the freshly computed value and `expected` = the value
+ * that was in the file (0x41d22e pushes the FILE's value last).
+ */
+Treplay *load_replay(const char *filename)
+{
+    PACKFILE *f;
+    Treplay *r;
+    char magic[6];
+    int size;
+    int stored;
+    int got;
+    int i;
+
+    f = pack_fopen(filename, "rb");
+    if (f == 0)
+        return 0;
+    pack_fread(magic, 6, f);
+    pack_fread(&size, 4, f);
+    pack_fclose(f);
+
+    if (memcmp(magic, REPLAY_HEADER, 6) != 0)
+        return 0;
+
+    r = create_replay(size);
+    if (r == 0)
+        return 0;
+
+    f = pack_fopen(filename, "rb");
+    if (f == 0) {
+        destroy_replay(r);
+        return 0;
+    }
+
+    pack_fread(r->header, 6, f);
+    pack_fread(&r->size, 4, f);
+    pack_fread(r->name, 32, f);
+    pack_fread(r->date, 32, f);
+    pack_fread(&r->score, 4, f);
+    pack_fread(&r->floor, 4, f);
+    pack_fread(&r->combo, 4, f);
+    pack_fread(&r->no_combo_top_floor, 4, f);
+    pack_fread(&r->biggest_lost_combo, 4, f);
+    for (i = 0; i < 5; i++)
+        pack_fread(&r->ccc[i], 4, f);
+    for (i = 0; i < 5; i++)
+        pack_fread(&r->jc[i], 4, f);
+    pack_fread(&r->floor_shrink, 4, f);
+    pack_fread(&r->floor_size, 4, f);
+    pack_fread(&r->start_speed, 4, f);
+    pack_fread(&r->speed_increase, 4, f);
+    pack_fread(&r->gravity, 4, f);
+    pack_fread(&r->rejump, 4, f);
+    pack_fread(&r->random_seed, 4, f);
+    pack_fread(r->comment, 42, f);
+    pack_fread(&r->checksum, 4, f);
+    pack_fread(&r->tc_posts, 4, f);
+    for (i = 0; i < 100; i++) {
+        pack_fread(&r->tc_c_data[i], 4, f);
+        pack_fread(&r->tc_q_data[i], 4, f);
+        pack_fread(&r->tc_t_data[i], 4, f);
+        pack_fread(&r->tc_s_data[i], 4, f);
+        pack_fread(&r->tc_f_data[i], 4, f);
+    }
+    for (i = 0; i < r->size; i++) {
+        pack_fread(&r->data[i].cycle_count, 4, f);
+        pack_fread(&r->data[i].key_flags, 1, f);
+    }
+    pack_fclose(f);
+
+    stored = r->checksum;
+    r->checksum = 0;
+    got = calc_replay_checksum(r);
+    if (got == stored)
+        return r;
+
+    /* ONE call, its result used twice -- 0x41d221 calls once and pushes
+     * %eax into the log at 0x41d232.  Calling it twice would be
+     * observationally different in the ordered-call-trace oracle and is
+     * not what the object code does. */
+    log2file("Checksum failed for %s: got %d, expected %d", filename, got,
+             stored);
+    destroy_replay(r);
+    return 0;
 }
 
 /* month names, 0x4d7da0: twelve `char *` read out of the image with
